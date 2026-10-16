@@ -2,7 +2,7 @@
 
 iPhone·iPad 가 없는 인원이 Mac 만으로 개발 중인 iOS 앱을 테스트할 수 있게 해 주는 Mac 앱이다. iOS 시뮬레이터를 직접 띄우고, 로컬 .app 파일이나 네트워크에 올려진 .app 을 시뮬레이터에 설치·실행한다.
 
-**비개발자도 Xcode 설치 외에는 터미널·Xcode 조작 없이, 앱 화면에서 시뮬레이터 실행과 iOS 앱 설치·실행을 끝낼 수 있다.** 네트워크는 사용자가 등록한 빌드 카탈로그(`catalog.json`)와, 사용자가 고르거나 입력한 URL 에서 iOS 앱 빌드(.app 또는 .app 을 담은 zip)를 내려받을 때, 사용자가 고른 iOS 시뮬레이터 런타임을 Apple 서버에서 설치할 때만 쓴다. 공개 레포로, 어느 회사든 자기 빌드 저장소에 맞춰 쓸 수 있게 한다.
+**비개발자도 Xcode 설치·라이선스 동의·첫 실행 준비(앱이 단계별로 안내) 외에는 터미널·Xcode 조작 없이, 앱 화면에서 시뮬레이터 실행과 iOS 앱 설치·실행을 끝낼 수 있다.** 네트워크는 사용자가 등록한 빌드 카탈로그(`catalog.json`)와, 사용자가 고르거나 입력한 URL 에서 iOS 앱 빌드(.app 또는 .app 을 담은 zip)를 내려받을 때, 사용자가 고른 iOS 시뮬레이터 런타임을 Apple 서버에서 설치할 때만 쓴다. 공개 레포로, 어느 회사든 자기 빌드 저장소에 맞춰 쓸 수 있게 한다.
 
 ## 핵심 기능 (MVP)
 - Xcode·iOS 시뮬레이터 런타임 확인과 설치 안내 (런타임은 앱에서 설치)
@@ -15,7 +15,7 @@ iPhone·iPad 가 없는 인원이 Mac 만으로 개발 중인 iOS 앱을 테스�
 - SwiftUI (규칙 기반 단방향 MV), Swift 6 strict concurrency, macOS 26.0+
 - Tuist 모듈러 아키텍처 (Feature / Client Interface·Impl·Testing / Shared)
 - Foundation `Process` 로 `xcrun simctl` 등 실행 (Client Impl)
-- Foundation `URLSession` 으로 빌드 다운로드 (Download Client Impl)
+- Foundation `URLSession` 으로 카탈로그·빌드 다운로드 (Download Client Impl)
 - 필요 환경: Xcode 와 iOS 시뮬레이터 런타임 (이 앱을 쓰는 Mac 에도 필요)
 
 ## 시작하기
