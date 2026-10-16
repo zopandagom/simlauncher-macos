@@ -45,7 +45,7 @@
 업데이트는 외부 의존성(Sparkle 등) 없이 구현한다 (ARCHITECTURE §4). 사용자는 Homebrew Cask 로도 업데이트할 수 있다.
 
 ## 작업 진행 방식
-1. 로드맵의 단계 목표와 완료 기준을 확인 → 작업 단위로 쪼갠다.
+1. 로드맵의 단계 목표와 "단계 목표 확인" 열을 확인 → 작업 단위로 쪼갠다.
 2. `feat|fix|chore/<요약>` 브랜치 생성 (일정 표시 없이, CONVENTIONS §5).
 3. Client 가 필요하면 **Interface 먼저** 설계(프로토콜 + 값 타입) → Fake → Feature Model + 테스트 → Impl 순서. Impl 없이도 Example 앱으로 화면을 확인할 수 있다.
 4. 역할 단위로 작업 범위·수용 확인을 정하고 구현 → `/verify` → `/arch-review`. 새 상태·실패 경로가 생기는 구현과 그 리뷰 지적 수정은 팀으로 한다 (CONVENTIONS §6 "팀 구현"). 커밋은 사용자 지시로 `/micro-commit` (CONVENTIONS §5).
