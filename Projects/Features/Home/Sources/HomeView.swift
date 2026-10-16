@@ -1,0 +1,23 @@
+import SwiftUI
+
+/// 상태를 읽어 그리기만 하고, 사용자 동작은 Model 의 이벤트 메서드로 넘긴다.
+public struct HomeView: View {
+  let model: HomeModel
+
+  public init(model: HomeModel) {
+    self.model = model
+  }
+
+  public var body: some View {
+    ContentUnavailableView {
+      Label("SimLauncher", systemImage: "hand.wave")
+    } description: {
+      Text(self.model.greeting.message)
+    } actions: {
+      Button("인사하기") {
+        self.model.waveButtonTapped()
+      }
+      .buttonStyle(.borderedProminent)
+    }
+  }
+}

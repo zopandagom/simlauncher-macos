@@ -1,0 +1,76 @@
+#!/bin/bash
+# 커밋 전에 두 가지를 본다 (make bootstrap 이 연결).
+# 1. 현재 브랜치가 main 이면 막는다 (실수 방지. main push 는 pre-push 가, 서버에서는 GitHub 룰셋 `main 보호`(설정된 레포만)가 막는다. git merge·git pull 이 바로 만드는 머지 커밋은 pre-merge-commit 이 같은 기준으로 막는다).
+#    detached HEAD(rebase 중 등)는 브랜치 이름이 비어 통과한다.
+# 2. 수정한 Swift 파일을 스테이지 여부와 상관없이 모두 lint 한다. 규칙은 CI lint 잡과 같다.
+#    대상: HEAD 대비 바뀐 파일(스테이지 + 미스테이지) + 추적하지 않는 새 파일.
+#    스테이지된 내용이 작업 트리와 다른 파일은 커밋될 내용(index)도 따로 꺼내 lint 한다.
+#    lint 설정이 바뀌면 결과가 레포 전체에 영향을 주므로 make lint 로 전체를 검사한다.
+# 고치려면: 기능 브랜치로 옮기거나(git switch -c <브랜치>) make format / 우회가 꼭 필요하면: git commit --no-verify
+set -euo pipefail
+
+if [[ $(git branch --show-current) == main ]]; then
+  # 문구는 test-hooks.sh 가 확인한다.
+  echo "main 브랜치에 직접 커밋할 수 없습니다. 기능 브랜치를 만들어 커밋하세요: git switch -c feat/<요약> (fix/…, chore/…)" >&2
+  exit 1
+fi
+
+cd "$(git rev-parse --show-toplevel)"
+
+# 첫 커밋처럼 HEAD 가 없으면 빈 트리와 비교한다.
+base=HEAD
+git rev-parse -q --verify HEAD > /dev/null || base=$(git hash-object -t tree /dev/null)
+
+changed() {
+  git diff "$base" --name-only --diff-filter=ACMR -z -- "$@"
+  git ls-files --others --exclude-standard -z -- "$@"
+}
+
+# grep -q 로 일찍 끝내면 앞 명령이 SIGPIPE 로 죽어 pipefail 아래에서 조건이 거짓이 되므로, 출력을 끝까지 받아 비교한다.
+if [[ -n $(changed '.swiftlint.yml' '.swiftformat' | tr -d '\0') ]]; then
+  make lint || { echo "lint 실패. make format 으로 고치세요." >&2; exit 1; }
+  exit 0
+fi
+
+files=()
+while IFS= read -r -d '' file; do files+=("$file"); done < <(changed '*.swift')
+
+# 스테이지된 내용이 작업 트리와 다른 파일(부분 스테이지 등)은 index 버전을 같은 상대 경로로 꺼내 검사한다.
+staged=()
+while IFS= read -r -d '' file; do
+  git diff --quiet -- "$file" || staged+=("$file")
+done < <(git diff --cached --name-only --diff-filter=ACMR -z -- '*.swift')
+
+[[ ${#files[@]} -eq 0 && ${#staged[@]} -eq 0 ]] && exit 0
+
+if ! command -v mise > /dev/null; then
+  echo "pre-commit: mise 를 찾지 못했습니다. 터미널에서 make bootstrap 을 실행했는지, GUI git 클라이언트라면 PATH 에 mise 가 있는지 확인하세요." >&2
+  exit 1
+fi
+swiftformat=$(mise which swiftformat)
+swiftlint=$(mise which swiftlint)
+
+lint() {
+  local status=0
+  "$swiftformat" --lint --quiet "$@" || status=1
+  "$swiftlint" lint --strict --quiet --force-exclude "$@" || status=1
+  return $status
+}
+
+status=0
+if [[ ${#files[@]} -gt 0 ]]; then
+  lint "${files[@]}" || status=1
+fi
+
+if [[ ${#staged[@]} -gt 0 ]]; then
+  tmp=$(mktemp -d)
+  trap 'rm -rf "$tmp"' EXIT
+  git checkout-index --prefix="$tmp/" -- .swiftformat .swiftlint.yml "${staged[@]}"
+  echo "커밋될 내용(stage) 기준 lint: ${staged[*]}" >&2
+  (cd "$tmp" && lint "${staged[@]}") || status=1
+fi
+
+if [[ $status -ne 0 ]]; then
+  echo "lint 실패. make format 으로 고친 뒤 다시 스테이지하고 커밋하세요." >&2
+fi
+exit $status
