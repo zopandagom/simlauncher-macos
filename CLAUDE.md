@@ -1,7 +1,7 @@
 # SimLauncher
 
-iPhone·iPad 가 없는 사내 인원이 Mac 만으로 개발 중인 iOS 앱을 테스트할 수 있게, iOS 시뮬레이터를 띄우고 iOS 앱 빌드(로컬 .app 또는 URL)를 설치·실행해 주는 Mac 앱. **비개발자도 Xcode 설치 외에는 터미널·Xcode 조작 없이, 앱 화면에서 시뮬레이터 실행과 iOS 앱 설치·실행을 끝낼 수 있다.**
-네트워크는 사용자가 입력한 URL 에서 iOS 앱 빌드(.app 또는 .app 을 담은 zip)를 내려받을 때만 쓴다.
+iPhone·iPad 가 없는 인원이 Mac 만으로 개발 중인 iOS 앱을 테스트할 수 있게, iOS 시뮬레이터를 띄우고 iOS 앱 빌드(로컬 .app 또는 URL)를 설치·실행해 주는 Mac 앱. **비개발자도 Xcode 설치 외에는 터미널·Xcode 조작 없이, 앱 화면에서 시뮬레이터 실행과 iOS 앱 설치·실행을 끝낼 수 있다.**
+네트워크는 사용자가 등록한 빌드 카탈로그(`catalog.json`)와, 사용자가 고르거나 입력한 URL 에서 iOS 앱 빌드(.app 또는 .app 을 담은 zip)를 내려받을 때만 쓴다. 공개 레포로, 어느 회사든 자기 빌드 저장소에 맞춰 쓸 수 있게 한다.
 
 ## 먼저 읽을 문서
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — 규칙 기반 단방향 MV, 모듈 구조, 모듈 추가 방법
