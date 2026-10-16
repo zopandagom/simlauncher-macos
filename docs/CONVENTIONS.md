@@ -47,8 +47,10 @@
 | 서드파티 SDK 는 합의 후에만 | 분석·크래시 SDK 를 합의 없이 추가 | |
 | 권한은 필요한 시점에 요청하고 거부·제한도 정상 흐름으로 처리 | 앱 시작 즉시 권한 팝업 | |
 | 비개발자가 앱 화면만으로 시뮬레이터 실행과 앱 설치·실행을 끝낼 수 있게 한다. 실패는 원인과 다음 할 일을 화면에 보여 준다 | 터미널 명령 입력이나 Xcode 조작을 사용자에게 요구 (Xcode 설치 안내는 예외), `simctl` 출력 원문만 보여 주기 | |
-| 네트워크는 사용자가 입력한 URL 에서 빌드를 내려받을 때만 쓰고, 다운로드는 Download Client Impl 에 둔다 | 그 밖의 서버로 데이터 전송, Feature·Core 에서 `URLSession` 직접 사용 | |
-| `Process`·`xcrun simctl` 실행은 Simulator Client Impl 에만 둔다 | Feature·Core 에서 `Process` 실행 | |
+| 네트워크는 사용자가 등록한 카탈로그와 사용자가 고르거나 입력한 빌드 URL 을 내려받을 때만 쓰고, 다운로드는 Download Client Impl 에 둔다 | 그 밖의 서버로 데이터 전송, Feature·Core 에서 `URLSession` 직접 사용 | |
+| 내려받는 URL 은 HTTPS 만 허용하고, 압축을 풀 때 모든 항목이 대상 폴더 안에 있는지 확인한다 | `http://` 다운로드, 경로(`../`·절대 경로·심볼릭 링크)가 대상 폴더를 벗어나는 zip 풀기 | |
+| 특정 회사 인프라(서버 주소·인증 방식)를 코드에 넣지 않는다. 연결 정보는 사용자 설정으로 받는다 | 기본 카탈로그 URL·사내 주소 하드코딩 | |
+| `Process` 실행(`xcrun simctl`·`ditto` 등)은 Client Impl 에만 둔다 | Feature·Core 에서 `Process` 실행 | |
 
 ## 5. Git / PR
 | ✅ | ❌ | 강제 |
