@@ -12,7 +12,7 @@
 ## 핵심 기능 (MVP)
 | 영역 | 기능 | 기술 메모 |
 |---|---|---|
-| 사용 환경 | Xcode·시뮬레이터 런타임 확인, 없으면 안내. iOS 런타임은 앱에서 설치 | `xcode-select -p`, `simctl runtime list`, `xcodebuild -downloadPlatform iOS`. Xcode 는 App Store 페이지를 열고, 라이선스 동의·첫 실행 준비는 단계별 안내 |
+| 사용 환경 | Xcode·시뮬레이터 런타임 확인, 없으면 안내. iOS 런타임은 앱에서 설치 | `xcode-select -p`, `simctl runtime list`, `xcodebuild -downloadPlatform iOS`. 선택된 개발자 디렉터리가 Command Line Tools 이면 `/Applications` 의 Xcode 를 찾아 `DEVELOPER_DIR` 를 지정해 실행한다 (사용자에게 `xcode-select -s` 를 시키지 않는다). Xcode 는 App Store 페이지를 열고, 라이선스 동의·첫 실행 준비는 단계별 안내 |
 | 시뮬레이터 | 기기 목록, 부팅·종료, 생성·삭제·초기화, Simulator 앱 띄우기 | `simctl list -j`, `boot`/`shutdown`, `create`/`delete`/`erase`, `open -a Simulator` |
 | 앱 설치 | 로컬 .app(또는 .app 을 담은 zip)을 골라 설치. 드래그 앤 드롭 | `simctl install <기기> <.app>`. `Info.plist` 의 지원 플랫폼으로 시뮬레이터용인지 검사, .ipa·기기용 빌드는 이유와 함께 거절 |
 | 앱 설치 | URL 의 .app(zip) 을 내려받아 설치 ("직접 설치") | `URLSession` 다운로드(진행률·취소), `ditto -x -k` 로 압축 해제 |
@@ -29,7 +29,7 @@
 - GitHub Releases 로 둘 때 고정 URL: `https://github.com/<owner>/<repo>/releases/latest/download/catalog.json` (파일당 2 GiB 미만, 릴리스당 파일 1000개, 전체 용량·트래픽 제한 없음)
 
 ## 로드맵
-| 단계 | 목표 | 완료 기준 |
+| 단계 | 목표 | 단계 목표 확인 |
 |---|---|---|
 | 0 | 하네스 확인과 첫 화면 (`Home` → `Launcher`) | `/verify` PASS, 앱이 실행되어 첫 화면이 보인다 |
 | 1 | 기기 목록·부팅·종료·생성·삭제 (`Core` 값 타입, `Simulator` Client) | 기기가 OS 별로 보이고, 부팅하면 Simulator 창이 뜬다. `simctl` JSON 해석 테스트 |
@@ -40,7 +40,7 @@
 | 6 | Developer ID 서명·공증 배포, 업데이트 알림 | 다른 Mac 에서 내려받아 Gatekeeper 경고 없이 실행된다. 새 버전이 있으면 알리고 다운로드 페이지를 연다 |
 | 이후 | 비공개 저장소 인증, 업데이트 자동 교체(서명·팀 ID 검증 필수), 설치된 앱 관리(`listapps`·`uninstall`), 테스트 조건 바꾸기(외관·언어·위치·푸시·권한), 앱 로그 보기, 영어 지원, **Android 에뮬레이터** | — |
 
-`simctl` 하위 명령은 모두 `Simulator` Client Impl 이 실행한다 (ARCHITECTURE §4). 완료 기준은 단계의 목표이고, 각 단계 작업을 시작할 때 명령으로 판정할 수용 확인(CONVENTIONS §6)과 사용자의 수동 확인(CONVENTIONS §5 "수동 확인" 행)으로 나눠 작업 범위에 적는다.
+`simctl` 하위 명령은 모두 `Simulator` Client Impl 이 실행한다 (ARCHITECTURE §4). "단계 목표 확인" 열은 단계가 이룰 결과이고, 각 단계 작업을 시작할 때 명령으로 판정할 수용 확인(CONVENTIONS §6)과 사용자의 수동 확인(CONVENTIONS §5 "수동 확인" 행)으로 나눠 작업 범위에 적는다.
 
 업데이트는 외부 의존성(Sparkle 등) 없이 구현한다 (ARCHITECTURE §4). 사용자는 Homebrew Cask 로도 업데이트할 수 있다.
 
@@ -71,7 +71,7 @@
 ## 위험과 대응
 | 위험 | 대응 |
 |---|---|
-| 사용하는 Mac 에 Xcode·iOS 시뮬레이터 런타임이 없으면 동작하지 않음 (비개발자는 설치가 낯설다) | 첫 실행에 환경을 확인하고 설치 방법을 화면에서 안내 |
+| 사용하는 Mac 에 Xcode·iOS 시뮬레이터 런타임이 없으면 동작하지 않음 (비개발자는 설치가 낯설다) | 첫 실행에 환경을 확인한다. iOS 런타임은 앱에서 설치하고, Xcode 설치·라이선스 동의·첫 실행 준비는 화면에서 단계별로 안내 |
 | 기기용 빌드(.ipa)는 시뮬레이터에 설치되지 않음 | 시뮬레이터용(`-sdk iphonesimulator`) .app 만 받는다고 화면에 알리고, 맞지 않는 파일은 이유와 함께 거절. 테스트할 iOS 앱 CI 에서 시뮬레이터 빌드를 올리는 작업이 따로 필요해, 예시 GitHub Actions 와 카탈로그 규격을 제공한다 |
 | `xcrun simctl` 실행에는 App Sandbox 밖 동작이 필요해 Mac App Store 배포가 어려움 | Developer ID 서명·공증 배포 (ARCHITECTURE §4) |
 | Apple Silicon Mac 에서는 arm64 slice 가 없는 시뮬레이터 빌드가 실행되지 않을 수 있음 | 설치 전에 실행 파일 아키텍처를 검사해 이유를 보여 준다 (2단계) |
