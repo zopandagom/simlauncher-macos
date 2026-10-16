@@ -29,16 +29,18 @@
 - GitHub Releases 로 둘 때 고정 URL: `https://github.com/<owner>/<repo>/releases/latest/download/catalog.json` (파일당 2 GiB 미만, 릴리스당 파일 1000개, 전체 용량·트래픽 제한 없음)
 
 ## 로드맵
-| 단계 | 목표 | 수용 확인 |
+| 단계 | 목표 | 완료 기준 |
 |---|---|---|
 | 0 | 하네스 확인과 첫 화면 (`Home` → `Launcher`) | `/verify` PASS, 앱이 실행되어 첫 화면이 보인다 |
 | 1 | 기기 목록·부팅·종료·생성·삭제 (`Core` 값 타입, `Simulator` Client) | 기기가 OS 별로 보이고, 부팅하면 Simulator 창이 뜬다. `simctl` JSON 해석 테스트 |
-| 2 | 로컬 .app 설치·실행, 딥링크 (`AppBundle` Client) | 시뮬레이터용 .app 은 설치·실행되고, .ipa·기기용·아키텍처가 맞지 않는 빌드는 이유와 함께 거절된다 |
-| 3 | 환경 확인과 런타임 설치 (`DevEnvironment` Client, `Setup` Feature) | Xcode·런타임이 없는 Mac 에서 할 일이 화면에 나오고, 런타임은 앱에서 설치된다 |
+| 2 | 로컬 .app 설치·실행, 딥링크 (`AppBundle` Client 는 번들 검사·압축 해제만, 설치·실행·딥링크는 `Simulator` Client 에 추가) | 시뮬레이터용 .app 은 설치·실행되고, .ipa·기기용·아키텍처가 맞지 않는 빌드는 이유와 함께 거절된다 |
+| 3 | 환경 확인과 런타임 설치 (`DevEnvironment` Client 는 Xcode 확인·런타임 설치, 런타임 목록은 `Simulator` Client 가 제공. `Setup` Feature) | Xcode·런타임이 없는 Mac 에서 할 일이 화면에 나오고, 런타임은 앱에서 설치된다 |
 | 4 | 직접 URL 설치, 카탈로그 URL 설정·목록 (`Download` Client), 카탈로그 규격 문서와 예시 GitHub Actions | URL 이나 카탈로그 항목을 고르면 다운로드 → 압축 해제 → 설치 → 실행까지 이어진다. 네트워크 오류·잘못된 파일 처리 |
 | 5 | 스크린샷·녹화, 여러 기기 동시 실행 | `simctl io screenshot`/`recordVideo` 결과가 저장되고 Finder 에서 열린다. 한 빌드를 여러 기기에 설치한다 |
 | 6 | Developer ID 서명·공증 배포, 업데이트 알림 | 다른 Mac 에서 내려받아 Gatekeeper 경고 없이 실행된다. 새 버전이 있으면 알리고 다운로드 페이지를 연다 |
 | 이후 | 비공개 저장소 인증, 업데이트 자동 교체(서명·팀 ID 검증 필수), 설치된 앱 관리(`listapps`·`uninstall`), 테스트 조건 바꾸기(외관·언어·위치·푸시·권한), 앱 로그 보기, 영어 지원, **Android 에뮬레이터** | — |
+
+`simctl` 하위 명령은 모두 `Simulator` Client Impl 이 실행한다 (ARCHITECTURE §4). 완료 기준은 단계의 목표이고, 각 단계 작업을 시작할 때 명령으로 판정할 수용 확인(CONVENTIONS §6)과 사용자의 수동 확인(CONVENTIONS §5 "수동 확인" 행)으로 나눠 작업 범위에 적는다.
 
 업데이트는 외부 의존성(Sparkle 등) 없이 구현한다 (ARCHITECTURE §4). 사용자는 Homebrew Cask 로도 업데이트할 수 있다.
 
