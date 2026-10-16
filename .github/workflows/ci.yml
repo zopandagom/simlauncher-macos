@@ -46,7 +46,7 @@ jobs:
           if grep -Evq '(\.md$|^docs/|^\.claude/)' <<<"$files"; then code=true; else code=false; fi
           echo "code=$code" | tee -a "$GITHUB_OUTPUT"
 
-  # 비공개 레포의 macOS 러너는 분당 10배 과금이라 lint 는 Ubuntu 컨테이너에서 먼저 돌린다.
+  # lint 는 macOS 러너보다 빨리 뜨는 Ubuntu 컨테이너에서 먼저 돌려, 실패하면 macOS 테스트를 건너뛴다.
   # 버전은 .mise.toml 과 맞춘다.
   # 위반은 Checks API 로 "lint 결과" 체크에 어노테이션으로 올려 PR 의 Files changed 에서 해당 줄에 전부 표시한다.
   # 판정은 SwiftFormat·SwiftLint 단계의 종료 코드가 한다.
