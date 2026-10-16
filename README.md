@@ -1,21 +1,21 @@
 # SimLauncher
 
-iPhone·iPad 가 없는 사내 인원이 Mac 만으로 개발 중인 iOS 앱을 테스트할 수 있게 해 주는 Mac 앱이다. iOS 시뮬레이터를 직접 띄우고, 로컬 .app 파일이나 네트워크에 올려진 .app 을 시뮬레이터에 설치·실행한다.
+iPhone·iPad 가 없는 인원이 Mac 만으로 개발 중인 iOS 앱을 테스트할 수 있게 해 주는 Mac 앱이다. iOS 시뮬레이터를 직접 띄우고, 로컬 .app 파일이나 네트워크에 올려진 .app 을 시뮬레이터에 설치·실행한다.
 
-**비개발자도 Xcode 설치 외에는 터미널·Xcode 조작 없이, 앱 화면에서 시뮬레이터 실행과 iOS 앱 설치·실행을 끝낼 수 있다.** 네트워크는 사용자가 입력한 URL 에서 iOS 앱 빌드(.app 또는 .app 을 담은 zip)를 내려받을 때만 쓴다.
+**비개발자도 Xcode 설치·라이선스 동의·첫 실행 준비(앱이 단계별로 안내) 외에는 터미널·Xcode 조작 없이, 앱 화면에서 시뮬레이터 실행과 iOS 앱 설치·실행을 끝낼 수 있다.** 네트워크는 사용자가 등록한 빌드 카탈로그(`catalog.json`)와, 사용자가 고르거나 입력한 URL 에서 iOS 앱 빌드(.app 또는 .app 을 담은 zip)를 내려받을 때, 사용자가 고른 iOS 시뮬레이터 런타임을 Apple 서버에서 설치할 때만 쓴다. 공개 레포로, 어느 회사든 자기 빌드 저장소에 맞춰 쓸 수 있게 한다.
 
 ## 핵심 기능 (MVP)
-- 시뮬레이터 기기 목록 보기, 고른 기기 부팅과 Simulator 앱 띄우기
-- 로컬 .app 파일을 골라 시뮬레이터에 설치
-- URL 의 .app(zip) 을 내려받아 시뮬레이터에 설치
-- 설치한 앱 실행
-- Xcode·iOS 시뮬레이터 런타임이 없으면 설치 안내
+- Xcode·iOS 시뮬레이터 런타임 확인과 설치 안내 (런타임은 앱에서 설치)
+- 시뮬레이터 기기 목록, 부팅·종료, 생성·삭제·초기화, Simulator 앱 띄우기
+- 로컬 .app(또는 zip) 을 골라 시뮬레이터에 설치·실행, 딥링크 열기
+- URL 의 .app(zip) 을 내려받아 설치
+- 빌드 카탈로그: 설정에 카탈로그 URL 을 등록하고 앱·버전 목록에서 골라 설치. 카탈로그는 정적 `catalog.json` 하나라 GitHub Releases·S3·사내 웹 서버 어디에 둬도 된다 ([개발 계획](docs/DEVELOPMENT_PLAN.md) "빌드 카탈로그")
 
 ## 기술 스택
 - SwiftUI (규칙 기반 단방향 MV), Swift 6 strict concurrency, macOS 26.0+
 - Tuist 모듈러 아키텍처 (Feature / Client Interface·Impl·Testing / Shared)
-- Foundation `Process` 로 `xcrun simctl` 실행 (Simulator Client Impl)
-- Foundation `URLSession` 으로 빌드 다운로드 (Download Client Impl)
+- Foundation `Process` 로 `xcrun simctl` 등 실행 (Client Impl)
+- Foundation `URLSession` 으로 카탈로그·빌드 다운로드 (Download Client Impl)
 - 필요 환경: Xcode 와 iOS 시뮬레이터 런타임 (이 앱을 쓰는 Mac 에도 필요)
 
 ## 시작하기
@@ -34,3 +34,6 @@ make lint        # 포맷·아키텍처 규칙 검사 (make format 으로 자동
 - [Claude Code 작업 안내](CLAUDE.md)
 
 이 프로젝트는 [ios-harness](https://github.com/zopandagom/ios-harness) 템플릿으로 만들었다 (`.harness-version`).
+
+## 라이선스
+[MIT](LICENSE)

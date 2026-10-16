@@ -156,6 +156,9 @@ flowchart TD
 | 결정 | 이유 |
 |---|---|
 | TCA 등 외부 아키텍처 라이브러리 | 사용하지 않음. 외부 의존성 0 을 유지하고, 추가하려면 사전 합의 |
-| 시뮬레이터 제어는 `xcrun simctl` 을 `Process` 로 실행 | 공개 API 가 없다. 실행·출력 해석은 Simulator Client Impl 에만 두고, Feature 는 Interface 의 값 타입(기기·OS·상태)만 본다 |
-| 네트워크는 사용자가 입력한 URL 에서 빌드(.app·zip)를 내려받을 때만 | 로컬 .app 과 네트워크에 올려진 .app 을 둘 다 지원하기 위해. 다운로드는 Download Client Impl 에만 둔다 |
-| 배포: Developer ID 서명·공증 (미확정, 팀 ID 입력 후 결정) | `simctl` 같은 다른 프로세스 실행에 App Sandbox 밖 동작이 필요해 Mac App Store 는 어렵다 |
+| 시뮬레이터 제어는 `xcrun simctl` 을 `Process` 로 실행 | 공개 API 가 없다. 실행·출력 해석은 Simulator Client Impl 에만 두고, Feature 는 Interface 의 값 타입(기기·OS·상태)만 본다. 다른 명령(`ditto`·`xcode-select`·`xcodebuild -downloadPlatform`)도 그 일을 맡은 Client Impl 안에서만 실행한다 |
+| 네트워크는 사용자가 등록한 카탈로그(`catalog.json`)와 사용자가 고르거나 입력한 빌드(.app·zip) URL 을 내려받을 때, 사용자가 고른 iOS 런타임을 Apple 서버에서 설치할 때(`xcodebuild -downloadPlatform`)만 | 공개 레포로 어느 회사든 자기 빌드 저장소를 연결해 쓰게 하기 위해. 카탈로그 형식은 이 프로젝트의 공개 규격이고(DEVELOPMENT_PLAN "빌드 카탈로그"), 카탈로그·빌드 다운로드는 Download Client Impl 에만, 런타임 설치는 DevEnvironment Client Impl 에만 둔다. 6단계의 업데이트 확인(이 레포의 최신 릴리스 조회)은 그때 이 줄에 추가한다 |
+| 배포: Developer ID 서명·공증, GitHub Releases (Homebrew Cask 는 선택) | `simctl` 같은 다른 프로세스 실행에 App Sandbox 밖 동작이 필요해 Mac App Store 는 어렵다. Apple Developer Program 은 가입되어 있다 |
+| 앱 업데이트는 외부 의존성 없이 직접 구현 | 외부 의존성 0 원칙. 먼저 새 버전 알림만, 자동 교체는 서명·팀 ID 검증과 함께 후속 |
+| 화면 문자열은 String Catalog 에 한국어로 | 한국어 먼저 내고 영어를 나중에 추가한다 |
+| iOS 시뮬레이터 먼저, Android 에뮬레이터는 후속 | 기기·런타임 값 타입과 Client 이름을 iOS 전용으로 굳히지 않아 Android Client 를 나중에 더할 수 있게 한다 |
