@@ -73,5 +73,5 @@
 | 기기용 빌드(.ipa)는 시뮬레이터에 설치되지 않음 | 시뮬레이터용(`-sdk iphonesimulator`) .app 만 받는다고 화면에 알리고, 맞지 않는 파일은 이유와 함께 거절. 테스트할 iOS 앱 CI 에서 시뮬레이터 빌드를 올리는 작업이 따로 필요해, 예시 GitHub Actions 와 카탈로그 규격을 제공한다 |
 | `xcrun simctl` 실행에는 App Sandbox 밖 동작이 필요해 Mac App Store 배포가 어려움 | Developer ID 서명·공증 배포 (ARCHITECTURE §4) |
 | Apple Silicon Mac 에서는 arm64 slice 가 없는 시뮬레이터 빌드가 실행되지 않을 수 있음 | 설치 전에 실행 파일 아키텍처를 검사해 이유를 보여 준다 (2단계) |
-| 공개 레포라 외부 PR 이 워크플로를 돌리거나 Releases 의 빌드가 누구에게나 공개됨 | 워크플로는 `pull_request` 만 쓰고(fork PR 은 시크릿 없음), 외부 기여자 워크플로는 승인 후 실행. Releases 에는 샘플 앱 빌드만 올린다 |
+| 공개 레포라 외부 PR 이 워크플로를 돌리거나 Releases 의 빌드가 누구에게나 공개됨 | 워크플로는 `pull_request` 만 쓰고(fork PR 은 시크릿 없음), 외부 기여자 워크플로는 승인 후 실행. Releases 에 올리는 iOS 앱 빌드는 샘플 앱만 (회사 앱 빌드는 각자 비공개 저장소에) |
 | 입력받은 URL·zip 이 신뢰할 수 없는 내용일 수 있음 | HTTPS 만 허용, 압축 해제 경로가 대상 폴더를 벗어나지 않는지 검사 (CONVENTIONS §4) |
