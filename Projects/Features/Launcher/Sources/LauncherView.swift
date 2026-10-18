@@ -1,6 +1,7 @@
 import SwiftUI
 
 /// 상태를 읽어 그리기만 하고, 사용자 동작은 Model 의 이벤트 메서드로 넘긴다.
+/// 화면 문자열은 이 모듈의 `Localizable.xcstrings` 에서 찾도록 `bundle: .module` 을 넘긴다.
 public struct LauncherView: View {
   let model: LauncherModel
 
@@ -10,14 +11,13 @@ public struct LauncherView: View {
 
   public var body: some View {
     ContentUnavailableView {
-      Label("SimLauncher", systemImage: "hand.wave")
-    } description: {
-      Text(self.model.greeting.message)
-    } actions: {
-      Button("인사하기") {
-        self.model.waveButtonTapped()
+      Label {
+        Text(verbatim: "SimLauncher")
+      } icon: {
+        Image(systemName: "iphone")
       }
-      .buttonStyle(.borderedProminent)
+    } description: {
+      Text("iOS 시뮬레이터 기기 목록이 여기에 표시됩니다.", bundle: .module)
     }
   }
 }

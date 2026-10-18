@@ -10,6 +10,8 @@ public enum Env {
   /// Apple Developer Program 팀 ID. 배포 빌드는 Xcode 자동 서명으로 프로비저닝한다.
   /// 비어 있으면 이 Mac 에서 실행(ad-hoc 서명)과 CI 만 된다. 배포 전에 채운다.
   static let developmentTeam = ""
+  /// 화면 문자열은 한국어 먼저. 모든 프로젝트가 같은 개발 언어를 써야 String Catalog 의 원문 언어가 맞는다.
+  static let projectOptions: Project.Options = .options(defaultKnownRegions: ["ko", "en"], developmentRegion: "ko")
 
   static let baseSettings: SettingsDictionary = [
     "SWIFT_VERSION": "6.0",
@@ -17,6 +19,10 @@ public enum Env {
     "ENABLE_USER_SCRIPT_SANDBOXING": "YES",
     "CODE_SIGN_STYLE": "Automatic",
     "DEVELOPMENT_TEAM": .string(Self.developmentTeam),
+    // Xcode 에서 빌드할 때 코드의 문자열이 String Catalog(`Localizable.xcstrings`)에 추가된다.
+    // `xcodebuild`(make·CI)는 카탈로그를 고치지 않으므로 CLI 로만 작업하면 항목을 직접 넣는다.
+    "SWIFT_EMIT_LOC_STRINGS": "YES",
+    "LOCALIZATION_PREFERS_STRING_CATALOGS": "YES",
   ]
 
   static func bundleId(_ name: String) -> String {
@@ -29,7 +35,7 @@ public extension Project {
   static func app(infoPlist: [String: Plist.Value], dependencies: [TargetDependency]) -> Project {
     Project(
       name: "App",
-      options: .options(defaultKnownRegions: ["ko", "en"], developmentRegion: "ko"),
+      options: Env.projectOptions,
       settings: .settings(base: Env.baseSettings),
       targets: [
         .target(
@@ -62,6 +68,7 @@ public extension Project {
     let otherTestings = clients.map { TargetDependency.client(testing: $0) }
     return Project(
       name: client.rawValue,
+      options: Env.projectOptions,
       settings: .settings(base: Env.baseSettings),
       targets: [
         .module(name: client.interface, sources: "Interface", dependencies: shared + interfaceDependencies),
@@ -97,6 +104,7 @@ public extension Project {
     let shared = shared.map { TargetDependency.shared($0) }
     return Project(
       name: feature.name,
+      options: Env.projectOptions,
       settings: .settings(base: Env.baseSettings),
       targets: [
         .module(
@@ -123,6 +131,7 @@ public extension Project {
   static func shared(_ shared: Shared) -> Project {
     Project(
       name: shared.name,
+      options: Env.projectOptions,
       settings: .settings(base: Env.baseSettings),
       targets: [
         .module(name: shared.name, sources: "Sources", dependencies: []),
