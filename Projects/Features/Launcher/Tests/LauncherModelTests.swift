@@ -1,12 +1,12 @@
 import Core
 import Testing
-@testable import HomeFeature
+@testable import LauncherFeature
 
 @MainActor
-struct HomeModelTests {
+struct LauncherModelTests {
   @Test("인사 버튼을 누르면 인사 횟수가 늘어난다")
   func waveButtonTappedIncrementsCount() {
-    let model = HomeModel()
+    let model = LauncherModel()
 
     model.waveButtonTapped()
     model.waveButtonTapped()

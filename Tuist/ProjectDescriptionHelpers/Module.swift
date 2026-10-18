@@ -27,7 +27,7 @@ public extension Client {
 /// 화면 단위 기능 모듈. Feature 끼리는 서로 의존하지 않는다.
 /// 각 Feature 는 Feature / Tests / Example 세 타깃으로 나뉜다.
 public enum Feature: String, CaseIterable {
-  case home = "Home"
+  case launcher = "Launcher"
 
   public var name: String { "\(self.rawValue)Feature" }
   public var tests: String { "\(self.name)Tests" }

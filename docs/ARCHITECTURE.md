@@ -54,7 +54,7 @@ Button("시작하기") { Task { await self.model.startButtonTapped() } }
 
 // App: 화면 간 흐름은 App 이 정한다 (규칙 6)
 if self.onboardingModel.access == .authorized {
-  HomeView(model: self.homeModel)
+  LauncherView(model: self.launcherModel)
 } else {
   OnboardingView(model: self.onboardingModel)
 }
@@ -66,7 +66,7 @@ if self.onboardingModel.access == .authorized {
 flowchart TD
     App["App (SimLauncher)<br/>조립 지점"]
     subgraph Features
-      Home["HomeFeature"]
+      Launcher["LauncherFeature"]
       Other["…Feature"]
     end
     subgraph Clients
@@ -78,12 +78,12 @@ flowchart TD
       Core["Core<br/>도메인 값 타입·규칙"]
     end
 
-    App --> Home & Other
+    App --> Launcher & Other
     App --> XImpl
     Other --> XI
     XImpl --> XI
     XT --> XI
-    Home & XI & XImpl --> Core
+    Launcher & XI & XImpl --> Core
 ```
 
 ### 모듈 종류와 타깃
@@ -99,7 +99,7 @@ flowchart TD
 - **Testing**: `<Name>ClientFake`. 고정 값을 돌려주는 `struct` 로 시작하고, 호출 기록이 필요하거나 호출 사이에 상태가 남아야 하면(저장 결과, 바뀐 권한) 그때 상태를 `Mutex` 로 보호하는 `final class` 로 확장한다.
 - **Example**: Fake 로 Feature 를 단독 실행하는 데모 앱. **`#Preview` 도 여기에 둔다** (Feature 모듈이 Testing 에 의존하지 않도록).
 - **Shared**: 부수효과 프레임워크와 Client 모듈을 import 하지 않는다. Core 는 부수효과 없는 순수 코드이고(SwiftUI·UIKit·AppKit 도 쓰지 않는다. lint `core_no_ui_framework`), 여러 Client 의 Interface 가 함께 쓰는 값 타입을 둔다. DesignSystem 은 SwiftUI 까지 쓴다.
-- 템플릿이 만든 `HomeFeature` 와 Core 의 `Greeting` 은 구조를 보여 주는 시작점이다. 앱에 맞는 화면·타입이 생기면 바꾸거나 지운다.
+- `LauncherFeature` 의 인사 예제 화면과 Core 의 `Greeting` 은 템플릿이 구조를 보여 주려고 만든 시작점이다. 앱에 맞는 화면·타입이 생기면 바꾸거나 지운다.
 
 ### 의존 규칙
 | from ↓ / to → | Feature | Interface | Impl | Testing | Shared |

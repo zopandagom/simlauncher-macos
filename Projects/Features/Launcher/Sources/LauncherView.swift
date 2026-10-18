@@ -1,10 +1,10 @@
 import SwiftUI
 
 /// 상태를 읽어 그리기만 하고, 사용자 동작은 Model 의 이벤트 메서드로 넘긴다.
-public struct HomeView: View {
-  let model: HomeModel
+public struct LauncherView: View {
+  let model: LauncherModel
 
-  public init(model: HomeModel) {
+  public init(model: LauncherModel) {
     self.model = model
   }
 
