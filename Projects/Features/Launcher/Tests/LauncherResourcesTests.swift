@@ -8,12 +8,16 @@ struct LauncherResourcesTests {
     #expect(Bundle.module.developmentLocalization == "ko")
   }
 
-  @Test("String Catalog 가 리소스 번들의 한국어 문자열 표로 컴파일된다")
-  func stringCatalogIsCompiledIntoResourceBundle() throws {
+  @Test("화면의 모든 문구가 String Catalog 에서 한국어 값으로 컴파일되고, 그 밖의 키는 없다")
+  func everyTextIsInCompiledKoreanTable() throws {
     let url = try #require(
       Bundle.module.url(forResource: "Localizable", withExtension: "strings", subdirectory: nil, localization: "ko")
     )
     let table = try #require(NSDictionary(contentsOf: url) as? [String: String])
-    #expect(table["iOS 시뮬레이터 기기 목록이 여기에 표시됩니다."] != nil)
+    let texts = LauncherTextCatalog.all
+    for text in texts {
+      #expect(table[text] == text, "\(text)")
+    }
+    #expect(Set(texts) == Set(table.keys))
   }
 }
