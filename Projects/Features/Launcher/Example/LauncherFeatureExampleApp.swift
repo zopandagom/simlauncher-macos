@@ -56,3 +56,11 @@ private func previewLauncher(
 #Preview("켜기 실패 (꺼진 기기의 켜기를 누른다)") {
   previewLauncher { $0.setBootError(.commandFailed) }
 }
+
+#Preview("실패 알림 두 개 (2초 안에 켜기와 끄기를 누른다)") {
+  previewLauncher {
+    $0.setBootError(.commandFailed)
+    $0.setShutdownError(.deviceNotFound)
+    $0.setDelay(.seconds(2))
+  }
+}
