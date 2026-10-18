@@ -20,8 +20,10 @@ public struct Client: Hashable, Sendable {
   var path: Path { .relativeToRoot("Projects/Clients/\(self.rawValue)") }
 }
 
+// 새 Client 는 이 extension 에 static 상수로 추가한다.
 public extension Client {
-  // 예: static let photoLibrary = Client("PhotoLibrary")
+  /// iOS 시뮬레이터 기기·런타임 목록과 켜기·끄기, Simulator 앱 열기 (`xcrun simctl`).
+  static let simulator = Client("Simulator")
 }
 
 /// 화면 단위 기능 모듈. Feature 끼리는 서로 의존하지 않는다.
