@@ -30,7 +30,11 @@ line_length:
   ignores_urls: true
 
 identifier_name:
-  excluded: [id, x, y]
+  excluded: [id, x, y, tv]
+
+# 식별자 래퍼 타입 이름 `ID` (예: VirtualDevice.ID) 는 Identifiable 관례를 따른다
+type_name:
+  excluded: [ID]
 
 # ── 아키텍처 규칙 (docs/ARCHITECTURE.md) ─────────────────────────────
 custom_rules:
