@@ -1,0 +1,16 @@
+{
+  "sourceLanguage" : "ko",
+  "strings" : {
+    "iOS 시뮬레이터 기기 목록이 여기에 표시됩니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS 시뮬레이터 기기 목록이 여기에 표시됩니다."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}
