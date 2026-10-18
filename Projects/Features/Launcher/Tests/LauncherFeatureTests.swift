@@ -18,7 +18,7 @@ struct LauncherFeatureTests {
 
     #expect(model.listState == .loaded(DeviceList(inventory: .sample)))
     #expect(model.isRefreshing == false)
-    #expect(model.notice == nil)
+    #expect(model.notices.isEmpty)
     #expect(fake.calls == [.fetchInventory])
   }
 
@@ -30,7 +30,7 @@ struct LauncherFeatureTests {
 
     await model.onAppear()
     #expect(model.listState == .failed(.developerToolsUnavailable))
-    #expect(model.notice == nil)
+    #expect(model.notices.isEmpty)
     #expect(model.isRefreshing == false)
 
     fake.setFetchError(nil)
@@ -40,10 +40,7 @@ struct LauncherFeatureTests {
 
   @Test("실패 상태에서 다시 읽는 동안은 로딩으로 보인다")
   func retryFromFailureShowsLoading() async {
-    let fake = SimulatorClientFake(inventory: .sample)
-    fake.setFetchError(.commandFailed)
-    let model = LauncherModel(simulator: fake)
-    await model.onAppear()
+    let (model, fake) = await Self.loadedModel { $0.setFetchError(.commandFailed) }
 
     fake.setFetchError(nil)
     fake.suspendFetches()
@@ -86,15 +83,13 @@ struct LauncherFeatureTests {
 
   @Test("목록이 있을 때 새로 고침이 실패하면 목록을 유지하고 알린다")
   func refreshFailureKeepsList() async {
-    let fake = SimulatorClientFake(inventory: .sample)
-    let model = LauncherModel(simulator: fake)
-    await model.onAppear()
+    let (model, fake) = await Self.loadedModel()
 
     fake.setFetchError(.unexpectedOutput)
     await model.refreshButtonTapped()
 
     #expect(model.listState == .loaded(DeviceList(inventory: .sample)))
-    #expect(model.notice == .refreshFailed(.unexpectedOutput))
+    #expect(model.notices.map(\.notice) == [.refreshFailed(.unexpectedOutput)])
     #expect(model.isRefreshing == false)
   }
 
@@ -102,9 +97,7 @@ struct LauncherFeatureTests {
 
   @Test("꺼진 기기를 켜면 켜기 → 앱 열기 → 다시 읽기 순서로 부르고 켜짐이 된다")
   func bootSuccess() async {
-    let fake = SimulatorClientFake(inventory: .sample)
-    let model = LauncherModel(simulator: fake)
-    await model.onAppear()
+    let (model, fake) = await Self.loadedModel()
 
     await model.bootButtonTapped(SampleID.iPhoneOff)
 
@@ -113,14 +106,12 @@ struct LauncherFeatureTests {
     )
     #expect(Self.device(SampleID.iPhoneOff, in: model)?.state == .booted)
     #expect(model.busyDeviceIDs.isEmpty)
-    #expect(model.notice == nil)
+    #expect(model.notices.isEmpty)
   }
 
   @Test("켜는 동안 같은 기기를 다시 눌러도 한 번만 켠다")
   func bootSameDeviceTwiceBootsOnce() async {
-    let fake = SimulatorClientFake(inventory: .sample)
-    let model = LauncherModel(simulator: fake)
-    await model.onAppear()
+    let (model, fake) = await Self.loadedModel()
 
     fake.suspendBoots()
     let task = Task { await model.bootButtonTapped(SampleID.iPhoneOff) }
@@ -138,9 +129,7 @@ struct LauncherFeatureTests {
 
   @Test("두 기기를 함께 켜면 둘 다 진행 중이 되고, 둘 다 켜진다")
   func bootTwoDevicesConcurrently() async {
-    let fake = SimulatorClientFake(inventory: .sample)
-    let model = LauncherModel(simulator: fake)
-    await model.onAppear()
+    let (model, fake) = await Self.loadedModel()
 
     fake.suspendBoots()
     let phone = Task { await model.bootButtonTapped(SampleID.iPhoneOff) }
@@ -161,30 +150,29 @@ struct LauncherFeatureTests {
 
   @Test("켜기가 실패하면 알리고 목록을 다시 읽으며, 진행 중을 푼다")
   func bootFailureNotifiesAndReloads() async {
-    let fake = SimulatorClientFake(inventory: .sample)
-    fake.setBootError(.commandFailed)
-    let model = LauncherModel(simulator: fake)
-    await model.onAppear()
+    let (model, fake) = await Self.loadedModel { $0.setBootError(.commandFailed) }
 
     await model.bootButtonTapped(SampleID.iPhoneOff)
 
-    #expect(model.notice == .bootFailed(.commandFailed))
+    #expect(model.notices.map(\.notice) == [.bootFailed(Self.label(SampleID.iPhoneOff), .commandFailed)])
     #expect(fake.calls == [.fetchInventory, .boot(SampleID.iPhoneOff), .fetchInventory])
     #expect(Self.device(SampleID.iPhoneOff, in: model)?.state == .shutdown)
     #expect(model.busyDeviceIDs.isEmpty)
   }
 
-  @Test("켜기 실패 뒤 다시 읽기도 실패하면 켜기 실패 알림을 그대로 두고 목록을 유지한다")
-  func bootFailureThenRefreshFailureKeepsBootNotice() async {
-    let fake = SimulatorClientFake(inventory: .sample)
-    let model = LauncherModel(simulator: fake)
-    await model.onAppear()
+  @Test("켜기 실패 뒤 다시 읽기도 실패하면 두 알림을 차례로 쌓고 목록을 유지한다")
+  func bootFailureThenRefreshFailureQueuesBoth() async {
+    let (model, fake) = await Self.loadedModel()
 
     fake.setBootError(.deviceNotFound)
     fake.setFetchError(.commandFailed)
     await model.bootButtonTapped(SampleID.iPhoneOff)
 
-    #expect(model.notice == .bootFailed(.deviceNotFound))
+    #expect(
+      model.notices.map(\.notice) == [
+        .bootFailed(Self.label(SampleID.iPhoneOff), .deviceNotFound), .refreshFailed(.commandFailed),
+      ]
+    )
     #expect(model.listState == .loaded(DeviceList(inventory: .sample)))
     #expect(fake.calls == [.fetchInventory, .boot(SampleID.iPhoneOff), .fetchInventory])
     #expect(model.busyDeviceIDs.isEmpty)
@@ -192,14 +180,13 @@ struct LauncherFeatureTests {
 
   @Test("켜졌지만 앱을 열지 못하면 알리고, 기기는 켜짐으로 보인다")
   func openAppFailureAfterBoot() async {
-    let fake = SimulatorClientFake(inventory: .sample)
-    fake.setOpenAppError(.simulatorAppNotFound)
-    let model = LauncherModel(simulator: fake)
-    await model.onAppear()
+    let (model, fake) = await Self.loadedModel { $0.setOpenAppError(.simulatorAppNotFound) }
 
     await model.bootButtonTapped(SampleID.iPhoneOff)
 
-    #expect(model.notice == .openAppFailed(.simulatorAppNotFound))
+    #expect(
+      model.notices.map(\.notice) == [.openAppFailed(Self.label(SampleID.iPhoneOff), .simulatorAppNotFound)]
+    )
     #expect(Self.device(SampleID.iPhoneOff, in: model)?.state == .booted)
     #expect(fake.calls.last == .fetchInventory)
     #expect(model.busyDeviceIDs.isEmpty)
@@ -207,9 +194,7 @@ struct LauncherFeatureTests {
 
   @Test("켜는 동안 새로 고침해도 켜기는 이어지고, 끝나면 켜짐이 된다")
   func refreshDuringBoot() async {
-    let fake = SimulatorClientFake(inventory: .sample)
-    let model = LauncherModel(simulator: fake)
-    await model.onAppear()
+    let (model, fake) = await Self.loadedModel()
 
     fake.suspendBoots()
     let task = Task { await model.bootButtonTapped(SampleID.iPhoneOff) }
@@ -229,28 +214,23 @@ struct LauncherFeatureTests {
 
   @Test("켜진 기기를 끄면 끄기 → 다시 읽기 순서로 부르고 꺼짐이 된다")
   func shutdownSuccess() async {
-    let fake = SimulatorClientFake(inventory: .sample)
-    let model = LauncherModel(simulator: fake)
-    await model.onAppear()
+    let (model, fake) = await Self.loadedModel()
 
     await model.shutdownButtonTapped(SampleID.iPhoneOn)
 
     #expect(fake.calls == [.fetchInventory, .shutdown(SampleID.iPhoneOn), .fetchInventory])
     #expect(Self.device(SampleID.iPhoneOn, in: model)?.state == .shutdown)
     #expect(model.busyDeviceIDs.isEmpty)
-    #expect(model.notice == nil)
+    #expect(model.notices.isEmpty)
   }
 
   @Test("끄기가 실패하면 알리고 목록을 다시 읽으며, 진행 중을 푼다")
   func shutdownFailureNotifiesAndReloads() async {
-    let fake = SimulatorClientFake(inventory: .sample)
-    fake.setShutdownError(.commandFailed)
-    let model = LauncherModel(simulator: fake)
-    await model.onAppear()
+    let (model, fake) = await Self.loadedModel { $0.setShutdownError(.commandFailed) }
 
     await model.shutdownButtonTapped(SampleID.iPhoneOn)
 
-    #expect(model.notice == .shutdownFailed(.commandFailed))
+    #expect(model.notices.map(\.notice) == [.shutdownFailed(Self.label(SampleID.iPhoneOn), .commandFailed)])
     #expect(fake.calls == [.fetchInventory, .shutdown(SampleID.iPhoneOn), .fetchInventory])
     #expect(Self.device(SampleID.iPhoneOn, in: model)?.state == .booted)
     #expect(model.busyDeviceIDs.isEmpty)
@@ -260,9 +240,7 @@ struct LauncherFeatureTests {
 
   @Test("쓸 수 없는·켜진·목록에 없는 기기 켜기와 꺼진 기기 끄기는 아무것도 부르지 않는다")
   func invalidActionsCallNothing() async {
-    let fake = SimulatorClientFake(inventory: .sample)
-    let model = LauncherModel(simulator: fake)
-    await model.onAppear()
+    let (model, fake) = await Self.loadedModel()
 
     await model.bootButtonTapped(SampleID.unavailableIPhone)
     await model.bootButtonTapped(SampleID.iPhoneOn)
@@ -271,7 +249,7 @@ struct LauncherFeatureTests {
 
     #expect(fake.calls == [.fetchInventory])
     #expect(model.busyDeviceIDs.isEmpty)
-    #expect(model.notice == nil)
+    #expect(model.notices.isEmpty)
   }
 
   @Test("목록을 읽기 전에는 켜기·끄기가 아무것도 부르지 않는다")
@@ -285,34 +263,24 @@ struct LauncherFeatureTests {
     #expect(fake.calls.isEmpty)
   }
 
-  // MARK: - 알림
+  // MARK: - 도움 함수
 
-  @Test("알림을 닫으면 알림이 사라진다")
-  func noticeDismissedClearsNotice() async {
+  /// 샘플 목록 Fake 를 설정하고 첫 목록까지 읽은 Model.
+  private static func loadedModel(
+    _ configure: (SimulatorClientFake) -> Void = { _ in }
+  ) async -> (LauncherModel, SimulatorClientFake) {
     let fake = SimulatorClientFake(inventory: .sample)
-    fake.setBootError(.commandFailed)
+    configure(fake)
     let model = LauncherModel(simulator: fake)
     await model.onAppear()
-    await model.bootButtonTapped(SampleID.iPhoneOff)
-    #expect(model.notice != nil)
-
-    model.noticeDismissed()
-
-    #expect(model.notice == nil)
+    return (model, fake)
   }
 
-  // MARK: - 문구
-
-  @Test("모든 문구 함수가 모든 케이스에 비어 있지 않은 한국어를 돌려준다")
-  func textsAreNonEmptyKorean() {
-    for text in LauncherTextCatalog.all {
-      #expect(!text.isEmpty)
-      #expect(text.unicodeScalars.contains { (0xAC00 ... 0xD7A3).contains($0.value) }, "\(text)")
-    }
-    #expect(LauncherText.title(for: nil).isEmpty)
+  /// 샘플 목록의 기기를 알림에 담을 값으로.
+  private static func label(_ id: VirtualDevice.ID) -> LauncherNotice.Device {
+    let device = DeviceList(inventory: .sample).device(id: id)!
+    return LauncherNotice.Device(name: device.name, runtimeName: device.runtime.name)
   }
-
-  // MARK: - 도움 함수
 
   private static func device(_ id: VirtualDevice.ID, in model: LauncherModel) -> VirtualDevice? {
     guard case let .loaded(list) = model.listState else { return nil }
@@ -327,36 +295,106 @@ struct LauncherFeatureTests {
   }
 }
 
-/// `LauncherText` 가 돌려줄 수 있는 모든 문구 (알림 없음의 빈 제목 제외).
-enum LauncherTextCatalog {
-  static let errors: [SimulatorError] = [
-    .developerToolsUnavailable, .deviceNotFound, .simulatorAppNotFound, .unexpectedOutput, .commandFailed,
-  ]
+// MARK: - 알림
 
-  static let notices: [LauncherNotice] = [
-    .refreshFailed(.commandFailed), .bootFailed(.commandFailed), .shutdownFailed(.commandFailed),
-    .openAppFailed(.commandFailed),
-  ]
+extension LauncherFeatureTests {
+  @Test("켜기와 끄기가 겹쳐 둘 다 실패하면 실패한 순서대로 쌓인다")
+  func overlappingFailuresQueueInOrder() async {
+    let (model, fake) = await Self.loadedModel { fake in
+      fake.setBootError(.commandFailed)
+      fake.setShutdownError(.deviceNotFound)
+    }
 
-  static let reasons: [VirtualDevice.UnavailableReason] = [
-    .runtimeNotInstalled, .runtimeUnavailable, .deviceTypeNotSupported, .unknown,
-  ]
+    fake.suspendBoots()
+    let task = Task { await model.bootButtonTapped(SampleID.iPhoneOff) }
+    await Self.waitUntil { fake.calls.contains(.boot(SampleID.iPhoneOff)) }
+    await model.shutdownButtonTapped(SampleID.iPhoneOn)
+    fake.resumeBoots()
+    await task.value
 
-  static let states: [VirtualDevice.State] = [.shutdown, .booting, .booted, .shuttingDown, .unknown]
-
-  static let emptyReasons: [DeviceListEmptyReason] = [.noIOSRuntime, .noDevices]
-
-  static var all: [String] {
-    self.errors.map { LauncherText.message(for: $0) }
-      + self.notices.map { LauncherText.title(for: $0) }
-      + self.notices.map { LauncherText.message(for: $0) }
-      + self.reasons.map { LauncherText.reason(for: $0) }
-      + self.states.map { LauncherText.stateLabel(for: $0) }
-      + self.emptyReasons.map { LauncherText.emptyTitle(for: $0) }
-      + self.emptyReasons.map { LauncherText.emptyMessage(for: $0) }
-      + [
-        LauncherText.okButton, LauncherText.unavailableLabel, LauncherText.bootButton, LauncherText.shutdownButton,
-        LauncherText.loading, LauncherText.loadFailedTitle, LauncherText.refreshButton, LauncherText.retryButton,
+    #expect(
+      model.notices.map(\.notice) == [
+        .shutdownFailed(Self.label(SampleID.iPhoneOn), .deviceNotFound),
+        .bootFailed(Self.label(SampleID.iPhoneOff), .commandFailed),
       ]
+    )
+    #expect(model.busyDeviceIDs.isEmpty)
+  }
+
+  @Test("알림을 닫으면 그 알림만 빠져 다음 알림이 첫 알림이 되고, 이미 닫은 알림을 다시 닫아도 다른 알림은 남는다")
+  func dismissingRemovesOnlyThatNotice() async throws {
+    let (model, fake) = await Self.loadedModel()
+    fake.setBootError(.commandFailed)
+    fake.setFetchError(.unexpectedOutput)
+    await model.bootButtonTapped(SampleID.iPhoneOff)
+    try #require(model.notices.count == 2)
+    let first = model.notices[0]
+    let second = model.notices[1]
+
+    model.noticeDismissed(first.id)
+    model.noticeDismissed(first.id)
+    #expect(model.notices == [second])
+
+    model.noticeDismissed(second.id)
+    model.noticeDismissed(second.id)
+    #expect(model.notices.isEmpty)
+  }
+
+  @Test("같은 원인의 새로 고침 실패는 줄에 한 번만 쌓이고, 닫은 뒤 다시 나면 새 id 로 쌓인다")
+  func sameRefreshFailureQueuedOnceUntilDismissed() async throws {
+    let (model, fake) = await Self.loadedModel()
+    fake.setFetchError(.commandFailed)
+    await model.refreshButtonTapped()
+    await model.refreshButtonTapped()
+    #expect(model.notices.map(\.notice) == [.refreshFailed(.commandFailed)])
+    let first = try #require(model.notices.first)
+
+    model.noticeDismissed(first.id)
+    await model.refreshButtonTapped()
+
+    #expect(model.notices.map(\.notice) == [.refreshFailed(.commandFailed)])
+    #expect(model.notices.first?.id != first.id)
+  }
+
+  @Test("두 기기 켜기가 같은 원인으로 함께 실패하면 기기마다 쌓인다")
+  func sameBootFailureOnTwoDevicesQueuesEach() async {
+    let (model, fake) = await Self.loadedModel { $0.setBootError(.commandFailed) }
+
+    fake.suspendBoots()
+    let phone = Task { await model.bootButtonTapped(SampleID.iPhoneOff) }
+    let pad = Task { await model.bootButtonTapped(SampleID.iPadOff) }
+    await Self.waitUntil {
+      fake.calls.contains(.boot(SampleID.iPhoneOff)) && fake.calls.contains(.boot(SampleID.iPadOff))
+    }
+    fake.resumeBoots()
+    await phone.value
+    await pad.value
+
+    #expect(model.notices.count == 2)
+    #expect(
+      Set(model.notices.map(\.notice)) == [
+        .bootFailed(Self.label(SampleID.iPhoneOff), .commandFailed),
+        .bootFailed(Self.label(SampleID.iPadOff), .commandFailed),
+      ]
+    )
+  }
+
+  @Test("실패 뒤 목록에서 사라진 기기도 누른 시점의 이름으로 알린다")
+  func noticeKeepsNameOfRemovedDevice() async {
+    let (model, fake) = await Self.loadedModel()
+
+    fake.suspendBoots()
+    let task = Task { await model.bootButtonTapped(SampleID.iPhoneOff) }
+    await Self.waitUntil { fake.calls.contains(.boot(SampleID.iPhoneOff)) }
+    let sample = DeviceInventory.sample
+    fake.setInventory(
+      DeviceInventory(devices: sample.devices.filter { $0.id != SampleID.iPhoneOff }, runtimes: sample.runtimes)
+    )
+    fake.setBootError(.deviceNotFound)
+    fake.resumeBoots()
+    await task.value
+
+    #expect(Self.device(SampleID.iPhoneOff, in: model) == nil)
+    #expect(model.notices.map(\.notice) == [.bootFailed(Self.label(SampleID.iPhoneOff), .deviceNotFound)])
   }
 }

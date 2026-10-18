@@ -16,7 +16,7 @@ enum LauncherText {
         bundle: .module
       )
     case .deviceNotFound:
-      String(localized: "이 기기를 더 이상 찾을 수 없습니다. 목록을 새로 고쳤으니 다른 기기를 골라 주세요.", bundle: .module)
+      String(localized: "이 기기를 더 이상 찾을 수 없습니다. 목록을 새로 고친 뒤 다른 기기를 골라 주세요.", bundle: .module)
     case .simulatorAppNotFound:
       String(
         localized: "이 Mac 의 Xcode 에서 Simulator 앱을 찾지 못했습니다. Xcode 를 최신 버전으로 업데이트하거나 다시 설치하세요.",
@@ -37,26 +37,33 @@ enum LauncherText {
 
   // MARK: - 알림
 
-  /// 알림 제목. 알림이 없으면 빈 문자열 (닫히는 동안 `.alert` 가 읽는다).
+  /// 알림 제목. 기기 작업 실패는 기기 이름과 런타임 이름을 넣어, 같은 원인으로 여러 기기가 실패해도 구별된다.
+  /// 알림이 없으면 빈 문자열 (닫히는 동안 `.alert` 가 읽는다).
   static func title(for notice: LauncherNotice?) -> String {
     switch notice {
     case .none:
       ""
     case .refreshFailed:
       String(localized: "기기 목록을 새로 고치지 못했습니다", bundle: .module)
-    case .bootFailed:
-      String(localized: "기기를 켜지 못했습니다", bundle: .module)
-    case .shutdownFailed:
-      String(localized: "기기를 끄지 못했습니다", bundle: .module)
-    case .openAppFailed:
-      String(localized: "기기는 켜졌지만 Simulator 앱을 열지 못했습니다", bundle: .module)
+    case let .bootFailed(device, _):
+      String(localized: "“\(device.name)” (\(device.runtimeName)) 기기를 켜지 못했습니다", bundle: .module)
+    case let .shutdownFailed(device, _):
+      String(localized: "“\(device.name)” (\(device.runtimeName)) 기기를 끄지 못했습니다", bundle: .module)
+    case let .openAppFailed(device, _):
+      String(
+        localized: "“\(device.name)” (\(device.runtimeName)) 기기는 켜졌지만 Simulator 앱을 열지 못했습니다",
+        bundle: .module
+      )
     }
   }
 
   /// 알림 본문: 알림에 담긴 실패의 원인과 다음 할 일.
   static func message(for notice: LauncherNotice) -> String {
     switch notice {
-    case let .refreshFailed(error), let .bootFailed(error), let .shutdownFailed(error), let .openAppFailed(error):
+    case let .refreshFailed(error),
+         let .bootFailed(_, error),
+         let .shutdownFailed(_, error),
+         let .openAppFailed(_, error):
       self.message(for: error)
     }
   }
