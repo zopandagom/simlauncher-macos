@@ -1,4 +1,4 @@
 import ProjectDescription
 import ProjectDescriptionHelpers
 
-let project = Project.feature(.home, shared: [.core])
+let project = Project.feature(.launcher, shared: [.core])

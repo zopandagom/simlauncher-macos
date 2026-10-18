@@ -6,7 +6,7 @@ let project = Project.app(
     "CFBundleDisplayName": "SimLauncher",
   ],
   dependencies: [
-    .feature(.home),
+    .feature(.launcher),
     .shared(.core),
   ]
 )
