@@ -38,7 +38,7 @@ enum LauncherText {
   // MARK: - 알림
 
   /// 알림 제목. 기기 작업 실패는 기기 이름과 런타임 이름을 넣어, 같은 원인으로 여러 기기가 실패해도 구별된다.
-  /// 알림이 없으면 빈 문자열 (닫히는 동안 `.alert` 가 읽는다).
+  /// 알림이 없으면 빈 문자열 (알림을 띄우기 전, 표시되지 않는 `.alert` 가 읽는다).
   static func title(for notice: LauncherNotice?) -> String {
     switch notice {
     case .none:
