@@ -120,10 +120,10 @@ public struct LauncherView: View {
         }
       }
       // 목록 단위에 하나만 둔다 (같은 계층에 여러 fileImporter 를 두면 서로 충돌한다).
-      // .ipa 도 고를 수 있게 한다: 골라야 설치할 수 없는 이유를 보일 수 있다.
+      // zip 은 Model 이 풀어 설치한다. .ipa 도 고를 수 있게 한다: 골라야 설치할 수 없는 이유를 보일 수 있다.
       .fileImporter(
         isPresented: self.$isImporterPresented,
-        allowedContentTypes: [.applicationBundle] + [UTType("com.apple.itunes.ipa")].compactMap(\.self)
+        allowedContentTypes: [.applicationBundle, .zip] + [UTType("com.apple.itunes.ipa")].compactMap(\.self)
       ) { result in
         // 취소·실패는 무시한다.
         if case let .success(url) = result, let id = self.importDeviceID {

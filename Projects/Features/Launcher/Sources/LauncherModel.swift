@@ -5,7 +5,7 @@ import Observation
 import SimulatorInterface
 
 /// 첫 화면의 상태와 로직. iOS 시뮬레이터 기기 목록을 읽고, 기기를 켜고 끄며(켠 뒤 Simulator 앱을 연다),
-/// 만들고 지우고 초기화한다. 고른 .app 을 기기에 설치하고 바로 실행한다(꺼져 있으면 켠다).
+/// 만들고 지우고 초기화한다. 고른 .app 이나 .app 을 담은 zip 을(풀어서) 기기에 설치하고 바로 실행한다(꺼져 있으면 켠다).
 @MainActor
 @Observable
 public final class LauncherModel {
@@ -64,8 +64,10 @@ public final class LauncherModel {
     self.appBundle = appBundle
   }
 
+  /// 목록을 읽은 뒤(목록을 먼저 보인다) 앞선 실행이 남긴 zip 임시 폴더를 정리한다.
   public func onAppear() async {
     await self.reload()
+    await self.appBundle.removeLeftoverExtractions()
   }
 
   public func refreshButtonTapped() async {
@@ -273,17 +275,19 @@ public extension LauncherModel {
 
 // `private(set)` 상태를 바꾸므로 같은 파일에 둔다.
 public extension LauncherModel {
-  /// 행의 "앱 설치…" 파일 패널에서 고른 항목을 설치하고 바로 실행한다 (꺼져 있으면 켠다).
+  /// 행의 "앱 설치…" 파일 패널에서 고른 항목(.app, 또는 풀어서 쓰는 zip)을 설치하고 바로 실행한다 (꺼져 있으면 켠다).
   func appFileSelected(_ url: URL, for id: VirtualDevice.ID) async {
     await self.installApp([url], on: id)
   }
 
-  /// 행에 끌어다 놓은 항목. 정확히 하나여야 하고, 둘 이상이면 이유를 알린다.
+  /// 행에 끌어다 놓은 항목(.app 이나 zip). 정확히 하나여야 하고, 둘 이상이면 이유를 알린다.
   func appDropped(_ urls: [URL], on id: VirtualDevice.ID) async {
     await self.installApp(urls, on: id)
   }
 
-  /// 진행 중 기록은 여기서만 시작하고 끝낸다. 아래 두 단계의 어느 반환에서든 이 defer 하나가 진행 중을 푼다.
+  /// 진행 중 기록은 여기서만 시작하고 끝낸다. 아래 단계의 어느 반환에서든 이 defer 하나가 진행 중을 푼다.
+  /// zip 이면 풀고, 성공·실패와 관계없이 설치 흐름이 끝난 뒤 임시 폴더를 지운다 (비동기 defer 를 쓰지 않으려고
+  /// 실패가 모두 안에서 끝나는 `installBundle` 뒤에 둔다).
   private func installApp(_ items: [URL], on id: VirtualDevice.ID) async {
     guard case let .loaded(list) = self.listState,
           let device = list.device(id: id),
@@ -296,6 +300,30 @@ public extension LauncherModel {
       self.enqueue(.installFailed(label, .multipleItems))
       return
     }
+    guard Self.isZip(url) else {
+      await self.installBundle(url, on: id, label: label)
+      return
+    }
+    let extracted: ExtractedApp
+    do throws(AppBundleError) {
+      extracted = try await self.appBundle.extractApp(fromZip: url)
+    } catch {
+      // 명령을 실행하기 전이라 다시 읽지 않는다. 풀다 만 폴더는 Impl 이 지웠다.
+      self.enqueue(.installFailed(label, .bundle(error)))
+      return
+    }
+    await self.installBundle(extracted.app, on: id, label: label)
+    // 설치 명령이 번들을 기기로 복사한 뒤라 지워도 된다. 지우지 못하면 다음 시작 때 지운다.
+    await self.appBundle.removeExtracted(extracted)
+  }
+
+  /// 확장자가 zip 이면(대소문자 무시) 풀어서 설치한다.
+  private static func isZip(_ url: URL) -> Bool {
+    url.pathExtension.lowercased() == "zip"
+  }
+
+  /// 검사·판정을 통과하면 설치하고 실행한다. 모든 실패가 안에서 알림으로 끝나 던지지 않는다.
+  private func installBundle(_ url: URL, on id: VirtualDevice.ID, label: LauncherNotice.Device) async {
     guard let prepared = await self.prepareInstall(url, on: id, label: label) else { return }
     await self.runInstall(prepared.info, on: prepared.device, label: label)
   }

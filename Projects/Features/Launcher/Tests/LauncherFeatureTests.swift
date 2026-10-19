@@ -23,6 +23,28 @@ struct LauncherFeatureTests: LauncherModelTesting {
     #expect(fake.calls == [.fetchInventory])
   }
 
+  @Test("onAppear 는 목록을 읽은 뒤 남은 zip 임시 폴더를 정리하고, 부를 때마다 정리하며, 새로 고침은 정리하지 않는다")
+  func onAppearRemovesLeftoverExtractionsAfterLoading() async {
+    let fake = SimulatorClientFake(inventory: .sample)
+    fake.suspendFetches()
+    let appBundle = AppBundleClientFake()
+    let model = LauncherModel(simulator: fake, appBundle: appBundle)
+    let appear = Task { await model.onAppear() }
+    await Self.waitUntil { fake.calls.count == 1 }
+    #expect(appBundle.leftoverCleanupCount == 0)
+
+    fake.resumeFetches()
+    await appear.value
+    #expect(model.listState == .loaded(DeviceList(inventory: .sample)))
+    #expect(appBundle.leftoverCleanupCount == 1)
+
+    await model.onAppear()
+    #expect(appBundle.leftoverCleanupCount == 2)
+    await model.refreshButtonTapped()
+    #expect(appBundle.leftoverCleanupCount == 2)
+    #expect(appBundle.calls.isEmpty)
+  }
+
   @Test("첫 읽기가 실패하면 전체 오류가 되고, 새로 고침으로 회복한다")
   func firstLoadFailureRecoversByRefresh() async {
     let fake = SimulatorClientFake(inventory: .sample)

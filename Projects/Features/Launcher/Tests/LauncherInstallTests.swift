@@ -227,16 +227,18 @@ struct LauncherInstallTests: LauncherModelTesting {
 
   // MARK: - 드롭
 
-  @Test("둘 이상 드롭하면 이유를 알리고 검사하지 않으며, 빈 드롭은 아무것도 하지 않는다")
-  func dropCountRules() async {
+  @Test("둘 이상 드롭하면(zip 포함) 이유를 알리고 검사·풀기를 하지 않으며, 빈 드롭은 아무것도 하지 않는다", arguments: [
+    ["My App.app", "Other.app"], ["A.zip", "B.zip"], ["A.zip", "My App.app"],
+  ])
+  func dropCountRules(names: [String]) async {
     let appBundle = AppBundleClientFake()
     let (model, simulator) = await Self.loadedModel(appBundle: appBundle)
-    let other = URL(filePath: "/Users/tester/Downloads/Other.app", directoryHint: .isDirectory)
+    let items = names.map { URL(filePath: "/Users/tester/Downloads").appending(path: $0) }
 
     await model.appDropped([], on: SampleID.iPhoneOn)
     #expect(model.notices.isEmpty)
 
-    await model.appDropped([Self.picked, other], on: SampleID.iPhoneOn)
+    await model.appDropped(items, on: SampleID.iPhoneOn)
     #expect(model.notices.map(\.notice) == [.installFailed(Self.label(SampleID.iPhoneOn), .multipleItems)])
     #expect(appBundle.calls.isEmpty)
     #expect(simulator.calls == [.fetchInventory])

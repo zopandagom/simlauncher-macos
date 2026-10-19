@@ -6,7 +6,7 @@ import SwiftUI
 
 /// App 없이 Launcher 화면만 띄우는 데모 앱. Preview 도 여기에 둔다.
 /// 실제 시뮬레이터 대신 Testing 모듈의 `SimulatorClientFake`(샘플 목록, 호출마다 1초 지연)와
-/// `AppBundleClientFake`(어떤 파일을 골라도 샘플 앱, 1초 지연)를 주입한다.
+/// `AppBundleClientFake`(어떤 파일을 골라도 샘플 앱, zip 도 1초 풀기 뒤 샘플 앱, 1초 지연)를 주입한다.
 @main
 struct LauncherFeatureExampleApp: App {
   @State private var model = Self.makeModel()
@@ -124,6 +124,10 @@ private func previewLauncher(
 
 #Preview("거절: 높은 iOS 필요 (앱 설치…)") {
   previewLauncher(appBundle: { $0.setInfo(.requiring(OSVersion(major: 99))) })
+}
+
+#Preview("zip 에 .app 없음 (앱 설치… → zip)") {
+  previewLauncher(appBundle: { $0.setExtractError(.zipWithoutApp) })
 }
 
 #Preview("실행 실패 (앱 설치…)") {
