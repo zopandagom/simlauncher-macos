@@ -29,8 +29,9 @@ line_length:
   ignores_comments: true
   ignores_urls: true
 
+# CPU 아키텍처 이름 `x86_64` (예: CPUArchitecture.x86_64) 는 그대로 쓴다
 identifier_name:
-  excluded: [id, x, y, tv]
+  excluded: [id, x, y, tv, x86_64]
 
 # 식별자 래퍼 타입 이름 `ID` (예: VirtualDevice.ID) 는 Identifiable 관례를 따른다
 type_name:
