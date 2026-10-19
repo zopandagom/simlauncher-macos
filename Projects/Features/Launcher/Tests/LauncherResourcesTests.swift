@@ -29,7 +29,12 @@ struct LauncherResourcesTests {
     for (key, title) in zip(formatKeys, LauncherTextCatalog.formattedTitles) {
       #expect(String(format: table[key] ?? "", "iPhone 17", "iOS 26.0") == title, "\(key)")
     }
-    #expect(Set(texts + formatKeys) == Set(table.keys))
+    let confirmationKeys = LauncherTextCatalog.confirmationFormatKeys
+    for (key, title) in zip(confirmationKeys, LauncherTextCatalog.formattedConfirmationTitles) {
+      #expect(table[key] == key, "\(key)")
+      #expect(String(format: table[key] ?? "", "iPhone 17", "iOS 26.0") == title, "\(key)")
+    }
+    #expect(Set(texts + formatKeys + confirmationKeys) == Set(table.keys))
   }
 }
 
@@ -41,11 +46,12 @@ struct LauncherTextTests {
       #expect(!text.isEmpty)
       #expect(text.unicodeScalars.contains { (0xAC00 ... 0xD7A3).contains($0.value) }, "\(text)")
     }
-    for text in LauncherTextCatalog.formattedTitles {
+    for text in LauncherTextCatalog.formattedTitles + LauncherTextCatalog.formattedConfirmationTitles {
       #expect(!text.isEmpty)
       #expect(text.unicodeScalars.contains { (0xAC00 ... 0xD7A3).contains($0.value) }, "\(text)")
     }
     #expect(LauncherText.title(for: nil).isEmpty)
+    #expect(LauncherText.confirmationTitle(for: nil).isEmpty)
   }
 
   @Test("기기 작업 실패 제목에 기기 이름과 런타임 이름이 들어간다")
@@ -61,13 +67,54 @@ struct LauncherTextTests {
       LauncherText.title(for: .openAppFailed(device, .commandFailed))
         == "“iPhone 17” (iOS 26.0) 기기는 켜졌지만 Simulator 앱을 열지 못했습니다"
     )
+    #expect(
+      LauncherText.title(for: .createFailed(device, .commandFailed)) == "“iPhone 17” (iOS 26.0) 기기를 만들지 못했습니다"
+    )
+    #expect(
+      LauncherText.title(for: .deleteFailed(device, .commandFailed)) == "“iPhone 17” (iOS 26.0) 기기를 삭제하지 못했습니다"
+    )
+    #expect(
+      LauncherText.title(for: .eraseFailed(device, .commandFailed)) == "“iPhone 17” (iOS 26.0) 기기를 초기화하지 못했습니다"
+    )
+  }
+
+  @Test("결과를 알 수 없는 만들기 실패만 제목에서 단정하지 않고 목록을 확인하라고 안내하며, 다른 실패는 일반 문구다")
+  func creationResultUnknownAsksToCheckList() {
+    let device = LauncherNotice.Device(name: "iPhone 17", runtimeName: "iOS 26.0")
+    let unknown = LauncherNotice.createFailed(device, .creationResultUnknown)
+    #expect(LauncherText.title(for: unknown) == "“iPhone 17” (iOS 26.0) 기기를 만들었는지 확인하지 못했습니다")
+    #expect(LauncherText.message(for: unknown).contains("목록을 확인한 뒤, 없을 때만 다시 만드세요"))
+    #expect(LauncherText.message(for: unknown) == LauncherText.message(for: .creationResultUnknown))
+    // 사전 목록 해석 실패(.unexpectedOutput)는 기기를 만들지 않았으므로 일반 제목·본문이다.
+    let errors: [SimulatorError] = [.unexpectedOutput, .commandFailed, .creationOptionUnavailable, .invalidDeviceName]
+    for error in errors {
+      let notice = LauncherNotice.createFailed(device, error)
+      #expect(LauncherText.title(for: notice) == "“iPhone 17” (iOS 26.0) 기기를 만들지 못했습니다")
+      #expect(LauncherText.message(for: notice) == LauncherText.message(for: error))
+      #expect(!LauncherText.message(for: notice).contains("없을 때만 다시 만드세요"))
+    }
+  }
+
+  @Test("삭제·초기화 확인 제목에 기기 이름과 런타임 이름이 들어간다")
+  func confirmationTitlesContainDeviceName() {
+    let device = LauncherNotice.Device(name: "iPhone 17", runtimeName: "iOS 26.0")
+    let id = VirtualDevice.ID("00000000-0000-0000-0000-000000000001")
+    #expect(
+      LauncherText.confirmationTitle(for: DeviceConfirmation(action: .delete, deviceID: id, device: device))
+        == "“iPhone 17” (iOS 26.0) 기기를 삭제할까요?"
+    )
+    #expect(
+      LauncherText.confirmationTitle(for: DeviceConfirmation(action: .erase, deviceID: id, device: device))
+        == "“iPhone 17” (iOS 26.0) 기기를 초기화할까요?"
+    )
   }
 }
 
 /// `LauncherText` 가 돌려줄 수 있는 문구. `all` 은 키와 값이 같은 문구다 (알림 없음의 빈 제목, 기기 이름이 든 제목 제외).
 enum LauncherTextCatalog {
   static let errors: [SimulatorError] = [
-    .developerToolsUnavailable, .deviceNotFound, .simulatorAppNotFound, .unexpectedOutput, .commandFailed,
+    .developerToolsUnavailable, .deviceNotFound, .deviceNotShutdown, .creationOptionUnavailable, .invalidDeviceName,
+    .creationResultUnknown, .simulatorAppNotFound, .unexpectedOutput, .commandFailed,
   ]
 
   static let sampleDevice = LauncherNotice.Device(name: "iPhone 17", runtimeName: "iOS 26.0")
@@ -76,6 +123,8 @@ enum LauncherTextCatalog {
   static let notices: [LauncherNotice] = [
     .refreshFailed(.commandFailed), .bootFailed(sampleDevice, .commandFailed),
     .shutdownFailed(sampleDevice, .commandFailed), .openAppFailed(sampleDevice, .commandFailed),
+    .createFailed(sampleDevice, .commandFailed), .deleteFailed(sampleDevice, .commandFailed),
+    .eraseFailed(sampleDevice, .commandFailed), .createFailed(sampleDevice, .creationResultUnknown),
   ]
 
   /// 기기 이름이 들어가는 제목의 카탈로그 키. 순서는 `notices.dropFirst()` 와 같다.
@@ -83,6 +132,10 @@ enum LauncherTextCatalog {
     "“%@” (%@) 기기를 켜지 못했습니다",
     "“%@” (%@) 기기를 끄지 못했습니다",
     "“%@” (%@) 기기는 켜졌지만 Simulator 앱을 열지 못했습니다",
+    "“%@” (%@) 기기를 만들지 못했습니다",
+    "“%@” (%@) 기기를 삭제하지 못했습니다",
+    "“%@” (%@) 기기를 초기화하지 못했습니다",
+    "“%@” (%@) 기기를 만들었는지 확인하지 못했습니다",
   ]
 
   /// `sampleDevice` 를 넣은 기기 작업 실패 제목.
@@ -90,13 +143,38 @@ enum LauncherTextCatalog {
     self.notices.dropFirst().map { LauncherText.title(for: $0) }
   }
 
+  /// 확인 대화상자 제목의 카탈로그 키. 순서는 `confirmations` 와 같다.
+  static let confirmationFormatKeys = [
+    "“%@” (%@) 기기를 삭제할까요?",
+    "“%@” (%@) 기기를 초기화할까요?",
+  ]
+
+  static let confirmations: [DeviceConfirmation] = [DeviceConfirmation.Action.delete, .erase].map {
+    DeviceConfirmation(
+      action: $0,
+      deviceID: VirtualDevice.ID("00000000-0000-0000-0000-000000000001"),
+      device: sampleDevice
+    )
+  }
+
+  /// `sampleDevice` 를 넣은 확인 대화상자 제목.
+  static var formattedConfirmationTitles: [String] {
+    self.confirmations.map { LauncherText.confirmationTitle(for: $0) }
+  }
+
+  static let actions: [DeviceConfirmation.Action] = [.delete, .erase]
+
+  static let blockReasons: [DeviceActionBlockReason] = [.notShutdown, .unavailable]
+
+  static let nameProblems: [DeviceNameProblem] = [.empty, .tooLong, .containsControlCharacter]
+
   static let reasons: [VirtualDevice.UnavailableReason] = [
     .runtimeNotInstalled, .runtimeUnavailable, .deviceTypeNotSupported, .unknown,
   ]
 
   static let states: [VirtualDevice.State] = [.shutdown, .booting, .booted, .shuttingDown, .unknown]
 
-  static let emptyReasons: [DeviceListEmptyReason] = [.noIOSRuntime, .noDevices]
+  static let emptyReasons: [DeviceListEmptyReason] = [.noIOSRuntime, .noCreatableDeviceType, .noDevices]
 
   static var all: [String] {
     self.errors.map { LauncherText.message(for: $0) }
@@ -106,9 +184,17 @@ enum LauncherTextCatalog {
       + self.states.map { LauncherText.stateLabel(for: $0) }
       + self.emptyReasons.map { LauncherText.emptyTitle(for: $0) }
       + self.emptyReasons.map { LauncherText.emptyMessage(for: $0) }
+      + self.actions.map { LauncherText.confirmationMessage(for: $0) }
+      + self.actions.map { LauncherText.confirmButton(for: $0) }
+      + self.blockReasons.map { LauncherText.blockReason($0) }
+      + self.nameProblems.map { LauncherText.nameProblem($0) }
       + [
         LauncherText.okButton, LauncherText.unavailableLabel, LauncherText.bootButton, LauncherText.shutdownButton,
         LauncherText.loading, LauncherText.loadFailedTitle, LauncherText.refreshButton, LauncherText.retryButton,
+        LauncherText.cancelButton, LauncherText.deviceActionsMenu, LauncherText.eraseMenuItem,
+        LauncherText.deleteMenuItem, LauncherText.createDeviceButton, LauncherText.creatingLabel,
+        LauncherText.createSheetTitle, LauncherText.nameField, LauncherText.runtimePicker,
+        LauncherText.deviceTypePicker, LauncherText.createConfirmButton, LauncherText.createUnavailableHelp,
       ]
   }
 }

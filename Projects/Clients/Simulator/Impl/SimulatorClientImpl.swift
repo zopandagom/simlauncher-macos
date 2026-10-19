@@ -6,7 +6,7 @@ import SimulatorInterface
 public typealias DeveloperDirectoryProvider = @Sendable () async -> URL?
 
 /// `xcrun simctl` 로 시뮬레이터를 다루는 `SimulatorClient`.
-/// provider 는 공개 메서드 한 번에 한 번만 부르고, 그 호출 안의 재조회·앱 열기도 같은 디렉터리를 쓴다.
+/// provider 는 공개 메서드 한 번에 한 번만 부르고, 그 호출 안의 사전 확인·재조회·앱 열기도 같은 디렉터리를 쓴다.
 public struct SimulatorClientImpl: SimulatorClient {
   private let developerDirectory: DeveloperDirectoryProvider?
   private let runner: any CommandRunner
@@ -52,6 +52,48 @@ public struct SimulatorClientImpl: SimulatorClient {
       arguments: SimctlCommand.shutdown(udid:),
       succeedsIn: [.shutdown, .shuttingDown]
     )
+  }
+
+  public func create(
+    name: String,
+    deviceType: DeviceType.ID,
+    runtime: DeviceRuntime.ID
+  ) async throws(SimulatorError) -> VirtualDevice.ID {
+    guard DeviceName.problem(in: name) == nil else {
+      throw .invalidDeviceName
+    }
+    let directory = await self.resolveDeveloperDirectory()
+    let inventory = try await self.inventory(developerDirectory: directory)
+    guard DeviceCreationOptions(inventory: inventory).contains(runtime: runtime, deviceType: deviceType) else {
+      throw .creationOptionUnavailable
+    }
+    let result = try await self.run(
+      SimctlCommand.xcrun,
+      SimctlCommand.create(
+        name: DeviceName.normalized(name),
+        deviceTypeID: deviceType.rawValue,
+        runtimeID: runtime.rawValue
+      ),
+      developerDirectory: directory,
+      launchFailure: .developerToolsUnavailable
+    )
+    // 실패하면 기기가 생기지 않으므로 재조회하지 않는다.
+    guard result.exitCode == 0 else {
+      throw Self.classify(result)
+    }
+    // 해석하지 못해도 기기는 생겼을 수 있다. 호출한 쪽이 목록을 다시 읽어 보인다.
+    guard let udid = SimctlCommand.createdUDID(fromStdout: result.stdout) else {
+      throw .creationResultUnknown
+    }
+    return VirtualDevice.ID(udid)
+  }
+
+  public func delete(_ id: VirtualDevice.ID) async throws(SimulatorError) {
+    try await self.runOnShutdownDevice(id, arguments: SimctlCommand.delete(udid:))
+  }
+
+  public func erase(_ id: VirtualDevice.ID) async throws(SimulatorError) {
+    try await self.runOnShutdownDevice(id, arguments: SimctlCommand.erase(udid:))
   }
 
   public func openSimulatorApp() async throws(SimulatorError) {
@@ -132,6 +174,34 @@ public struct SimulatorClientImpl: SimulatorClient {
       return
     }
     throw failure
+  }
+
+  /// 같은 디렉터리로 목록을 다시 읽어 꺼진 기기일 때만 명령을 실행한다 (delete 는 켜진 기기도 끄고 지우므로).
+  /// 쓸 수 있는지는 보지 않는다. 확인과 실행 사이에 상태가 바뀌는 드문 경우는 막지 못하고, 실패 뒤 재조회는 하지 않는다.
+  private func runOnShutdownDevice(
+    _ id: VirtualDevice.ID,
+    arguments: (String) -> [String]
+  ) async throws(SimulatorError) {
+    guard let udid = SimctlCommand.validatedUDID(id.rawValue) else {
+      throw .deviceNotFound
+    }
+    let directory = await self.resolveDeveloperDirectory()
+    let inventory = try await self.inventory(developerDirectory: directory)
+    guard let device = inventory.devices.first(where: { SimctlCommand.validatedUDID($0.id.rawValue) == udid }) else {
+      throw .deviceNotFound
+    }
+    guard device.state == .shutdown else {
+      throw .deviceNotShutdown
+    }
+    let result = try await self.run(
+      SimctlCommand.xcrun,
+      arguments(udid),
+      developerDirectory: directory,
+      launchFailure: .developerToolsUnavailable
+    )
+    guard result.exitCode == 0 else {
+      throw Self.classify(result)
+    }
   }
 
   private func run(

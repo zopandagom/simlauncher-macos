@@ -68,12 +68,23 @@ public struct DeviceRuntime: Identifiable, Hashable, Sendable {
   public let name: String
   /// 이 Mac 에서 지금 쓸 수 있는 런타임인지.
   public let isAvailable: Bool
+  /// 이 런타임으로 만들 수 있는 기기 종류. simctl 순서(최신 iPhone → iPad) 그대로.
+  public let supportedDeviceTypeIDs: [DeviceType.ID]
 
-  public init(id: ID, platform: DevicePlatform, version: OSVersion, name: String, isAvailable: Bool) {
+  /// `supportedDeviceTypeIDs` 에 기본값을 두지 않는다: 값을 다시 만드는 경로가 빈 목록으로 떨어지지 않게 컴파일러가 잡는다.
+  public init(
+    id: ID,
+    platform: DevicePlatform,
+    version: OSVersion,
+    name: String,
+    isAvailable: Bool,
+    supportedDeviceTypeIDs: [DeviceType.ID]
+  ) {
     self.id = id
     self.platform = platform
     self.version = version
     self.name = name
     self.isAvailable = isAvailable
+    self.supportedDeviceTypeIDs = supportedDeviceTypeIDs
   }
 }

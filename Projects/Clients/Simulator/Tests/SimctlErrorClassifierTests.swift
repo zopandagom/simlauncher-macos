@@ -49,6 +49,35 @@ struct SimctlErrorClassifierTests {
           + "Unable to boot device in current state: Booted\n",
         expected: .commandFailed
       ),
+      Case(
+        exitCode: 146,
+        stderr: "Invalid device type: com.apple.CoreSimulator.SimDeviceType.NoSuch\n",
+        expected: .creationOptionUnavailable
+      ),
+      Case(
+        exitCode: 145,
+        stderr: "Invalid runtime: com.apple.CoreSimulator.SimRuntime.iOS-99-0\n",
+        expected: .creationOptionUnavailable
+      ),
+      Case(
+        exitCode: 147,
+        stderr: "An error was encountered processing the command (domain=com.apple.CoreSimulator.SimError, code=403):\n"
+          + "Incompatible device\n",
+        expected: .creationOptionUnavailable
+      ),
+      Case(
+        exitCode: 149,
+        stderr: "An error was encountered processing the command (domain=com.apple.CoreSimulator.SimError, code=405):\n"
+          + "Unable to erase contents and settings in current state: Booted\n",
+        expected: .commandFailed
+      ),
+      Case(exitCode: 148, stderr: "Invalid device: 00000000-0000-4000-8000-0000000000FF\n", expected: .deviceNotFound),
+      Case(
+        exitCode: 117,
+        stderr: "Delete specified devices, unavailable devices, or all devices.\n"
+          + "Usage: simctl delete <device> [... <device n>] | unavailable | all\n",
+        expected: .commandFailed
+      ),
       Case(exitCode: 1, stderr: "Unrecognized subcommand: x\n", expected: .commandFailed),
       Case(exitCode: 1, stderr: "", expected: .commandFailed),
     ]

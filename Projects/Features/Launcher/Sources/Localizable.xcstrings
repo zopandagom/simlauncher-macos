@@ -21,6 +21,66 @@
         }
       }
     },
+    "“%@” (%@) 기기를 만들었는지 확인하지 못했습니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” (%@) 기기를 만들었는지 확인하지 못했습니다"
+          }
+        }
+      }
+    },
+    "“%@” (%@) 기기를 만들지 못했습니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” (%@) 기기를 만들지 못했습니다"
+          }
+        }
+      }
+    },
+    "“%@” (%@) 기기를 삭제하지 못했습니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” (%@) 기기를 삭제하지 못했습니다"
+          }
+        }
+      }
+    },
+    "“%@” (%@) 기기를 삭제할까요?" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” (%@) 기기를 삭제할까요?"
+          }
+        }
+      }
+    },
+    "“%@” (%@) 기기를 초기화하지 못했습니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” (%@) 기기를 초기화하지 못했습니다"
+          }
+        }
+      }
+    },
+    "“%@” (%@) 기기를 초기화할까요?" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” (%@) 기기를 초기화할까요?"
+          }
+        }
+      }
+    },
     "“%@” (%@) 기기를 켜지 못했습니다" : {
       "localizations" : {
         "ko" : {
@@ -31,12 +91,32 @@
         }
       }
     },
+    "iOS 버전" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS 버전"
+          }
+        }
+      }
+    },
     "iOS 시뮬레이터가 설치되어 있지 않습니다" : {
       "localizations" : {
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "iOS 시뮬레이터가 설치되어 있지 않습니다"
+          }
+        }
+      }
+    },
+    "Xcode 가 알려 준 결과를 읽지 못해 기기가 만들어졌는지 확인하지 못했습니다. 기기가 만들어졌을 수 있으니 목록을 확인한 뒤, 없을 때만 다시 만드세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xcode 가 알려 준 결과를 읽지 못해 기기가 만들어졌는지 확인하지 못했습니다. 기기가 만들어졌을 수 있으니 목록을 확인한 뒤, 없을 때만 다시 만드세요."
           }
         }
       }
@@ -81,12 +161,22 @@
         }
       }
     },
-    "기기 만들기는 다음 업데이트에서 지원합니다." : {
+    "고른 iOS 버전이나 기기 종류를 지금 사용할 수 없습니다. 목록을 새로 고친 뒤 다시 골라 주세요." : {
       "localizations" : {
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "기기 만들기는 다음 업데이트에서 지원합니다."
+            "value" : "고른 iOS 버전이나 기기 종류를 지금 사용할 수 없습니다. 목록을 새로 고친 뒤 다시 골라 주세요."
+          }
+        }
+      }
+    },
+    "기기 만들기" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기기 만들기"
           }
         }
       }
@@ -117,6 +207,66 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "기기 목록을 새로 고치지 못했습니다"
+          }
+        }
+      }
+    },
+    "기기 이름은 1~100자로, 줄바꿈 같은 제어 문자 없이 입력하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기기 이름은 1~100자로, 줄바꿈 같은 제어 문자 없이 입력하세요."
+          }
+        }
+      }
+    },
+    "기기 작업" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기기 작업"
+          }
+        }
+      }
+    },
+    "기기 종류" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기기 종류"
+          }
+        }
+      }
+    },
+    "기기를 만드는 중…" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기기를 만드는 중…"
+          }
+        }
+      }
+    },
+    "기기에 설치한 앱과 데이터, 설정이 모두 지워지고 처음 상태로 돌아갑니다. 되돌릴 수 없습니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기기에 설치한 앱과 데이터, 설정이 모두 지워지고 처음 상태로 돌아갑니다. 되돌릴 수 없습니다."
+          }
+        }
+      }
+    },
+    "기기와 그 안의 앱·데이터가 모두 지워지며 되돌릴 수 없습니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기기와 그 안의 앱·데이터가 모두 지워지며 되돌릴 수 없습니다."
           }
         }
       }
@@ -161,12 +311,72 @@
         }
       }
     },
+    "만들 수 있는 iPhone·iPad 기기 종류가 없습니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "만들 수 있는 iPhone·iPad 기기 종류가 없습니다"
+          }
+        }
+      }
+    },
+    "만들기" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "만들기"
+          }
+        }
+      }
+    },
+    "사용할 수 없는 기기는 초기화할 수 없고 삭제만 할 수 있습니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "사용할 수 없는 기기는 초기화할 수 없고 삭제만 할 수 있습니다"
+          }
+        }
+      }
+    },
     "사용할 수 없음" : {
       "localizations" : {
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "사용할 수 없음"
+          }
+        }
+      }
+    },
+    "삭제" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "삭제"
+          }
+        }
+      }
+    },
+    "삭제…" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "삭제…"
+          }
+        }
+      }
+    },
+    "삭제·초기화는 기기를 끈 뒤에 할 수 있습니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "삭제·초기화는 기기를 끈 뒤에 할 수 있습니다"
           }
         }
       }
@@ -181,12 +391,42 @@
         }
       }
     },
+    "새 기기 만들기" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "새 기기 만들기"
+          }
+        }
+      }
+    },
     "새로 고침" : {
       "localizations" : {
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "새로 고침"
+          }
+        }
+      }
+    },
+    "설치된 iOS 버전으로 만들 수 있는 기기 종류를 찾지 못했습니다. Xcode 를 최신 버전으로 업데이트하거나 한 번 실행해 준비를 마친 뒤 새로 고치세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "설치된 iOS 버전으로 만들 수 있는 기기 종류를 찾지 못했습니다. Xcode 를 최신 버전으로 업데이트하거나 한 번 실행해 준비를 마친 뒤 새로 고치세요."
+          }
+        }
+      }
+    },
+    "오른쪽 위 + 버튼이나 아래 버튼으로 iPhone·iPad 기기를 만드세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "오른쪽 위 + 버튼이나 아래 버튼으로 iPhone·iPad 기기를 만드세요."
           }
         }
       }
@@ -241,12 +481,92 @@
         }
       }
     },
+    "이름" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이름"
+          }
+        }
+      }
+    },
+    "이름에 줄바꿈이나 탭은 쓸 수 없습니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이름에 줄바꿈이나 탭은 쓸 수 없습니다."
+          }
+        }
+      }
+    },
+    "이름은 100자까지 입력할 수 있습니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이름은 100자까지 입력할 수 있습니다."
+          }
+        }
+      }
+    },
+    "이름을 입력하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이름을 입력하세요."
+          }
+        }
+      }
+    },
     "지금 Xcode 가 이 기기 모델을 지원하지 않아 사용할 수 없습니다." : {
       "localizations" : {
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "지금 Xcode 가 이 기기 모델을 지원하지 않아 사용할 수 없습니다."
+          }
+        }
+      }
+    },
+    "지금 이 Mac 에서 만들 수 있는 iPhone·iPad 기기 종류가 없습니다. iOS 가 설치되어 있는지 확인하고, Xcode 를 최신 버전으로 업데이트하거나 한 번 실행해 준비를 마친 뒤 새로 고치세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "지금 이 Mac 에서 만들 수 있는 iPhone·iPad 기기 종류가 없습니다. iOS 가 설치되어 있는지 확인하고, Xcode 를 최신 버전으로 업데이트하거나 한 번 실행해 준비를 마친 뒤 새로 고치세요."
+          }
+        }
+      }
+    },
+    "초기화" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "초기화"
+          }
+        }
+      }
+    },
+    "초기화…" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "초기화…"
+          }
+        }
+      }
+    },
+    "취소" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "취소"
           }
         }
       }
@@ -267,6 +587,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "켜는 중"
+          }
+        }
+      }
+    },
+    "켜져 있거나 상태가 바뀌는 중인 기기는 삭제하거나 초기화할 수 없습니다. 기기를 끈 뒤 다시 시도하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "켜져 있거나 상태가 바뀌는 중인 기기는 삭제하거나 초기화할 수 없습니다. 기기를 끈 뒤 다시 시도하세요."
           }
         }
       }

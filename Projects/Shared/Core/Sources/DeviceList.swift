@@ -16,7 +16,9 @@ public struct DeviceSection: Identifiable, Hashable, Sendable {
 public enum DeviceListEmptyReason: Hashable, Sendable {
   /// 쓸 수 있는 iOS 런타임이 없고 보일 기기도 없다.
   case noIOSRuntime
-  /// 쓸 수 있는 iOS 런타임은 있지만 보일 기기가 없다.
+  /// 쓸 수 있는 iOS 런타임은 있지만 만들 수 있는 iPhone·iPad 종류가 없고(`DeviceCreationOptions` 가 빔) 보일 기기도 없다.
+  case noCreatableDeviceType
+  /// 기기를 만들 수 있지만 보일 기기가 없다.
   case noDevices
 }
 
@@ -38,7 +40,13 @@ public struct DeviceList: Hashable, Sendable {
       .sorted(by: Self.sectionOrder)
     if self.sections.isEmpty {
       let hasIOSRuntime = inventory.runtimes.contains { $0.platform == .iOS && $0.isAvailable }
-      self.emptyReason = hasIOSRuntime ? .noDevices : .noIOSRuntime
+      if !hasIOSRuntime {
+        self.emptyReason = .noIOSRuntime
+      } else if DeviceCreationOptions(inventory: inventory).isEmpty {
+        self.emptyReason = .noCreatableDeviceType
+      } else {
+        self.emptyReason = .noDevices
+      }
     } else {
       self.emptyReason = nil
     }

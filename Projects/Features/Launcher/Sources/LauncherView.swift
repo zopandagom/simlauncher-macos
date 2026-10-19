@@ -9,6 +9,8 @@ public struct LauncherView: View {
   @State private var presentedNotice: LauncherNoticeItem?
   /// 알림을 띄웠는지. 다음 알림을 띄울 때 false → true 전이가 생기도록 Model 의 줄과 따로 둔다.
   @State private var isNoticePresented = false
+  /// 마지막으로 띄운 삭제·초기화 확인. 닫히는 동안 Model 값이 nil 이어도 제목이 비지 않도록 View 가 들고 있는다.
+  @State private var presentedConfirmation: DeviceConfirmation?
 
   public init(model: LauncherModel) {
     self.model = model
@@ -18,10 +20,26 @@ public struct LauncherView: View {
     self.content
       .toolbar {
         ToolbarItem {
-          if self.model.isRefreshing {
-            ProgressView()
-              .controlSize(.small)
+          if self.model.isRefreshing || self.model.isCreating {
+            HStack(spacing: 6) {
+              ProgressView()
+                .controlSize(.small)
+              if self.model.isCreating {
+                Text(LauncherText.creatingLabel)
+              }
+            }
           }
+        }
+        ToolbarItem {
+          Button {
+            self.model.createButtonTapped()
+          } label: {
+            Label(LauncherText.createDeviceButton, systemImage: "plus")
+          }
+          .disabled(!self.model.canCreateDevice)
+          .help(
+            self.model.isCreationUnavailable ? LauncherText.createUnavailableHelp : LauncherText.createDeviceButton
+          )
         }
         ToolbarItem {
           Button {
@@ -53,6 +71,47 @@ public struct LauncherView: View {
       // 기다렸다가, 앞 알림을 닫으면 차례로 뜬다.
       .onChange(of: self.model.notices.first?.id, initial: true) { _, _ in
         self.showFirstNotice()
+      }
+      .sheet(
+        isPresented: Binding(
+          get: { self.model.createDraft != nil },
+          set: { isPresented in
+            if !isPresented {
+              self.model.createSheetDismissed()
+            }
+          }
+        )
+      ) {
+        DeviceCreationSheet(model: self.model)
+      }
+      .confirmationDialog(
+        LauncherText.confirmationTitle(for: self.model.pendingConfirmation ?? self.presentedConfirmation),
+        isPresented: Binding(
+          get: { self.model.pendingConfirmation != nil },
+          set: { isPresented in
+            if !isPresented {
+              self.model.confirmationDismissed()
+            }
+          }
+        ),
+        titleVisibility: .visible,
+        // 여는 첫 렌더는 Model 값, 닫히는 동안은 들고 있던 값.
+        presenting: self.model.pendingConfirmation ?? self.presentedConfirmation
+      ) { confirmation in
+        Button(LauncherText.confirmButton(for: confirmation.action), role: .destructive) {
+          // 버튼 동작 뒤 SwiftUI 가 곧바로 confirmationDismissed() 를 부르므로 값을 넘긴다.
+          Task { await self.model.confirmationConfirmed(confirmation) }
+        }
+        Button(LauncherText.cancelButton, role: .cancel) {
+          self.model.confirmationDismissed()
+        }
+      } message: { confirmation in
+        Text(LauncherText.confirmationMessage(for: confirmation.action))
+      }
+      .onChange(of: self.model.pendingConfirmation, initial: true) { _, new in
+        if let new {
+          self.presentedConfirmation = new
+        }
       }
       .task { await self.model.onAppear() }
   }
@@ -97,6 +156,12 @@ public struct LauncherView: View {
         } description: {
           Text(LauncherText.emptyMessage(for: reason))
         } actions: {
+          if reason == .noDevices {
+            Button(LauncherText.createDeviceButton) {
+              self.model.createButtonTapped()
+            }
+            .disabled(!self.model.canCreateDevice)
+          }
           Button(LauncherText.refreshButton) {
             Task { await self.model.refreshButtonTapped() }
           }
@@ -121,6 +186,12 @@ public struct LauncherView: View {
               },
               shutdownTapped: {
                 Task { await self.model.shutdownButtonTapped(device.id) }
+              },
+              eraseTapped: {
+                self.model.eraseButtonTapped(device.id)
+              },
+              deleteTapped: {
+                self.model.deleteButtonTapped(device.id)
               }
             )
           }
