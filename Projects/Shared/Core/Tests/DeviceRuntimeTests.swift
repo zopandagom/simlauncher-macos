@@ -29,6 +29,19 @@ struct DeviceRuntimeTests {
   }
 
   @Test(
+    "OS 버전 문자열 표기는 major.minor 이고, patch 가 있으면 붙인다",
+    arguments: [
+      (OSVersion(major: 27), "27.0"),
+      (OSVersion(major: 27, minor: 1), "27.1"),
+      (OSVersion(major: 26, minor: 0, patch: 1), "26.0.1"),
+    ]
+  )
+  func describesVersion(version: OSVersion, expected: String) {
+    #expect(version.description == expected)
+    #expect(expected == "\(version)")
+  }
+
+  @Test(
     "simctl 플랫폼 이름을 플랫폼으로 바꾸고, 모르는 이름은 other",
     arguments: [
       ("iOS", DevicePlatform.iOS),

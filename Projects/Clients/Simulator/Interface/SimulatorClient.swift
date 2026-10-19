@@ -1,6 +1,7 @@
 import Core
+import Foundation
 
-/// iOS 시뮬레이터 기기·런타임·기기 종류를 읽고, 켜고 끄고, 만들고 지우고 초기화하는 Client.
+/// iOS 시뮬레이터 기기·런타임·기기 종류를 읽고, 켜고 끄고, 만들고 지우고 초기화하고, 앱을 설치·실행하는 Client.
 /// Impl 은 `xcrun simctl` 과 같은 개발자 디렉터리를 쓴다.
 public protocol SimulatorClient: Sendable {
   /// 모든 플랫폼의 기기·런타임·기기 종류 목록 (`simctl list -j` 한 번). 화면용 필터는 `DeviceList` 가 한다.
@@ -31,4 +32,12 @@ public protocol SimulatorClient: Sendable {
 
   /// simctl 과 같은 개발자 디렉터리의 Simulator 앱(Xcode 27.1 은 DeviceHub)을 연다.
   func openSimulatorApp() async throws(SimulatorError)
+
+  /// 켜진 기기에 .app 을 설치한다 (`simctl install`). 같은 번들 ID 가 있으면 덮어쓰고(실행 중이어도), 원본 파일은 고치지 않는다.
+  /// 파일 URL 이 아니면 실행하지 않고 `.appNotFound`. 사전 목록 확인은 하지 않는다 (꺼져 있으면 simctl 이 `.deviceNotBooted`).
+  func install(_ app: URL, on id: VirtualDevice.ID) async throws(SimulatorError)
+
+  /// 설치된 앱을 실행한다 (`simctl launch`). 이미 실행 중이면 다시 띄운다(새 pid).
+  /// 성공해도 앱이 곧바로 종료됐을 수 있다 (simctl 이 결정적으로 알려 주지 않는다).
+  func launch(_ bundleID: AppBundleID, on id: VirtualDevice.ID) async throws(SimulatorError)
 }

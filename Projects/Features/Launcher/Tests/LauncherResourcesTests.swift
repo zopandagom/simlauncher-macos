@@ -1,3 +1,4 @@
+import AppBundleInterface
 import Core
 import Foundation
 import SimulatorInterface
@@ -34,7 +35,10 @@ struct LauncherResourcesTests {
       #expect(table[key] == key, "\(key)")
       #expect(String(format: table[key] ?? "", "iPhone 17", "iOS 26.0") == title, "\(key)")
     }
-    #expect(Set(texts + formatKeys + confirmationKeys) == Set(table.keys))
+    let osKey = LauncherTextCatalog.requiresNewerOSKey
+    #expect(table[osKey] == osKey)
+    #expect(String(format: table[osKey] ?? "", "27.1") == LauncherTextCatalog.formattedRequiresNewerOS)
+    #expect(Set(texts + formatKeys + confirmationKeys + [osKey]) == Set(table.keys))
   }
 }
 
@@ -46,12 +50,24 @@ struct LauncherTextTests {
       #expect(!text.isEmpty)
       #expect(text.unicodeScalars.contains { (0xAC00 ... 0xD7A3).contains($0.value) }, "\(text)")
     }
-    for text in LauncherTextCatalog.formattedTitles + LauncherTextCatalog.formattedConfirmationTitles {
+    let formatted = LauncherTextCatalog.formattedTitles + LauncherTextCatalog.formattedConfirmationTitles
+      + [LauncherTextCatalog.formattedRequiresNewerOS]
+    for text in formatted {
       #expect(!text.isEmpty)
       #expect(text.unicodeScalars.contains { (0xAC00 ... 0xD7A3).contains($0.value) }, "\(text)")
     }
     #expect(LauncherText.title(for: nil).isEmpty)
     #expect(LauncherText.confirmationTitle(for: nil).isEmpty)
+  }
+
+  @Test("시뮬레이터 오류마다 정확히 한 분류가 본문을 돌려준다", arguments: LauncherTextCatalog.errors)
+  func eachErrorHasExactlyOneMessageFamily(error: SimulatorError) {
+    let messages = [
+      LauncherText.setupMessage(for: error), LauncherText.deviceMessage(for: error),
+      LauncherText.appCommandMessage(for: error),
+    ].compactMap(\.self)
+    #expect(messages.count == 1)
+    #expect(messages.first == LauncherText.message(for: error))
   }
 
   @Test("기기 작업 실패 제목에 기기 이름과 런타임 이름이 들어간다")
@@ -75,6 +91,13 @@ struct LauncherTextTests {
     )
     #expect(
       LauncherText.title(for: .eraseFailed(device, .commandFailed)) == "“iPhone 17” (iOS 26.0) 기기를 초기화하지 못했습니다"
+    )
+    #expect(
+      LauncherText.title(for: .installFailed(device, .multipleItems)) == "“iPhone 17” (iOS 26.0) 기기에 앱을 설치하지 못했습니다"
+    )
+    #expect(
+      LauncherText.title(for: .launchFailed(device, .appLaunchFailed))
+        == "“iPhone 17” (iOS 26.0) 기기에 앱을 설치했지만 실행하지 못했습니다"
     )
   }
 
@@ -114,7 +137,8 @@ struct LauncherTextTests {
 enum LauncherTextCatalog {
   static let errors: [SimulatorError] = [
     .developerToolsUnavailable, .deviceNotFound, .deviceNotShutdown, .creationOptionUnavailable, .invalidDeviceName,
-    .creationResultUnknown, .simulatorAppNotFound, .unexpectedOutput, .commandFailed,
+    .creationResultUnknown, .simulatorAppNotFound, .unexpectedOutput, .commandFailed, .deviceNotBooted, .appNotFound,
+    .appInvalid, .appIncompatible, .appRequiresNewerOS, .appNotInstalled, .appLaunchFailed,
   ]
 
   static let sampleDevice = LauncherNotice.Device(name: "iPhone 17", runtimeName: "iOS 26.0")
@@ -125,6 +149,7 @@ enum LauncherTextCatalog {
     .shutdownFailed(sampleDevice, .commandFailed), .openAppFailed(sampleDevice, .commandFailed),
     .createFailed(sampleDevice, .commandFailed), .deleteFailed(sampleDevice, .commandFailed),
     .eraseFailed(sampleDevice, .commandFailed), .createFailed(sampleDevice, .creationResultUnknown),
+    .installFailed(sampleDevice, .multipleItems), .launchFailed(sampleDevice, .appLaunchFailed),
   ]
 
   /// 기기 이름이 들어가는 제목의 카탈로그 키. 순서는 `notices.dropFirst()` 와 같다.
@@ -136,6 +161,8 @@ enum LauncherTextCatalog {
     "“%@” (%@) 기기를 삭제하지 못했습니다",
     "“%@” (%@) 기기를 초기화하지 못했습니다",
     "“%@” (%@) 기기를 만들었는지 확인하지 못했습니다",
+    "“%@” (%@) 기기에 앱을 설치하지 못했습니다",
+    "“%@” (%@) 기기에 앱을 설치했지만 실행하지 못했습니다",
   ]
 
   /// `sampleDevice` 를 넣은 기기 작업 실패 제목.
@@ -176,6 +203,23 @@ enum LauncherTextCatalog {
 
   static let emptyReasons: [DeviceListEmptyReason] = [.noIOSRuntime, .noCreatableDeviceType, .noDevices]
 
+  static let bundleErrors: [AppBundleError] = [
+    .notLocalFile, .fileNotFound, .ipaFile, .notAppBundle, .macOSApp, .invalidBundle,
+  ]
+
+  /// 버전이 들어가는 `.requiresNewerOS` 는 `requiresNewerOSKey` 로 따로 본다.
+  static let installProblems: [AppInstallProblem] = [
+    .notSimulatorBuild, .missingArchitecture(.arm64), .missingArchitecture(.x86_64),
+  ]
+
+  static let installBlockReasons: [AppInstallBlockReason] = [.unavailable, .stateChanging]
+
+  static let requiresNewerOSKey = "이 앱은 iOS %@ 이상에서 실행됩니다. 더 높은 iOS 버전의 기기에 설치하세요."
+
+  static var formattedRequiresNewerOS: String {
+    LauncherText.message(for: .requiresNewerOS(OSVersion(major: 27, minor: 1)))
+  }
+
   static var all: [String] {
     self.errors.map { LauncherText.message(for: $0) }
       + [LauncherText.title(for: self.notices[0])]
@@ -188,6 +232,10 @@ enum LauncherTextCatalog {
       + self.actions.map { LauncherText.confirmButton(for: $0) }
       + self.blockReasons.map { LauncherText.blockReason($0) }
       + self.nameProblems.map { LauncherText.nameProblem($0) }
+      + self.bundleErrors.map { LauncherText.message(for: $0) }
+      + self.installProblems.map { LauncherText.message(for: $0) }
+      + self.installBlockReasons.map { LauncherText.installBlockReason($0) }
+      + [LauncherText.installAppButton, LauncherText.installAppHelp, LauncherText.installingLabel]
       + [
         LauncherText.okButton, LauncherText.unavailableLabel, LauncherText.bootButton, LauncherText.shutdownButton,
         LauncherText.loading, LauncherText.loadFailedTitle, LauncherText.refreshButton, LauncherText.retryButton,

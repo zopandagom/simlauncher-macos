@@ -1,7 +1,11 @@
 import SimulatorInterface
 
 /// 실패한 명령의 종료 코드·stderr 를 `SimulatorError` 로 바꾼다 (순수). 원문은 담지 않는다.
+/// install·launch 는 stderr 에 앱이 정한 글자(표시 이름)가 섞이므로 "(domain=…, code=…)" 줄의 domain·code 로만 분류한다.
 enum SimctlErrorClassifier {
+  private static let domainLinePrefix = "An error was encountered processing the command (domain="
+  private static let denialLinePrefix = "The request was denied by service delegate ("
+
   static func error(exitCode: Int32, stderr: String) -> SimulatorError {
     // xcrun 자신의 오류(simctl 없음, DEVELOPER_DIR 경로 없음 등). 종료 코드는 72·1 등 여러 가지라 보지 않는다.
     // simctl 자체 오류("Invalid device…", "An error was encountered…")는 이 접두어로 시작하지 않는다.
@@ -20,5 +24,78 @@ enum SimctlErrorClassifier {
     // "Unable to … in current state" (149) 도 여기 든다. boot·shutdown 은 그 전에 재조회로 성공 여부를 판정하고,
     // erase 는 사전 확인 뒤 상태가 바뀐 드문 경우에만 이 실패를 받는다. usage 출력(117)도 여기 든다.
     return .commandFailed
+  }
+
+  /// stderr 를 줄로 나눠 "An error was encountered processing the command (domain=D, code=N):" 로 **시작하는 첫 줄**의 D·N.
+  /// 없으면 nil. 앞에 경고 줄이 붙어도 찾고, 앱이 정한 글자(표시 이름)는 이 줄 뒤에만 나오므로 그 글자로 만든 가짜 줄보다 먼저 찾는다.
+  static func domainAndCode(_ stderr: String) -> (domain: String, code: Int)? {
+    for line in stderr.split(whereSeparator: \.isNewline) {
+      guard line.hasPrefix(self.domainLinePrefix) else { continue }
+      let rest = line.dropFirst(Self.domainLinePrefix.count)
+      guard
+        let separator = rest.range(of: ", code="),
+        case let afterCode = rest[separator.upperBound...],
+        let close = afterCode.range(of: "):"),
+        let code = Int(afterCode[..<close.lowerBound])
+      else { return nil }
+      return (String(rest[..<separator.lowerBound]), code)
+    }
+    return nil
+  }
+
+  /// FBS 거절 이유. domain 줄 **다음 줄부터** 앞 공백 없이 "The request was denied by service delegate (" 로 시작하는 첫 줄에서
+  /// ") for reason: " 뒤부터 다음 " (" 또는 줄 끝 앞까지. 없으면 nil. (순수)
+  /// reason 토큰은 거절 줄의 정해진 자리에서만 읽는다: 앱 글자가 들어갈 수 있는 뒤의 괄호 설명보다 앞이고,
+  /// 앞 줄의 앱 제공 값은 형식 검사한 번들 ID 뿐이라 이 접두어로 시작하는 줄을 만들 수 없다.
+  static func denialReason(_ stderr: String) -> Substring? {
+    let lines = stderr.split(whereSeparator: \.isNewline)
+    guard let domainLine = lines.firstIndex(where: { $0.hasPrefix(Self.domainLinePrefix) }) else { return nil }
+    guard
+      let line = lines[(domainLine + 1)...].first(where: { $0.hasPrefix(Self.denialLinePrefix) }),
+      let marker = line.range(of: ") for reason: ")
+    else { return nil }
+    let rest = line[marker.upperBound...]
+    return rest.range(of: " (").map { rest[..<$0.lowerBound] } ?? rest
+  }
+
+  /// install 실패. domain 줄이 있으면 그것만 보고, 없으면 `error(exitCode:stderr:)` (xcrun 오류·"Invalid device").
+  static func installError(exitCode: Int32, stderr: String) -> SimulatorError {
+    guard let (domain, code) = domainAndCode(stderr) else {
+      return self.error(exitCode: exitCode, stderr: stderr)
+    }
+    switch (domain, code) {
+    // 꺼진 기기: "Unable to lookup in current state: Shutdown" (149).
+    case ("com.apple.CoreSimulator.SimError", 405): return .deviceNotBooted
+    // 실행 파일의 플랫폼·아키텍처가 맞지 않음(4), 기기 종류 미지원(6).
+    case ("IXUserPresentableErrorDomain", 4), ("IXUserPresentableErrorDomain", 6): return .appIncompatible
+    // "Have 27.0; need 27.1".
+    case ("IXUserPresentableErrorDomain", 16): return .appRequiresNewerOS
+    // "lstat of … failed".
+    case ("NSPOSIXErrorDomain", 2): return .appNotFound
+    // "Missing bundle ID."(13), "Failed to extract IPA."(42, 폴더가 아닌 파일).
+    case ("IXErrorDomain", 13), ("IXErrorDomain", 42): return .appInvalid
+    default: return .commandFailed
+    }
+  }
+
+  /// launch 실패. 같은 방식.
+  static func launchError(exitCode: Int32, stderr: String) -> SimulatorError {
+    guard let (domain, code) = domainAndCode(stderr) else {
+      return self.error(exitCode: exitCode, stderr: stderr)
+    }
+    switch (domain, code) {
+    // 꺼진 기기·켜는 중 기기: "Unable to lookup in current state: Shutdown|Booting" (149).
+    case ("com.apple.CoreSimulator.SimError", 405): return .deviceNotBooted
+    // 설치되지 않은 번들 ID: "The request to open "…" failed."
+    case ("FBSOpenApplicationServiceErrorDomain", 4): return .appNotInstalled
+    // 설치에 실패한 번들 ID: "The request was denied by service delegate (…) for reason: NotFound (…unknown to FrontBoard)".
+    // reason 토큰은 거절 줄의 정해진 자리에서만 읽는다 (앱 글자가 들어갈 수 있는 괄호 설명보다 앞, `denialReason`).
+    case ("FBSOpenApplicationServiceErrorDomain", 1)
+      where Self.denialReason(stderr) == "NotFound": return .appNotInstalled
+    case ("FBSOpenApplicationServiceErrorDomain", _): return .appLaunchFailed
+    // "did not return a process handle nor launch error" (시작하자마자 종료한 앱).
+    case ("NSPOSIXErrorDomain", 3): return .appLaunchFailed
+    default: return .commandFailed
+    }
   }
 }

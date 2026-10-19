@@ -26,6 +26,16 @@ struct SimctlCommandTests {
     #expect(SimctlCommand.erase(udid: "A") == ["simctl", "erase", "A"])
   }
 
+  @Test("install·launch 는 -- 없이 기기 뒤에 경로·번들 ID 를 넘긴다")
+  func appArguments() {
+    #expect(SimctlCommand.install(udid: "A", appPath: "/tmp/공백 경로/한글 앱.app") == [
+      "simctl", "install", "A", "/tmp/공백 경로/한글 앱.app",
+    ])
+    #expect(SimctlCommand.launch(udid: "A", bundleID: "com.example.app") == [
+      "simctl", "launch", "A", "com.example.app",
+    ])
+  }
+
   @Test("create stdout 의 UDID 를 읽고 대문자로 맞춘다")
   func createdUDID() {
     #expect(

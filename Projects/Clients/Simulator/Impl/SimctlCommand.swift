@@ -37,6 +37,18 @@ enum SimctlCommand {
     ["simctl", "erase", udid]
   }
 
+  /// `udid` 는 `validatedUDID(_:)` 를 거친 값, `appPath` 는 파일 URL 의 표준화한 절대 경로만 넘긴다 (`/` 로 시작해 옵션으로
+  /// 읽히지 않는다). install 은 `--` 를 경로로 보므로 붙이지 않는다.
+  static func install(udid: String, appPath: String) -> [String] {
+    ["simctl", "install", udid, appPath]
+  }
+
+  /// `udid` 는 `validatedUDID(_:)` 를 거친 값, `bundleID` 는 `AppBundleID` 형식 검사를 거친 값만 넘긴다.
+  /// 기기 뒤 인자는 옵션으로 해석되지 않고, launch 는 `--` 를 번들 ID 로 보므로 붙이지 않는다.
+  static func launch(udid: String, bundleID: String) -> [String] {
+    ["simctl", "launch", udid, bundleID]
+  }
+
   /// create 성공 stdout("UUID\n")에서 UDID. 앞뒤 공백·개행을 자르고 UUID 형식이어야 한다. 아니면 nil.
   static func createdUDID(fromStdout data: Data) -> String? {
     guard let text = String(bytes: data, encoding: .utf8) else { return nil }

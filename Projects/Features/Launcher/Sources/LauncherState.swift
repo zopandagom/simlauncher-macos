@@ -1,3 +1,4 @@
+import AppBundleInterface
 import Core
 import SimulatorInterface
 
@@ -11,7 +12,7 @@ public enum LauncherListState: Hashable, Sendable {
   case failed(SimulatorError)
 }
 
-/// 목록 위에 띄우는 알림. 기기 작업(켜기·끄기·만들기·삭제·초기화) 실패와, 목록이 있을 때의 새로 고침 실패.
+/// 목록 위에 띄우는 알림. 기기 작업(켜기·끄기·만들기·삭제·초기화·앱 설치·실행) 실패와, 목록이 있을 때의 새로 고침 실패.
 public enum LauncherNotice: Hashable, Sendable {
   /// 알림에 보일 기기. 누른 시점의 값이라, 실패 뒤 목록에서 사라져도 그대로 보인다.
   public struct Device: Hashable, Sendable {
@@ -35,6 +36,24 @@ public enum LauncherNotice: Hashable, Sendable {
   case createFailed(Device, SimulatorError)
   case deleteFailed(Device, SimulatorError)
   case eraseFailed(Device, SimulatorError)
+  /// 앱을 설치하지 못했다 (설치 명령 전 거절 포함). Device 는 누른 시점의 기기.
+  case installFailed(Device, AppInstallFailure)
+  /// 앱은 설치했지만 실행하지 못했다.
+  case launchFailed(Device, SimulatorError)
+}
+
+/// 앱 설치 흐름의 실패 원인 (켜기·앱 열기 실패는 기존 bootFailed·openAppFailed 를 쓴다).
+public enum AppInstallFailure: Hashable, Sendable {
+  /// 끌어다 놓은 항목이 둘 이상이다.
+  case multipleItems
+  /// 번들 검사 실패.
+  case bundle(AppBundleError)
+  /// Core 판정 거절.
+  case rejected(AppInstallProblem)
+  /// 검사하는 사이 기기가 설치할 수 없는 상태가 됐다.
+  case deviceNotReady(AppInstallBlockReason)
+  /// install 명령 실패, 또는 검사하는 사이 기기가 목록에서 사라짐(`.deviceNotFound`).
+  case simulator(SimulatorError)
 }
 
 /// 알림 한 건. 같은 내용이라도 쌓일 때마다 새 id 를 받는다 (View 가 다음 알림을 다시 띄우는 기준).
@@ -58,5 +77,32 @@ public struct DeviceConfirmation: Hashable, Sendable {
     self.action = action
     self.deviceID = deviceID
     self.device = device
+  }
+}
+
+/// 확인 대화상자의 작업 규칙. Model 가드가 쓴다.
+extension DeviceConfirmation.Action {
+  var task: DeviceTask {
+    switch self {
+    case .delete: .delete
+    case .erase: .erase
+    }
+  }
+
+  func availability(for device: VirtualDevice) -> DeviceActionAvailability {
+    switch self {
+    case .delete: device.deleteAvailability
+    case .erase: device.eraseAvailability
+    }
+  }
+}
+
+extension DeviceConfirmation {
+  /// 이 확인의 작업이 실패했다는 알림.
+  func failedNotice(_ error: SimulatorError) -> LauncherNotice {
+    switch self.action {
+    case .delete: .deleteFailed(self.device, error)
+    case .erase: .eraseFailed(self.device, error)
+    }
   }
 }

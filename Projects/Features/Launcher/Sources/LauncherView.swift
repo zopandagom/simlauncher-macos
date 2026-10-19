@@ -1,5 +1,6 @@
 import Core
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// 상태를 읽어 그리기만 하고, 사용자 동작은 Model 의 이벤트 메서드로 넘긴다.
 /// 화면 문자열은 `LauncherText` 가 이 모듈의 `Localizable.xcstrings` 에서 찾는다.
@@ -11,6 +12,9 @@ public struct LauncherView: View {
   @State private var isNoticePresented = false
   /// 마지막으로 띄운 삭제·초기화 확인. 닫히는 동안 Model 값이 nil 이어도 제목이 비지 않도록 View 가 들고 있는다.
   @State private var presentedConfirmation: DeviceConfirmation?
+  /// "앱 설치…" 를 누른 기기. 파일 패널이 닫힌 뒤 완료 처리에서 읽으므로 패널 표시 여부와 따로 둔다.
+  @State private var importDeviceID: VirtualDevice.ID?
+  @State private var isImporterPresented = false
 
   public init(model: LauncherModel) {
     self.model = model
@@ -115,6 +119,17 @@ public struct LauncherView: View {
           self.presentedConfirmation = new
         }
       }
+      // 목록 단위에 하나만 둔다 (같은 계층에 여러 fileImporter 를 두면 서로 충돌한다).
+      // .ipa 도 고를 수 있게 한다: 골라야 설치할 수 없는 이유를 보일 수 있다.
+      .fileImporter(
+        isPresented: self.$isImporterPresented,
+        allowedContentTypes: [.applicationBundle] + [UTType("com.apple.itunes.ipa")].compactMap(\.self)
+      ) { result in
+        // 취소·실패는 무시한다.
+        if case let .success(url) = result, let id = self.importDeviceID {
+          Task { await self.model.appFileSelected(url, for: id) }
+        }
+      }
       .task { await self.model.onAppear() }
   }
 
@@ -211,7 +226,14 @@ public struct LauncherView: View {
           ForEach(section.devices) { device in
             DeviceRow(
               device: device,
-              isBusy: self.model.busyDeviceIDs.contains(device.id),
+              task: self.model.activity.task(on: device.id),
+              installTapped: {
+                self.importDeviceID = device.id
+                self.isImporterPresented = true
+              },
+              appDropped: { urls in
+                Task { await self.model.appDropped(urls, on: device.id) }
+              },
               bootTapped: {
                 Task { await self.model.bootButtonTapped(device.id) }
               },
