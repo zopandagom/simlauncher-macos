@@ -50,6 +50,13 @@ public struct OSVersion: Hashable, Sendable, Comparable {
   }
 }
 
+extension OSVersion: CustomStringConvertible {
+  /// "27.0", "27.1", patch 가 0 이 아니면 "26.0.1". 화면 문구의 버전 표시에 쓴다.
+  public var description: String {
+    self.patch == 0 ? "\(self.major).\(self.minor)" : "\(self.major).\(self.minor).\(self.patch)"
+  }
+}
+
 /// 시뮬레이터 런타임(기기가 돌리는 OS 한 벌).
 public struct DeviceRuntime: Identifiable, Hashable, Sendable {
   /// simctl 런타임 식별자 (예: "com.apple.CoreSimulator.SimRuntime.iOS-27-0").
