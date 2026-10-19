@@ -129,6 +129,42 @@ public struct SimulatorClientImpl: SimulatorClient {
     }
   }
 
+  /// 재조회하지 않는다: 실패 뒤 목록으로 설치 성공을 판정할 수 없다.
+  public func install(_ app: URL, on id: VirtualDevice.ID) async throws(SimulatorError) {
+    guard let udid = SimctlCommand.validatedUDID(id.rawValue) else {
+      throw .deviceNotFound
+    }
+    guard app.isFileURL else {
+      throw .appNotFound
+    }
+    let appPath = app.standardizedFileURL.path(percentEncoded: false)
+    let result = try await self.run(
+      SimctlCommand.xcrun,
+      SimctlCommand.install(udid: udid, appPath: appPath),
+      developerDirectory: self.resolveDeveloperDirectory(),
+      launchFailure: .developerToolsUnavailable
+    )
+    guard result.exitCode == 0 else {
+      throw SimctlErrorClassifier.installError(exitCode: result.exitCode, stderr: Self.stderr(result))
+    }
+  }
+
+  /// 성공 stdout("<번들 ID>: <pid>")은 읽지 않는다. 재조회하지 않는다.
+  public func launch(_ bundleID: AppBundleID, on id: VirtualDevice.ID) async throws(SimulatorError) {
+    guard let udid = SimctlCommand.validatedUDID(id.rawValue) else {
+      throw .deviceNotFound
+    }
+    let result = try await self.run(
+      SimctlCommand.xcrun,
+      SimctlCommand.launch(udid: udid, bundleID: bundleID.rawValue),
+      developerDirectory: self.resolveDeveloperDirectory(),
+      launchFailure: .developerToolsUnavailable
+    )
+    guard result.exitCode == 0 else {
+      throw SimctlErrorClassifier.launchError(exitCode: result.exitCode, stderr: Self.stderr(result))
+    }
+  }
+
   private func resolveDeveloperDirectory() async -> URL? {
     guard let developerDirectory = self.developerDirectory else { return nil }
     return await developerDirectory()
@@ -220,5 +256,11 @@ public struct SimulatorClientImpl: SimulatorClient {
 
   private static func classify(_ result: CommandResult) -> SimulatorError {
     SimctlErrorClassifier.error(exitCode: result.exitCode, stderr: String(bytes: result.stderr, encoding: .utf8) ?? "")
+  }
+
+  /// install·launch 의 stderr 에는 앱이 정한 글자가 섞인다. 잘못된 UTF-8 이면 Latin-1 로 읽는다
+  /// (실패하지 않고, 분류가 보는 domain 줄·"reason: NotFound" 는 ASCII 라 그대로 남는다).
+  private static func stderr(_ result: CommandResult) -> String {
+    String(bytes: result.stderr, encoding: .utf8) ?? String(bytes: result.stderr, encoding: .isoLatin1) ?? ""
   }
 }
