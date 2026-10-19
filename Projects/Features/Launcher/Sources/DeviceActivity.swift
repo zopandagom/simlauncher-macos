@@ -3,7 +3,8 @@ import Core
 /// 기기 하나에서 진행 중인 작업. 같은 기기의 작업은 겹치지 않는다.
 public enum DeviceTask: Hashable, Sendable {
   case boot, shutdown, delete, erase
-  /// 앱 설치 흐름 전체 (검사 → 필요하면 켜기 → Simulator 앱 열기 → 설치 → 실행 → 다시 읽기).
+  /// 앱 설치 흐름 전체 ((zip 이면 풀기 →) 검사 → 필요하면 켜기 → Simulator 앱 열기 → 설치 → 실행 → 다시 읽기
+  /// (→ zip 이면 임시 폴더 정리)).
   case installApp
 }
 

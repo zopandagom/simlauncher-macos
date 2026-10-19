@@ -70,6 +70,13 @@ struct LauncherTextTests {
     #expect(messages.first == LauncherText.message(for: error))
   }
 
+  @Test("번들 검사·zip 풀기 오류마다 정확히 한 분류가 본문을 돌려준다", arguments: LauncherTextCatalog.bundleErrors)
+  func eachBundleErrorHasExactlyOneMessageFamily(error: AppBundleError) {
+    let messages = [LauncherText.bundleFileMessage(for: error), LauncherText.zipMessage(for: error)].compactMap(\.self)
+    #expect(messages.count == 1)
+    #expect(messages.first == LauncherText.message(for: error))
+  }
+
   @Test("기기 작업 실패 제목에 기기 이름과 런타임 이름이 들어간다")
   func deviceNoticeTitlesContainDeviceName() {
     let device = LauncherNotice.Device(name: "iPhone 17", runtimeName: "iOS 26.0")
@@ -204,7 +211,8 @@ enum LauncherTextCatalog {
   static let emptyReasons: [DeviceListEmptyReason] = [.noIOSRuntime, .noCreatableDeviceType, .noDevices]
 
   static let bundleErrors: [AppBundleError] = [
-    .notLocalFile, .fileNotFound, .ipaFile, .notAppBundle, .macOSApp, .invalidBundle,
+    .notLocalFile, .fileNotFound, .ipaFile, .notAppBundle, .macOSApp, .invalidBundle, .zipUnreadable, .zipWithoutApp,
+    .zipWithMultipleApps, .zipUnsafeEntry, .insufficientDiskSpace, .extractionUnavailable,
   ]
 
   /// 버전이 들어가는 `.requiresNewerOS` 는 `requiresNewerOSKey` 로 따로 본다.

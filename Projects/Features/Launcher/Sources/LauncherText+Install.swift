@@ -13,7 +13,7 @@ extension LauncherText {
 
   static var installAppHelp: String {
     String(
-      localized: "시뮬레이터용 .app 을 골라 이 기기에 설치하고 바로 실행합니다. .app 을 이 줄에 끌어다 놓아도 됩니다.",
+      localized: "시뮬레이터용 .app 이나 그 .app 을 압축한 zip 을 골라 이 기기에 설치하고 바로 실행합니다. 이 줄에 끌어다 놓아도 됩니다.",
       bundle: .module
     )
   }
@@ -48,7 +48,7 @@ extension LauncherText {
   static func message(for failure: AppInstallFailure) -> String {
     switch failure {
     case .multipleItems:
-      String(localized: "한 번에 앱 하나만 설치할 수 있습니다. .app 하나만 끌어다 놓으세요.", bundle: .module)
+      String(localized: "한 번에 앱 하나만 설치할 수 있습니다. .app 이나 zip 하나만 끌어다 놓으세요.", bundle: .module)
     case let .bundle(error):
       self.message(for: error)
     case let .rejected(problem):
@@ -60,20 +60,25 @@ extension LauncherText {
     }
   }
 
+  /// 번들 검사·zip 풀기 실패의 본문. 케이스마다 정확히 한 분류가 문구를 돌려준다.
   static func message(for error: AppBundleError) -> String {
+    self.bundleFileMessage(for: error) ?? self.zipMessage(for: error) ?? self.appInvalid
+  }
+
+  /// 고른 항목의 경로·종류나 .app 내용 문제 (검사와 풀기 공용). 다른 분류면 nil.
+  static func bundleFileMessage(for error: AppBundleError) -> String? {
     switch error {
     case .notLocalFile:
-      String(localized: "웹 주소는 아직 설치할 수 없습니다. 내려받아 압축을 푼 .app 을 골라 주세요.", bundle: .module)
+      String(localized: "웹 주소는 아직 설치할 수 없습니다. 내려받은 .app 이나 zip 파일을 골라 주세요.", bundle: .module)
     case .fileNotFound:
       self.appFileNotFound
     case .ipaFile:
       String(localized: ".ipa 파일은 설치할 수 없습니다. 시뮬레이터용으로 빌드한 .app 파일을 받아 주세요.", bundle: .module)
     case .notAppBundle:
-      // 2-B 에서 zip 을 받으면 고친다.
       String(
         localized: """
-        .app 이 아닌 항목은 설치할 수 없습니다. zip 파일이면 Finder 에서 풀어 나온 .app 을, \
-        아니면 시뮬레이터용으로 빌드한 .app 을 골라 주세요.
+        .app 이나 zip 이 아닌 항목은 설치할 수 없습니다. \
+        시뮬레이터용으로 빌드한 .app 이나 그 .app 을 압축한 zip 을 골라 주세요.
         """,
         bundle: .module
       )
@@ -84,6 +89,45 @@ extension LauncherText {
       )
     case .invalidBundle:
       self.appInvalid
+    case .zipUnreadable, .zipWithoutApp, .zipWithMultipleApps, .zipUnsafeEntry, .insufficientDiskSpace,
+         .extractionUnavailable:
+      nil
+    }
+  }
+
+  /// zip 풀기 실패. 다른 분류면 nil.
+  static func zipMessage(for error: AppBundleError) -> String? {
+    switch error {
+    case .zipUnreadable:
+      String(
+        localized: """
+        zip 파일을 풀지 못했습니다. 파일이 손상되었거나, 끝까지 받지 못했거나, 비밀번호가 걸려 있을 수 있습니다. \
+        파일을 다시 받아 주세요.
+        """,
+        bundle: .module
+      )
+    case .zipWithoutApp:
+      String(localized: "zip 맨 위에 .app 이 없습니다. 시뮬레이터용 .app 을 바로 압축한 zip 을 골라 주세요.", bundle: .module)
+    case .zipWithMultipleApps:
+      String(localized: "zip 맨 위에 .app 이 여러 개 있습니다. .app 하나만 압축한 zip 을 골라 주세요.", bundle: .module)
+    case .zipUnsafeEntry:
+      // 풀기 전 이름 검사와 푼 뒤 링크 검사(대상 없음·루프 포함)가 같은 문구를 쓴다.
+      String(
+        localized: """
+        zip 안에 잘못된 경로나 링크(압축을 푸는 폴더 밖이나 없는 곳을 가리키는 항목)가 있어 설치하지 않았습니다. \
+        믿을 수 있는 곳에서 받은 파일인지 확인하세요.
+        """,
+        bundle: .module
+      )
+    case .insufficientDiskSpace:
+      String(localized: "Mac 의 저장 공간이 부족해 zip 을 풀지 못했습니다. 공간을 확보한 뒤 다시 시도하세요.", bundle: .module)
+    case .extractionUnavailable:
+      String(
+        localized: "zip 을 풀 임시 폴더를 준비하지 못했습니다. 잠시 뒤 다시 시도하고, 계속되면 Mac 을 다시 시작해 보세요.",
+        bundle: .module
+      )
+    case .notLocalFile, .fileNotFound, .ipaFile, .notAppBundle, .macOSApp, .invalidBundle:
+      nil
     }
   }
 
@@ -142,7 +186,7 @@ extension LauncherText {
     }
   }
 
-  /// 고른 .app 이 없다 (검사 `.fileNotFound`, 설치 명령 `.appNotFound` 공용).
+  /// 고른 .app·zip 이 없다 (검사·풀기 `.fileNotFound`, 설치 명령 `.appNotFound` 공용).
   static var appFileNotFound: String {
     String(localized: "고른 파일을 찾을 수 없습니다. 옮기거나 지우지 않았는지 확인한 뒤 다시 골라 주세요.", bundle: .module)
   }

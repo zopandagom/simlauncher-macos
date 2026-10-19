@@ -46,7 +46,7 @@ public enum LauncherNotice: Hashable, Sendable {
 public enum AppInstallFailure: Hashable, Sendable {
   /// 끌어다 놓은 항목이 둘 이상이다.
   case multipleItems
-  /// 번들 검사 실패.
+  /// 번들 검사·zip 풀기 실패.
   case bundle(AppBundleError)
   /// Core 판정 거절.
   case rejected(AppInstallProblem)

@@ -1,13 +1,13 @@
 {
   "sourceLanguage" : "ko",
   "strings" : {
-    ".app 이 아닌 항목은 설치할 수 없습니다. zip 파일이면 Finder 에서 풀어 나온 .app 을, 아니면 시뮬레이터용으로 빌드한 .app 을 골라 주세요." : {
+    ".app 이나 zip 이 아닌 항목은 설치할 수 없습니다. 시뮬레이터용으로 빌드한 .app 이나 그 .app 을 압축한 zip 을 골라 주세요." : {
       "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : ".app 이 아닌 항목은 설치할 수 없습니다. zip 파일이면 Finder 에서 풀어 나온 .app 을, 아니면 시뮬레이터용으로 빌드한 .app 을 골라 주세요."
+            "value" : ".app 이나 zip 이 아닌 항목은 설치할 수 없습니다. 시뮬레이터용으로 빌드한 .app 이나 그 .app 을 압축한 zip 을 골라 주세요."
           }
         }
       }
@@ -188,6 +188,17 @@
         }
       }
     },
+    "Mac 의 저장 공간이 부족해 zip 을 풀지 못했습니다. 공간을 확보한 뒤 다시 시도하세요." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mac 의 저장 공간이 부족해 zip 을 풀지 못했습니다. 공간을 확보한 뒤 다시 시도하세요."
+          }
+        }
+      }
+    },
     "Xcode 가 알려 준 결과를 읽지 못해 기기가 만들어졌는지 확인하지 못했습니다. 기기가 만들어졌을 수 있으니 목록을 확인한 뒤, 없을 때만 다시 만드세요." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -239,6 +250,61 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Xcode 를 한 번 실행해 라이선스 동의와 준비를 마쳤는지 확인한 뒤 다시 시도하세요. 계속 실패하면 Mac 을 재시동한 뒤 다시 시도하세요."
+          }
+        }
+      }
+    },
+    "zip 맨 위에 .app 이 없습니다. 시뮬레이터용 .app 을 바로 압축한 zip 을 골라 주세요." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "zip 맨 위에 .app 이 없습니다. 시뮬레이터용 .app 을 바로 압축한 zip 을 골라 주세요."
+          }
+        }
+      }
+    },
+    "zip 맨 위에 .app 이 여러 개 있습니다. .app 하나만 압축한 zip 을 골라 주세요." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "zip 맨 위에 .app 이 여러 개 있습니다. .app 하나만 압축한 zip 을 골라 주세요."
+          }
+        }
+      }
+    },
+    "zip 안에 잘못된 경로나 링크(압축을 푸는 폴더 밖이나 없는 곳을 가리키는 항목)가 있어 설치하지 않았습니다. 믿을 수 있는 곳에서 받은 파일인지 확인하세요." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "zip 안에 잘못된 경로나 링크(압축을 푸는 폴더 밖이나 없는 곳을 가리키는 항목)가 있어 설치하지 않았습니다. 믿을 수 있는 곳에서 받은 파일인지 확인하세요."
+          }
+        }
+      }
+    },
+    "zip 을 풀 임시 폴더를 준비하지 못했습니다. 잠시 뒤 다시 시도하고, 계속되면 Mac 을 다시 시작해 보세요." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "zip 을 풀 임시 폴더를 준비하지 못했습니다. 잠시 뒤 다시 시도하고, 계속되면 Mac 을 다시 시작해 보세요."
+          }
+        }
+      }
+    },
+    "zip 파일을 풀지 못했습니다. 파일이 손상되었거나, 끝까지 받지 못했거나, 비밀번호가 걸려 있을 수 있습니다. 파일을 다시 받아 주세요." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "zip 파일을 풀지 못했습니다. 파일이 손상되었거나, 끝까지 받지 못했거나, 비밀번호가 걸려 있을 수 있습니다. 파일을 다시 받아 주세요."
           }
         }
       }
@@ -584,13 +650,13 @@
         }
       }
     },
-    "시뮬레이터용 .app 을 골라 이 기기에 설치하고 바로 실행합니다. .app 을 이 줄에 끌어다 놓아도 됩니다." : {
+    "시뮬레이터용 .app 이나 그 .app 을 압축한 zip 을 골라 이 기기에 설치하고 바로 실행합니다. 이 줄에 끌어다 놓아도 됩니다." : {
       "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "시뮬레이터용 .app 을 골라 이 기기에 설치하고 바로 실행합니다. .app 을 이 줄에 끌어다 놓아도 됩니다."
+            "value" : "시뮬레이터용 .app 이나 그 .app 을 압축한 zip 을 골라 이 기기에 설치하고 바로 실행합니다. 이 줄에 끌어다 놓아도 됩니다."
           }
         }
       }
@@ -650,13 +716,13 @@
         }
       }
     },
-    "웹 주소는 아직 설치할 수 없습니다. 내려받아 압축을 푼 .app 을 골라 주세요." : {
+    "웹 주소는 아직 설치할 수 없습니다. 내려받은 .app 이나 zip 파일을 골라 주세요." : {
       "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "웹 주소는 아직 설치할 수 없습니다. 내려받아 압축을 푼 .app 을 골라 주세요."
+            "value" : "웹 주소는 아직 설치할 수 없습니다. 내려받은 .app 이나 zip 파일을 골라 주세요."
           }
         }
       }
@@ -925,13 +991,13 @@
         }
       }
     },
-    "한 번에 앱 하나만 설치할 수 있습니다. .app 하나만 끌어다 놓으세요." : {
+    "한 번에 앱 하나만 설치할 수 있습니다. .app 이나 zip 하나만 끌어다 놓으세요." : {
       "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "한 번에 앱 하나만 설치할 수 있습니다. .app 하나만 끌어다 놓으세요."
+            "value" : "한 번에 앱 하나만 설치할 수 있습니다. .app 이나 zip 하나만 끌어다 놓으세요."
           }
         }
       }

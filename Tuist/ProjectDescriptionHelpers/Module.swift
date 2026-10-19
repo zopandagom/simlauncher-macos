@@ -24,7 +24,7 @@ public struct Client: Hashable, Sendable {
 public extension Client {
   /// iOS 시뮬레이터 기기·런타임 목록, 켜기·끄기·만들기·삭제·초기화, 앱 설치·실행, Simulator 앱 열기 (`xcrun simctl`).
   static let simulator = Client("Simulator")
-  /// 로컬 iOS 앱 번들(.app) 검사 (2-B 에서 zip 풀기를 더한다).
+  /// 로컬 iOS 앱 번들(.app) 검사와 zip 풀기.
   static let appBundle = Client("AppBundle")
   /// 실행 파일을 인자 배열로 실행하고 종료 코드·stdout·stderr 를 돌려준다 (셸을 거치지 않는다).
   /// 인자 구성·결과 해석은 이것을 조합하는 Client Impl 이 한다.
