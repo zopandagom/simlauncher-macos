@@ -1,0 +1,219 @@
+{
+  "devicetypes": [
+    {
+      "bundlePath": "/fixture/DeviceTypes/iPhone 17.simdevicetype",
+      "identifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-17",
+      "maxRuntimeVersion": 4294967295,
+      "minRuntimeVersion": 1703936,
+      "modelIdentifier": "FixtureiPhone-17",
+      "name": "iPhone 17",
+      "productFamily": "iPhone"
+    },
+    {
+      "bundlePath": "/fixture/DeviceTypes/iPad (A16).simdevicetype",
+      "identifier": "com.apple.CoreSimulator.SimDeviceType.iPad-A16",
+      "maxRuntimeVersion": 4294967295,
+      "minRuntimeVersion": 1703936,
+      "modelIdentifier": "FixtureiPad-A16",
+      "name": "iPad (A16)",
+      "productFamily": "iPad"
+    },
+    {
+      "bundlePath": "/fixture/DeviceTypes/Apple Watch Series 11 (46mm).simdevicetype",
+      "identifier": "com.apple.CoreSimulator.SimDeviceType.Apple-Watch-Series-11-46mm",
+      "maxRuntimeVersion": 4294967295,
+      "minRuntimeVersion": 1703936,
+      "modelIdentifier": "FixtureApple-Watch-Series-11-46mm",
+      "name": "Apple Watch Series 11 (46mm)",
+      "productFamily": "Apple Watch"
+    }
+  ],
+  "runtimes": [
+    {
+      "bundlePath": "/fixture/Runtimes/iOS 27.0.simruntime",
+      "buildversion": "FIXTURE",
+      "identifier": "com.apple.CoreSimulator.SimRuntime.iOS-27-0",
+      "isAvailable": true,
+      "isInternal": false,
+      "name": "iOS 27.0",
+      "platform": "iOS",
+      "runtimeRoot": "/fixture/Runtimes/iOS 27.0.simruntime/Contents/Resources/RuntimeRoot",
+      "supportedArchitectures": [
+        "arm64"
+      ],
+      "supportedDeviceTypes": [
+        {
+          "bundlePath": "/fixture/DeviceTypes/iPhone 17.simdevicetype",
+          "identifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-17",
+          "name": "iPhone 17",
+          "productFamily": "iPhone"
+        },
+        {
+          "bundlePath": "/fixture/DeviceTypes/iPad (A16).simdevicetype",
+          "identifier": "com.apple.CoreSimulator.SimDeviceType.iPad-A16",
+          "name": "iPad (A16)",
+          "productFamily": "iPad"
+        }
+      ],
+      "version": "27.0"
+    },
+    {
+      "bundlePath": "/fixture/Runtimes/watchOS 27.0.simruntime",
+      "buildversion": "FIXTURE",
+      "identifier": "com.apple.CoreSimulator.SimRuntime.watchOS-27-0",
+      "isAvailable": true,
+      "isInternal": false,
+      "name": "watchOS 27.0",
+      "platform": "watchOS",
+      "runtimeRoot": "/fixture/Runtimes/watchOS 27.0.simruntime/Contents/Resources/RuntimeRoot",
+      "supportedArchitectures": [
+        "arm64"
+      ],
+      "supportedDeviceTypes": [
+        {
+          "bundlePath": "/fixture/DeviceTypes/Apple Watch Series 11 (46mm).simdevicetype",
+          "identifier": "com.apple.CoreSimulator.SimDeviceType.Apple-Watch-Series-11-46mm",
+          "name": "Apple Watch Series 11 (46mm)",
+          "productFamily": "Apple Watch"
+        }
+      ],
+      "version": "27.0"
+    },
+    {
+      "bundlePath": "/fixture/Runtimes/iOS 25.0.simruntime",
+      "buildversion": "FIXTURE",
+      "identifier": "com.apple.CoreSimulator.SimRuntime.iOS-25-0",
+      "isAvailable": false,
+      "isInternal": false,
+      "name": "iOS 25.0",
+      "platform": "iOS",
+      "runtimeRoot": "/fixture/Runtimes/iOS 25.0.simruntime/Contents/Resources/RuntimeRoot",
+      "supportedArchitectures": [
+        "arm64"
+      ],
+      "supportedDeviceTypes": [
+        {
+          "bundlePath": "/fixture/DeviceTypes/iPhone 17.simdevicetype",
+          "identifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-17",
+          "name": "iPhone 17",
+          "productFamily": "iPhone"
+        },
+        {
+          "bundlePath": "/fixture/DeviceTypes/iPad (A16).simdevicetype",
+          "identifier": "com.apple.CoreSimulator.SimDeviceType.iPad-A16",
+          "name": "iPad (A16)",
+          "productFamily": "iPad"
+        }
+      ],
+      "version": "25.0",
+      "availabilityError": "(fixture) runtime is not available"
+    }
+  ],
+  "devices": {
+    "com.apple.CoreSimulator.SimRuntime.iOS-27-0": [
+      {
+        "dataPath": "/fixture/Devices/00000000-0000-0000-0000-000000000001/data",
+        "dataPathSize": 1000,
+        "deviceTypeIdentifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-17",
+        "isAvailable": true,
+        "logPath": "/fixture/Logs/00000000-0000-0000-0000-000000000001",
+        "name": "iPhone 17",
+        "state": "Booted",
+        "udid": "00000000-0000-0000-0000-000000000001",
+        "lastUsedAt": "2026-10-18T01:00:00Z"
+      },
+      {
+        "dataPath": "/fixture/Devices/00000000-0000-0000-0000-000000000002/data",
+        "dataPathSize": 1000,
+        "deviceTypeIdentifier": "com.apple.CoreSimulator.SimDeviceType.iPad-A16",
+        "isAvailable": true,
+        "logPath": "/fixture/Logs/00000000-0000-0000-0000-000000000002",
+        "name": "iPad (A16)",
+        "state": "Shutdown",
+        "udid": "00000000-0000-0000-0000-000000000002"
+      },
+      {
+        "dataPath": "/fixture/Devices/00000000-0000-0000-0000-000000000003/data",
+        "dataPathSize": 1000,
+        "deviceTypeIdentifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-17",
+        "isAvailable": true,
+        "logPath": "/fixture/Logs/00000000-0000-0000-0000-000000000003",
+        "name": "iPhone 17 (2)",
+        "state": "Shutting Down",
+        "udid": "00000000-0000-0000-0000-000000000003",
+        "lastUsedAt": "2026-10-17T01:00:00Z"
+      },
+      {
+        "dataPath": "/fixture/Devices/00000000-0000-0000-0000-000000000004/data",
+        "dataPathSize": 1000,
+        "deviceTypeIdentifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-17",
+        "isAvailable": true,
+        "logPath": "/fixture/Logs/00000000-0000-0000-0000-000000000004",
+        "name": "iPhone 17 (3)",
+        "state": "Weird",
+        "udid": "00000000-0000-0000-0000-000000000004"
+      },
+      {
+        "dataPath": "/fixture/Devices/00000000-0000-0000-0000-000000000005/data",
+        "dataPathSize": 1000,
+        "deviceTypeIdentifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-Retired",
+        "isAvailable": false,
+        "logPath": "/fixture/Logs/00000000-0000-0000-0000-000000000005",
+        "name": "Old iPhone",
+        "state": "Shutdown",
+        "udid": "00000000-0000-0000-0000-000000000005",
+        "availabilityError": "(fixture) device type profile not found"
+      },
+      {
+        "dataPath": "/fixture/Devices/00000000-0000-0000-0000-000000000009/data",
+        "dataPathSize": 1000,
+        "deviceTypeIdentifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-17",
+        "isAvailable": false,
+        "logPath": "/fixture/Logs/00000000-0000-0000-0000-000000000009",
+        "name": "Broken iPhone",
+        "state": "Shutdown",
+        "udid": "00000000-0000-0000-0000-000000000009",
+        "availabilityError": "(fixture) unknown"
+      }
+    ],
+    "com.apple.CoreSimulator.SimRuntime.watchOS-27-0": [
+      {
+        "dataPath": "/fixture/Devices/00000000-0000-0000-0000-000000000006/data",
+        "dataPathSize": 1000,
+        "deviceTypeIdentifier": "com.apple.CoreSimulator.SimDeviceType.Apple-Watch-Series-11-46mm",
+        "isAvailable": true,
+        "logPath": "/fixture/Logs/00000000-0000-0000-0000-000000000006",
+        "name": "Apple Watch Series 11 (46mm)",
+        "state": "Shutdown",
+        "udid": "00000000-0000-0000-0000-000000000006"
+      }
+    ],
+    "com.apple.CoreSimulator.SimRuntime.iOS-26-0": [
+      {
+        "dataPath": "/fixture/Devices/00000000-0000-0000-0000-000000000007/data",
+        "dataPathSize": 1000,
+        "deviceTypeIdentifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-17",
+        "isAvailable": false,
+        "logPath": "/fixture/Logs/00000000-0000-0000-0000-000000000007",
+        "name": "iPhone 16",
+        "state": "Shutdown",
+        "udid": "00000000-0000-0000-0000-000000000007",
+        "lastUsedAt": "2026-01-01T00:00:00Z",
+        "availabilityError": "runtime profile not found"
+      }
+    ],
+    "com.apple.CoreSimulator.SimRuntime.iOS-25-0": [
+      {
+        "dataPath": "/fixture/Devices/00000000-0000-0000-0000-000000000008/data",
+        "dataPathSize": 1000,
+        "deviceTypeIdentifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-17",
+        "isAvailable": false,
+        "logPath": "/fixture/Logs/00000000-0000-0000-0000-000000000008",
+        "name": "iPhone 15",
+        "state": "Shutdown",
+        "udid": "00000000-0000-0000-0000-000000000008"
+      }
+    ]
+  },
+  "pairs": {}
+}
