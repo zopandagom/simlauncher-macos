@@ -1,7 +1,30 @@
 {
   "sourceLanguage" : "ko",
   "strings" : {
+    ".app 이 아닌 항목은 설치할 수 없습니다. zip 파일이면 Finder 에서 풀어 나온 .app 을, 아니면 시뮬레이터용으로 빌드한 .app 을 골라 주세요." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : ".app 이 아닌 항목은 설치할 수 없습니다. zip 파일이면 Finder 에서 풀어 나온 .app 을, 아니면 시뮬레이터용으로 빌드한 .app 을 골라 주세요."
+          }
+        }
+      }
+    },
+    ".ipa 파일은 설치할 수 없습니다. 시뮬레이터용으로 빌드한 .app 파일을 받아 주세요." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : ".ipa 파일은 설치할 수 없습니다. 시뮬레이터용으로 빌드한 .app 파일을 받아 주세요."
+          }
+        }
+      }
+    },
     "“%@” (%@) 기기는 켜졌지만 Simulator 앱을 열지 못했습니다" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -12,6 +35,7 @@
       }
     },
     "“%@” (%@) 기기를 끄지 못했습니다" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -22,6 +46,7 @@
       }
     },
     "“%@” (%@) 기기를 만들었는지 확인하지 못했습니다" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -32,6 +57,7 @@
       }
     },
     "“%@” (%@) 기기를 만들지 못했습니다" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -42,6 +68,7 @@
       }
     },
     "“%@” (%@) 기기를 삭제하지 못했습니다" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -52,6 +79,7 @@
       }
     },
     "“%@” (%@) 기기를 삭제할까요?" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -62,6 +90,7 @@
       }
     },
     "“%@” (%@) 기기를 초기화하지 못했습니다" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -72,6 +101,7 @@
       }
     },
     "“%@” (%@) 기기를 초기화할까요?" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -82,6 +112,7 @@
       }
     },
     "“%@” (%@) 기기를 켜지 못했습니다" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -91,7 +122,30 @@
         }
       }
     },
+    "“%@” (%@) 기기에 앱을 설치하지 못했습니다" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” (%@) 기기에 앱을 설치하지 못했습니다"
+          }
+        }
+      }
+    },
+    "“%@” (%@) 기기에 앱을 설치했지만 실행하지 못했습니다" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” (%@) 기기에 앱을 설치했지만 실행하지 못했습니다"
+          }
+        }
+      }
+    },
     "iOS 버전" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -102,6 +156,7 @@
       }
     },
     "iOS 시뮬레이터가 설치되어 있지 않습니다" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -111,7 +166,30 @@
         }
       }
     },
+    "iOS 시뮬레이터용 빌드가 아닙니다. 개발자에게 시뮬레이터용으로 빌드한 .app 을 요청하세요." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS 시뮬레이터용 빌드가 아닙니다. 개발자에게 시뮬레이터용으로 빌드한 .app 을 요청하세요."
+          }
+        }
+      }
+    },
+    "Mac 용 앱은 iOS 시뮬레이터에 설치할 수 없습니다. 시뮬레이터용으로 빌드한 iOS 앱(.app)을 골라 주세요." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mac 용 앱은 iOS 시뮬레이터에 설치할 수 없습니다. 시뮬레이터용으로 빌드한 iOS 앱(.app)을 골라 주세요."
+          }
+        }
+      }
+    },
     "Xcode 가 알려 준 결과를 읽지 못해 기기가 만들어졌는지 확인하지 못했습니다. 기기가 만들어졌을 수 있으니 목록을 확인한 뒤, 없을 때만 다시 만드세요." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -122,6 +200,7 @@
       }
     },
     "Xcode 가 알려 준 기기 정보를 읽지 못했습니다. Xcode 를 최신 버전으로 업데이트한 뒤 다시 시도하세요." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -132,6 +211,7 @@
       }
     },
     "Xcode 를 찾지 못했거나 아직 준비되지 않았습니다. Xcode 를 설치하고 한 번 실행해 준비를 마친 뒤 다시 시도하세요." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -142,6 +222,7 @@
       }
     },
     "Xcode 를 처음 실행할 때 나오는 안내에서 iOS 를 설치한 뒤 새로 고치세요." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -152,6 +233,7 @@
       }
     },
     "Xcode 를 한 번 실행해 라이선스 동의와 준비를 마쳤는지 확인한 뒤 다시 시도하세요. 계속 실패하면 Mac 을 재시동한 뒤 다시 시도하세요." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -162,6 +244,7 @@
       }
     },
     "고른 iOS 버전이나 기기 종류를 지금 사용할 수 없습니다. 목록을 새로 고친 뒤 다시 골라 주세요." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -171,7 +254,19 @@
         }
       }
     },
+    "고른 파일을 찾을 수 없습니다. 옮기거나 지우지 않았는지 확인한 뒤 다시 골라 주세요." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "고른 파일을 찾을 수 없습니다. 옮기거나 지우지 않았는지 확인한 뒤 다시 골라 주세요."
+          }
+        }
+      }
+    },
     "기기 만들기" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -182,6 +277,7 @@
       }
     },
     "기기 목록을 불러오는 중…" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -192,6 +288,7 @@
       }
     },
     "기기 목록을 불러오지 못했습니다" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -202,6 +299,7 @@
       }
     },
     "기기 목록을 새로 고치지 못했습니다" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -212,6 +310,7 @@
       }
     },
     "기기 이름은 1~100자로, 줄바꿈 같은 제어 문자 없이 입력하세요." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -222,6 +321,7 @@
       }
     },
     "기기 작업" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -232,6 +332,7 @@
       }
     },
     "기기 종류" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -241,7 +342,19 @@
         }
       }
     },
+    "기기가 켜져 있지 않아 앱을 설치하거나 실행하지 못했습니다. 기기를 켠 뒤 다시 시도하세요." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기기가 켜져 있지 않아 앱을 설치하거나 실행하지 못했습니다. 기기를 켠 뒤 다시 시도하세요."
+          }
+        }
+      }
+    },
     "기기를 만드는 중…" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -251,7 +364,19 @@
         }
       }
     },
+    "기기를 켜거나 끄는 중에는 앱을 설치할 수 없습니다. 끝난 뒤 다시 시도하세요" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기기를 켜거나 끄는 중에는 앱을 설치할 수 없습니다. 끝난 뒤 다시 시도하세요"
+          }
+        }
+      }
+    },
     "기기에 설치한 앱과 데이터, 설정이 모두 지워지고 처음 상태로 돌아갑니다. 되돌릴 수 없습니다." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -262,6 +387,7 @@
       }
     },
     "기기와 그 안의 앱·데이터가 모두 지워지며 되돌릴 수 없습니다." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -272,6 +398,7 @@
       }
     },
     "꺼짐" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -282,6 +409,7 @@
       }
     },
     "끄기" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -292,6 +420,7 @@
       }
     },
     "끄는 중" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -302,6 +431,7 @@
       }
     },
     "다시 시도" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -312,6 +442,7 @@
       }
     },
     "만들 수 있는 iPhone·iPad 기기 종류가 없습니다" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -322,6 +453,7 @@
       }
     },
     "만들기" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -332,6 +464,7 @@
       }
     },
     "사용할 수 없는 기기는 초기화할 수 없고 삭제만 할 수 있습니다" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -341,7 +474,19 @@
         }
       }
     },
+    "사용할 수 없는 기기에는 앱을 설치할 수 없습니다" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "사용할 수 없는 기기에는 앱을 설치할 수 없습니다"
+          }
+        }
+      }
+    },
     "사용할 수 없음" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -352,6 +497,7 @@
       }
     },
     "삭제" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -362,6 +508,7 @@
       }
     },
     "삭제…" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -372,6 +519,7 @@
       }
     },
     "삭제·초기화는 기기를 끈 뒤에 할 수 있습니다" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -382,6 +530,7 @@
       }
     },
     "상태 확인 중" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -392,6 +541,7 @@
       }
     },
     "새 기기 만들기" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -402,6 +552,7 @@
       }
     },
     "새로 고침" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -412,6 +563,7 @@
       }
     },
     "설치된 iOS 버전으로 만들 수 있는 기기 종류를 찾지 못했습니다. Xcode 를 최신 버전으로 업데이트하거나 한 번 실행해 준비를 마친 뒤 새로 고치세요." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -421,7 +573,74 @@
         }
       }
     },
+    "설치한 앱을 기기에서 찾지 못해 실행하지 못했습니다. 다시 설치해 보세요." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "설치한 앱을 기기에서 찾지 못해 실행하지 못했습니다. 다시 설치해 보세요."
+          }
+        }
+      }
+    },
+    "시뮬레이터용 .app 을 골라 이 기기에 설치하고 바로 실행합니다. .app 을 이 줄에 끌어다 놓아도 됩니다." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "시뮬레이터용 .app 을 골라 이 기기에 설치하고 바로 실행합니다. .app 을 이 줄에 끌어다 놓아도 됩니다."
+          }
+        }
+      }
+    },
+    "앱 설치…" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "앱 설치…"
+          }
+        }
+      }
+    },
+    "앱 정보(Info.plist)나 실행 파일을 읽지 못했습니다. 빌드가 끝까지 완료된 .app 인지 확인하거나 파일을 다시 받아 주세요." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "앱 정보(Info.plist)나 실행 파일을 읽지 못했습니다. 빌드가 끝까지 완료된 .app 인지 확인하거나 파일을 다시 받아 주세요."
+          }
+        }
+      }
+    },
+    "앱을 설치하는 중…" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "앱을 설치하는 중…"
+          }
+        }
+      }
+    },
+    "앱이 시작되지 않았거나 시작하자마자 종료되었습니다. 시뮬레이터에서 앱 아이콘을 눌러 다시 실행해 보고, 계속되면 앱 개발자에게 알려 주세요." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "앱이 시작되지 않았거나 시작하자마자 종료되었습니다. 시뮬레이터에서 앱 아이콘을 눌러 다시 실행해 보고, 계속되면 앱 개발자에게 알려 주세요."
+          }
+        }
+      }
+    },
     "오른쪽 위 + 버튼이나 아래 버튼으로 iPhone·iPad 기기를 만드세요." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -431,7 +650,19 @@
         }
       }
     },
+    "웹 주소는 아직 설치할 수 없습니다. 내려받아 압축을 푼 .app 을 골라 주세요." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "웹 주소는 아직 설치할 수 없습니다. 내려받아 압축을 푼 .app 을 골라 주세요."
+          }
+        }
+      }
+    },
     "이 Mac 의 Xcode 에서 Simulator 앱을 찾지 못했습니다. Xcode 를 최신 버전으로 업데이트하거나 다시 설치하세요." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -442,6 +673,7 @@
       }
     },
     "이 기기를 더 이상 찾을 수 없습니다. 목록을 새로 고친 뒤 다른 기기를 골라 주세요." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -452,6 +684,7 @@
       }
     },
     "이 기기를 지금 사용할 수 없습니다. Xcode 를 한 번 실행해 준비를 마친 뒤 목록을 새로 고치세요." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -462,6 +695,7 @@
       }
     },
     "이 기기에 필요한 iOS 버전이 이 Mac 에 설치되어 있지 않아 사용할 수 없습니다." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -471,7 +705,19 @@
         }
       }
     },
+    "이 기기에서 실행할 수 없는 빌드입니다. 시뮬레이터용으로 빌드했는지, 이 기기 종류(iPhone·iPad)를 지원하는지 개발자에게 확인하세요." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 기기에서 실행할 수 없는 빌드입니다. 시뮬레이터용으로 빌드했는지, 이 기기 종류(iPhone·iPad)를 지원하는지 개발자에게 확인하세요."
+          }
+        }
+      }
+    },
     "이 기기의 iOS 버전을 지금 사용할 수 없습니다. Xcode 를 한 번 실행해 준비를 마친 뒤 목록을 새로 고치세요." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -481,7 +727,52 @@
         }
       }
     },
+    "이 앱에는 Apple 실리콘 Mac 의 시뮬레이터에서 실행할 코드(arm64)가 없습니다. 개발자에게 arm64 가 포함된 시뮬레이터 빌드를 요청하세요." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 앱에는 Apple 실리콘 Mac 의 시뮬레이터에서 실행할 코드(arm64)가 없습니다. 개발자에게 arm64 가 포함된 시뮬레이터 빌드를 요청하세요."
+          }
+        }
+      }
+    },
+    "이 앱에는 Intel Mac 의 시뮬레이터에서 실행할 코드(x86_64)가 없습니다. 개발자에게 x86_64 가 포함된 시뮬레이터 빌드를 요청하세요." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 앱에는 Intel Mac 의 시뮬레이터에서 실행할 코드(x86_64)가 없습니다. 개발자에게 x86_64 가 포함된 시뮬레이터 빌드를 요청하세요."
+          }
+        }
+      }
+    },
+    "이 앱은 iOS %@ 이상에서 실행됩니다. 더 높은 iOS 버전의 기기에 설치하세요." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 앱은 iOS %@ 이상에서 실행됩니다. 더 높은 iOS 버전의 기기에 설치하세요."
+          }
+        }
+      }
+    },
+    "이 앱은 이 기기보다 높은 iOS 버전이 필요합니다. 더 높은 iOS 버전의 기기에 설치하세요." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 앱은 이 기기보다 높은 iOS 버전이 필요합니다. 더 높은 iOS 버전의 기기에 설치하세요."
+          }
+        }
+      }
+    },
     "이름" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -492,6 +783,7 @@
       }
     },
     "이름에 줄바꿈이나 탭은 쓸 수 없습니다." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -502,6 +794,7 @@
       }
     },
     "이름은 100자까지 입력할 수 있습니다." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -512,6 +805,7 @@
       }
     },
     "이름을 입력하세요." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -522,6 +816,7 @@
       }
     },
     "지금 Xcode 가 이 기기 모델을 지원하지 않아 사용할 수 없습니다." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -532,6 +827,7 @@
       }
     },
     "지금 이 Mac 에서 만들 수 있는 iPhone·iPad 기기 종류가 없습니다. iOS 가 설치되어 있는지 확인하고, Xcode 를 최신 버전으로 업데이트하거나 한 번 실행해 준비를 마친 뒤 새로 고치세요." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -542,6 +838,7 @@
       }
     },
     "초기화" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -552,6 +849,7 @@
       }
     },
     "초기화…" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -562,6 +860,7 @@
       }
     },
     "취소" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -572,6 +871,7 @@
       }
     },
     "켜기" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -582,6 +882,7 @@
       }
     },
     "켜는 중" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -592,6 +893,7 @@
       }
     },
     "켜져 있거나 상태가 바뀌는 중인 기기는 삭제하거나 초기화할 수 없습니다. 기기를 끈 뒤 다시 시도하세요." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -602,6 +904,7 @@
       }
     },
     "켜짐" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -612,6 +915,7 @@
       }
     },
     "표시할 iPhone·iPad 시뮬레이터가 없습니다" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {
@@ -621,7 +925,19 @@
         }
       }
     },
+    "한 번에 앱 하나만 설치할 수 있습니다. .app 하나만 끌어다 놓으세요." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "한 번에 앱 하나만 설치할 수 있습니다. .app 하나만 끌어다 놓으세요."
+          }
+        }
+      }
+    },
     "확인" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ko" : {
           "stringUnit" : {

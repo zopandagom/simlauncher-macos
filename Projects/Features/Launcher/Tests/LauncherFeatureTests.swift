@@ -1,3 +1,4 @@
+import AppBundleTesting
 import Core
 import SimulatorInterface
 import SimulatorTesting
@@ -11,7 +12,7 @@ struct LauncherFeatureTests: LauncherModelTesting {
   @Test("onAppear 는 기기 목록을 읽어 화면 목록으로 바꾼다")
   func onAppearLoadsList() async {
     let fake = SimulatorClientFake(inventory: .sample)
-    let model = LauncherModel(simulator: fake)
+    let model = LauncherModel(simulator: fake, appBundle: AppBundleClientFake())
     #expect(model.listState == .loading)
 
     await model.onAppear()
@@ -26,7 +27,7 @@ struct LauncherFeatureTests: LauncherModelTesting {
   func firstLoadFailureRecoversByRefresh() async {
     let fake = SimulatorClientFake(inventory: .sample)
     fake.setFetchError(.developerToolsUnavailable)
-    let model = LauncherModel(simulator: fake)
+    let model = LauncherModel(simulator: fake, appBundle: AppBundleClientFake())
 
     await model.onAppear()
     #expect(model.listState == .failed(.developerToolsUnavailable))
@@ -58,7 +59,7 @@ struct LauncherFeatureTests: LauncherModelTesting {
   func overlappingReloadsAreCoalesced() async {
     let fake = SimulatorClientFake(inventory: .sample)
     fake.suspendFetches()
-    let model = LauncherModel(simulator: fake)
+    let model = LauncherModel(simulator: fake, appBundle: AppBundleClientFake())
 
     let first = Task { await model.onAppear() }
     await Self.waitUntil { fake.calls.contains(.fetchInventory) }
@@ -257,7 +258,7 @@ struct LauncherFeatureTests: LauncherModelTesting {
   @Test("목록을 읽기 전에는 켜기·끄기가 아무것도 부르지 않는다")
   func actionsBeforeLoadCallNothing() async {
     let fake = SimulatorClientFake(inventory: .sample)
-    let model = LauncherModel(simulator: fake)
+    let model = LauncherModel(simulator: fake, appBundle: AppBundleClientFake())
 
     await model.bootButtonTapped(SampleID.iPhoneOff)
     await model.shutdownButtonTapped(SampleID.iPhoneOn)

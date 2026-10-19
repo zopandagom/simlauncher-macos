@@ -1,3 +1,4 @@
+import AppBundleTesting
 import Core
 import SimulatorInterface
 import SimulatorTesting
@@ -27,12 +28,15 @@ struct LauncherCreateTests: LauncherModelTesting {
 
   @Test("목록을 읽기 전이나 만들 수 있는 런타임이 없으면 + 가 비활성이고 초안이 열리지 않는다")
   func cannotCreateBeforeLoadOrWithoutRuntime() async {
-    let before = LauncherModel(simulator: SimulatorClientFake(inventory: .sample))
+    let before = LauncherModel(simulator: SimulatorClientFake(inventory: .sample), appBundle: AppBundleClientFake())
     #expect(before.canCreateDevice == false)
     before.createButtonTapped()
     #expect(before.createDraft == nil)
 
-    let noRuntime = LauncherModel(simulator: SimulatorClientFake(inventory: .noRuntime))
+    let noRuntime = LauncherModel(
+      simulator: SimulatorClientFake(inventory: .noRuntime),
+      appBundle: AppBundleClientFake()
+    )
     await noRuntime.onAppear()
     #expect(noRuntime.canCreateDevice == false)
     noRuntime.createButtonTapped()
@@ -41,7 +45,7 @@ struct LauncherCreateTests: LauncherModelTesting {
 
   @Test("기기가 없어도 만들 수 있는 런타임이 있으면 + 를 누를 수 있다")
   func canCreateWithNoDevices() async {
-    let model = LauncherModel(simulator: SimulatorClientFake(inventory: .noDevices))
+    let model = LauncherModel(simulator: SimulatorClientFake(inventory: .noDevices), appBundle: AppBundleClientFake())
     await model.onAppear()
 
     model.createButtonTapped()
@@ -273,7 +277,10 @@ struct LauncherCreateTests: LauncherModelTesting {
 extension LauncherCreateTests {
   @Test("만들 수 있는 기기 종류가 없으면 빈 이유가 그것이고, + 를 쓸 수 없는 이유를 보이며 초안이 열리지 않는다")
   func noCreatableDeviceTypeShowsReason() async {
-    let model = LauncherModel(simulator: SimulatorClientFake(inventory: .noCreatableDeviceType))
+    let model = LauncherModel(
+      simulator: SimulatorClientFake(inventory: .noCreatableDeviceType),
+      appBundle: AppBundleClientFake()
+    )
     await model.onAppear()
 
     guard case let .loaded(list) = model.listState else {
@@ -291,7 +298,7 @@ extension LauncherCreateTests {
   func devicesWithoutCreatableTypeShowsReason() async {
     let sample = DeviceInventory.sample
     let inventory = DeviceInventory(devices: sample.devices, runtimes: sample.runtimes, deviceTypes: [])
-    let model = LauncherModel(simulator: SimulatorClientFake(inventory: inventory))
+    let model = LauncherModel(simulator: SimulatorClientFake(inventory: inventory), appBundle: AppBundleClientFake())
     await model.onAppear()
 
     guard case let .loaded(list) = model.listState else {
@@ -312,7 +319,10 @@ extension LauncherCreateTests {
 
   @Test("목록을 읽기 전에는 + 를 쓸 수 없는 이유를 보이지 않는다 (로딩 표시가 보인다)")
   func notCreationUnavailableBeforeLoad() {
-    let model = LauncherModel(simulator: SimulatorClientFake(inventory: .noCreatableDeviceType))
+    let model = LauncherModel(
+      simulator: SimulatorClientFake(inventory: .noCreatableDeviceType),
+      appBundle: AppBundleClientFake()
+    )
 
     #expect(model.canCreateDevice == false)
     #expect(model.isCreationUnavailable == false)

@@ -1,16 +1,18 @@
+import AppBundleInterface
 import Core
+import Foundation
 import Observation
 import SimulatorInterface
 
 /// 첫 화면의 상태와 로직. iOS 시뮬레이터 기기 목록을 읽고, 기기를 켜고 끄며(켠 뒤 Simulator 앱을 연다),
-/// 만들고 지우고 초기화한다.
+/// 만들고 지우고 초기화한다. 고른 .app 을 기기에 설치하고 바로 실행한다(꺼져 있으면 켠다).
 @MainActor
 @Observable
 public final class LauncherModel {
   public private(set) var listState: LauncherListState = .loading
   /// 목록을 읽는 중이다 (첫 로딩 포함).
   public private(set) var isRefreshing = false
-  /// 기기별 진행 작업(켜기·끄기·삭제·초기화). 같은 기기의 작업은 겹치지 않는다.
+  /// 기기별 진행 작업(켜기·끄기·삭제·초기화·앱 설치). 같은 기기의 작업은 겹치지 않는다.
   public private(set) var activity = DeviceActivity()
   /// 닫지 않은 알림 줄.
   public private(set) var noticeQueue = LauncherNotices()
@@ -39,7 +41,8 @@ public final class LauncherModel {
     return self.creationOptions.isEmpty
   }
 
-  /// 작업이 진행 중인 기기. `activity` 에서 계산하는 읽기 API 다.
+  /// 작업이 진행 중인 기기 (`activity.busyDeviceIDs` 와 같다). 화면은 행마다 `activity.task(on:)` 를 읽고,
+  /// 이 값은 진행 중인 기기 전체를 한 번에 볼 때(테스트) 쓴다.
   public var busyDeviceIDs: Set<VirtualDevice.ID> {
     self.activity.busyDeviceIDs
   }
@@ -50,13 +53,15 @@ public final class LauncherModel {
   }
 
   @ObservationIgnored private let simulator: any SimulatorClient
+  @ObservationIgnored private let appBundle: any AppBundleClient
   /// 진행 중인 목록 읽기. Model 이 소유해 View 의 `.task` 가 취소돼도 끝까지 돈다.
   @ObservationIgnored private var loadTask: Task<Void, Never>?
   /// 읽는 동안 들어온 요청. 진행 중인 읽기가 끝나면 한 번 더 읽는다.
   @ObservationIgnored private var reloadRequested = false
 
-  public init(simulator: any SimulatorClient) {
+  public init(simulator: any SimulatorClient, appBundle: any AppBundleClient) {
     self.simulator = simulator
+    self.appBundle = appBundle
   }
 
   public func onAppear() async {
@@ -261,5 +266,99 @@ public extension LauncherModel {
           self.pendingConfirmation == nil
     else { return }
     self.pendingConfirmation = DeviceConfirmation(action: action, deviceID: id, device: Self.label(for: device))
+  }
+}
+
+// MARK: - 앱 설치
+
+// `private(set)` 상태를 바꾸므로 같은 파일에 둔다.
+public extension LauncherModel {
+  /// 행의 "앱 설치…" 파일 패널에서 고른 항목을 설치하고 바로 실행한다 (꺼져 있으면 켠다).
+  func appFileSelected(_ url: URL, for id: VirtualDevice.ID) async {
+    await self.installApp([url], on: id)
+  }
+
+  /// 행에 끌어다 놓은 항목. 정확히 하나여야 하고, 둘 이상이면 이유를 알린다.
+  func appDropped(_ urls: [URL], on id: VirtualDevice.ID) async {
+    await self.installApp(urls, on: id)
+  }
+
+  /// 진행 중 기록은 여기서만 시작하고 끝낸다. 아래 두 단계의 어느 반환에서든 이 defer 하나가 진행 중을 푼다.
+  private func installApp(_ items: [URL], on id: VirtualDevice.ID) async {
+    guard case let .loaded(list) = self.listState,
+          let device = list.device(id: id),
+          self.activity.begin(.installApp, on: device)
+    else { return }
+    defer { self.activity.end(on: id) }
+    let label = Self.label(for: device)
+    guard let url = items.first else { return }
+    guard items.count == 1 else {
+      self.enqueue(.installFailed(label, .multipleItems))
+      return
+    }
+    guard let prepared = await self.prepareInstall(url, on: id, label: label) else { return }
+    await self.runInstall(prepared.info, on: prepared.device, label: label)
+  }
+
+  /// 검사하고, 검사가 끝난 시점의 목록으로 기기와 앱을 판정한다. 실패하면 알림을 쌓고 nil
+  /// (명령을 실행하지 않았으므로 다시 읽지 않는다).
+  private func prepareInstall(
+    _ url: URL,
+    on id: VirtualDevice.ID,
+    label: LauncherNotice.Device
+  ) async -> (info: AppBundleInfo, device: VirtualDevice)? {
+    let info: AppBundleInfo
+    do throws(AppBundleError) {
+      info = try await self.appBundle.inspect(url)
+    } catch {
+      self.enqueue(.installFailed(label, .bundle(error)))
+      return nil
+    }
+    // 검사하는 동안 새로 고침으로 목록이 바뀌었을 수 있다. 이 기기의 작업은 지금 이 설치라 진행 중은 보지 않는다.
+    guard case let .loaded(list) = self.listState, let device = list.device(id: id) else {
+      self.enqueue(.installFailed(label, .simulator(.deviceNotFound)))
+      return nil
+    }
+    if case let .blocked(reason) = device.appInstallAvailability {
+      self.enqueue(.installFailed(label, .deviceNotReady(reason)))
+      return nil
+    }
+    if let problem = info.installProblem(on: device.runtime, hostArchitecture: self.appBundle.hostArchitecture) {
+      self.enqueue(.installFailed(label, .rejected(problem)))
+      return nil
+    }
+    return (info, device)
+  }
+
+  /// 꺼져 있으면 켜고, Simulator 앱을 열고, 검사한 경로를 설치하고, 검사한 번들 ID 로 실행한 뒤 다시 읽는다.
+  private func runInstall(_ info: AppBundleInfo, on device: VirtualDevice, label: LauncherNotice.Device) async {
+    if device.state == .shutdown {
+      do throws(SimulatorError) {
+        try await self.simulator.boot(device.id)
+      } catch {
+        self.enqueue(.bootFailed(label, error))
+        await self.reload()
+        return
+      }
+    }
+    // 창을 닫아 두었어도 실행한 앱이 보이게 켜져 있던 기기도 연다. 열지 못해도 설치·실행은 창 없이 된다.
+    do throws(SimulatorError) {
+      try await self.simulator.openSimulatorApp()
+    } catch {
+      self.enqueue(.openAppFailed(label, error))
+    }
+    do throws(SimulatorError) {
+      try await self.simulator.install(info.location, on: device.id)
+    } catch {
+      self.enqueue(.installFailed(label, .simulator(error)))
+      await self.reload()
+      return
+    }
+    do throws(SimulatorError) {
+      try await self.simulator.launch(info.bundleID, on: device.id)
+    } catch {
+      self.enqueue(.launchFailed(label, error))
+    }
+    await self.reload()
   }
 }

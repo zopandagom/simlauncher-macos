@@ -1,3 +1,4 @@
+import AppBundleTesting
 import Core
 import SimulatorInterface
 import SimulatorTesting
@@ -54,7 +55,7 @@ struct LauncherDeleteEraseTests: LauncherModelTesting {
     model.eraseButtonTapped(VirtualDevice.ID("00000000-0000-0000-0000-0000000000FF"))
     #expect(model.pendingConfirmation == nil)
 
-    let before = LauncherModel(simulator: SimulatorClientFake(inventory: .sample))
+    let before = LauncherModel(simulator: SimulatorClientFake(inventory: .sample), appBundle: AppBundleClientFake())
     before.deleteButtonTapped(SampleID.iPhoneOff)
     #expect(before.pendingConfirmation == nil)
   }

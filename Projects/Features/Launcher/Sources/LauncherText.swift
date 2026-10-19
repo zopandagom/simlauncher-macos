@@ -8,53 +8,11 @@ enum LauncherText {
   // MARK: - 오류 본문
 
   /// 원인과 다음 할 일. 명령 원문은 보이지 않는다.
+  /// 분류마다 함수를 나눴다: 각 함수가 모든 케이스를 자기 것과 다른 분류로 나눠 적으므로 케이스가 늘면 컴파일러가
+  /// 모든 분류에서 잡고, 정확히 한 분류가 문구를 돌려준다 (`LauncherTextTests` 가 확인).
   static func message(for error: SimulatorError) -> String {
-    switch error {
-    case .developerToolsUnavailable:
-      String(
-        localized: "Xcode 를 찾지 못했거나 아직 준비되지 않았습니다. Xcode 를 설치하고 한 번 실행해 준비를 마친 뒤 다시 시도하세요.",
-        bundle: .module
-      )
-    case .deviceNotFound:
-      String(localized: "이 기기를 더 이상 찾을 수 없습니다. 목록을 새로 고친 뒤 다른 기기를 골라 주세요.", bundle: .module)
-    case .deviceNotShutdown:
-      String(
-        localized: "켜져 있거나 상태가 바뀌는 중인 기기는 삭제하거나 초기화할 수 없습니다. 기기를 끈 뒤 다시 시도하세요.",
-        bundle: .module
-      )
-    case .creationOptionUnavailable:
-      String(
-        localized: "고른 iOS 버전이나 기기 종류를 지금 사용할 수 없습니다. 목록을 새로 고친 뒤 다시 골라 주세요.",
-        bundle: .module
-      )
-    case .invalidDeviceName:
-      String(localized: "기기 이름은 1~100자로, 줄바꿈 같은 제어 문자 없이 입력하세요.", bundle: .module)
-    case .simulatorAppNotFound:
-      String(
-        localized: "이 Mac 의 Xcode 에서 Simulator 앱을 찾지 못했습니다. Xcode 를 최신 버전으로 업데이트하거나 다시 설치하세요.",
-        bundle: .module
-      )
-    case .unexpectedOutput:
-      String(
-        localized: "Xcode 가 알려 준 기기 정보를 읽지 못했습니다. Xcode 를 최신 버전으로 업데이트한 뒤 다시 시도하세요.",
-        bundle: .module
-      )
-    case .creationResultUnknown:
-      // simctl create 는 성공했지만 출력에서 UDID 를 읽지 못해 기기가 생겼을 수 있다.
-      // 다시 만들면 같은 이름 기기가 하나 더 생기므로 목록부터 확인하게 한다.
-      String(
-        localized: """
-        Xcode 가 알려 준 결과를 읽지 못해 기기가 만들어졌는지 확인하지 못했습니다. \
-        기기가 만들어졌을 수 있으니 목록을 확인한 뒤, 없을 때만 다시 만드세요.
-        """,
-        bundle: .module
-      )
-    case .commandFailed:
-      String(
-        localized: "Xcode 를 한 번 실행해 라이선스 동의와 준비를 마쳤는지 확인한 뒤 다시 시도하세요. 계속 실패하면 Mac 을 재시동한 뒤 다시 시도하세요.",
-        bundle: .module
-      )
-    }
+    self.setupMessage(for: error) ?? self.deviceMessage(for: error) ?? self.appCommandMessage(for: error)
+      ?? self.commandFailedMessage
   }
 
   // MARK: - 알림
@@ -85,6 +43,8 @@ enum LauncherText {
       String(localized: "“\(device.name)” (\(device.runtimeName)) 기기를 삭제하지 못했습니다", bundle: .module)
     case let .eraseFailed(device, _):
       String(localized: "“\(device.name)” (\(device.runtimeName)) 기기를 초기화하지 못했습니다", bundle: .module)
+    case let .installFailed(device, _), let .launchFailed(device, _):
+      self.appNoticeTitle(for: notice, device: device)
     }
   }
 
@@ -97,8 +57,11 @@ enum LauncherText {
          let .openAppFailed(_, error),
          let .createFailed(_, error),
          let .deleteFailed(_, error),
-         let .eraseFailed(_, error):
+         let .eraseFailed(_, error),
+         let .launchFailed(_, error):
       self.message(for: error)
+    case let .installFailed(_, failure):
+      self.message(for: failure)
     }
   }
 

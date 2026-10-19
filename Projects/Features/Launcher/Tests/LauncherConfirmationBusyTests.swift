@@ -35,24 +35,4 @@ struct LauncherConfirmationBusyTests: LauncherModelTesting {
     fake.resumeBoots()
     await boot.value
   }
-
-  /// 샘플 목록에서 기기 하나의 상태만 바꾼 목록.
-  private static func inventory(_ id: VirtualDevice.ID, state: VirtualDevice.State) -> DeviceInventory {
-    let sample = DeviceInventory.sample
-    return DeviceInventory(
-      devices: sample.devices.map { device in
-        guard device.id == id else { return device }
-        return VirtualDevice(
-          id: device.id,
-          name: device.name,
-          family: device.family,
-          state: state,
-          availability: device.availability,
-          runtime: device.runtime
-        )
-      },
-      runtimes: sample.runtimes,
-      deviceTypes: sample.deviceTypes
-    )
-  }
 }

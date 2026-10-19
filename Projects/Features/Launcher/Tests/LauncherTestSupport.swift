@@ -1,3 +1,4 @@
+import AppBundleTesting
 import Core
 import SimulatorInterface
 import SimulatorTesting
@@ -10,15 +11,46 @@ protocol LauncherModelTesting {}
 
 @MainActor
 extension LauncherModelTesting {
-  /// 샘플 목록 Fake 를 설정하고 첫 목록까지 읽은 Model.
+  /// 샘플 목록 Fake 를 설정하고 첫 목록까지 읽은 Model. 앱 번들 Fake 는 넘긴 것(기본: 샘플 앱)을 쓴다.
   static func loadedModel(
+    appBundle: AppBundleClientFake = AppBundleClientFake(),
     _ configure: (SimulatorClientFake) -> Void = { _ in }
   ) async -> (LauncherModel, SimulatorClientFake) {
     let fake = SimulatorClientFake(inventory: .sample)
     configure(fake)
-    let model = LauncherModel(simulator: fake)
+    let model = LauncherModel(simulator: fake, appBundle: appBundle)
     await model.onAppear()
     return (model, fake)
+  }
+
+  /// 샘플 목록에서 기기 하나의 상태만 바꾼 목록.
+  static func inventory(_ id: VirtualDevice.ID, state: VirtualDevice.State) -> DeviceInventory {
+    let sample = DeviceInventory.sample
+    return DeviceInventory(
+      devices: sample.devices.map { device in
+        guard device.id == id else { return device }
+        return VirtualDevice(
+          id: device.id,
+          name: device.name,
+          family: device.family,
+          state: state,
+          availability: device.availability,
+          runtime: device.runtime
+        )
+      },
+      runtimes: sample.runtimes,
+      deviceTypes: sample.deviceTypes
+    )
+  }
+
+  /// 샘플 목록에서 기기 하나를 뺀 목록.
+  static func inventory(removing id: VirtualDevice.ID) -> DeviceInventory {
+    let sample = DeviceInventory.sample
+    return DeviceInventory(
+      devices: sample.devices.filter { $0.id != id },
+      runtimes: sample.runtimes,
+      deviceTypes: sample.deviceTypes
+    )
   }
 
   /// 샘플 목록의 기기를 알림에 담을 값으로.
