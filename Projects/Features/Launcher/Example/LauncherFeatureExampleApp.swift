@@ -57,6 +57,18 @@ private func previewLauncher(
   previewLauncher { $0.setBootError(.commandFailed) }
 }
 
+/// 켜기 한 번으로 알림 두 개(켜기 실패 → 다시 읽기 실패)가 쌓인다.
+/// 첫 목록을 읽은 뒤 1초가 지나면 목록 읽기도 실패하게 바꾼다.
+#Preview("실패 알림 두 개 (1초 뒤 꺼진 기기의 켜기를 한 번 누른다)") {
+  previewLauncher { fake in
+    fake.setBootError(.commandFailed)
+    Task {
+      try? await Task.sleep(for: .seconds(1))
+      fake.setFetchError(.commandFailed)
+    }
+  }
+}
+
 #Preview("실패 알림 두 개 (2초 안에 켜기와 끄기를 누른다)") {
   previewLauncher {
     $0.setBootError(.commandFailed)
