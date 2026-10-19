@@ -53,6 +53,16 @@ private func previewLauncher(
   previewLauncher(.noDevices)
 }
 
+#Preview("만들 수 있는 기기 종류 없음") {
+  previewLauncher(.noCreatableDeviceType)
+}
+
+#Preview("기기는 있지만 만들 수 없음 (+ 에 마우스를 올린다)") {
+  previewLauncher(
+    DeviceInventory(devices: DeviceInventory.sample.devices, runtimes: DeviceInventory.sample.runtimes, deviceTypes: [])
+  )
+}
+
 #Preview("켜기 실패 (꺼진 기기의 켜기를 누른다)") {
   previewLauncher { $0.setBootError(.commandFailed) }
 }
@@ -75,4 +85,20 @@ private func previewLauncher(
     $0.setShutdownError(.deviceNotFound)
     $0.setDelay(.seconds(2))
   }
+}
+
+#Preview("만들기 실패 (+ → 만들기)") {
+  previewLauncher { $0.setCreateError(.creationOptionUnavailable) }
+}
+
+#Preview("만드는 중 (+ → 만들기, 끝나지 않음)") {
+  previewLauncher { $0.suspendCreates() }
+}
+
+#Preview("삭제 실패 (꺼진 기기의 … → 삭제…)") {
+  previewLauncher { $0.setDeleteError(.deviceNotShutdown) }
+}
+
+#Preview("초기화 실패 (꺼진 기기의 … → 초기화…)") {
+  previewLauncher { $0.setEraseError(.commandFailed) }
 }

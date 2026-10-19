@@ -17,6 +17,18 @@ enum LauncherText {
       )
     case .deviceNotFound:
       String(localized: "이 기기를 더 이상 찾을 수 없습니다. 목록을 새로 고친 뒤 다른 기기를 골라 주세요.", bundle: .module)
+    case .deviceNotShutdown:
+      String(
+        localized: "켜져 있거나 상태가 바뀌는 중인 기기는 삭제하거나 초기화할 수 없습니다. 기기를 끈 뒤 다시 시도하세요.",
+        bundle: .module
+      )
+    case .creationOptionUnavailable:
+      String(
+        localized: "고른 iOS 버전이나 기기 종류를 지금 사용할 수 없습니다. 목록을 새로 고친 뒤 다시 골라 주세요.",
+        bundle: .module
+      )
+    case .invalidDeviceName:
+      String(localized: "기기 이름은 1~100자로, 줄바꿈 같은 제어 문자 없이 입력하세요.", bundle: .module)
     case .simulatorAppNotFound:
       String(
         localized: "이 Mac 의 Xcode 에서 Simulator 앱을 찾지 못했습니다. Xcode 를 최신 버전으로 업데이트하거나 다시 설치하세요.",
@@ -54,6 +66,12 @@ enum LauncherText {
         localized: "“\(device.name)” (\(device.runtimeName)) 기기는 켜졌지만 Simulator 앱을 열지 못했습니다",
         bundle: .module
       )
+    case let .createFailed(device, _):
+      String(localized: "“\(device.name)” (\(device.runtimeName)) 기기를 만들지 못했습니다", bundle: .module)
+    case let .deleteFailed(device, _):
+      String(localized: "“\(device.name)” (\(device.runtimeName)) 기기를 삭제하지 못했습니다", bundle: .module)
+    case let .eraseFailed(device, _):
+      String(localized: "“\(device.name)” (\(device.runtimeName)) 기기를 초기화하지 못했습니다", bundle: .module)
     }
   }
 
@@ -63,13 +81,52 @@ enum LauncherText {
     case let .refreshFailed(error),
          let .bootFailed(_, error),
          let .shutdownFailed(_, error),
-         let .openAppFailed(_, error):
+         let .openAppFailed(_, error),
+         let .createFailed(_, error),
+         let .deleteFailed(_, error),
+         let .eraseFailed(_, error):
       self.message(for: error)
     }
   }
 
   static var okButton: String {
     String(localized: "확인", bundle: .module)
+  }
+
+  // MARK: - 삭제·초기화 확인
+
+  /// 확인 대화상자 제목. 확인할 것이 없으면 빈 문자열 (닫힌 대화상자가 읽는다).
+  static func confirmationTitle(for confirmation: DeviceConfirmation?) -> String {
+    guard let confirmation else { return "" }
+    let device = confirmation.device
+    return switch confirmation.action {
+    case .delete:
+      String(localized: "“\(device.name)” (\(device.runtimeName)) 기기를 삭제할까요?", bundle: .module)
+    case .erase:
+      String(localized: "“\(device.name)” (\(device.runtimeName)) 기기를 초기화할까요?", bundle: .module)
+    }
+  }
+
+  static func confirmationMessage(for action: DeviceConfirmation.Action) -> String {
+    switch action {
+    case .delete:
+      String(localized: "기기와 그 안의 앱·데이터가 모두 지워지며 되돌릴 수 없습니다.", bundle: .module)
+    case .erase:
+      String(localized: "기기에 설치한 앱과 데이터, 설정이 모두 지워지고 처음 상태로 돌아갑니다. 되돌릴 수 없습니다.", bundle: .module)
+    }
+  }
+
+  static func confirmButton(for action: DeviceConfirmation.Action) -> String {
+    switch action {
+    case .delete:
+      String(localized: "삭제", bundle: .module)
+    case .erase:
+      String(localized: "초기화", bundle: .module)
+    }
+  }
+
+  static var cancelButton: String {
+    String(localized: "취소", bundle: .module)
   }
 
   // MARK: - 기기 행
@@ -117,6 +174,84 @@ enum LauncherText {
     String(localized: "끄기", bundle: .module)
   }
 
+  static var deviceActionsMenu: String {
+    String(localized: "기기 작업", bundle: .module)
+  }
+
+  static var eraseMenuItem: String {
+    String(localized: "초기화…", bundle: .module)
+  }
+
+  static var deleteMenuItem: String {
+    String(localized: "삭제…", bundle: .module)
+  }
+
+  /// 기기 작업 메뉴 항목이 막힌 이유.
+  static func blockReason(_ reason: DeviceActionBlockReason) -> String {
+    switch reason {
+    case .notShutdown:
+      String(localized: "삭제·초기화는 기기를 끈 뒤에 할 수 있습니다", bundle: .module)
+    case .unavailable:
+      String(localized: "사용할 수 없는 기기는 초기화할 수 없고 삭제만 할 수 있습니다", bundle: .module)
+    }
+  }
+
+  // MARK: - 만들기
+
+  static var createDeviceButton: String {
+    String(localized: "기기 만들기", bundle: .module)
+  }
+
+  /// 만들 수 있는 기기 종류가 없을 때 툴바 + 버튼의 도움말 (`LauncherModel.isCreationUnavailable`).
+  /// 원인이 런타임과 Xcode 버전 불일치면 다른 iOS 를 설치하는 것도 해결책이다.
+  /// 3단계 런타임 설치 안내에서 문구를 함께 고친다.
+  static var createUnavailableHelp: String {
+    // 키가 한 줄 길이 제한을 넘어 줄 끝 `\` 로 이어 쓴다 (키는 한 줄이다).
+    String(
+      localized: """
+      지금 이 Mac 에서 만들 수 있는 iPhone·iPad 기기 종류가 없습니다. iOS 가 설치되어 있는지 확인하고, \
+      Xcode 를 최신 버전으로 업데이트하거나 한 번 실행해 준비를 마친 뒤 새로 고치세요.
+      """,
+      bundle: .module
+    )
+  }
+
+  static var creatingLabel: String {
+    String(localized: "기기를 만드는 중…", bundle: .module)
+  }
+
+  static var createSheetTitle: String {
+    String(localized: "새 기기 만들기", bundle: .module)
+  }
+
+  static var nameField: String {
+    String(localized: "이름", bundle: .module)
+  }
+
+  static var runtimePicker: String {
+    String(localized: "iOS 버전", bundle: .module)
+  }
+
+  static var deviceTypePicker: String {
+    String(localized: "기기 종류", bundle: .module)
+  }
+
+  static var createConfirmButton: String {
+    String(localized: "만들기", bundle: .module)
+  }
+
+  /// 이름 입력란 아래에 보이는 문제. 100 은 `DeviceName.maxLength` 와 맞춘 고정 문구다 (바꾸면 함께).
+  static func nameProblem(_ problem: DeviceNameProblem) -> String {
+    switch problem {
+    case .empty:
+      String(localized: "이름을 입력하세요.", bundle: .module)
+    case .tooLong:
+      String(localized: "이름은 100자까지 입력할 수 있습니다.", bundle: .module)
+    case .containsControlCharacter:
+      String(localized: "이름에 줄바꿈이나 탭은 쓸 수 없습니다.", bundle: .module)
+    }
+  }
+
   // MARK: - 목록 전체
 
   static var loading: String {
@@ -139,6 +274,8 @@ enum LauncherText {
     switch reason {
     case .noIOSRuntime:
       String(localized: "iOS 시뮬레이터가 설치되어 있지 않습니다", bundle: .module)
+    case .noCreatableDeviceType:
+      String(localized: "만들 수 있는 iPhone·iPad 기기 종류가 없습니다", bundle: .module)
     case .noDevices:
       String(localized: "표시할 iPhone·iPad 시뮬레이터가 없습니다", bundle: .module)
     }
@@ -149,9 +286,13 @@ enum LauncherText {
     case .noIOSRuntime:
       // 3단계(Xcode·런타임 설치 안내)에서 바꾼다.
       String(localized: "Xcode 를 처음 실행할 때 나오는 안내에서 iOS 를 설치한 뒤 새로 고치세요.", bundle: .module)
+    case .noCreatableDeviceType:
+      String(
+        localized: "설치된 iOS 버전으로 만들 수 있는 기기 종류를 찾지 못했습니다. Xcode 를 최신 버전으로 업데이트하거나 한 번 실행해 준비를 마친 뒤 새로 고치세요.",
+        bundle: .module
+      )
     case .noDevices:
-      // 기기 만들기(1-B)에서 바꾼다.
-      String(localized: "기기 만들기는 다음 업데이트에서 지원합니다.", bundle: .module)
+      String(localized: "오른쪽 위 + 버튼이나 아래 버튼으로 iPhone·iPad 기기를 만드세요.", bundle: .module)
     }
   }
 }
