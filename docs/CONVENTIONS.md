@@ -50,7 +50,7 @@
 | 네트워크는 사용자가 등록한 카탈로그와 사용자가 고르거나 입력한 빌드 URL 을 내려받을 때, 사용자가 고른 iOS 런타임을 Apple 서버에서 설치할 때(`xcodebuild -downloadPlatform`)만 쓴다. 카탈로그·빌드 다운로드는 Download Client Impl 에, 런타임 설치는 DevEnvironment Client Impl 에 둔다 | 그 밖의 서버로 데이터 전송, Feature·Core 에서 `URLSession` 직접 사용 | |
 | 내려받는 URL 은 HTTPS 만 허용하고, 압축을 풀 때 모든 항목이 대상 폴더 안에 있는지 확인한다 | `http://` 다운로드, 경로(`../`·절대 경로·심볼릭 링크)가 대상 폴더를 벗어나는 zip 풀기 | |
 | 특정 회사 인프라(서버 주소·인증 방식)를 코드에 넣지 않는다. 연결 정보는 사용자 설정으로 받는다 | 기본 카탈로그 URL·사내 주소 하드코딩 | |
-| `Process` 실행(`xcrun simctl`·`ditto` 등)은 Client Impl 에만 둔다 | Feature·Core 에서 `Process` 실행 | |
+| `Process` 생성·호출(명령 실행)은 Command Client Impl 에만 둔다. `xcrun simctl`·`ditto` 같은 명령의 인자 구성·결과 해석은 그 일을 맡은 Client Impl 이 하고, 실행은 주입받은 `CommandClient` 로 한다. Command Client 는 Client Impl 만 조합해 쓴다 | Feature·Core·다른 Client Impl 에서 `Process` 생성·호출, Feature 가 Command Client 에 의존 | `process_only_in_command_impl` (`Process(`·`Process.` 형태만 잡는다. `let p: Process = .init()` 같은 형태는 리뷰) |
 
 ## 5. Git / PR
 | ✅ | ❌ | 강제 |

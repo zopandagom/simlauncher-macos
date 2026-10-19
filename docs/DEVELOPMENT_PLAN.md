@@ -40,7 +40,7 @@
 | 6 | Developer ID 서명·공증 배포, 업데이트 알림 | 다른 Mac 에서 내려받아 Gatekeeper 경고 없이 실행된다. 새 버전이 있으면 알리고 다운로드 페이지를 연다 |
 | 이후 | 비공개 저장소 인증, 업데이트 자동 교체(서명·팀 ID 검증 필수), 설치된 앱 관리(`listapps`·`uninstall`), 테스트 조건 바꾸기(외관·언어·위치·푸시·권한), 앱 로그 보기, 영어 지원, **Android 에뮬레이터** | — |
 
-`simctl` 하위 명령은 모두 `Simulator` Client Impl 이 실행한다 (ARCHITECTURE §4). "단계 목표 확인" 열은 단계가 이룰 결과이고, 각 단계 작업을 시작할 때 명령으로 판정할 수용 확인(CONVENTIONS §6)과 사용자의 수동 확인(CONVENTIONS §5 "수동 확인" 행)으로 나눠 작업 범위에 적는다.
+`simctl` 하위 명령은 모두 `Simulator` Client Impl 이 `Command` Client 로 실행한다 (ARCHITECTURE §4). "단계 목표 확인" 열은 단계가 이룰 결과이고, 각 단계 작업을 시작할 때 명령으로 판정할 수용 확인(CONVENTIONS §6)과 사용자의 수동 확인(CONVENTIONS §5 "수동 확인" 행)으로 나눠 작업 범위에 적는다.
 
 업데이트는 외부 의존성(Sparkle 등) 없이 구현한다 (ARCHITECTURE §4). 사용자는 Homebrew Cask 로도 업데이트할 수 있다.
 

@@ -82,3 +82,11 @@ custom_rules:
     message: "Model 상태는 private(set) 입니다. Binding(get:set:) 으로 이벤트 메서드를 호출하세요."
     severity: error
 
+  process_only_in_command_impl:
+    name: "Process 생성·호출은 Command Client Impl 에서만"
+    included: "Projects/"
+    excluded: "Projects/Clients/Command/Impl/"
+    regex: "\\b(Process|NSTask)\\s*[(.]"
+    match_kinds: [identifier, typeidentifier]
+    message: "Process(NSTask) 생성·호출은 Command Client Impl 에만 둡니다. Feature·Core·다른 Client Impl 에서는 하지 않고, 명령이 필요한 Client Impl 은 CommandClient 를 주입받아 실행하세요."
+    severity: error

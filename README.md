@@ -14,7 +14,7 @@ iPhone·iPad 가 없는 인원이 Mac 만으로 개발 중인 iOS 앱을 테스�
 ## 기술 스택
 - SwiftUI (규칙 기반 단방향 MV), Swift 6 strict concurrency, macOS 26.0+
 - Tuist 모듈러 아키텍처 (Feature / Client Interface·Impl·Testing / Shared)
-- Foundation `Process` 로 `xcrun simctl` 등 실행 (Client Impl)
+- Foundation `Process` 로 `xcrun simctl` 등 실행 (Command Client Impl)
 - Foundation `URLSession` 으로 카탈로그·빌드 다운로드 (Download Client Impl)
 - 필요 환경: Xcode 와 iOS 시뮬레이터 런타임 (이 앱을 쓰는 Mac 에도 필요)
 
