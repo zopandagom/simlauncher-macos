@@ -22,8 +22,10 @@ public struct Client: Hashable, Sendable {
 
 // 새 Client 는 이 extension 에 static 상수로 추가한다.
 public extension Client {
-  /// iOS 시뮬레이터 기기·런타임 목록과 켜기·끄기, Simulator 앱 열기 (`xcrun simctl`).
+  /// iOS 시뮬레이터 기기·런타임 목록, 켜기·끄기·만들기·삭제·초기화, 앱 설치·실행, Simulator 앱 열기 (`xcrun simctl`).
   static let simulator = Client("Simulator")
+  /// 로컬 iOS 앱 번들(.app) 검사 (2-B 에서 zip 풀기를 더한다).
+  static let appBundle = Client("AppBundle")
 }
 
 /// 화면 단위 기능 모듈. Feature 끼리는 서로 의존하지 않는다.
