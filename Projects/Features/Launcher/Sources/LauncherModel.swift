@@ -31,7 +31,7 @@ public final class LauncherModel {
     return !self.creationOptions.isEmpty && !self.isCreating && self.createDraft == nil
   }
 
-  /// 목록을 읽었지만 만들 수 있는 기기 종류가 없어 + 버튼을 쓸 수 없다 (툴바 + 의 이유 표시용).
+  /// 목록을 읽었지만 만들 수 있는 기기 종류가 없어 + 버튼을 쓸 수 없다 (목록 위 안내 줄로 이유를 보인다).
   /// 만드는 중·시트 열림·읽는 중은 다른 표시가 이유를 보이므로 여기 들지 않는다.
   public var isCreationUnavailable: Bool {
     guard case .loaded = self.listState else { return false }

@@ -194,7 +194,7 @@ enum LauncherTextCatalog {
         LauncherText.cancelButton, LauncherText.deviceActionsMenu, LauncherText.eraseMenuItem,
         LauncherText.deleteMenuItem, LauncherText.createDeviceButton, LauncherText.creatingLabel,
         LauncherText.createSheetTitle, LauncherText.nameField, LauncherText.runtimePicker,
-        LauncherText.deviceTypePicker, LauncherText.createConfirmButton, LauncherText.createUnavailableHelp,
+        LauncherText.deviceTypePicker, LauncherText.createConfirmButton, LauncherText.createUnavailableNotice,
       ]
   }
 }

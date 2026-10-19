@@ -57,7 +57,7 @@ private func previewLauncher(
   previewLauncher(.noCreatableDeviceType)
 }
 
-#Preview("기기는 있지만 만들 수 없음 (+ 에 마우스를 올린다)") {
+#Preview("기기는 있지만 만들 수 없음") {
   previewLauncher(
     DeviceInventory(devices: DeviceInventory.sample.devices, runtimes: DeviceInventory.sample.runtimes, deviceTypes: [])
   )
