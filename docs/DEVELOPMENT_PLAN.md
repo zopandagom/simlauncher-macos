@@ -32,7 +32,7 @@
 | 단계 | 목표 | 단계 목표 확인 |
 |---|---|---|
 | 0 | 하네스 확인과 첫 화면 (`Home` → `Launcher`) | `/verify` PASS, 앱이 실행되어 첫 화면이 보인다 |
-| 1 | 기기 목록·부팅·종료·생성·삭제 (`Core` 값 타입, `Simulator` Client. Impl 은 Xcode 경로 provider 를 주입받고, 이 단계에서 App 은 `nil` 을 넘겨 `xcode-select` 기본값으로 실행) | 기기가 OS 별로 보이고, 부팅하면 Simulator 창이 뜬다. `simctl` JSON 해석 테스트 |
+| 1 | 기기 목록·부팅·종료·생성·삭제·초기화 (`Core` 값 타입, `Simulator` Client. Impl 은 Xcode 경로 provider 를 주입받고, 이 단계에서 App 은 `nil` 을 넘겨 `xcode-select` 기본값으로 실행) | 기기가 OS 별로 보이고, 부팅하면 Simulator 창이 뜬다. `simctl` JSON 해석 테스트 |
 | 2 | 로컬 .app 설치·실행, 딥링크 (`AppBundle` Client 는 번들 검사·압축 해제만, 설치·실행·딥링크는 `Simulator` Client 에 추가) | 시뮬레이터용 .app 은 설치·실행되고, .ipa·기기용·아키텍처가 맞지 않는 빌드는 이유와 함께 거절된다 |
 | 3 | 환경 확인과 런타임 설치 (`DevEnvironment` Client 는 Xcode 확인·선택·런타임 설치이고, `DevEnvironment` Client 가 고른 Xcode 경로를 App 이 `Simulator` Client 의 provider 로 연결한다. 런타임 목록은 `Simulator` Client 가 제공. `Setup` Feature) | Xcode·런타임이 없는 Mac 에서 할 일이 화면에 나오고, 런타임은 앱에서 설치된다 |
 | 4 | 직접 URL 설치, 카탈로그 URL 설정·목록 (`Download` Client), 카탈로그 규격 문서와 예시 GitHub Actions | URL 이나 카탈로그 항목을 고르면 다운로드 → 압축 해제 → 설치 → 실행까지 이어진다. 네트워크 오류·잘못된 파일 처리 |
