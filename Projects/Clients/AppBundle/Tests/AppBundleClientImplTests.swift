@@ -1,4 +1,5 @@
 import AppBundleInterface
+import CommandTesting
 import Core
 import Foundation
 import Testing
@@ -6,7 +7,7 @@ import Testing
 
 /// 임시 폴더에 번들을 만들어 검사한다. 테스트마다 폴더를 지운다.
 struct AppBundleClientImplTests {
-  private let client = AppBundleClientImpl(hostArchitecture: .arm64)
+  private let client = AppBundleClientImpl(hostArchitecture: .arm64, command: CommandClientFake.unused)
 
   @Test("정상 .app 의 정보를 읽고 location 은 표준화한 실제 경로다")
   func readsValidApp() async throws {
@@ -166,8 +167,9 @@ struct AppBundleClientImplTests {
 
   @Test("hostArchitecture 는 주입한 값이고, 기본 init 은 이 Mac 의 값을 쓴다")
   func hostArchitecture() {
-    #expect(AppBundleClientImpl(hostArchitecture: .x86_64).hostArchitecture == .x86_64)
-    #expect(AppBundleClientImpl().hostArchitecture == HostArchitecture.current())
+    #expect(AppBundleClientImpl(hostArchitecture: .x86_64, command: CommandClientFake.unused)
+      .hostArchitecture == .x86_64)
+    #expect(AppBundleClientImpl(command: CommandClientFake.unused).hostArchitecture == HostArchitecture.current())
   }
 
   /// 끝의 `/` 를 뺀 경로 (디렉터리 표시 여부와 상관없이 비교한다).
