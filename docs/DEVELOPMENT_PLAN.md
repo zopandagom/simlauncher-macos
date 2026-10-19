@@ -14,7 +14,7 @@
 |---|---|---|
 | 사용 환경 | Xcode·시뮬레이터 런타임 확인, 없으면 안내. iOS 런타임은 앱에서 설치 | `xcode-select -p`, `simctl runtime list`, `xcodebuild -downloadPlatform iOS`. 선택된 개발자 디렉터리가 Command Line Tools 이면 `/Applications` 의 Xcode 를 찾아 `DEVELOPER_DIR` 를 지정해 실행한다 (사용자에게 `xcode-select -s` 를 시키지 않는다). 이렇게 고른 Xcode 를 `simctl`·`xcodebuild` 가 함께 쓴다 (ARCHITECTURE §4). Xcode 는 App Store 페이지를 열고, 라이선스 동의·첫 실행 준비는 단계별 안내 |
 | 시뮬레이터 | 기기 목록, 부팅·종료, 생성·삭제·초기화, Simulator 앱 띄우기 | `simctl list -j`, `boot`/`shutdown`, `create`/`delete`/`erase`, 개발자 디렉터리의 Simulator 앱(Xcode 27.1 은 DeviceHub)을 `open` |
-| 앱 설치 | 로컬 .app(또는 .app 을 담은 zip)을 골라 설치. 드래그 앤 드롭 | `simctl install <기기> <.app>`. `Info.plist` 의 지원 플랫폼으로 시뮬레이터용인지 검사, .ipa·기기용 빌드는 이유와 함께 거절 |
+| 앱 설치 | 로컬 .app(또는 .app 을 담은 zip)을 골라 설치. 드래그 앤 드롭 | `simctl install <기기> <.app>`. `AppBundle` Client 가 `Info.plist`(XML·바이너리)의 지원 플랫폼·`MinimumOSVersion` 과 실행 파일 Mach-O 헤더의 아키텍처를 읽고, Core 규칙이 대상 기기와 대조해 .ipa·Mac 앱·기기용·아키텍처·iOS 버전이 맞지 않는 빌드를 이유와 함께 거절. 꺼진 기기는 켜고, Simulator 앱을 열어(켜진 기기도) 설치하고 바로 실행 |
 | 앱 설치 | URL 의 .app(zip) 을 내려받아 설치 ("직접 설치") | `URLSession` 다운로드(진행률·취소), `ditto -x -k` 로 압축 해제 |
 | 빌드 카탈로그 | 설정에서 카탈로그 URL 을 등록하고, 앱·버전 목록에서 골라 설치 | 정적 `catalog.json` 하나 (규격은 아래). 서버 없이 GitHub Releases·S3·사내 웹 서버 어디든 둘 수 있다 |
 | 앱 실행 | 설치한 앱 실행, 딥링크 열기 | `Info.plist` 의 번들 ID 로 `simctl launch`, `simctl openurl <기기> <url>` |
@@ -74,6 +74,6 @@
 | 사용하는 Mac 에 Xcode·iOS 시뮬레이터 런타임이 없으면 동작하지 않음 (비개발자는 설치가 낯설다) | 첫 실행에 환경을 확인한다. iOS 런타임은 앱에서 설치하고, Xcode 설치·라이선스 동의·첫 실행 준비는 화면에서 단계별로 안내 |
 | 기기용 빌드(.ipa)는 시뮬레이터에 설치되지 않음 | 시뮬레이터용(`-sdk iphonesimulator`) .app 만 받는다고 화면에 알리고, 맞지 않는 파일은 이유와 함께 거절. 테스트할 iOS 앱 CI 에서 시뮬레이터 빌드를 올리는 작업이 따로 필요해, 예시 GitHub Actions 와 카탈로그 규격을 제공한다 |
 | `xcrun simctl` 실행에는 App Sandbox 밖 동작이 필요해 Mac App Store 배포가 어려움 | Developer ID 서명·공증 배포 (ARCHITECTURE §4) |
-| Apple Silicon Mac 에서는 arm64 slice 가 없는 시뮬레이터 빌드가 실행되지 않을 수 있음 | 설치 전에 실행 파일 아키텍처를 검사해 이유를 보여 준다 (2단계) |
+| Apple 실리콘 Mac 에서는 arm64 slice 가 없는 시뮬레이터 빌드가 설치되지 않음 (`simctl install` 이 거절, Xcode 27.1·iOS 27.0 에서 확인) | 설치 전에 실행 파일 아키텍처를 검사해 이유를 보여 준다 (2단계) |
 | 공개 레포라 외부 PR 이 워크플로를 돌리거나 Releases 의 빌드가 누구에게나 공개됨 | PR 트리거는 `pull_request` 만 쓰고 `pull_request_target` 은 쓰지 않는다(fork PR 은 시크릿 없음), 외부 기여자 워크플로는 승인 후 실행. Releases 에 올리는 iOS 앱 빌드는 샘플 앱만 (회사 앱 빌드는 각자 비공개 저장소에) |
 | 입력받은 URL·zip 이 신뢰할 수 없는 내용일 수 있음 | HTTPS 만 허용, 압축 해제 경로가 대상 폴더를 벗어나지 않는지 검사 (CONVENTIONS §4) |
