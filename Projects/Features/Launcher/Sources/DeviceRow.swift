@@ -1,15 +1,22 @@
 import Core
+import Foundation
 import SwiftUI
 
-/// 기기 한 줄: 종류 아이콘, 이름, 상태, 켜기·끄기 버튼, 기기 작업 메뉴(… 버튼과 컨텍스트 메뉴: 초기화·삭제).
+/// 기기 한 줄: 종류 아이콘, 이름, 상태, 앱 설치 버튼(파일 패널)과 드롭, 켜기·끄기 버튼,
+/// 기기 작업 메뉴(… 버튼과 컨텍스트 메뉴: 초기화·삭제).
 /// 쓸 수 없는 기기는 흐리게 그리고 이유를 보인다. 막힌 메뉴 항목은 비활성으로 두고 이유를 메뉴 맨 위에 보인다.
 struct DeviceRow: View {
   let device: VirtualDevice
-  let isBusy: Bool
+  /// 이 기기에서 진행 중인 작업. nil 이면 없다.
+  let task: DeviceTask?
+  let installTapped: () -> Void
+  let appDropped: ([URL]) -> Void
   let bootTapped: () -> Void
   let shutdownTapped: () -> Void
   let eraseTapped: () -> Void
   let deleteTapped: () -> Void
+  /// 끌어다 놓는 항목이 이 줄 위에 있고 설치할 수 있다 (줄을 강조한다).
+  @State private var isDropTargeted = false
 
   var body: some View {
     HStack(spacing: 12) {
@@ -29,6 +36,9 @@ struct DeviceRow: View {
         }
       }
       Spacer()
+      Button(LauncherText.installAppButton, action: self.installTapped)
+        .disabled(!self.canInstall)
+        .help(self.installBlockReason ?? LauncherText.installAppHelp)
       self.action
       Menu {
         self.menuItems
@@ -44,6 +54,14 @@ struct DeviceRow: View {
     }
     .padding(.vertical, 4)
     .foregroundStyle(self.isAvailable ? .primary : .secondary)
+    .listRowBackground(self.isDropTargeted ? Color.accentColor.opacity(0.15) : nil)
+    .dropDestination(for: URL.self) { urls, _ in
+      guard self.canInstall else { return false }
+      self.appDropped(urls)
+      return true
+    } isTargeted: { isTargeted in
+      self.isDropTargeted = isTargeted && self.canInstall
+    }
     .contextMenu {
       if !self.isBusy {
         self.menuItems
@@ -86,12 +104,30 @@ struct DeviceRow: View {
     }
   }
 
+  private var isBusy: Bool {
+    self.task != nil
+  }
+
+  /// 앱 설치 버튼·드롭을 받을 수 있다: 진행 중인 작업이 없고 설치할 수 있는 기기다.
+  private var canInstall: Bool {
+    !self.isBusy && self.device.appInstallAvailability == .allowed
+  }
+
+  /// 앱 설치 버튼 툴팁에 보일 막힌 이유. 진행 중이면 행의 진행 표시가 이유라 따로 보이지 않는다.
+  private var installBlockReason: String? {
+    guard case let .blocked(reason) = self.device.appInstallAvailability else { return nil }
+    return LauncherText.installBlockReason(reason)
+  }
+
   private var isAvailable: Bool {
     self.device.availability == .available
   }
 
   private var statusText: String {
-    self.isAvailable ? LauncherText.stateLabel(for: self.device.state) : LauncherText.unavailableLabel
+    if self.task == .installApp {
+      return LauncherText.installingLabel
+    }
+    return self.isAvailable ? LauncherText.stateLabel(for: self.device.state) : LauncherText.unavailableLabel
   }
 
   private var iconName: String {

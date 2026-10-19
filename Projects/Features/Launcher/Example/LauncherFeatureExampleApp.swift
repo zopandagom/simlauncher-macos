@@ -1,10 +1,12 @@
+import AppBundleTesting
 import Core
 import LauncherFeature
 import SimulatorTesting
 import SwiftUI
 
 /// App 없이 Launcher 화면만 띄우는 데모 앱. Preview 도 여기에 둔다.
-/// 실제 시뮬레이터 대신 Testing 모듈의 `SimulatorClientFake`(샘플 목록, 호출마다 1초 지연)를 주입한다.
+/// 실제 시뮬레이터 대신 Testing 모듈의 `SimulatorClientFake`(샘플 목록, 호출마다 1초 지연)와
+/// `AppBundleClientFake`(어떤 파일을 골라도 샘플 앱, 1초 지연)를 주입한다.
 @main
 struct LauncherFeatureExampleApp: App {
   @State private var model = Self.makeModel()
@@ -18,7 +20,9 @@ struct LauncherFeatureExampleApp: App {
   private static func makeModel() -> LauncherModel {
     let fake = SimulatorClientFake(inventory: .sample)
     fake.setDelay(.seconds(1))
-    return LauncherModel(simulator: fake)
+    let appBundle = AppBundleClientFake()
+    appBundle.setDelay(.seconds(1))
+    return LauncherModel(simulator: fake, appBundle: appBundle)
   }
 }
 
@@ -26,11 +30,14 @@ struct LauncherFeatureExampleApp: App {
 @MainActor
 private func previewLauncher(
   _ inventory: DeviceInventory = .sample,
-  configure: (SimulatorClientFake) -> Void = { _ in }
+  configure: (SimulatorClientFake) -> Void = { _ in },
+  appBundle configureAppBundle: (AppBundleClientFake) -> Void = { _ in }
 ) -> LauncherView {
   let fake = SimulatorClientFake(inventory: inventory)
   configure(fake)
-  return LauncherView(model: LauncherModel(simulator: fake))
+  let appBundle = AppBundleClientFake()
+  configureAppBundle(appBundle)
+  return LauncherView(model: LauncherModel(simulator: fake, appBundle: appBundle))
 }
 
 #Preview("목록") {
@@ -101,4 +108,24 @@ private func previewLauncher(
 
 #Preview("초기화 실패 (꺼진 기기의 … → 초기화…)") {
   previewLauncher { $0.setEraseError(.commandFailed) }
+}
+
+#Preview("앱 설치 (꺼진 기기의 앱 설치…)") {
+  previewLauncher { $0.setDelay(.seconds(1)) }
+}
+
+#Preview("설치 중 (앱 설치…, 끝나지 않음)") {
+  previewLauncher { $0.suspendInstalls() }
+}
+
+#Preview("거절: 기기용 빌드 (앱 설치…)") {
+  previewLauncher(appBundle: { $0.setInfo(.deviceBuild) })
+}
+
+#Preview("거절: 높은 iOS 필요 (앱 설치…)") {
+  previewLauncher(appBundle: { $0.setInfo(.requiring(OSVersion(major: 99))) })
+}
+
+#Preview("실행 실패 (앱 설치…)") {
+  previewLauncher { $0.setLaunchError(.appLaunchFailed) }
 }
