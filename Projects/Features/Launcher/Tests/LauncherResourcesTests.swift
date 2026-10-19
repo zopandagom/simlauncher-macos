@@ -78,6 +78,23 @@ struct LauncherTextTests {
     )
   }
 
+  @Test("만들기의 결과를 읽지 못한 실패만 목록을 확인하라고 안내하고, 다른 실패는 원인 문구를 그대로 쓴다")
+  func createUnexpectedOutputAsksToCheckList() {
+    let device = LauncherNotice.Device(name: "iPhone 17", runtimeName: "iOS 26.0")
+    let message = LauncherText.message(for: .createFailed(device, .unexpectedOutput))
+    #expect(message.contains("목록을 확인한 뒤, 없을 때만 다시 만드세요"))
+    #expect(message != LauncherText.message(for: .unexpectedOutput))
+    #expect(
+      LauncherText.message(for: .createFailed(device, .commandFailed)) == LauncherText.message(for: .commandFailed)
+    )
+    for notice: LauncherNotice in [
+      .refreshFailed(.unexpectedOutput), .bootFailed(device, .unexpectedOutput),
+      .deleteFailed(device, .unexpectedOutput), .eraseFailed(device, .unexpectedOutput),
+    ] {
+      #expect(LauncherText.message(for: notice) == LauncherText.message(for: .unexpectedOutput))
+    }
+  }
+
   @Test("삭제·초기화 확인 제목에 기기 이름과 런타임 이름이 들어간다")
   func confirmationTitlesContainDeviceName() {
     let device = LauncherNotice.Device(name: "iPhone 17", runtimeName: "iOS 26.0")
@@ -162,6 +179,7 @@ enum LauncherTextCatalog {
     self.errors.map { LauncherText.message(for: $0) }
       + [LauncherText.title(for: self.notices[0])]
       + self.notices.map { LauncherText.message(for: $0) }
+      + [LauncherText.message(for: .createFailed(self.sampleDevice, .unexpectedOutput))]
       + self.reasons.map { LauncherText.reason(for: $0) }
       + self.states.map { LauncherText.stateLabel(for: $0) }
       + self.emptyReasons.map { LauncherText.emptyTitle(for: $0) }

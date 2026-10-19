@@ -78,6 +78,16 @@ enum LauncherText {
   /// 알림 본문: 알림에 담긴 실패의 원인과 다음 할 일.
   static func message(for notice: LauncherNotice) -> String {
     switch notice {
+    case .createFailed(_, .unexpectedOutput):
+      // simctl create 는 성공했지만 출력에서 UDID 를 읽지 못한 경우라 기기가 생겼을 수 있다.
+      // 다시 만들면 같은 이름 기기가 하나 더 생기므로 목록부터 확인하게 한다.
+      String(
+        localized: """
+        Xcode 가 알려 준 결과를 읽지 못해 기기가 만들어졌는지 확인하지 못했습니다. \
+        기기가 만들어졌을 수 있으니 목록을 확인한 뒤, 없을 때만 다시 만드세요.
+        """,
+        bundle: .module
+      )
     case let .refreshFailed(error),
          let .bootFailed(_, error),
          let .shutdownFailed(_, error),
