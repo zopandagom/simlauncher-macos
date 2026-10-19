@@ -12,6 +12,6 @@ public protocol SimulatorClient: Sendable {
   /// 기기를 끈다. 이미 꺼졌거나 끄는 중이면 성공으로 본다.
   func shutdown(_ id: VirtualDevice.ID) async throws(SimulatorError)
 
-  /// simctl 과 같은 개발자 디렉터리의 Simulator 앱(Xcode 27 은 DeviceHub)을 연다.
+  /// simctl 과 같은 개발자 디렉터리의 Simulator 앱(Xcode 27.1 은 DeviceHub)을 연다.
   func openSimulatorApp() async throws(SimulatorError)
 }

@@ -13,7 +13,7 @@
 | 영역 | 기능 | 기술 메모 |
 |---|---|---|
 | 사용 환경 | Xcode·시뮬레이터 런타임 확인, 없으면 안내. iOS 런타임은 앱에서 설치 | `xcode-select -p`, `simctl runtime list`, `xcodebuild -downloadPlatform iOS`. 선택된 개발자 디렉터리가 Command Line Tools 이면 `/Applications` 의 Xcode 를 찾아 `DEVELOPER_DIR` 를 지정해 실행한다 (사용자에게 `xcode-select -s` 를 시키지 않는다). 이렇게 고른 Xcode 를 `simctl`·`xcodebuild` 가 함께 쓴다 (ARCHITECTURE §4). Xcode 는 App Store 페이지를 열고, 라이선스 동의·첫 실행 준비는 단계별 안내 |
-| 시뮬레이터 | 기기 목록, 부팅·종료, 생성·삭제·초기화, Simulator 앱 띄우기 | `simctl list -j`, `boot`/`shutdown`, `create`/`delete`/`erase`, 개발자 디렉터리의 Simulator 앱(Xcode 27 은 DeviceHub)을 `open` |
+| 시뮬레이터 | 기기 목록, 부팅·종료, 생성·삭제·초기화, Simulator 앱 띄우기 | `simctl list -j`, `boot`/`shutdown`, `create`/`delete`/`erase`, 개발자 디렉터리의 Simulator 앱(Xcode 27.1 은 DeviceHub)을 `open` |
 | 앱 설치 | 로컬 .app(또는 .app 을 담은 zip)을 골라 설치. 드래그 앤 드롭 | `simctl install <기기> <.app>`. `Info.plist` 의 지원 플랫폼으로 시뮬레이터용인지 검사, .ipa·기기용 빌드는 이유와 함께 거절 |
 | 앱 설치 | URL 의 .app(zip) 을 내려받아 설치 ("직접 설치") | `URLSession` 다운로드(진행률·취소), `ditto -x -k` 로 압축 해제 |
 | 빌드 카탈로그 | 설정에서 카탈로그 URL 을 등록하고, 앱·버전 목록에서 골라 설치 | 정적 `catalog.json` 하나 (규격은 아래). 서버 없이 GitHub Releases·S3·사내 웹 서버 어디든 둘 수 있다 |
