@@ -1,3 +1,4 @@
+import CommandInterface
 import Core
 import Foundation
 import SimulatorInterface
@@ -9,30 +10,32 @@ public typealias DeveloperDirectoryProvider = @Sendable () async -> URL?
 /// provider 는 공개 메서드 한 번에 한 번만 부르고, 그 호출 안의 사전 확인·재조회·앱 열기도 같은 디렉터리를 쓴다.
 public struct SimulatorClientImpl: SimulatorClient {
   private let developerDirectory: DeveloperDirectoryProvider?
-  private let runner: any CommandRunner
+  private let command: any CommandClient
   private let fileExists: @Sendable (URL) -> Bool
   private let baseEnvironment: [String: String]
 
-  /// - Parameter developerDirectory: 쓸 개발자 디렉터리. nil 이거나 nil 을 돌려주면
-  ///   물려받은 `DEVELOPER_DIR` 를 지우고 `xcode-select` 기본값을 쓴다.
-  public init(developerDirectory: DeveloperDirectoryProvider?) {
+  /// - Parameters:
+  ///   - developerDirectory: 쓸 개발자 디렉터리. nil 이거나 nil 을 돌려주면
+  ///     물려받은 `DEVELOPER_DIR` 를 지우고 `xcode-select` 기본값을 쓴다.
+  ///   - command: 명령 실행. App 이 `CommandClientImpl` 을 넘긴다.
+  public init(developerDirectory: DeveloperDirectoryProvider?, command: any CommandClient) {
     self.init(
       developerDirectory: developerDirectory,
-      runner: ProcessCommandRunner(),
+      command: command,
       fileExists: { FileManager.default.fileExists(atPath: $0.path(percentEncoded: false)) },
       baseEnvironment: ProcessInfo.processInfo.environment
     )
   }
 
-  /// 테스트용: 명령 실행·파일 확인·기본 환경을 바꾼다.
+  /// 테스트용: 파일 확인·기본 환경도 바꾼다.
   init(
     developerDirectory: DeveloperDirectoryProvider?,
-    runner: any CommandRunner,
+    command: any CommandClient,
     fileExists: @escaping @Sendable (URL) -> Bool,
     baseEnvironment: [String: String]
   ) {
     self.developerDirectory = developerDirectory
-    self.runner = runner
+    self.command = command
     self.fileExists = fileExists
     self.baseEnvironment = baseEnvironment
   }
@@ -248,7 +251,7 @@ public struct SimulatorClientImpl: SimulatorClient {
   ) async throws(SimulatorError) -> CommandResult {
     let environment = SimctlCommand.environment(base: self.baseEnvironment, developerDirectory: developerDirectory)
     do {
-      return try await self.runner.run(executable, arguments, environment: environment)
+      return try await self.command.run(executable, arguments, environment: environment)
     } catch {
       throw launchFailure
     }

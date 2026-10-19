@@ -7,6 +7,7 @@ let project = Project.app(
   ],
   dependencies: [
     .feature(.launcher),
+    .client(impl: .command),
     .client(impl: .simulator),
     .client(impl: .appBundle),
     .shared(.core),

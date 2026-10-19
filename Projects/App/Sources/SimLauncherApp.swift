@@ -1,4 +1,5 @@
 import AppBundleImpl
+import CommandImpl
 import LauncherFeature
 import SimulatorImpl
 import SwiftUI
@@ -8,7 +9,7 @@ import SwiftUI
 struct SimLauncherApp: App {
   // 개발자 디렉터리는 xcode-select 가 고른 것을 쓴다 (provider nil). 3단계에서 DevEnvironment 의 provider 로 바꾼다.
   @State private var launcherModel = LauncherModel(
-    simulator: SimulatorClientImpl(developerDirectory: nil),
+    simulator: SimulatorClientImpl(developerDirectory: nil, command: CommandClientImpl()),
     appBundle: AppBundleClientImpl()
   )
 

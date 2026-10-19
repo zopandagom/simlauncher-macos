@@ -1,3 +1,5 @@
+import CommandInterface
+import CommandTesting
 import Core
 import Foundation
 import SimulatorInterface
@@ -36,16 +38,16 @@ struct SimulatorClientImplMutationTests {
 
   @Test("create 는 목록을 읽은 뒤 -- 뒤에 정리한 이름을 넘기고 UDID 를 돌려준다")
   func createSuccess() async throws {
-    let runner = try Self.runner(command: .success(Data("\(Self.createdUDID)\n".utf8)))
+    let command = try Self.command(returning: .success(Data("\(Self.createdUDID)\n".utf8)))
 
-    let id = try await Self.client(runner).create(
+    let id = try await Self.client(command).create(
       name: "  테스트 iPhone \n",
       deviceType: Self.iPhone17,
       runtime: Self.iOS27
     )
 
     #expect(id == VirtualDevice.ID(Self.createdUDID))
-    #expect(runner.invocations.map(\.arguments) == [
+    #expect(command.invocations.map(\.arguments) == [
       Self.list,
       ["simctl", "create", "--", "테스트 iPhone", Self.iPhone17.rawValue, Self.iOS27.rawValue],
     ])
@@ -53,11 +55,11 @@ struct SimulatorClientImplMutationTests {
 
   @Test("옵션처럼 보이는 이름도 -- 뒤에 그대로 넘긴다")
   func createDashName() async throws {
-    let runner = try Self.runner(command: .success(Data("\(Self.createdUDID)\n".utf8)))
+    let command = try Self.command(returning: .success(Data("\(Self.createdUDID)\n".utf8)))
 
-    _ = try await Self.client(runner).create(name: "-h", deviceType: Self.iPhone17, runtime: Self.iOS27)
+    _ = try await Self.client(command).create(name: "-h", deviceType: Self.iPhone17, runtime: Self.iOS27)
 
-    #expect(runner.invocations.last?.arguments == [
+    #expect(command.invocations.last?.arguments == [
       "simctl", "create", "--", "-h", Self.iPhone17.rawValue, Self.iOS27.rawValue,
     ])
   }
@@ -67,14 +69,14 @@ struct SimulatorClientImplMutationTests {
     arguments: ["", "  ", "a\nb", String(repeating: "a", count: 101)]
   )
   func createInvalidName(name: String) async throws {
-    let runner = try Self.runner(command: .success())
+    let command = try Self.command(returning: .success())
     let counter = ProviderCounter(returning: Self.developer)
-    let client = Self.client(runner, provider: counter)
+    let client = Self.client(command, provider: counter)
 
     await #expect(throws: SimulatorError.invalidDeviceName) {
       try await client.create(name: name, deviceType: Self.iPhone17, runtime: Self.iOS27)
     }
-    #expect(runner.invocations.isEmpty)
+    #expect(command.invocations.isEmpty)
     #expect(counter.calls == 0)
   }
 
@@ -88,67 +90,67 @@ struct SimulatorClientImplMutationTests {
     ]
   )
   func createUnavailableOption(runtime: DeviceRuntime.ID, deviceType: DeviceType.ID) async throws {
-    let runner = try Self.runner(command: .success())
+    let command = try Self.command(returning: .success())
 
     await #expect(throws: SimulatorError.creationOptionUnavailable) {
-      try await Self.client(runner).create(name: "A", deviceType: deviceType, runtime: runtime)
+      try await Self.client(command).create(name: "A", deviceType: deviceType, runtime: runtime)
     }
-    #expect(runner.invocations.map(\.arguments) == [Self.list])
+    #expect(command.invocations.map(\.arguments) == [Self.list])
   }
 
   @Test("create 가 147 Incompatible device 로 실패하면 creationOptionUnavailable 이고 재조회하지 않는다")
   func createIncompatible() async throws {
-    let runner = try Self.runner(command: .failure(147, Self.incompatible))
+    let command = try Self.command(returning: .failure(147, Self.incompatible))
 
     await #expect(throws: SimulatorError.creationOptionUnavailable) {
-      try await Self.client(runner).create(name: "A", deviceType: Self.iPhone17, runtime: Self.iOS27)
+      try await Self.client(command).create(name: "A", deviceType: Self.iPhone17, runtime: Self.iOS27)
     }
-    #expect(runner.invocations.count == 2)
+    #expect(command.invocations.count == 2)
   }
 
   @Test("create 가 성공했지만 stdout 이 UDID 가 아니면 creationResultUnknown", arguments: ["", "garbage\n"])
   func createResultUnknown(stdout: String) async throws {
-    let runner = try Self.runner(command: .success(Data(stdout.utf8)))
+    let command = try Self.command(returning: .success(Data(stdout.utf8)))
 
     await #expect(throws: SimulatorError.creationResultUnknown) {
-      try await Self.client(runner).create(name: "A", deviceType: Self.iPhone17, runtime: Self.iOS27)
+      try await Self.client(command).create(name: "A", deviceType: Self.iPhone17, runtime: Self.iOS27)
     }
   }
 
   @Test("사전 목록의 JSON 을 해석하지 못하면 unexpectedOutput 이고 create 는 실행하지 않는다")
   func createListBrokenJSON() async {
-    let runner = StubCommandRunner { _ in .success(Data("oops".utf8)) }
+    let command = CommandClientFake { _ in .success(Data("oops".utf8)) }
 
     await #expect(throws: SimulatorError.unexpectedOutput) {
-      try await Self.client(runner).create(name: "A", deviceType: Self.iPhone17, runtime: Self.iOS27)
+      try await Self.client(command).create(name: "A", deviceType: Self.iPhone17, runtime: Self.iOS27)
     }
-    #expect(runner.invocations.map(\.arguments) == [Self.list])
+    #expect(command.invocations.map(\.arguments) == [Self.list])
   }
 
   @Test("목록 읽기가 실패하면 분류한 에러이고 create 는 실행하지 않는다")
   func createListFailure() async {
-    let runner = StubCommandRunner { _ in .failure(72, "xcrun: error: unable to find utility \"simctl\"") }
+    let command = CommandClientFake { _ in .failure(72, "xcrun: error: unable to find utility \"simctl\"") }
 
     await #expect(throws: SimulatorError.developerToolsUnavailable) {
-      try await Self.client(runner).create(name: "A", deviceType: Self.iPhone17, runtime: Self.iOS27)
+      try await Self.client(command).create(name: "A", deviceType: Self.iPhone17, runtime: Self.iOS27)
     }
-    #expect(runner.invocations.map(\.arguments) == [Self.list])
+    #expect(command.invocations.map(\.arguments) == [Self.list])
   }
 
   @Test("create 는 provider 를 한 번 부르고 목록·실행이 같은 DEVELOPER_DIR 를 쓴다")
   func createUsesOneDirectory() async throws {
-    let runner = try Self.runner(command: .success(Data("\(Self.createdUDID)\n".utf8)))
+    let command = try Self.command(returning: .success(Data("\(Self.createdUDID)\n".utf8)))
     let counter = ProviderCounter(returning: Self.developer)
 
-    _ = try await Self.client(runner, provider: counter).create(
+    _ = try await Self.client(command, provider: counter).create(
       name: "A",
       deviceType: Self.iPhone17,
       runtime: Self.iOS27
     )
 
     #expect(counter.calls == 1)
-    #expect(runner.invocations.count == 2)
-    #expect(runner.invocations.allSatisfy { $0.environment == ["DEVELOPER_DIR": "/X/Xcode.app/Contents/Developer/"] })
+    #expect(command.invocations.count == 2)
+    #expect(command.invocations.allSatisfy { $0.environment == ["DEVELOPER_DIR": "/X/Xcode.app/Contents/Developer/"] })
   }
 
   // MARK: - delete·erase
@@ -159,47 +161,47 @@ struct SimulatorClientImplMutationTests {
     ["-h", "all", "unavailable", ""]
   )
   func invalidUDID(mutation: Mutation, raw: String) async throws {
-    let runner = try Self.runner(command: .success())
+    let command = try Self.command(returning: .success())
     let counter = ProviderCounter(returning: Self.developer)
 
     await #expect(throws: SimulatorError.deviceNotFound) {
-      try await Self.perform(mutation, VirtualDevice.ID(raw), on: Self.client(runner, provider: counter))
+      try await Self.perform(mutation, VirtualDevice.ID(raw), on: Self.client(command, provider: counter))
     }
-    #expect(runner.invocations.isEmpty)
+    #expect(command.invocations.isEmpty)
     #expect(counter.calls == 0)
   }
 
   @Test("꺼진 기기는 목록을 읽은 뒤 대문자 UDID 로 실행하고, provider 는 한 번이다", arguments: Mutation.allCases)
   func shutdownDevice(mutation: Mutation) async throws {
-    let runner = try Self.runner(command: .success())
+    let command = try Self.command(returning: .success())
     let counter = ProviderCounter(returning: Self.developer)
 
     try await Self.perform(
       mutation,
       VirtualDevice.ID("00000000-0000-0000-0000-000000000002"),
-      on: Self.client(runner, provider: counter)
+      on: Self.client(command, provider: counter)
     )
 
-    #expect(runner.invocations.map(\.arguments) == [
+    #expect(command.invocations.map(\.arguments) == [
       Self.list,
       ["simctl", mutation.rawValue, "00000000-0000-0000-0000-000000000002"],
     ])
     #expect(counter.calls == 1)
-    #expect(runner.invocations.allSatisfy { $0.environment == ["DEVELOPER_DIR": "/X/Xcode.app/Contents/Developer/"] })
+    #expect(command.invocations.allSatisfy { $0.environment == ["DEVELOPER_DIR": "/X/Xcode.app/Contents/Developer/"] })
   }
 
   @Test("목록에 없는 기기는 목록만 읽고 deviceNotFound", arguments: Mutation.allCases)
   func missingDevice(mutation: Mutation) async throws {
-    let runner = try Self.runner(command: .success())
+    let command = try Self.command(returning: .success())
 
     await #expect(throws: SimulatorError.deviceNotFound) {
       try await Self.perform(
         mutation,
         VirtualDevice.ID("00000000-0000-4000-8000-0000000000FF"),
-        on: Self.client(runner)
+        on: Self.client(command)
       )
     }
-    #expect(runner.invocations.map(\.arguments) == [Self.list])
+    #expect(command.invocations.map(\.arguments) == [Self.list])
   }
 
   @Test(
@@ -212,12 +214,12 @@ struct SimulatorClientImplMutationTests {
     ]
   )
   func notShutdown(mutation: Mutation, udid: String) async throws {
-    let runner = try Self.runner(command: .success())
+    let command = try Self.command(returning: .success())
 
     await #expect(throws: SimulatorError.deviceNotShutdown) {
-      try await Self.perform(mutation, VirtualDevice.ID(udid), on: Self.client(runner))
+      try await Self.perform(mutation, VirtualDevice.ID(udid), on: Self.client(command))
     }
-    #expect(runner.invocations.map(\.arguments) == [Self.list])
+    #expect(command.invocations.map(\.arguments) == [Self.list])
   }
 
   @Test(
@@ -238,16 +240,16 @@ struct SimulatorClientImplMutationTests {
     ]
   )
   func commandFailure(mutation: Mutation, failure: Failure) async throws {
-    let runner = try Self.runner(command: .failure(failure.exitCode, failure.stderr))
+    let command = try Self.command(returning: .failure(failure.exitCode, failure.stderr))
 
     await #expect(throws: failure.expected) {
       try await Self.perform(
         mutation,
         VirtualDevice.ID("00000000-0000-0000-0000-000000000002"),
-        on: Self.client(runner)
+        on: Self.client(command)
       )
     }
-    #expect(runner.invocations.count == 2)
+    #expect(command.invocations.count == 2)
   }
 
   @Test(
@@ -255,27 +257,27 @@ struct SimulatorClientImplMutationTests {
     arguments: ["00000000-0000-0000-0000-000000000005", "00000000-0000-0000-0000-000000000009"]
   )
   func deleteUnavailableShutdown(udid: String) async throws {
-    let runner = try Self.runner(command: .success())
+    let command = try Self.command(returning: .success())
 
-    try await Self.client(runner).delete(VirtualDevice.ID(udid))
+    try await Self.client(command).delete(VirtualDevice.ID(udid))
 
-    #expect(runner.invocations.map(\.arguments) == [Self.list, ["simctl", "delete", udid]])
+    #expect(command.invocations.map(\.arguments) == [Self.list, ["simctl", "delete", udid]])
   }
 
   // MARK: - 도움 함수
 
-  /// `list` 는 픽스처, 그 밖의 명령은 `command` 결과를 돌려준다.
-  private static func runner(command: CommandResult) throws -> StubCommandRunner {
+  /// `list` 는 픽스처, 그 밖의 명령은 `result` 를 돌려준다.
+  private static func command(returning result: CommandResult) throws -> CommandClientFake {
     let fixture = try Fixture.data("simctl-list")
-    return StubCommandRunner { invocation in
-      invocation.arguments == Self.list ? .success(fixture) : command
+    return CommandClientFake { invocation in
+      invocation.arguments == Self.list ? .success(fixture) : result
     }
   }
 
-  private static func client(_ runner: StubCommandRunner, provider: ProviderCounter? = nil) -> SimulatorClientImpl {
+  private static func client(_ command: CommandClientFake, provider: ProviderCounter? = nil) -> SimulatorClientImpl {
     SimulatorClientImpl(
       developerDirectory: provider.map { counter in { @Sendable in counter.provide() } },
-      runner: runner,
+      command: command,
       fileExists: { _ in false },
       baseEnvironment: [:]
     )
