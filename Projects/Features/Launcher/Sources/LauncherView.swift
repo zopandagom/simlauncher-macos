@@ -37,7 +37,8 @@ public struct LauncherView: View {
             Label(LauncherText.createDeviceButton, systemImage: "plus")
           }
           .disabled(!self.model.canCreateDevice)
-          // 비활성 툴바 버튼에는 툴팁이 잘 뜨지 않아 보조로만 둔다. 이유는 목록 위 안내 줄이 글자로 보인다.
+          // 비활성 툴바 버튼에는 툴팁이 잘 뜨지 않아 보조로만 둔다. 이유는 글자로 보인다
+          // (기기가 있으면 목록 위 안내 줄, 없으면 빈 화면 안내).
           .help(
             self.model.isCreationUnavailable ? LauncherText.createUnavailableNotice : LauncherText.createDeviceButton
           )
