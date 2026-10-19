@@ -39,6 +39,16 @@ enum LauncherText {
         localized: "Xcode 가 알려 준 기기 정보를 읽지 못했습니다. Xcode 를 최신 버전으로 업데이트한 뒤 다시 시도하세요.",
         bundle: .module
       )
+    case .creationResultUnknown:
+      // simctl create 는 성공했지만 출력에서 UDID 를 읽지 못해 기기가 생겼을 수 있다.
+      // 다시 만들면 같은 이름 기기가 하나 더 생기므로 목록부터 확인하게 한다.
+      String(
+        localized: """
+        Xcode 가 알려 준 결과를 읽지 못해 기기가 만들어졌는지 확인하지 못했습니다. \
+        기기가 만들어졌을 수 있으니 목록을 확인한 뒤, 없을 때만 다시 만드세요.
+        """,
+        bundle: .module
+      )
     case .commandFailed:
       String(
         localized: "Xcode 를 한 번 실행해 라이선스 동의와 준비를 마쳤는지 확인한 뒤 다시 시도하세요. 계속 실패하면 Mac 을 재시동한 뒤 다시 시도하세요.",
@@ -66,6 +76,9 @@ enum LauncherText {
         localized: "“\(device.name)” (\(device.runtimeName)) 기기는 켜졌지만 Simulator 앱을 열지 못했습니다",
         bundle: .module
       )
+    case let .createFailed(device, .creationResultUnknown):
+      // 만들기는 성공했지만 결과를 읽지 못한 경우라 실패로 단정하지 않는다 (본문이 목록 확인을 안내한다).
+      String(localized: "“\(device.name)” (\(device.runtimeName)) 기기를 만들었는지 확인하지 못했습니다", bundle: .module)
     case let .createFailed(device, _):
       String(localized: "“\(device.name)” (\(device.runtimeName)) 기기를 만들지 못했습니다", bundle: .module)
     case let .deleteFailed(device, _):
@@ -78,16 +91,6 @@ enum LauncherText {
   /// 알림 본문: 알림에 담긴 실패의 원인과 다음 할 일.
   static func message(for notice: LauncherNotice) -> String {
     switch notice {
-    case .createFailed(_, .unexpectedOutput):
-      // simctl create 는 성공했지만 출력에서 UDID 를 읽지 못한 경우라 기기가 생겼을 수 있다.
-      // 다시 만들면 같은 이름 기기가 하나 더 생기므로 목록부터 확인하게 한다.
-      String(
-        localized: """
-        Xcode 가 알려 준 결과를 읽지 못해 기기가 만들어졌는지 확인하지 못했습니다. \
-        기기가 만들어졌을 수 있으니 목록을 확인한 뒤, 없을 때만 다시 만드세요.
-        """,
-        bundle: .module
-      )
     case let .refreshFailed(error),
          let .bootFailed(_, error),
          let .shutdownFailed(_, error),

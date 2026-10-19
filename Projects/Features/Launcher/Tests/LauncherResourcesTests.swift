@@ -78,20 +78,20 @@ struct LauncherTextTests {
     )
   }
 
-  @Test("만들기의 결과를 읽지 못한 실패만 목록을 확인하라고 안내하고, 다른 실패는 원인 문구를 그대로 쓴다")
-  func createUnexpectedOutputAsksToCheckList() {
+  @Test("결과를 알 수 없는 만들기 실패만 제목에서 단정하지 않고 목록을 확인하라고 안내하며, 다른 실패는 일반 문구다")
+  func creationResultUnknownAsksToCheckList() {
     let device = LauncherNotice.Device(name: "iPhone 17", runtimeName: "iOS 26.0")
-    let message = LauncherText.message(for: .createFailed(device, .unexpectedOutput))
-    #expect(message.contains("목록을 확인한 뒤, 없을 때만 다시 만드세요"))
-    #expect(message != LauncherText.message(for: .unexpectedOutput))
-    #expect(
-      LauncherText.message(for: .createFailed(device, .commandFailed)) == LauncherText.message(for: .commandFailed)
-    )
-    for notice: LauncherNotice in [
-      .refreshFailed(.unexpectedOutput), .bootFailed(device, .unexpectedOutput),
-      .deleteFailed(device, .unexpectedOutput), .eraseFailed(device, .unexpectedOutput),
-    ] {
-      #expect(LauncherText.message(for: notice) == LauncherText.message(for: .unexpectedOutput))
+    let unknown = LauncherNotice.createFailed(device, .creationResultUnknown)
+    #expect(LauncherText.title(for: unknown) == "“iPhone 17” (iOS 26.0) 기기를 만들었는지 확인하지 못했습니다")
+    #expect(LauncherText.message(for: unknown).contains("목록을 확인한 뒤, 없을 때만 다시 만드세요"))
+    #expect(LauncherText.message(for: unknown) == LauncherText.message(for: .creationResultUnknown))
+    // 사전 목록 해석 실패(.unexpectedOutput)는 기기를 만들지 않았으므로 일반 제목·본문이다.
+    let errors: [SimulatorError] = [.unexpectedOutput, .commandFailed, .creationOptionUnavailable, .invalidDeviceName]
+    for error in errors {
+      let notice = LauncherNotice.createFailed(device, error)
+      #expect(LauncherText.title(for: notice) == "“iPhone 17” (iOS 26.0) 기기를 만들지 못했습니다")
+      #expect(LauncherText.message(for: notice) == LauncherText.message(for: error))
+      #expect(!LauncherText.message(for: notice).contains("없을 때만 다시 만드세요"))
     }
   }
 
@@ -114,7 +114,7 @@ struct LauncherTextTests {
 enum LauncherTextCatalog {
   static let errors: [SimulatorError] = [
     .developerToolsUnavailable, .deviceNotFound, .deviceNotShutdown, .creationOptionUnavailable, .invalidDeviceName,
-    .simulatorAppNotFound, .unexpectedOutput, .commandFailed,
+    .creationResultUnknown, .simulatorAppNotFound, .unexpectedOutput, .commandFailed,
   ]
 
   static let sampleDevice = LauncherNotice.Device(name: "iPhone 17", runtimeName: "iOS 26.0")
@@ -124,7 +124,7 @@ enum LauncherTextCatalog {
     .refreshFailed(.commandFailed), .bootFailed(sampleDevice, .commandFailed),
     .shutdownFailed(sampleDevice, .commandFailed), .openAppFailed(sampleDevice, .commandFailed),
     .createFailed(sampleDevice, .commandFailed), .deleteFailed(sampleDevice, .commandFailed),
-    .eraseFailed(sampleDevice, .commandFailed),
+    .eraseFailed(sampleDevice, .commandFailed), .createFailed(sampleDevice, .creationResultUnknown),
   ]
 
   /// 기기 이름이 들어가는 제목의 카탈로그 키. 순서는 `notices.dropFirst()` 와 같다.
@@ -135,6 +135,7 @@ enum LauncherTextCatalog {
     "“%@” (%@) 기기를 만들지 못했습니다",
     "“%@” (%@) 기기를 삭제하지 못했습니다",
     "“%@” (%@) 기기를 초기화하지 못했습니다",
+    "“%@” (%@) 기기를 만들었는지 확인하지 못했습니다",
   ]
 
   /// `sampleDevice` 를 넣은 기기 작업 실패 제목.
@@ -179,7 +180,6 @@ enum LauncherTextCatalog {
     self.errors.map { LauncherText.message(for: $0) }
       + [LauncherText.title(for: self.notices[0])]
       + self.notices.map { LauncherText.message(for: $0) }
-      + [LauncherText.message(for: .createFailed(self.sampleDevice, .unexpectedOutput))]
       + self.reasons.map { LauncherText.reason(for: $0) }
       + self.states.map { LauncherText.stateLabel(for: $0) }
       + self.emptyReasons.map { LauncherText.emptyTitle(for: $0) }

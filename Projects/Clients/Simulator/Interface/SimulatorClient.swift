@@ -1,9 +1,9 @@
 import Core
 
-/// iOS 시뮬레이터 기기·런타임을 읽고, 켜고 끄고, 만들고 지우고 초기화하는 Client.
+/// iOS 시뮬레이터 기기·런타임·기기 종류를 읽고, 켜고 끄고, 만들고 지우고 초기화하는 Client.
 /// Impl 은 `xcrun simctl` 과 같은 개발자 디렉터리를 쓴다.
 public protocol SimulatorClient: Sendable {
-  /// 모든 플랫폼의 기기·런타임 목록 (`simctl list -j` 한 번). 화면용 필터는 `DeviceList` 가 한다.
+  /// 모든 플랫폼의 기기·런타임·기기 종류 목록 (`simctl list -j` 한 번). 화면용 필터는 `DeviceList` 가 한다.
   func fetchInventory() async throws(SimulatorError) -> DeviceInventory
 
   /// 기기를 켠다. 이미 켜졌거나 켜는 중이면 성공으로 본다.
@@ -15,6 +15,7 @@ public protocol SimulatorClient: Sendable {
   /// 새 기기를 만들고 그 UDID 를 돌려준다. 이름은 `DeviceName.normalized` 값으로 만든다.
   /// 이름에 `DeviceName.problem` 이 있으면 `.invalidDeviceName`, 조합이 `DeviceCreationOptions`(실행 직전에 다시 읽은 목록)에
   /// 없으면 `.creationOptionUnavailable`. 같은 이름의 기기가 있어도 만든다.
+  /// 만든 뒤 출력에서 UDID 를 읽지 못하면 `.creationResultUnknown` (기기가 생겼을 수 있다).
   func create(
     name: String,
     deviceType: DeviceType.ID,

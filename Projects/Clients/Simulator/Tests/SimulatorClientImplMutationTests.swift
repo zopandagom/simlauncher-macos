@@ -106,13 +106,23 @@ struct SimulatorClientImplMutationTests {
     #expect(runner.invocations.count == 2)
   }
 
-  @Test("create 가 성공했지만 stdout 이 UDID 가 아니면 unexpectedOutput", arguments: ["", "garbage\n"])
-  func createUnexpectedOutput(stdout: String) async throws {
+  @Test("create 가 성공했지만 stdout 이 UDID 가 아니면 creationResultUnknown", arguments: ["", "garbage\n"])
+  func createResultUnknown(stdout: String) async throws {
     let runner = try Self.runner(command: .success(Data(stdout.utf8)))
+
+    await #expect(throws: SimulatorError.creationResultUnknown) {
+      try await Self.client(runner).create(name: "A", deviceType: Self.iPhone17, runtime: Self.iOS27)
+    }
+  }
+
+  @Test("사전 목록의 JSON 을 해석하지 못하면 unexpectedOutput 이고 create 는 실행하지 않는다")
+  func createListBrokenJSON() async {
+    let runner = StubCommandRunner { _ in .success(Data("oops".utf8)) }
 
     await #expect(throws: SimulatorError.unexpectedOutput) {
       try await Self.client(runner).create(name: "A", deviceType: Self.iPhone17, runtime: Self.iOS27)
     }
+    #expect(runner.invocations.map(\.arguments) == [Self.list])
   }
 
   @Test("목록 읽기가 실패하면 분류한 에러이고 create 는 실행하지 않는다")

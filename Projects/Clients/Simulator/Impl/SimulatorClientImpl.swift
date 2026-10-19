@@ -83,7 +83,7 @@ public struct SimulatorClientImpl: SimulatorClient {
     }
     // 해석하지 못해도 기기는 생겼을 수 있다. 호출한 쪽이 목록을 다시 읽어 보인다.
     guard let udid = SimctlCommand.createdUDID(fromStdout: result.stdout) else {
-      throw .unexpectedOutput
+      throw .creationResultUnknown
     }
     return VirtualDevice.ID(udid)
   }

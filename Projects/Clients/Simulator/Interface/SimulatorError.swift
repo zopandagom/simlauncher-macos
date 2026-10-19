@@ -13,8 +13,11 @@ public enum SimulatorError: Error, Hashable, Sendable {
   case invalidDeviceName
   /// 개발자 디렉터리에서 Simulator 앱을 찾지 못했다.
   case simulatorAppNotFound
-  /// simctl 출력(JSON)을 해석하지 못했다.
+  /// `simctl list -j` 출력(JSON)을 해석하지 못했다 (목록 읽기, 또는 생성·삭제·초기화 전의 목록 확인).
+  /// 생성·삭제·초기화 명령은 실행하지 않았다.
   case unexpectedOutput
+  /// `simctl create` 는 성공(exit 0)했지만 출력에서 새 기기 UDID 를 읽지 못했다. 기기가 만들어졌을 수 있다. `create` 만 던진다.
+  case creationResultUnknown
   /// 그 밖의 실패.
   case commandFailed
 }
