@@ -18,6 +18,21 @@ public enum SimulatorError: Error, Hashable, Sendable {
   case unexpectedOutput
   /// `simctl create` 는 성공(exit 0)했지만 출력에서 새 기기 UDID 를 읽지 못했다. 기기가 만들어졌을 수 있다. `create` 만 던진다.
   case creationResultUnknown
-  /// 그 밖의 실패.
+  /// 기기가 켜져 있지 않아 앱을 설치·실행하지 못했다: SimError 405 "Unable to lookup in current state" (install·launch).
+  case deviceNotBooted
+  /// 설치할 .app 이 그 경로에 없다: 파일 URL 이 아니어서 실행하지 않았거나 NSPOSIXErrorDomain 2 (install).
+  case appNotFound
+  /// 번들 ID 를 읽지 못했거나 폴더가 아니다: IXErrorDomain 13·42 (install).
+  case appInvalid
+  /// 이 기기에서 실행할 수 없는 빌드: 실행 파일의 플랫폼·아키텍처가 맞지 않거나 기기 종류(iPhone·iPad)를 지원하지 않는다.
+  /// IXUserPresentableErrorDomain 4·6 (install).
+  case appIncompatible
+  /// 기기 iOS 가 앱의 MinimumOSVersion 보다 낮다: IXUserPresentableErrorDomain 16 (install).
+  case appRequiresNewerOS
+  /// 그 번들 ID 의 앱이 기기에 없다: FBSOpenApplicationServiceErrorDomain 4, 또는 1 + `reason: NotFound` (launch).
+  case appNotInstalled
+  /// 실행을 요청했지만 프로세스가 시작되지 않았다: NSPOSIXErrorDomain 3, 그 밖의 FBSOpenApplicationServiceErrorDomain (launch).
+  case appLaunchFailed
+  /// 그 밖의 실패. 설치·실행에서는 위에 없는 domain·code (예: IXUserPresentableErrorDomain 1 실행 파일 없음).
   case commandFailed
 }
