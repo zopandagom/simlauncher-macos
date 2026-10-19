@@ -215,7 +215,8 @@ enum LauncherText {
     String(localized: "기기 만들기", bundle: .module)
   }
 
-  /// 기기는 있지만 만들 수 있는 종류가 없을 때 목록 위 안내 줄과 툴바 + 버튼 도움말 (`LauncherModel.isCreationUnavailable`).
+  /// 만들 수 있는 기기 종류가 없을 때 툴바 + 버튼 도움말. 기기가 있으면 목록 위 안내 줄에도 쓴다
+  /// (`LauncherModel.isCreationUnavailable`).
   /// 원인이 런타임과 Xcode 버전 불일치면 다른 iOS 를 설치하는 것도 해결책이다.
   /// 3단계 런타임 설치 안내에서 문구를 함께 고친다.
   static var createUnavailableNotice: String {
