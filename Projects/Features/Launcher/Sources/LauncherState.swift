@@ -60,3 +60,30 @@ public struct DeviceConfirmation: Hashable, Sendable {
     self.device = device
   }
 }
+
+/// 확인 대화상자의 작업 규칙. Model 가드가 쓴다.
+extension DeviceConfirmation.Action {
+  var task: DeviceTask {
+    switch self {
+    case .delete: .delete
+    case .erase: .erase
+    }
+  }
+
+  func availability(for device: VirtualDevice) -> DeviceActionAvailability {
+    switch self {
+    case .delete: device.deleteAvailability
+    case .erase: device.eraseAvailability
+    }
+  }
+}
+
+extension DeviceConfirmation {
+  /// 이 확인의 작업이 실패했다는 알림.
+  func failedNotice(_ error: SimulatorError) -> LauncherNotice {
+    switch self.action {
+    case .delete: .deleteFailed(self.device, error)
+    case .erase: .eraseFailed(self.device, error)
+    }
+  }
+}

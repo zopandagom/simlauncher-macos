@@ -10,10 +10,10 @@ public final class LauncherModel {
   public private(set) var listState: LauncherListState = .loading
   /// 목록을 읽는 중이다 (첫 로딩 포함).
   public private(set) var isRefreshing = false
-  /// 켜기·끄기·삭제·초기화가 진행 중인 기기. 같은 기기의 작업은 겹치지 않는다.
-  public private(set) var busyDeviceIDs: Set<VirtualDevice.ID> = []
-  /// 닫지 않은 알림. 쌓인 순서이고, 화면은 첫 항목을 보인다.
-  public private(set) var notices: [LauncherNoticeItem] = []
+  /// 기기별 진행 작업(켜기·끄기·삭제·초기화). 같은 기기의 작업은 겹치지 않는다.
+  public private(set) var activity = DeviceActivity()
+  /// 닫지 않은 알림 줄.
+  public private(set) var noticeQueue = LauncherNotices()
   /// 마지막으로 읽은 목록의 생성 선택지. 다시 읽기가 실패하면 이전 값을 유지한다.
   public private(set) var creationOptions = DeviceCreationOptions(
     inventory: DeviceInventory(devices: [], runtimes: [], deviceTypes: [])
@@ -39,12 +39,21 @@ public final class LauncherModel {
     return self.creationOptions.isEmpty
   }
 
+  /// 작업이 진행 중인 기기. `activity` 에서 계산하는 읽기 API 다.
+  public var busyDeviceIDs: Set<VirtualDevice.ID> {
+    self.activity.busyDeviceIDs
+  }
+
+  /// 닫지 않은 알림. 쌓인 순서이고, 화면은 첫 항목을 보인다. `noticeQueue` 에서 계산하는 읽기 API 다.
+  public var notices: [LauncherNoticeItem] {
+    self.noticeQueue.items
+  }
+
   @ObservationIgnored private let simulator: any SimulatorClient
   /// 진행 중인 목록 읽기. Model 이 소유해 View 의 `.task` 가 취소돼도 끝까지 돈다.
   @ObservationIgnored private var loadTask: Task<Void, Never>?
   /// 읽는 동안 들어온 요청. 진행 중인 읽기가 끝나면 한 번 더 읽는다.
   @ObservationIgnored private var reloadRequested = false
-  @ObservationIgnored private var nextNoticeID = 0
 
   public init(simulator: any SimulatorClient) {
     self.simulator = simulator
@@ -62,13 +71,10 @@ public final class LauncherModel {
   public func bootButtonTapped(_ id: VirtualDevice.ID) async {
     guard case let .loaded(list) = self.listState,
           let device = list.device(id: id),
-          device.availability == .available,
-          device.state == .shutdown,
-          !self.busyDeviceIDs.contains(id)
+          self.activity.begin(.boot, on: device)
     else { return }
+    defer { self.activity.end(on: id) }
     let label = Self.label(for: device)
-    self.busyDeviceIDs.insert(id)
-    defer { self.busyDeviceIDs.remove(id) }
     do throws(SimulatorError) {
       try await self.simulator.boot(id)
     } catch {
@@ -88,12 +94,10 @@ public final class LauncherModel {
   public func shutdownButtonTapped(_ id: VirtualDevice.ID) async {
     guard case let .loaded(list) = self.listState,
           let device = list.device(id: id),
-          device.state == .booted,
-          !self.busyDeviceIDs.contains(id)
+          self.activity.begin(.shutdown, on: device)
     else { return }
+    defer { self.activity.end(on: id) }
     let label = Self.label(for: device)
-    self.busyDeviceIDs.insert(id)
-    defer { self.busyDeviceIDs.remove(id) }
     do throws(SimulatorError) {
       try await self.simulator.shutdown(id)
     } catch {
@@ -154,16 +158,12 @@ public final class LauncherModel {
 
   /// id 가 같은 알림만 지운다. 이미 닫았거나 없으면 아무것도 하지 않아, 두 번 불려도 다음 알림을 지우지 않는다.
   public func noticeDismissed(_ id: LauncherNoticeItem.ID) {
-    self.notices.removeAll { $0.id == id }
+    self.noticeQueue.dismiss(id)
   }
 
   /// 기기 작업 실패는 늘 쌓는다. 새로 고침 실패는 같은 원인이 이미 줄에 있으면 쌓지 않는다.
   private func enqueue(_ notice: LauncherNotice) {
-    if case .refreshFailed = notice, self.notices.contains(where: { $0.notice == notice }) {
-      return
-    }
-    self.notices.append(LauncherNoticeItem(id: self.nextNoticeID, notice: notice))
-    self.nextNoticeID += 1
+    self.noticeQueue.enqueue(notice)
   }
 
   private static func label(for device: VirtualDevice) -> LauncherNotice.Device {
@@ -232,29 +232,24 @@ public extension LauncherModel {
     }
     guard case let .loaded(list) = self.listState else { return }
     guard let device = list.device(id: confirmation.deviceID) else {
-      self.enqueue(Self.failed(confirmation, .deviceNotFound))
+      self.enqueue(confirmation.failedNotice(.deviceNotFound))
       return
     }
-    guard !self.busyDeviceIDs.contains(device.id) else { return }
-    switch Self.availability(of: confirmation.action, for: device) {
-    case .allowed:
-      break
-    case .blocked(.notShutdown):
-      self.enqueue(Self.failed(confirmation, .deviceNotShutdown))
-      return
-    case .blocked(.unavailable):
-      // 기다리는 동안 쓸 수 없게 됐다 (드묾). 행이 이유를 보인다.
+    guard self.activity.task(on: device.id) == nil else { return }
+    if case .blocked(.notShutdown) = confirmation.action.availability(for: device) {
+      self.enqueue(confirmation.failedNotice(.deviceNotShutdown))
       return
     }
-    self.busyDeviceIDs.insert(device.id)
-    defer { self.busyDeviceIDs.remove(device.id) }
+    // 남은 거절은 기다리는 동안 쓸 수 없게 된 경우뿐이다 (드묾). 행이 이유를 보인다.
+    guard self.activity.begin(confirmation.action.task, on: device) else { return }
+    defer { self.activity.end(on: device.id) }
     do throws(SimulatorError) {
       switch confirmation.action {
       case .delete: try await self.simulator.delete(device.id)
       case .erase: try await self.simulator.erase(device.id)
       }
     } catch {
-      self.enqueue(Self.failed(confirmation, error))
+      self.enqueue(confirmation.failedNotice(error))
     }
     await self.reload()
   }
@@ -262,27 +257,9 @@ public extension LauncherModel {
   private func requestConfirmation(_ action: DeviceConfirmation.Action, for id: VirtualDevice.ID) {
     guard case let .loaded(list) = self.listState,
           let device = list.device(id: id),
-          Self.availability(of: action, for: device) == .allowed,
-          !self.busyDeviceIDs.contains(id),
+          self.activity.canStart(action.task, on: device),
           self.pendingConfirmation == nil
     else { return }
     self.pendingConfirmation = DeviceConfirmation(action: action, deviceID: id, device: Self.label(for: device))
-  }
-
-  private static func availability(
-    of action: DeviceConfirmation.Action,
-    for device: VirtualDevice
-  ) -> DeviceActionAvailability {
-    switch action {
-    case .delete: device.deleteAvailability
-    case .erase: device.eraseAvailability
-    }
-  }
-
-  private static func failed(_ confirmation: DeviceConfirmation, _ error: SimulatorError) -> LauncherNotice {
-    switch confirmation.action {
-    case .delete: .deleteFailed(confirmation.device, error)
-    case .erase: .eraseFailed(confirmation.device, error)
-    }
   }
 }
