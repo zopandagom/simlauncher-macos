@@ -14,6 +14,44 @@ struct SimctlCommandTests {
     #expect(SimctlCommand.printDeveloperDirectory() == ["-p"])
   }
 
+  @Test("create 는 이름 앞에 -- 를 두고, delete·erase 는 -- 없이 UDID 만 넘긴다")
+  func mutationArguments() {
+    #expect(SimctlCommand.create(name: "iPhone", deviceTypeID: "T", runtimeID: "R") == [
+      "simctl", "create", "--", "iPhone", "T", "R",
+    ])
+    #expect(SimctlCommand.create(name: "-h", deviceTypeID: "T", runtimeID: "R") == [
+      "simctl", "create", "--", "-h", "T", "R",
+    ])
+    #expect(SimctlCommand.delete(udid: "A") == ["simctl", "delete", "A"])
+    #expect(SimctlCommand.erase(udid: "A") == ["simctl", "erase", "A"])
+  }
+
+  @Test("create stdout 의 UDID 를 읽고 대문자로 맞춘다")
+  func createdUDID() {
+    #expect(
+      SimctlCommand.createdUDID(fromStdout: Data("B66201ED-154C-4F97-A6C7-C88F42E8D3A7\n".utf8))
+        == "B66201ED-154C-4F97-A6C7-C88F42E8D3A7"
+    )
+    #expect(
+      SimctlCommand.createdUDID(fromStdout: Data(" b66201ed-154c-4f97-a6c7-c88f42e8d3a7 \n".utf8))
+        == "B66201ED-154C-4F97-A6C7-C88F42E8D3A7"
+    )
+  }
+
+  @Test(
+    "create stdout 이 UDID 하나가 아니면 nil",
+    arguments: [
+      "",
+      "\n",
+      "Unable to create a device for device type: iPhone 17\n",
+      "B66201ED-154C-4F97-A6C7-C88F42E8D3A7\nB66201ED-154C-4F97-A6C7-C88F42E8D3A8\n",
+    ]
+  )
+  func createdUDIDRejects(stdout: String) {
+    #expect(SimctlCommand.createdUDID(fromStdout: Data(stdout.utf8)) == nil)
+    #expect(SimctlCommand.createdUDID(fromStdout: Data([0xFF, 0xFE])) == nil)
+  }
+
   @Test("UUID 형식이 아니면 UDID 로 넘기지 않는다", arguments: ["-h", "iPhone 17", "", "booted", "0000-0000"])
   func rejectsNonUDID(raw: String) {
     #expect(SimctlCommand.validatedUDID(raw) == nil)

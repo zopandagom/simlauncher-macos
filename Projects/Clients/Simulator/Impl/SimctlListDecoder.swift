@@ -17,6 +17,10 @@ enum SimctlListDecoder {
     let familiesByType = Dictionary(
       list.devicetypes.map { ($0.identifier, Self.family($0.productFamily)) }
     ) { first, _ in first }
+    // 이름이 없는 항목은 기기 종류 목록에서만 뺀다 (family 맵에는 남긴다).
+    let deviceTypes = list.devicetypes.compactMap { dto in
+      dto.name.map { DeviceType(id: DeviceType.ID(dto.identifier), name: $0, family: Self.family(dto.productFamily)) }
+    }
 
     // 런타임 식별자 순서로 펼쳐 결과를 늘 같게 한다. 화면 순서는 DeviceList 가 정한다.
     let devices = list.devices.keys.sorted().flatMap { runtimeIdentifier in
@@ -39,7 +43,7 @@ enum SimctlListDecoder {
         )
       }
     }
-    return DeviceInventory(devices: devices, runtimes: runtimes)
+    return DeviceInventory(devices: devices, runtimes: runtimes, deviceTypes: deviceTypes)
   }
 
   static func state(_ raw: String) -> VirtualDevice.State {
@@ -71,7 +75,14 @@ enum SimctlListDecoder {
     let suffix = identifier.split(separator: ".").last.map(String.init) ?? identifier
     let parts = suffix.split(separator: "-").map(String.init)
     guard parts.count >= 2, let version = OSVersion(parts.dropFirst().joined(separator: ".")) else {
-      return DeviceRuntime(id: id, platform: .other, version: OSVersion(major: 0), name: identifier, isAvailable: false)
+      return DeviceRuntime(
+        id: id,
+        platform: .other,
+        version: OSVersion(major: 0),
+        name: identifier,
+        isAvailable: false,
+        supportedDeviceTypeIDs: []
+      )
     }
     let platformName = parts[0]
     return DeviceRuntime(
@@ -79,7 +90,8 @@ enum SimctlListDecoder {
       platform: DevicePlatform(simctlPlatform: platformName),
       version: version,
       name: "\(platformName) \(parts.dropFirst().joined(separator: "."))",
-      isAvailable: false
+      isAvailable: false,
+      supportedDeviceTypeIDs: []
     )
   }
 
@@ -90,7 +102,8 @@ enum SimctlListDecoder {
       platform: dto.platform.map(DevicePlatform.init(simctlPlatform:)) ?? fromIdentifier.platform,
       version: dto.version.flatMap(OSVersion.init) ?? fromIdentifier.version,
       name: dto.name,
-      isAvailable: dto.isAvailable ?? false
+      isAvailable: dto.isAvailable ?? false,
+      supportedDeviceTypeIDs: (dto.supportedDeviceTypes ?? []).map { DeviceType.ID($0.identifier) }
     )
   }
 
@@ -122,6 +135,7 @@ private struct ListDTO: Decodable {
 
 private struct DeviceTypeDTO: Decodable {
   let identifier: String
+  let name: String?
   let productFamily: String?
 }
 
@@ -131,6 +145,11 @@ private struct RuntimeDTO: Decodable {
   let version: String?
   let name: String
   let isAvailable: Bool?
+  let supportedDeviceTypes: [SupportedDeviceTypeDTO]?
+}
+
+private struct SupportedDeviceTypeDTO: Decodable {
+  let identifier: String
 }
 
 private struct DeviceDTO: Decodable {

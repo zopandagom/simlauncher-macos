@@ -6,26 +6,38 @@ import Testing
 
 struct SimctlListDecoderTests {
   private static let iOS27 = DeviceRuntime.ID("com.apple.CoreSimulator.SimRuntime.iOS-27-0")
+  private static let iPhone17 = DeviceType.ID("com.apple.CoreSimulator.SimDeviceType.iPhone-17")
+  private static let iPadA16 = DeviceType.ID("com.apple.CoreSimulator.SimDeviceType.iPad-A16")
+  private static let watch = DeviceType.ID("com.apple.CoreSimulator.SimDeviceType.Apple-Watch-Series-11-46mm")
 
   @Test("런타임 필드를 읽는다")
   func decodesRuntimes() throws {
     let inventory = try SimctlListDecoder.inventory(from: Fixture.data("simctl-list"))
 
     #expect(inventory.runtimes == [
-      DeviceRuntime(id: Self.iOS27, platform: .iOS, version: OSVersion(major: 27), name: "iOS 27.0", isAvailable: true),
+      DeviceRuntime(
+        id: Self.iOS27,
+        platform: .iOS,
+        version: OSVersion(major: 27),
+        name: "iOS 27.0",
+        isAvailable: true,
+        supportedDeviceTypeIDs: [Self.iPhone17, Self.iPadA16]
+      ),
       DeviceRuntime(
         id: DeviceRuntime.ID("com.apple.CoreSimulator.SimRuntime.watchOS-27-0"),
         platform: .watchOS,
         version: OSVersion(major: 27),
         name: "watchOS 27.0",
-        isAvailable: true
+        isAvailable: true,
+        supportedDeviceTypeIDs: [Self.watch]
       ),
       DeviceRuntime(
         id: DeviceRuntime.ID("com.apple.CoreSimulator.SimRuntime.iOS-25-0"),
         platform: .iOS,
         version: OSVersion(major: 25),
         name: "iOS 25.0",
-        isAvailable: false
+        isAvailable: false,
+        supportedDeviceTypeIDs: [Self.iPhone17, Self.iPadA16]
       ),
     ])
   }
@@ -80,7 +92,8 @@ struct SimctlListDecoderTests {
       platform: .iOS,
       version: OSVersion(major: 26),
       name: "iOS 26.0",
-      isAvailable: false
+      isAvailable: false,
+      supportedDeviceTypeIDs: []
     ))
     #expect(device.family == .phone)
   }
@@ -131,7 +144,49 @@ struct SimctlListDecoderTests {
   @Test("빈 목록 픽스처는 기기·런타임이 없다")
   func emptyFixture() throws {
     let inventory = try SimctlListDecoder.inventory(from: Fixture.data("simctl-list-empty"))
-    #expect(inventory == DeviceInventory(devices: [], runtimes: []))
+    #expect(inventory == DeviceInventory(devices: [], runtimes: [], deviceTypes: []))
+  }
+
+  @Test("기기 종류의 이름·종류를 devicetypes 순서대로 읽는다")
+  func decodesDeviceTypes() throws {
+    let inventory = try SimctlListDecoder.inventory(from: Fixture.data("simctl-list"))
+
+    #expect(inventory.deviceTypes == [
+      DeviceType(id: Self.iPhone17, name: "iPhone 17", family: .phone),
+      DeviceType(id: Self.iPadA16, name: "iPad (A16)", family: .tablet),
+      DeviceType(id: Self.watch, name: "Apple Watch Series 11 (46mm)", family: .watch),
+    ])
+  }
+
+  @Test("supportedDeviceTypes 가 없는 런타임은 빈 목록이고, 이름이 없는 기기 종류는 목록에서만 뺀다")
+  func missingOptionalFields() throws {
+    let json = """
+    {
+      "devicetypes": [
+        {"identifier": "type.named", "name": "Named", "productFamily": "iPhone"},
+        {"identifier": "type.nameless", "productFamily": "iPad"}
+      ],
+      "runtimes": [
+        {"identifier": "com.apple.CoreSimulator.SimRuntime.iOS-27-0", "name": "iOS 27.0", "isAvailable": true}
+      ],
+      "devices": {
+        "com.apple.CoreSimulator.SimRuntime.iOS-27-0": [
+          {
+            "udid": "00000000-0000-0000-0000-000000000001",
+            "name": "Tablet",
+            "state": "Shutdown",
+            "isAvailable": true,
+            "deviceTypeIdentifier": "type.nameless"
+          }
+        ]
+      }
+    }
+    """
+    let inventory = try SimctlListDecoder.inventory(from: Data(json.utf8))
+
+    #expect(inventory.runtimes.map(\.supportedDeviceTypeIDs) == [[]])
+    #expect(inventory.deviceTypes == [DeviceType(id: DeviceType.ID("type.named"), name: "Named", family: .phone)])
+    #expect(inventory.devices.first?.family == .tablet)
   }
 
   @Test("JSON 이 아니거나 필요한 키가 없으면 unexpectedOutput", arguments: ["", "not json", "{}", "{\"devices\":[]}"])
