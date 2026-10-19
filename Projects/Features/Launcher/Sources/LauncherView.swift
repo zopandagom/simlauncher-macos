@@ -37,8 +37,10 @@ public struct LauncherView: View {
             Label(LauncherText.createDeviceButton, systemImage: "plus")
           }
           .disabled(!self.model.canCreateDevice)
+          // 비활성 툴바 버튼에는 툴팁이 잘 뜨지 않아 보조로만 둔다. 이유는 글자로 보인다
+          // (기기가 있으면 목록 위 안내 줄, 없으면 빈 화면 안내).
           .help(
-            self.model.isCreationUnavailable ? LauncherText.createUnavailableHelp : LauncherText.createDeviceButton
+            self.model.isCreationUnavailable ? LauncherText.createUnavailableNotice : LauncherText.createDeviceButton
           )
         }
         ToolbarItem {
@@ -174,6 +176,35 @@ public struct LauncherView: View {
   }
 
   private func deviceList(_ list: DeviceList) -> some View {
+    self.deviceRows(list)
+      .safeAreaInset(edge: .top, spacing: 0) {
+        if self.model.isCreationUnavailable {
+          self.createUnavailableNotice
+        }
+      }
+  }
+
+  /// 기기는 있지만 만들 수 있는 종류가 없을 때 목록 위에 고정해 보이는 안내 줄 (툴바 + 가 비활성인 이유).
+  /// 목록이 비어 있으면 빈 화면 안내가 같은 이유를 보이므로 목록이 있을 때만 쓴다.
+  private var createUnavailableNotice: some View {
+    VStack(spacing: 0) {
+      Label {
+        Text(LauncherText.createUnavailableNotice)
+          .fixedSize(horizontal: false, vertical: true)
+      } icon: {
+        Image(systemName: "info.circle")
+      }
+      .font(.callout)
+      .foregroundStyle(.secondary)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .padding(.horizontal, 16)
+      .padding(.vertical, 10)
+      Divider()
+    }
+    .background(.bar)
+  }
+
+  private func deviceRows(_ list: DeviceList) -> some View {
     List {
       ForEach(list.sections) { section in
         Section {
