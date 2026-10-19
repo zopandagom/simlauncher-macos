@@ -118,11 +118,13 @@ struct LauncherFeatureTests: LauncherModelTesting {
     await Self.waitUntil { fake.calls.contains(.boot(SampleID.iPhoneOff)) }
     #expect(model.busyDeviceIDs == [SampleID.iPhoneOff])
 
-    await model.bootButtonTapped(SampleID.iPhoneOff)
-    #expect(fake.calls.filter { $0 == .boot(SampleID.iPhoneOff) }.count == 1)
+    let second = Self.start { await model.bootButtonTapped(SampleID.iPhoneOff) }
+    await Self.waitUntil { second.isFinished || Self.bootCount(SampleID.iPhoneOff, in: fake) > 1 }
+    #expect(Self.bootCount(SampleID.iPhoneOff, in: fake) == 1)
 
     fake.resumeBoots()
     await task.value
+    await second.value()
     #expect(fake.calls.filter { $0 == .boot(SampleID.iPhoneOff) }.count == 1)
     #expect(model.busyDeviceIDs.isEmpty)
   }

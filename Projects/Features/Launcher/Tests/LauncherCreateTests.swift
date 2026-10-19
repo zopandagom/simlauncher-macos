@@ -219,20 +219,16 @@ struct LauncherCreateTests: LauncherModelTesting {
     fake.suspendCreates()
     let task = Task { await model.createConfirmTapped() }
     await Self.waitUntil { fake.calls.count == 2 }
-    await model.createConfirmTapped()
     model.createButtonTapped()
     #expect(model.createDraft == nil)
+    let second = Self.start { await model.createConfirmTapped() }
+    await Self.waitUntil { second.isFinished || Self.createCount(in: fake) > 1 }
+    #expect(Self.createCount(in: fake) == 1)
 
     fake.resumeCreates()
     await task.value
-    let creates = fake.calls.filter {
-      if case .create = $0 {
-        true
-      } else {
-        false
-      }
-    }
-    #expect(creates.count == 1)
+    await second.value()
+    #expect(Self.createCount(in: fake) == 1)
   }
 
   // MARK: - 선택지 유지
