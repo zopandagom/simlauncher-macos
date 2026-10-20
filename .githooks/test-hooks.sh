@@ -1,12 +1,13 @@
 #!/bin/bash
-# git 훅 스크립트(pre-commit·pre-merge-commit·pre-push)가 main 을 막고 기능 브랜치는 통과시키는지 임시 레포에서 확인한다.
+# git 훅 스크립트(pre-commit·pre-merge-commit·pre-push)가 main 과 String Catalog 의 stale 표시를 막고 기능 브랜치는 통과시키는지 임시 레포에서 확인한다.
 # 임시 레포의 core.hooksPath 를 직접 지정하므로 make bootstrap 의 연결은 다루지 않는다.
 # make test-hooks 가 실행하고, make test(로컬·CI)가 그것을 포함한다.
 # 사용: test-hooks.sh [훅 디렉터리]   (기본: 이 스크립트가 있는 디렉터리)
 #   1. main 커밋 차단      2. 기능 브랜치 커밋 허용
 #   3. main push 차단      4. 기능 브랜치 push 허용
 #   5. main 머지 커밋 차단  6. 기능 브랜치 머지 커밋 허용
-# 임시 레포에는 txt 파일만 커밋하므로 pre-commit 의 Swift lint 부분(mise 필요)은 다루지 않는다.
+#   7. xcstrings stale 커밋 차단  8. stale 없는 xcstrings 커밋 허용
+# 임시 레포에는 txt·xcstrings 파일만 커밋하므로 pre-commit 의 Swift lint 부분(mise 필요)은 다루지 않는다.
 # 차단은 훅 메시지까지 확인하므로 훅의 echo 문구를 바꾸면 여기도 고친다.
 set -euo pipefail
 
@@ -127,8 +128,55 @@ else
   ok "기능 브랜치 머지 커밋 허용"
 fi
 
+# 7. String Catalog stale 표시 커밋 차단
+# 작업 트리는 고쳤어도 index 에 stale 이 남아 있으면 막는지 본다.
+git switch -q -c feat/xcstrings-test "$base"
+cat > Localizable.xcstrings <<'EOF'
+{
+  "sourceLanguage" : "ko",
+  "strings" : {
+    "안녕" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "안녕"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}
+EOF
+git add Localizable.xcstrings
+sed -i.bak '/"extractionState" : "stale",/d' Localizable.xcstrings && rm Localizable.xcstrings.bak
+head=$(git rev-parse HEAD)
+out=$(git commit -m stale 2>&1) && s=0 || s=$?
+if ((s == 0)); then
+  fail "xcstrings stale 커밋 차단" "커밋이 성공했습니다" "$out"
+elif ! grep -qF '"extractionState" : "stale" 표시가 있어 커밋할 수 없습니다: Localizable.xcstrings' <<<"$out"; then
+  fail "xcstrings stale 커밋 차단" "훅의 차단 메시지가 없습니다 (종료 $s)" "$out"
+elif [[ $(git rev-parse HEAD) != "$head" ]]; then
+  fail "xcstrings stale 커밋 차단" "HEAD 가 바뀌었습니다" "$out"
+else
+  ok "xcstrings stale 커밋 차단"
+fi
+
+# 8. stale 표시가 없는 xcstrings 커밋 허용
+git add Localizable.xcstrings
+out=$(git commit -m catalog 2>&1) && s=0 || s=$?
+if ((s != 0)); then
+  fail "xcstrings 커밋 허용" "커밋이 실패했습니다 (종료 $s)" "$out"
+elif [[ $(git rev-parse HEAD) == "$head" || $(git show --name-only --format= HEAD) != Localizable.xcstrings ]]; then
+  fail "xcstrings 커밋 허용" "Localizable.xcstrings 커밋이 만들어지지 않았습니다" "$out"
+else
+  ok "xcstrings 커밋 허용"
+fi
+
 if ((failures > 0)); then
   echo "FAIL 훅 테스트 ${failures}개 실패"
   exit 1
 fi
-echo "PASS 훅 테스트 6개"
+echo "PASS 훅 테스트 8개"
