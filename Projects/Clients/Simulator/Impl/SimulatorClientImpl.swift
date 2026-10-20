@@ -3,7 +3,7 @@ import Core
 import Foundation
 import SimulatorInterface
 
-/// 개발자 디렉터리(`DEVELOPER_DIR`)를 알려 주는 provider. nil 을 돌려주면 `xcode-select` 기본값을 쓴다.
+/// 개발자 디렉터리(`DEVELOPER_DIR`)를 알려 주는 provider. nil 을 돌려주면 쓸 Xcode 가 없다는 뜻이고 명령을 실행하지 않는다.
 public typealias DeveloperDirectoryProvider = @Sendable () async -> URL?
 
 /// `xcrun simctl` 로 시뮬레이터를 다루는 `SimulatorClient`.
@@ -15,8 +15,9 @@ public struct SimulatorClientImpl: SimulatorClient {
   private let baseEnvironment: [String: String]
 
   /// - Parameters:
-  ///   - developerDirectory: 쓸 개발자 디렉터리. nil 이거나 nil 을 돌려주면
-  ///     물려받은 `DEVELOPER_DIR` 를 지우고 `xcode-select` 기본값을 쓴다.
+  ///   - developerDirectory: 쓸 개발자 디렉터리. provider 가 nil 을 돌려주면 어떤 명령도 실행하지 않고
+  ///     `.developerToolsUnavailable` (shim 이 Command Line Tools 설치 대화상자를 띄우지 않게).
+  ///     provider 자체가 없으면(nil, 테스트용) 물려받은 `DEVELOPER_DIR` 를 지우고 `xcode-select` 기본값을 쓴다.
   ///   - command: 명령 실행. App 이 `CommandClientImpl` 을 넘긴다.
   public init(developerDirectory: DeveloperDirectoryProvider?, command: any CommandClient) {
     self.init(
@@ -41,7 +42,7 @@ public struct SimulatorClientImpl: SimulatorClient {
   }
 
   public func fetchInventory() async throws(SimulatorError) -> DeviceInventory {
-    let directory = await self.resolveDeveloperDirectory()
+    let directory = try await self.resolveDeveloperDirectory()
     return try await self.inventory(developerDirectory: directory)
   }
 
@@ -65,7 +66,7 @@ public struct SimulatorClientImpl: SimulatorClient {
     guard DeviceName.problem(in: name) == nil else {
       throw .invalidDeviceName
     }
-    let directory = await self.resolveDeveloperDirectory()
+    let directory = try await self.resolveDeveloperDirectory()
     let inventory = try await self.inventory(developerDirectory: directory)
     guard DeviceCreationOptions(inventory: inventory).contains(runtime: runtime, deviceType: deviceType) else {
       throw .creationOptionUnavailable
@@ -101,7 +102,7 @@ public struct SimulatorClientImpl: SimulatorClient {
 
   public func openSimulatorApp() async throws(SimulatorError) {
     let directory: URL
-    if let provided = await self.resolveDeveloperDirectory() {
+    if let provided = try await self.resolveDeveloperDirectory() {
       directory = provided
     } else {
       let result = try await self.run(
@@ -141,10 +142,11 @@ public struct SimulatorClientImpl: SimulatorClient {
       throw .appNotFound
     }
     let appPath = app.standardizedFileURL.path(percentEncoded: false)
+    let directory = try await self.resolveDeveloperDirectory()
     let result = try await self.run(
       SimctlCommand.xcrun,
       SimctlCommand.install(udid: udid, appPath: appPath),
-      developerDirectory: self.resolveDeveloperDirectory(),
+      developerDirectory: directory,
       launchFailure: .developerToolsUnavailable
     )
     guard result.exitCode == 0 else {
@@ -157,10 +159,11 @@ public struct SimulatorClientImpl: SimulatorClient {
     guard let udid = SimctlCommand.validatedUDID(id.rawValue) else {
       throw .deviceNotFound
     }
+    let directory = try await self.resolveDeveloperDirectory()
     let result = try await self.run(
       SimctlCommand.xcrun,
       SimctlCommand.launch(udid: udid, bundleID: bundleID.rawValue),
-      developerDirectory: self.resolveDeveloperDirectory(),
+      developerDirectory: directory,
       launchFailure: .developerToolsUnavailable
     )
     guard result.exitCode == 0 else {
@@ -173,10 +176,11 @@ public struct SimulatorClientImpl: SimulatorClient {
     guard let udid = SimctlCommand.validatedUDID(id.rawValue) else {
       throw .deviceNotFound
     }
+    let directory = try await self.resolveDeveloperDirectory()
     let result = try await self.run(
       SimctlCommand.xcrun,
       SimctlCommand.openURL(udid: udid, url: link.url.absoluteString),
-      developerDirectory: self.resolveDeveloperDirectory(),
+      developerDirectory: directory,
       launchFailure: .developerToolsUnavailable
     )
     guard result.exitCode == 0 else {
@@ -184,9 +188,13 @@ public struct SimulatorClientImpl: SimulatorClient {
     }
   }
 
-  private func resolveDeveloperDirectory() async -> URL? {
+  /// provider 가 없으면 nil (`xcode-select` 기본값). provider 가 nil 을 돌려주면 명령을 실행하지 않도록 던진다.
+  private func resolveDeveloperDirectory() async throws(SimulatorError) -> URL? {
     guard let developerDirectory = self.developerDirectory else { return nil }
-    return await developerDirectory()
+    guard let directory = await developerDirectory() else {
+      throw .developerToolsUnavailable
+    }
+    return directory
   }
 
   private func inventory(developerDirectory: URL?) async throws(SimulatorError) -> DeviceInventory {
@@ -212,7 +220,7 @@ public struct SimulatorClientImpl: SimulatorClient {
     guard let udid = SimctlCommand.validatedUDID(id.rawValue) else {
       throw .deviceNotFound
     }
-    let directory = await self.resolveDeveloperDirectory()
+    let directory = try await self.resolveDeveloperDirectory()
     let result = try await self.run(
       SimctlCommand.xcrun,
       arguments(udid),
@@ -240,7 +248,7 @@ public struct SimulatorClientImpl: SimulatorClient {
     guard let udid = SimctlCommand.validatedUDID(id.rawValue) else {
       throw .deviceNotFound
     }
-    let directory = await self.resolveDeveloperDirectory()
+    let directory = try await self.resolveDeveloperDirectory()
     let inventory = try await self.inventory(developerDirectory: directory)
     guard let device = inventory.devices.first(where: { SimctlCommand.validatedUDID($0.id.rawValue) == udid }) else {
       throw .deviceNotFound

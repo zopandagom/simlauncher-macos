@@ -1,6 +1,7 @@
 /// 시뮬레이터 작업 실패. 화면 문구는 Feature 가 케이스별로 정하고, 명령 원문은 담지 않는다.
 public enum SimulatorError: Error, Hashable, Sendable {
-  /// xcrun·simctl 을 쓸 수 없다: Xcode 없음, Command Line Tools 만 있음, DEVELOPER_DIR 경로 없음, xcode-select 실패.
+  /// xcrun·simctl 을 쓸 수 없다: provider 가 쓸 Xcode 가 없다고 답함(명령을 실행하지 않음), Xcode 없음,
+  /// Command Line Tools 만 있음, DEVELOPER_DIR 경로 없음, xcode-select 실패.
   case developerToolsUnavailable
   /// UDID 형식이 아니거나, simctl 이 "Invalid device" 로 답했거나, 삭제·초기화 사전 확인에서 목록에 없다.
   case deviceNotFound

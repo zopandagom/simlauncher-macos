@@ -30,17 +30,19 @@ struct SimulatorClientImplInstallTests {
     #expect(counter.calls == 0)
   }
 
-  @Test("파일 URL 이 아니면 실행하지 않고 appNotFound")
+  @Test("파일 URL 이 아니면 provider·프로세스 없이 appNotFound")
   func installNotFileURL() async throws {
     let command = CommandClientFake { _ in .success() }
+    let counter = ProviderCounter(returning: Self.developer)
 
     await #expect(throws: SimulatorError.appNotFound) {
-      try await Self.client(command).install(
+      try await Self.client(command, provider: counter).install(
         #require(URL(string: "https://example.com/A.app")),
         on: VirtualDevice.ID(Self.udid)
       )
     }
     #expect(command.invocations.isEmpty)
+    #expect(counter.calls == 0)
   }
 
   @Test("대문자 UDID 와 표준화한 절대 경로(한글·공백 그대로)를 넘기고, 성공하면 목록을 읽지 않는다")
