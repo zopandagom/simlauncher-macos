@@ -9,6 +9,9 @@ import Foundation
 public struct DevEnvironmentClientImpl: DevEnvironmentClient {
   /// Info.plist 를 읽는 상한. 넘으면 그 번들은 Xcode 로 보지 않는다.
   static let infoPlistSizeLimit = 1_048_576
+  /// 확인 명령(xcode-select -p·-checkFirstLaunchStatus·-license check)의 시간 제한. 정상 값은 합쳐 0.3초 미만이다.
+  /// 지나면 멈추기 시작해(SIGINT → SIGTERM → SIGKILL) 실패로 본다.
+  static let checkTimeout: Duration = .seconds(30)
 
   private let command: any CommandClient
   private let applicationsDirectory: URL
@@ -97,15 +100,22 @@ public struct DevEnvironmentClientImpl: DevEnvironmentClient {
     return (xcode, selection.commandLineToolsSelected)
   }
 
-  /// `xcode-select -p` 를 `DEVELOPER_DIR` 를 지운 환경에서 실행한다. 시작 실패·0 아님·해석 실패면 선택 없음.
+  /// `xcode-select -p` 를 `DEVELOPER_DIR` 를 지운 환경에서 실행한다. 시작 실패·시간 초과·0 아님·해석 실패면 선택 없음.
+  /// 비구조 Task 안에서 실행해 호출한 Task 의 취소를 전하지 않는다: 취소로 "선택 없음"이 되면 `/Applications` 의
+  /// 다른 Xcode 를 골라, xcode-select 와 다른 Xcode 로 명령을 돌리게 된다 (시간 제한만 받는다).
   private func selection() async -> (selected: XcodeInstallation?, commandLineToolsSelected: Bool) {
     let environment = XcodeCommand.environment(base: self.baseEnvironment, developerDirectory: nil)
-    guard
-      let result = try? await self.command.run(
+    let command = self.command
+    let output: CommandResult? = await Task {
+      try? await command.runCancellable(
         XcodeCommand.xcodeSelect,
         XcodeCommand.printDeveloperDirectory(),
-        environment: environment
-      ),
+        environment: environment,
+        timeout: Self.checkTimeout
+      ) { _ in }
+    }.value
+    guard
+      let result = output,
       let directory = XcodeCommand.selectedDeveloperDirectory(from: result)
     else {
       return (nil, false)
@@ -175,13 +185,19 @@ public struct DevEnvironmentClientImpl: DevEnvironmentClient {
     return String(cString: resolved)
   }
 
-  /// 고른 Xcode 안의 xcodebuild 를 그 개발자 디렉터리로 실행한다. 시작하지 못하면 `.checkFailed`.
+  /// 고른 Xcode 안의 xcodebuild 를 그 개발자 디렉터리로 `checkTimeout` 안에 실행한다.
+  /// 시작하지 못했거나, 시간 초과·취소로 멈췄으면 `.checkFailed`.
   private func runCheck(_ xcode: XcodeInstallation, _ arguments: [String]) async throws(DevEnvironmentError)
     -> CommandResult
   {
     let environment = XcodeCommand.environment(base: self.baseEnvironment, developerDirectory: xcode.developerDirectory)
     do {
-      return try await self.command.run(XcodeCommand.xcodebuild(in: xcode), arguments, environment: environment)
+      return try await self.command.runCancellable(
+        XcodeCommand.xcodebuild(in: xcode),
+        arguments,
+        environment: environment,
+        timeout: Self.checkTimeout
+      ) { _ in }
     } catch {
       throw .checkFailed
     }

@@ -40,6 +40,7 @@ public final class DevEnvironmentClientFake: DevEnvironmentClient {
   }
 
   /// 이후 `checkEnvironment()` 결과와 `selectedXcode()`·`openXcode()` 가 쓰는 Xcode.
+  /// (취소된 Task 이고 Xcode 가 있으면 `checkEnvironment()` 는 상태 대신 `.checkFailed`, `checkEnvironment()` 주석 참고)
   public func setStatus(_ status: DevEnvironmentStatus) {
     self.state.withLock { $0.status = status }
   }
@@ -92,13 +93,20 @@ public final class DevEnvironmentClientFake: DevEnvironmentClient {
     }
   }
 
+  /// 설정한 에러 → Xcode 가 있는 상태에서 Task 가 취소됐으면 `.checkFailed` (Impl 의 확인 명령이 취소로 멈춘 것과 같다.
+  /// Xcode 가 없으면 Impl 도 확인 명령을 실행하지 않고 상태를 돌려준다) → 상태.
+  /// Impl 은 확인 명령이 스스로 끝난 뒤 온 취소면 상태를 돌려줄 수 있다.
   public func checkEnvironment() async throws(DevEnvironmentError) -> DevEnvironmentStatus {
     self.record(.checkEnvironment)
     await self.waitIfSuspended(.check)
     await self.sleepIfNeeded()
+    let cancelled = Task.isCancelled
     let result: Result<DevEnvironmentStatus, DevEnvironmentError> = self.state.withLock { state in
       if let error = state.checkError {
         return .failure(error)
+      }
+      if cancelled, state.status.xcode != nil {
+        return .failure(.checkFailed)
       }
       return .success(state.status)
     }

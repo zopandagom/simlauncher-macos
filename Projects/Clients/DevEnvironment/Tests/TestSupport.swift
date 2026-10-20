@@ -95,6 +95,8 @@ enum Responder {
   enum Outcome: Sendable {
     case exit(Int32, String = "")
     case launchFailed
+    /// `runCancellable` 이 던지는 멈춤 (`.timedOut`·`.cancelled`).
+    case stopped(CommandError)
   }
 
   /// xcode-select 는 `select`, xcodebuild 는 인자에 따라 `firstLaunch`·`license`, open 은 `open`.
@@ -117,12 +119,18 @@ enum Responder {
         Issue.record("부르지 않아야 할 명령: \(invocation.executable.path(percentEncoded: false))")
         throw .launchFailed
       }
-      switch outcome {
-      case let .exit(code, stdout):
-        return CommandResult(exitCode: code, stdout: Data(stdout.utf8), stderr: Data())
-      case .launchFailed:
-        throw .launchFailed
-      }
+      return try Self.result(outcome)
+    }
+  }
+
+  static func result(_ outcome: Outcome) throws(CommandError) -> CommandResult {
+    switch outcome {
+    case let .exit(code, stdout):
+      return CommandResult(exitCode: code, stdout: Data(stdout.utf8), stderr: Data())
+    case .launchFailed:
+      throw .launchFailed
+    case let .stopped(error):
+      throw error
     }
   }
 

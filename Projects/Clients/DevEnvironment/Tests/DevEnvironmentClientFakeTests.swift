@@ -99,6 +99,50 @@ struct DevEnvironmentClientFakeTests {
     #expect(fake.calls == [.checkEnvironment, .openXcode, .openXcodeInAppStore])
   }
 
+  @Test(
+    "이미 취소된 Task 의 checkEnvironment: Xcode 가 있으면 checkFailed, 설정한 에러가 있으면 그 에러",
+    arguments: [nil, DevEnvironmentError.openFailed]
+  )
+  func cancelledCheck(configured: DevEnvironmentError?) async {
+    let fake = DevEnvironmentClientFake()
+    fake.setCheckError(configured)
+
+    let result = await Self.checkInCancelledTask(fake)
+
+    #expect(result == .failure(configured ?? .checkFailed))
+    #expect(fake.calls == [.checkEnvironment])
+  }
+
+  @Test(
+    "이미 취소된 Task 라도 Xcode 가 없는 상태면 그 상태를 돌려준다 (Impl 도 확인 명령을 실행하지 않는다)",
+    arguments: [DevEnvironmentStatus.xcodeNotInstalled, .commandLineToolsOnly]
+  )
+  func cancelledCheckWithoutXcode(status: DevEnvironmentStatus) async {
+    let fake = DevEnvironmentClientFake(status: status)
+
+    let result = await Self.checkInCancelledTask(fake)
+
+    #expect(result == .success(status))
+  }
+
+  /// 시작 전에 취소된 Task 에서 `checkEnvironment()` 를 부른다.
+  private static func checkInCancelledTask(
+    _ fake: DevEnvironmentClientFake
+  ) async -> Result<DevEnvironmentStatus, DevEnvironmentError> {
+    let check = Task { () async -> Result<DevEnvironmentStatus, DevEnvironmentError> in
+      while !Task.isCancelled {
+        await Task.yield()
+      }
+      do throws(DevEnvironmentError) {
+        return try await .success(fake.checkEnvironment())
+      } catch {
+        return .failure(error)
+      }
+    }
+    check.cancel()
+    return await check.value
+  }
+
   @Test("샘플 Xcode 의 경로와 버전")
   func samples() {
     #expect(XcodeInstallation.sample.bundleURL.path(percentEncoded: false) == "/Applications/Xcode.app/")
