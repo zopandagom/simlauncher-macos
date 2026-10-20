@@ -7,6 +7,7 @@ let project = Project.app(
   ],
   dependencies: [
     .feature(.launcher),
+    .feature(.setup),
     .client(impl: .command),
     .client(impl: .devEnvironment),
     .client(impl: .simulator),
