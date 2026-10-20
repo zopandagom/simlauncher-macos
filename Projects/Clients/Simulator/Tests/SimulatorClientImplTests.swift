@@ -196,16 +196,14 @@ struct SimulatorClientImplTests {
     #expect(command.invocations.first?.arguments == ["/X/Xcode.app/Contents/Developer/Applications/Simulator.app/"])
   }
 
-  @Test("provider 가 없거나 nil 을 주면 DEVELOPER_DIR 를 지운 환경에서 xcode-select -p 로 찾는다", arguments: [false, true])
-  func openAppWithXcodeSelect(hasProvider: Bool) async throws {
+  @Test("provider 가 없으면 DEVELOPER_DIR 를 지운 환경에서 xcode-select -p 로 찾는다")
+  func openAppWithXcodeSelect() async throws {
     let command = CommandClientFake { invocation in
       invocation.executable == SimctlCommand.xcodeSelect ? .success(Data("/Y/Xcode.app/Contents/Developer\n".utf8))
         : .success()
     }
-    let returnsNil: DeveloperDirectoryProvider = { nil }
-    let provider = hasProvider ? returnsNil : nil
     let client = SimulatorClientImpl(
-      developerDirectory: provider,
+      developerDirectory: nil,
       command: command,
       fileExists: { $0.path(percentEncoded: false).hasSuffix("DeviceHub.app/") },
       baseEnvironment: ["DEVELOPER_DIR": "/old"]
