@@ -2,7 +2,7 @@ import Foundation
 import Synchronization
 
 /// `extractApp(fromZip:)` 이 쓰는 `SimLauncher-Unzip-<UUID>` 임시 폴더의 이름 등록과 삭제.
-/// 폴더를 만들기 전에 이름을 등록하므로, 시작 시 정리가 지금 쓰는 폴더를 지우지 않는다.
+/// 폴더를 만들기 전에 이름을 등록하므로, 기기 목록 화면을 열 때 하는 정리가 지금 쓰는 폴더를 지우지 않는다.
 final class ExtractionFolders: Sendable {
   static let prefix = "SimLauncher-Unzip-"
 
@@ -26,7 +26,7 @@ final class ExtractionFolders: Sendable {
     _ = self.live.withLock { $0.remove(name) }
   }
 
-  /// 형식에 맞는 폴더면 지우고, 형식과 상관없이 이름 등록을 푼다. 실패는 무시한다 (다음 시작 때 다시 지운다).
+  /// 형식에 맞는 폴더면 지우고, 형식과 상관없이 이름 등록을 푼다. 실패는 무시한다 (다음에 기기 목록 화면을 열 때 다시 지운다).
   func remove(_ folder: URL) {
     if self.isExtractionFolder(folder) {
       Self.forceRemove(folder)

@@ -74,7 +74,8 @@ public final class LauncherModel {
     self.setupRequested = setupRequested
   }
 
-  /// 목록을 읽은 뒤(목록을 먼저 보인다) 앞선 실행이 남긴 zip 임시 폴더를 정리한다.
+  /// 목록을 읽은 뒤(목록을 먼저 보인다) 남은 zip 임시 폴더(앞선 실행이 남겼거나 지우지 못한 것)를 정리한다.
+  /// 화면이 나타날 때마다 불리므로 Setup 화면에서 돌아올 때마다 다시 읽고 정리한다.
   public func onAppear() async {
     await self.reload()
     await self.appBundle.removeLeftoverExtractions()
@@ -329,7 +330,7 @@ public extension LauncherModel {
       return
     }
     await self.installBundle(extracted.app, on: id, label: label)
-    // 설치 명령이 번들을 기기로 복사한 뒤라 지워도 된다. 지우지 못하면 다음 시작 때 지운다.
+    // 설치 명령이 번들을 기기로 복사한 뒤라 지워도 된다. 지우지 못하면 다음에 기기 목록 화면을 열 때 지운다.
     await self.appBundle.removeExtracted(extracted)
   }
 
