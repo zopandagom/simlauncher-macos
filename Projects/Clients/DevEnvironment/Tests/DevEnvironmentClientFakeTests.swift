@@ -57,11 +57,69 @@ struct DevEnvironmentClientFakeTests {
     try await fake.openXcodeInAppStore()
   }
 
+  @Test("suspendChecks 동안 checkEnvironment 는 기록된 뒤 기다리고, resumeChecks 뒤 그때의 상태로 끝난다")
+  func suspendedCheck() async throws {
+    let fake = DevEnvironmentClientFake(status: .xcodeNotInstalled)
+    fake.suspendChecks()
+    let check = Task { try await fake.checkEnvironment() }
+    await waitUntil { fake.calls == [.checkEnvironment] }
+    fake.setStatus(.ready(.sample))
+
+    fake.resumeChecks()
+
+    #expect(try await check.value == .ready(.sample))
+    // 재개한 뒤의 호출은 기다리지 않는다.
+    #expect(try await fake.checkEnvironment() == .ready(.sample))
+    #expect(fake.calls == [.checkEnvironment, .checkEnvironment])
+  }
+
+  @Test("suspendOpens 동안 두 열기가 모두 기다리고, resumeOpens 로 함께 끝난다")
+  func suspendedOpens() async throws {
+    let fake = DevEnvironmentClientFake()
+    fake.suspendOpens()
+    let openXcode = Task { try await fake.openXcode() }
+    let openAppStore = Task { try await fake.openXcodeInAppStore() }
+    await waitUntil { fake.calls.count == 2 }
+    #expect(Set(fake.calls) == [.openXcode, .openXcodeInAppStore])
+
+    fake.resumeOpens()
+
+    try await openXcode.value
+    try await openAppStore.value
+  }
+
+  @Test("setDelay 를 줘도 호출은 기록되고 결과는 지연이 없을 때와 같다")
+  func delayedCheck() async throws {
+    let fake = DevEnvironmentClientFake(status: .firstLaunchRequired(.sample))
+    fake.setDelay(.milliseconds(1))
+
+    #expect(try await fake.checkEnvironment() == .firstLaunchRequired(.sample))
+    try await fake.openXcode()
+    try await fake.openXcodeInAppStore()
+    #expect(fake.calls == [.checkEnvironment, .openXcode, .openXcodeInAppStore])
+  }
+
   @Test("샘플 Xcode 의 경로와 버전")
   func samples() {
     #expect(XcodeInstallation.sample.bundleURL.path(percentEncoded: false) == "/Applications/Xcode.app/")
     #expect(XcodeInstallation.sample.version == OSVersion(major: 27, minor: 1))
     #expect(XcodeInstallation.beta.bundleURL.lastPathComponent == "Xcode-beta.app")
     #expect(XcodeInstallation.beta.version == OSVersion(major: 27, minor: 2))
+  }
+}
+
+/// 조건이 참이 될 때까지 다른 작업에 차례를 넘긴다. 10초 안에 참이 되지 않으면 실패를 기록하고 돌아온다
+/// (회귀가 있어도 테스트가 멈추지 않게).
+private func waitUntil(
+  _ condition: () -> Bool,
+  sourceLocation: SourceLocation = #_sourceLocation
+) async {
+  let deadline = ContinuousClock.now + .seconds(10)
+  while !condition() {
+    guard ContinuousClock.now < deadline else {
+      Issue.record("10초 안에 조건이 참이 되지 않았다", sourceLocation: sourceLocation)
+      return
+    }
+    await Task.yield()
   }
 }
