@@ -29,6 +29,10 @@ line_length:
   ignores_comments: true
   ignores_urls: true
 
+# Model 의 async 흐름은 private(set) 상태를 바꾸므로 Model 파일에 둔다 (docs/ARCHITECTURE.md:38). 흐름이 늘면 기본 400줄을 넘는다
+file_length:
+  warning: 500
+
 # CPU 아키텍처 이름 `x86_64` (예: CPUArchitecture.x86_64) 는 그대로 쓴다
 identifier_name:
   excluded: [id, x, y, tv, x86_64]

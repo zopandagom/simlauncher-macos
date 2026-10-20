@@ -1,7 +1,8 @@
 import SimulatorInterface
 
 /// 실패한 명령의 종료 코드·stderr 를 `SimulatorError` 로 바꾼다 (순수). 원문은 담지 않는다.
-/// install·launch 는 stderr 에 앱이 정한 글자(표시 이름)가 섞이므로 "(domain=…, code=…)" 줄의 domain·code 로만 분류한다.
+/// install·launch·openurl 은 stderr 에 앱이 정한 글자(표시 이름)나 사용자가 넣은 URL 이 섞이므로
+/// "(domain=…, code=…)" 줄의 domain·code 로만 분류한다.
 enum SimctlErrorClassifier {
   private static let domainLinePrefix = "An error was encountered processing the command (domain="
   private static let denialLinePrefix = "The request was denied by service delegate ("
@@ -95,6 +96,23 @@ enum SimctlErrorClassifier {
     case ("FBSOpenApplicationServiceErrorDomain", _): return .appLaunchFailed
     // "did not return a process handle nor launch error" (시작하자마자 종료한 앱).
     case ("NSPOSIXErrorDomain", 3): return .appLaunchFailed
+    default: return .commandFailed
+    }
+  }
+
+  /// openurl 실패. 같은 방식. 둘째 줄("Simulator device failed to open <URL>.")에 사용자가 넣은 URL 이 나오므로
+  /// 첫 domain 줄로만 분류한다.
+  static func openURLError(exitCode: Int32, stderr: String) -> SimulatorError {
+    guard let (domain, code) = domainAndCode(stderr) else {
+      return self.error(exitCode: exitCode, stderr: stderr)
+    }
+    switch (domain, code) {
+    // 꺼진 기기: "Unable to lookup in current state: Shutdown" (149).
+    case ("com.apple.CoreSimulator.SimError", 405): return .deviceNotBooted
+    // 처리할 앱이 없는 스킴 (115).
+    case ("LSApplicationWorkspaceErrorDomain", 115): return .urlNotHandled
+    // 호스트·앞뒤 공백 "Invalid URL."(22), 스킴 없음 OSStatus -50(206).
+    case ("NSPOSIXErrorDomain", 22), ("NSOSStatusErrorDomain", -50): return .invalidURL
     default: return .commandFailed
     }
   }

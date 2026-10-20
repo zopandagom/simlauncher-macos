@@ -49,6 +49,12 @@ enum SimctlCommand {
     ["simctl", "launch", udid, bundleID]
   }
 
+  /// `udid` 는 `validatedUDID(_:)` 를 거친 값, `url` 은 `DeepLink.url.absoluteString`(스킴으로 시작)만 넘긴다.
+  /// openurl 은 기기 뒤 인자를 옵션으로 읽지 않고 `--` 도 URL 로 받으므로(-50) 붙이지 않는다.
+  static func openURL(udid: String, url: String) -> [String] {
+    ["simctl", "openurl", udid, url]
+  }
+
   /// create 성공 stdout("UUID\n")에서 UDID. 앞뒤 공백·개행을 자르고 UUID 형식이어야 한다. 아니면 nil.
   static func createdUDID(fromStdout data: Data) -> String? {
     guard let text = String(bytes: data, encoding: .utf8) else { return nil }

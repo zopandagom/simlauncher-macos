@@ -5,8 +5,9 @@ import SimulatorTesting
 import SwiftUI
 
 /// App 없이 Launcher 화면만 띄우는 데모 앱. Preview 도 여기에 둔다.
-/// 실제 시뮬레이터 대신 Testing 모듈의 `SimulatorClientFake`(샘플 목록, 호출마다 1초 지연)와
-/// `AppBundleClientFake`(어떤 파일을 골라도 샘플 앱, zip 도 1초 풀기 뒤 샘플 앱, 1초 지연)를 주입한다.
+/// 실제 시뮬레이터 대신 Testing 모듈의 `SimulatorClientFake`(샘플 목록, 호출마다 1초 지연, 링크는 켜진 기기면
+/// 어떤 링크든 열린 것으로 끝난다)와 `AppBundleClientFake`(어떤 파일을 골라도 샘플 앱, zip 도 1초 풀기 뒤 샘플 앱,
+/// 1초 지연)를 주입한다.
 @main
 struct LauncherFeatureExampleApp: App {
   @State private var model = Self.makeModel()
@@ -132,4 +133,24 @@ private func previewLauncher(
 
 #Preview("실행 실패 (앱 설치…)") {
   previewLauncher { $0.setLaunchError(.appLaunchFailed) }
+}
+
+#Preview("링크 열기 (켜진·꺼진 기기의 링크 열기…)") {
+  previewLauncher { $0.setDelay(.seconds(1)) }
+}
+
+#Preview("링크 여는 중 (링크 열기… → 열기, 끝나지 않음)") {
+  previewLauncher { $0.suspendOpenURLs() }
+}
+
+#Preview("링크 열 앱 없음 (링크 열기… → 열기)") {
+  previewLauncher { $0.setOpenURLError(.urlNotHandled) }
+}
+
+/// 설치가 3초 걸려 실패하는 동안 다른 기기의 링크 시트를 열어, 설치 실패 알림과 링크 시트가 함께 나와도 깨지지 않는지 본다.
+#Preview("설치 실패 중 링크 시트 (한 기기의 앱 설치… 뒤 다른 기기의 링크 열기…)") {
+  previewLauncher {
+    $0.setDelay(.seconds(3))
+    $0.setInstallError(.appIncompatible)
+  }
 }

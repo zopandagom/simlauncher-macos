@@ -5,7 +5,7 @@ import Testing
 
 struct DeviceActivityTests {
   private static let states: [VirtualDevice.State] = [.shutdown, .booted, .booting, .shuttingDown, .unknown]
-  private static let tasks: [DeviceTask] = [.boot, .shutdown, .delete, .erase, .installApp]
+  private static let tasks: [DeviceTask] = [.boot, .shutdown, .delete, .erase, .installApp, .openURL]
 
   @Test(
     "진행 중인 작업이 없으면 작업별 기기 규칙대로 시작할 수 있다",
@@ -21,7 +21,7 @@ struct DeviceActivityTests {
       case .shutdown: state == .booted
       case .delete: state == .shutdown
       case .erase: isAvailable && state == .shutdown
-      case .installApp: isAvailable && (state == .shutdown || state == .booted)
+      case .installApp, .openURL: isAvailable && (state == .shutdown || state == .booted)
       }
       #expect(activity.canStart(task, on: device) == expected, "쓸 수 있음: \(isAvailable)")
     }

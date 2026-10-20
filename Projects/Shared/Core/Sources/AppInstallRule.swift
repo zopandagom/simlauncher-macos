@@ -44,6 +44,7 @@ public enum AppInstallAvailability: Hashable, Sendable {
 public extension VirtualDevice {
   /// 쓸 수 없으면 blocked(.unavailable) (상태보다 먼저), `.shutdown`·`.booted` 면 allowed(꺼져 있으면 켜고 설치한다),
   /// 그 밖은 blocked(.stateChanging). Model 가드와 View(버튼 비활성·드롭 거절·이유)가 같은 규칙을 쓴다.
+  /// 링크 열기도 같은 규칙을 쓴다 (꺼져 있으면 켜고 연다).
   var appInstallAvailability: AppInstallAvailability {
     if self.availability != .available {
       return .blocked(.unavailable)

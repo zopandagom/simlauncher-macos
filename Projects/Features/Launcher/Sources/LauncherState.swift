@@ -12,7 +12,7 @@ public enum LauncherListState: Hashable, Sendable {
   case failed(SimulatorError)
 }
 
-/// 목록 위에 띄우는 알림. 기기 작업(켜기·끄기·만들기·삭제·초기화·앱 설치·실행) 실패와, 목록이 있을 때의 새로 고침 실패.
+/// 목록 위에 띄우는 알림. 기기 작업(켜기·끄기·만들기·삭제·초기화·앱 설치·실행·링크 열기) 실패와, 목록이 있을 때의 새로 고침 실패.
 public enum LauncherNotice: Hashable, Sendable {
   /// 알림에 보일 기기. 누른 시점의 값이라, 실패 뒤 목록에서 사라져도 그대로 보인다.
   public struct Device: Hashable, Sendable {
@@ -40,6 +40,8 @@ public enum LauncherNotice: Hashable, Sendable {
   case installFailed(Device, AppInstallFailure)
   /// 앱은 설치했지만 실행하지 못했다.
   case launchFailed(Device, SimulatorError)
+  /// 링크를 열지 못했다 (명령 전 거절 포함). Device 는 "링크 열기…" 를 누른 시점의 기기.
+  case openURLFailed(Device, OpenURLFailure)
 }
 
 /// 앱 설치 흐름의 실패 원인 (켜기·앱 열기 실패는 기존 bootFailed·openAppFailed 를 쓴다).
@@ -53,6 +55,14 @@ public enum AppInstallFailure: Hashable, Sendable {
   /// 검사하는 사이 기기가 설치할 수 없는 상태가 됐다.
   case deviceNotReady(AppInstallBlockReason)
   /// install 명령 실패, 또는 검사하는 사이 기기가 목록에서 사라짐(`.deviceNotFound`).
+  case simulator(SimulatorError)
+}
+
+/// 링크 열기 흐름의 실패 원인 (켜기·앱 열기 실패는 설치와 같이 기존 bootFailed·openAppFailed 를 쓴다).
+public enum OpenURLFailure: Hashable, Sendable {
+  /// 시트를 연 사이 기기가 링크를 열 수 없는 상태가 됐다. 막힘 규칙은 설치와 같다 (`appInstallAvailability`).
+  case deviceNotReady(AppInstallBlockReason)
+  /// openurl 명령 실패, 또는 시트를 연 사이 기기가 목록에서 사라짐(`.deviceNotFound`).
   case simulator(SimulatorError)
 }
 
