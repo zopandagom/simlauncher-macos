@@ -37,6 +37,8 @@ public extension Client {
 /// 각 Feature 는 Feature / Tests / Example 세 타깃으로 나뉜다.
 public enum Feature: String, CaseIterable {
   case launcher = "Launcher"
+  /// Xcode 설치·라이선스·첫 실행 준비 단계별 안내와 다시 확인. 3-D 에서 런타임 설치.
+  case setup = "Setup"
 
   public var name: String { "\(self.rawValue)Feature" }
   public var tests: String { "\(self.name)Tests" }
