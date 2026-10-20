@@ -4,7 +4,7 @@ import Foundation
 import Observation
 import SimulatorInterface
 
-/// 첫 화면의 상태와 로직. iOS 시뮬레이터 기기 목록을 읽고, 기기를 켜고 끄며(켠 뒤 Simulator 앱을 연다),
+/// 기기 목록 화면의 상태와 로직. iOS 시뮬레이터 기기 목록을 읽고, 기기를 켜고 끄며(켠 뒤 Simulator 앱을 연다),
 /// 만들고 지우고 초기화한다. 고른 .app 이나 .app 을 담은 zip 을(풀어서) 기기에 설치하고 바로 실행하며,
 /// 입력한 링크(딥링크·웹 주소)를 기기에서 연다 (둘 다 꺼져 있으면 켠다).
 @MainActor
@@ -57,17 +57,25 @@ public final class LauncherModel {
 
   @ObservationIgnored private let simulator: any SimulatorClient
   @ObservationIgnored private let appBundle: any AppBundleClient
+  /// 툴바 "개발 환경"을 눌렀을 때 부른다. App 이 Setup 화면을 다시 연다 (화면 간 흐름은 App 이 잇는다).
+  @ObservationIgnored private let setupRequested: @MainActor () -> Void
   /// 진행 중인 목록 읽기. Model 이 소유해 View 의 `.task` 가 취소돼도 끝까지 돈다.
   @ObservationIgnored private var loadTask: Task<Void, Never>?
   /// 읽는 동안 들어온 요청. 진행 중인 읽기가 끝나면 한 번 더 읽는다.
   @ObservationIgnored private var reloadRequested = false
 
-  public init(simulator: any SimulatorClient, appBundle: any AppBundleClient) {
+  public init(
+    simulator: any SimulatorClient,
+    appBundle: any AppBundleClient,
+    setupRequested: @escaping @MainActor () -> Void = {}
+  ) {
     self.simulator = simulator
     self.appBundle = appBundle
+    self.setupRequested = setupRequested
   }
 
-  /// 목록을 읽은 뒤(목록을 먼저 보인다) 앞선 실행이 남긴 zip 임시 폴더를 정리한다.
+  /// 목록을 읽은 뒤(목록을 먼저 보인다) 남은 zip 임시 폴더(앞선 실행이 남겼거나 지우지 못한 것)를 정리한다.
+  /// 화면이 나타날 때마다 불리므로 Setup 화면에서 돌아올 때마다 다시 읽고 정리한다.
   public func onAppear() async {
     await self.reload()
     await self.appBundle.removeLeftoverExtractions()
@@ -75,6 +83,11 @@ public final class LauncherModel {
 
   public func refreshButtonTapped() async {
     await self.reload()
+  }
+
+  /// 툴바 "개발 환경": App 이 Setup 화면을 다시 연다. 진행 중 작업과 관계없이 늘 누를 수 있다.
+  public func setupButtonTapped() {
+    self.setupRequested()
   }
 
   /// 꺼진 기기를 켜고, 성공하면 Simulator 앱을 연 뒤 목록을 다시 읽는다. 실패하면 알림을 띄우고 다시 읽는다.
@@ -317,7 +330,7 @@ public extension LauncherModel {
       return
     }
     await self.installBundle(extracted.app, on: id, label: label)
-    // 설치 명령이 번들을 기기로 복사한 뒤라 지워도 된다. 지우지 못하면 다음 시작 때 지운다.
+    // 설치 명령이 번들을 기기로 복사한 뒤라 지워도 된다. 지우지 못하면 다음에 기기 목록 화면을 열 때 지운다.
     await self.appBundle.removeExtracted(extracted)
   }
 
