@@ -1,0 +1,61 @@
+{
+  "00000000-0000-0000-0002-000000000003" : {
+    "build" : "24R362",
+    "deletable" : true,
+    "identifier" : "00000000-0000-0000-0002-000000000003",
+    "kind" : "Patchable Cryptex Disk Image",
+    "mountPath" : "\/fixture\/mnt\/watchOS_24R362",
+    "parentMountPath" : "\/fixture\/AssetsV2\/watchOSSimulatorRuntime\/AssetData",
+    "path" : "\/fixture\/AssetsV2\/watchOSSimulatorRuntime\/AssetData",
+    "platformIdentifier" : "com.apple.platform.watchsimulator",
+    "runtimeBundlePath" : "\/fixture\/mnt\/watchOS_24R362\/Library\/Developer\/CoreSimulator\/Profiles\/Runtimes\/watchOS 27.0.simruntime",
+    "runtimeIdentifier" : "com.apple.CoreSimulator.SimRuntime.watchOS-27-0",
+    "signatureState" : "Unknown",
+    "sizeBytes" : 3814435665,
+    "state" : "Ready",
+    "supportedArchitectures" : [
+      "arm64"
+    ],
+    "version" : "27.0"
+  },
+  "00000000-0000-0000-0002-000000000002" : {
+    "build" : "24A94425",
+    "deletable" : true,
+    "identifier" : "00000000-0000-0000-0002-000000000002",
+    "kind" : "Patchable Cryptex Disk Image",
+    "lastUsedAt" : "2026-10-19T23:36:29Z",
+    "mountPath" : "\/fixture\/mnt\/iOS_24A94425",
+    "parentMountPath" : "\/fixture\/AssetsV2\/iOSSimulatorRuntime-27-1\/AssetData",
+    "path" : "\/fixture\/AssetsV2\/iOSSimulatorRuntime-27-1\/AssetData",
+    "platformIdentifier" : "com.apple.platform.iphonesimulator",
+    "runtimeBundlePath" : "\/fixture\/mnt\/iOS_24A94425\/Library\/Developer\/CoreSimulator\/Profiles\/Runtimes\/iOS 27.1.simruntime",
+    "runtimeIdentifier" : "com.apple.CoreSimulator.SimRuntime.iOS-27-1",
+    "signatureState" : "Unknown",
+    "sizeBytes" : 7874743137,
+    "state" : "Ready",
+    "supportedArchitectures" : [
+      "arm64"
+    ],
+    "version" : "27.1"
+  },
+  "00000000-0000-0000-0002-000000000001" : {
+    "build" : "24A434",
+    "deletable" : true,
+    "identifier" : "00000000-0000-0000-0002-000000000001",
+    "kind" : "Patchable Cryptex Disk Image",
+    "lastUsedAt" : "2026-10-20T00:58:46Z",
+    "mountPath" : "\/fixture\/mnt\/iOS_24A434",
+    "parentMountPath" : "\/fixture\/AssetsV2\/iOSSimulatorRuntime-27-0\/AssetData",
+    "path" : "\/fixture\/AssetsV2\/iOSSimulatorRuntime-27-0\/AssetData",
+    "platformIdentifier" : "com.apple.platform.iphonesimulator",
+    "runtimeBundlePath" : "\/fixture\/mnt\/iOS_24A434\/Library\/Developer\/CoreSimulator\/Profiles\/Runtimes\/iOS 27.0.simruntime",
+    "runtimeIdentifier" : "com.apple.CoreSimulator.SimRuntime.iOS-27-0",
+    "signatureState" : "Unknown",
+    "sizeBytes" : 8067000161,
+    "state" : "Ready",
+    "supportedArchitectures" : [
+      "arm64"
+    ],
+    "version" : "27.0"
+  }
+}

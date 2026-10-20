@@ -9,9 +9,11 @@ import Synchronization
 /// 목록을 다시 만들 때 런타임·기기 종류는 그대로 둔다.
 /// install·openURL 은 실제처럼 목록의 기기 상태를 본다(없으면 `.deviceNotFound`, 켜져 있지 않으면 `.deviceNotBooted`),
 /// 성공해도 목록은 바꾸지 않는다. launch 는 설치 여부를 보지 않고 설정한 에러가 없으면 성공한다.
+/// 런타임 이미지 목록은 기기 목록과 따로 저장하고(기본값 `RuntimeImage.samples`), 어떤 호출도 그 목록을 바꾸지 않는다.
 public final class SimulatorClientFake: SimulatorClient {
   public enum Call: Hashable, Sendable {
     case fetchInventory
+    case fetchRuntimeImages
     case boot(VirtualDevice.ID)
     case shutdown(VirtualDevice.ID)
     case openSimulatorApp
@@ -29,8 +31,10 @@ public final class SimulatorClientFake: SimulatorClient {
 
   private struct State {
     var inventory: DeviceInventory
+    var runtimeImages: [RuntimeImage] = RuntimeImage.samples
     var calls: [Call] = []
     var fetchError: SimulatorError?
+    var runtimeImagesError: SimulatorError?
     var bootError: SimulatorError?
     var shutdownError: SimulatorError?
     var openAppError: SimulatorError?
@@ -291,8 +295,12 @@ public final class SimulatorClientFake: SimulatorClient {
       }
     }
   }
+}
 
-  private static func inventory(
+// MARK: - 목록 갱신 (기기만 바꾸고 런타임·기기 종류는 그대로)
+
+private extension SimulatorClientFake {
+  static func inventory(
     _ inventory: DeviceInventory,
     setting id: VirtualDevice.ID,
     to newState: VirtualDevice.State
@@ -312,7 +320,7 @@ public final class SimulatorClientFake: SimulatorClient {
   }
 
   /// 기기만 바꾸고 런타임·기기 종류는 그대로 둔 목록.
-  private static func inventory(_ inventory: DeviceInventory, devices: [VirtualDevice]) -> DeviceInventory {
+  static func inventory(_ inventory: DeviceInventory, devices: [VirtualDevice]) -> DeviceInventory {
     DeviceInventory(devices: devices, runtimes: inventory.runtimes, deviceTypes: inventory.deviceTypes)
   }
 }
@@ -396,5 +404,30 @@ public extension SimulatorClientFake {
       }
       return device.state == .booted ? nil : .deviceNotBooted
     }
+  }
+}
+
+// MARK: - 런타임 이미지
+
+public extension SimulatorClientFake {
+  func setRuntimeImages(_ images: [RuntimeImage]) {
+    self.state.withLock { $0.runtimeImages = images }
+  }
+
+  func setRuntimeImagesError(_ error: SimulatorError?) {
+    self.state.withLock { $0.runtimeImagesError = error }
+  }
+
+  /// 기록 → 지연 → 설정된 에러면 던짐 → 저장된 목록 (설정한 순서 그대로).
+  func fetchRuntimeImages() async throws(SimulatorError) -> [RuntimeImage] {
+    self.record(.fetchRuntimeImages)
+    await self.sleepIfNeeded()
+    let result: Result<[RuntimeImage], SimulatorError> = self.state.withLock { state in
+      if let error = state.runtimeImagesError {
+        return .failure(error)
+      }
+      return .success(state.runtimeImages)
+    }
+    return try result.get()
   }
 }

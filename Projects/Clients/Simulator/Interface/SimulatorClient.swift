@@ -1,12 +1,17 @@
 import Core
 import Foundation
 
-/// iOS 시뮬레이터 기기·런타임·기기 종류를 읽고, 켜고 끄고, 만들고 지우고 초기화하고, 앱을 설치·실행하고 링크를 여는 Client.
+/// iOS 시뮬레이터 기기·런타임·기기 종류와 런타임 디스크 이미지 목록을 읽고, 켜고 끄고, 만들고 지우고 초기화하고, 앱을 설치·실행하고 링크를 여는 Client.
 /// Impl 은 `xcrun simctl` 과 같은 개발자 디렉터리를 쓴다. 쓸 Xcode 가 없으면(App 이 넘긴 provider 가 nil 을 돌려줌)
 /// 어떤 명령도 실행하지 않고 `.developerToolsUnavailable` 를 던진다.
 public protocol SimulatorClient: Sendable {
   /// 모든 플랫폼의 기기·런타임·기기 종류 목록 (`simctl list -j` 한 번). 화면용 필터는 `DeviceList` 가 한다.
   func fetchInventory() async throws(SimulatorError) -> DeviceInventory
+
+  /// 런타임 디스크 이미지 목록 (`simctl runtime list -j` 한 번). 모든 플랫폼, 설치·삭제 중인 이미지도 상태와 함께.
+  /// `fetchInventory()` 의 runtimes(`simctl list -j`)는 쓸 수 있는 런타임만 보이고 상태·build 가 없어 따로 둔다.
+  /// 해석하지 못한 항목은 빼고, 최상위가 사전이 아니면 `.unexpectedOutput`. 네트워크를 쓰지 않는다.
+  func fetchRuntimeImages() async throws(SimulatorError) -> [RuntimeImage]
 
   /// 기기를 켠다. 이미 켜졌거나 켜는 중이면 성공으로 본다.
   func boot(_ id: VirtualDevice.ID) async throws(SimulatorError)

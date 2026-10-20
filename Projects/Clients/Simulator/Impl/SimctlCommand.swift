@@ -10,6 +10,11 @@ enum SimctlCommand {
     ["simctl", "list", "-j"]
   }
 
+  /// 런타임 디스크 이미지 목록 (상태 포함). `list -j` 의 runtimes 와 달리 설치·삭제 중인 이미지도 보인다.
+  static func runtimeList() -> [String] {
+    ["simctl", "runtime", "list", "-j"]
+  }
+
   /// `udid` 는 `validatedUDID(_:)` 를 거친 값만 넘긴다 (simctl 은 기기 이름·옵션도 받는다).
   static func boot(udid: String) -> [String] {
     ["simctl", "boot", udid]
