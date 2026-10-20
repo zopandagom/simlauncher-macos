@@ -4,7 +4,20 @@ import Synchronization
 
 /// `Process` 로 실제 명령을 실행하는 `CommandClient`.
 public struct CommandClientImpl: CommandClient {
-  public init() {}
+  private let timing: ProcessControl.Timing
+
+  public init() {
+    self.timing = .standard
+  }
+
+  /// 테스트용: `runCancellable` 의 멈춤 단계 간격과 종료 뒤 EOF 대기 시간을 정한다.
+  init(interruptGrace: Duration, terminateGrace: Duration, eofGrace: Duration) {
+    self.timing = ProcessControl.Timing(
+      interruptGrace: interruptGrace,
+      terminateGrace: terminateGrace,
+      eofGrace: eofGrace
+    )
+  }
 
   public func run(
     _ executable: URL,
@@ -53,6 +66,68 @@ public struct CommandClientImpl: CommandClient {
           )
         )
       }
+    }
+    return try result.get()
+  }
+
+  public func runCancellable(
+    _ executable: URL,
+    _ arguments: [String],
+    environment: [String: String],
+    timeout: Duration?,
+    onOutput: @escaping @Sendable (CommandOutput) async -> Void
+  ) async throws(CommandError) -> CommandResult {
+    guard !Task.isCancelled else {
+      throw .cancelled
+    }
+    let (stream, continuation) = AsyncStream<CommandOutput>.makeStream()
+    let stdoutPipe = Pipe()
+    let stderrPipe = Pipe()
+    let control = ProcessControl(
+      timing: self.timing,
+      stdout: stdoutPipe.fileHandleForReading,
+      stderr: stderrPipe.fileHandleForReading,
+      continuation: continuation
+    )
+    let process = Process()
+    process.executableURL = executable
+    process.arguments = arguments
+    process.environment = environment
+    process.standardInput = FileHandle.nullDevice
+    process.standardOutput = stdoutPipe
+    process.standardError = stderrPipe
+    process.terminationHandler = { process in
+      control.exited(process.terminationStatus)
+    }
+
+    let result: Result<CommandResult, CommandError> = await withTaskCancellationHandler {
+      // 시작 전 취소 확인을 지난 뒤 온 취소는 시작 직후 SIGINT 로 처리한다 (`launched`).
+      guard control.shouldLaunch() else {
+        return .failure(.cancelled)
+      }
+      control.startReading()
+      do {
+        try process.run()
+      } catch {
+        control.stopReading()
+        return .failure(.launchFailed)
+      }
+      control.launched(pid: process.processIdentifier)
+      if let timeout {
+        control.startTimer(timeout)
+      }
+      // 취소되면 남은 조각(스트림에 쌓인 것 포함)은 넘기지 않는다. 종료·EOF 는 취소와 무관하게 기다린다.
+      for await output in stream {
+        guard !Task.isCancelled else {
+          break
+        }
+        await onOutput(output)
+      }
+      let exitCode = await control.waitForExit()
+      await control.waitForOutputEnd()
+      return control.outcome(exitCode: exitCode)
+    } onCancel: {
+      control.requestStop(.cancelled)
     }
     return try result.get()
   }
