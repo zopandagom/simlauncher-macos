@@ -116,4 +116,66 @@ struct DevEnvironmentClientImplFileTests {
     defer { tmp.remove() }
     #expect(DevEnvironmentClientImpl.canonicalBundleURL(tmp.url.appending(path: "Missing.app")) == nil)
   }
+
+  // MARK: - 기본 iOS 런타임
+
+  @Test("고른 Xcode 의 SDKSettings Version 과 SystemVersion ProductBuildVersion 을 읽는다 (명령은 xcode-select 하나)")
+  func defaultIOSRuntime() async throws {
+    let tmp = try TemporaryDirectory()
+    defer { tmp.remove() }
+    let bundle = try tmp.makeXcode()
+    try tmp.makeSDK(in: bundle, version: "27.1", build: "24A94232")
+    let command = Responder.command(select: Responder.commandLineTools)
+
+    let runtime = await DevEnvironmentClientImpl(command: command, applicationsDirectory: tmp.applications)
+      .defaultIOSRuntime()
+
+    #expect(runtime == DefaultIOSRuntime(version: OSVersion(major: 27, minor: 1), build: "24A94232"))
+    #expect(command.executables == ["xcode-select"])
+  }
+
+  @Test("SystemVersion.plist 가 없으면 build 는 nil")
+  func defaultIOSRuntimeWithoutBuild() async throws {
+    let tmp = try TemporaryDirectory()
+    defer { tmp.remove() }
+    let bundle = try tmp.makeXcode()
+    try tmp.makeSDK(in: bundle, version: "27.1", build: nil)
+    let command = Responder.command(select: Responder.commandLineTools)
+
+    let runtime = await DevEnvironmentClientImpl(command: command, applicationsDirectory: tmp.applications)
+      .defaultIOSRuntime()
+
+    #expect(runtime == DefaultIOSRuntime(version: OSVersion(major: 27, minor: 1), build: nil))
+  }
+
+  @Test("SDKSettings 가 없거나, 상한을 넘거나, Version 을 못 읽으면 nil", arguments: [0, 1, 2])
+  func defaultIOSRuntimeUnreadable(variant: Int) async throws {
+    let tmp = try TemporaryDirectory()
+    defer { tmp.remove() }
+    let bundle = try tmp.makeXcode()
+    let xcode = try tmp.installation(bundle, 27, 1)
+    switch variant {
+    case 0:
+      try tmp.makeSDK(in: bundle, version: nil)
+    case 1:
+      try tmp.makeSDK(in: bundle)
+      try Data(count: Self.limit + 1).write(to: XcodeCommand.iOSSimulatorSDKSettings(in: xcode))
+    default:
+      try tmp.makeSDK(in: bundle, version: "27.x")
+    }
+    let command = Responder.command(select: Responder.commandLineTools)
+
+    let client = DevEnvironmentClientImpl(command: command, applicationsDirectory: tmp.applications)
+    #expect(await client.defaultIOSRuntime() == nil)
+  }
+
+  @Test("Xcode 가 없으면 nil")
+  func defaultIOSRuntimeWithoutXcode() async throws {
+    let tmp = try TemporaryDirectory()
+    defer { tmp.remove() }
+    let command = Responder.command(select: .exit(2))
+
+    let client = DevEnvironmentClientImpl(command: command, applicationsDirectory: tmp.applications)
+    #expect(await client.defaultIOSRuntime() == nil)
+  }
 }

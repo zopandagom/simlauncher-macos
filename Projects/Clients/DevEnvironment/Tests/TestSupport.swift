@@ -3,6 +3,7 @@ import CommandTesting
 import Core
 import Foundation
 import Testing
+@testable import DevEnvironmentImpl
 
 /// 테스트마다 만드는 임시 폴더. 끝나면 `remove()` 로 지운다.
 /// `Applications/` 는 테스트용 앱 폴더, `Elsewhere/` 는 앱 폴더 밖 위치다.
@@ -57,6 +58,36 @@ struct TemporaryDirectory {
       try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: tool.path(percentEncoded: false))
     }
     return bundle
+  }
+
+  /// 번들 안에 iOS Simulator SDK 의 `SDKSettings.plist`(`Version`)와 `SystemVersion.plist`(`ProductBuildVersion`)를
+  /// 만든다. nil 이면 그 파일을 만들지 않는다.
+  func makeSDK(in bundle: URL, version: String? = "27.1", build: String? = "24A94232") throws {
+    let developer = bundle.appending(path: "Contents/Developer", directoryHint: .isDirectory)
+    let installation = XcodeInstallation(bundleURL: bundle, version: OSVersion(major: 27, minor: 1))
+    #expect(installation.developerDirectory.standardizedFileURL == developer.standardizedFileURL)
+    let settings = XcodeCommand.iOSSimulatorSDKSettings(in: installation)
+    let systemVersion = XcodeCommand.iOSSimulatorSDKSystemVersion(in: installation)
+    try FileManager.default.createDirectory(
+      at: systemVersion.deletingLastPathComponent(),
+      withIntermediateDirectories: true
+    )
+    if let version {
+      let data = try PropertyListSerialization.data(
+        fromPropertyList: ["Version": version, "CanonicalName": "iphonesimulator\(version)"],
+        format: .xml,
+        options: 0
+      )
+      try data.write(to: settings)
+    }
+    if let build {
+      let data = try PropertyListSerialization.data(
+        fromPropertyList: ["ProductBuildVersion": build, "ProductVersion": "27.1"],
+        format: .xml,
+        options: 0
+      )
+      try data.write(to: systemVersion)
+    }
   }
 
   /// `target` 을 가리키는 링크 `folder/<name>`.

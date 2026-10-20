@@ -18,6 +18,19 @@ struct XcodeCommandTests {
     #expect(XcodeCommand.licenseCheck() == ["-license", "check"])
     #expect(XcodeCommand.openApp(bundlePath: "/Applications/Xcode.app/") == ["/Applications/Xcode.app/"])
     #expect(XcodeCommand.openAppStorePage() == ["macappstore://apps.apple.com/app/id497799835"])
+    #expect(XcodeCommand.downloadPlatformIOS() == ["-downloadPlatform", "iOS"])
+  }
+
+  @Test("iOS Simulator SDK 의 SDKSettings·SystemVersion 경로는 고른 Xcode 안")
+  func sdkPaths() {
+    let sdk: [String] = [
+      "/", "Applications", "Xcode.app", "Contents", "Developer",
+      "Platforms", "iPhoneSimulator.platform", "Developer", "SDKs", "iPhoneSimulator.sdk",
+    ]
+    let settings: [String] = sdk + ["SDKSettings.plist"]
+    let systemVersion: [String] = sdk + ["System", "Library", "CoreServices", "SystemVersion.plist"]
+    #expect(XcodeCommand.iOSSimulatorSDKSettings(in: Self.xcode).pathComponents == settings)
+    #expect(XcodeCommand.iOSSimulatorSDKSystemVersion(in: Self.xcode).pathComponents == systemVersion)
   }
 
   @Test("실행 파일: /usr/bin 의 xcode-select·open, 고른 Xcode 안의 xcodebuild (xcrun·xcodebuild shim 은 쓰지 않는다)")
