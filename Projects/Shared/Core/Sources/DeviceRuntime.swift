@@ -15,7 +15,7 @@ public enum DevicePlatform: Hashable, Sendable {
   }
 }
 
-/// 런타임 OS 버전. "27.0"·"26.0.1" 처럼 점으로 나뉜 숫자 1~3 개.
+/// 점으로 나뉜 숫자 버전 (런타임 OS, Xcode). "27.0"·"26.0.1" 처럼 점으로 나뉜 숫자 1~3 개.
 public struct OSVersion: Hashable, Sendable, Comparable {
   public let major: Int
   public let minor: Int
