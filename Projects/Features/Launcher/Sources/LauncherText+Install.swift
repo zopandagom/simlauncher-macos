@@ -34,15 +34,19 @@ extension LauncherText {
 
   // MARK: - 알림
 
-  /// 설치·실행 실패 알림의 제목. `title(for:)` 가 두 케이스를 한 줄로 넘긴다.
+  /// 설치·실행·링크 열기 실패 알림의 제목. `title(for:)` 가 세 케이스를 한 줄로 넘긴다 (복잡도를 나눈다).
   static func appNoticeTitle(for notice: LauncherNotice?, device: LauncherNotice.Device) -> String {
-    if case .launchFailed = notice {
-      return String(
+    switch notice {
+    case .launchFailed:
+      String(
         localized: "“\(device.name)” (\(device.runtimeName)) 기기에 앱을 설치했지만 실행하지 못했습니다",
         bundle: .module
       )
+    case .openURLFailed:
+      self.openURLNoticeTitle(for: device)
+    default:
+      String(localized: "“\(device.name)” (\(device.runtimeName)) 기기에 앱을 설치하지 못했습니다", bundle: .module)
     }
-    return String(localized: "“\(device.name)” (\(device.runtimeName)) 기기에 앱을 설치하지 못했습니다", bundle: .module)
   }
 
   static func message(for failure: AppInstallFailure) -> String {
@@ -160,7 +164,8 @@ extension LauncherText {
   static func appCommandMessage(for error: SimulatorError) -> String? {
     switch error {
     case .deviceNotBooted:
-      String(localized: "기기가 켜져 있지 않아 앱을 설치하거나 실행하지 못했습니다. 기기를 켠 뒤 다시 시도하세요.", bundle: .module)
+      // 설치·실행과 링크 열기가 함께 쓴다 (simctl 이 꺼진 기기에서 같은 오류를 낸다).
+      String(localized: "기기가 켜져 있지 않아 앱 설치·실행이나 링크 열기를 하지 못했습니다. 기기를 켠 뒤 다시 시도하세요.", bundle: .module)
     case .appNotFound:
       self.appFileNotFound
     case .appInvalid:
@@ -181,7 +186,7 @@ extension LauncherText {
       )
     case .developerToolsUnavailable, .deviceNotFound, .deviceNotShutdown, .creationOptionUnavailable,
          .invalidDeviceName,
-         .simulatorAppNotFound, .unexpectedOutput, .creationResultUnknown, .commandFailed:
+         .simulatorAppNotFound, .unexpectedOutput, .creationResultUnknown, .commandFailed, .urlNotHandled, .invalidURL:
       nil
     }
   }

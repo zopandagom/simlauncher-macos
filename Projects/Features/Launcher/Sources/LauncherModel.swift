@@ -5,14 +5,15 @@ import Observation
 import SimulatorInterface
 
 /// 첫 화면의 상태와 로직. iOS 시뮬레이터 기기 목록을 읽고, 기기를 켜고 끄며(켠 뒤 Simulator 앱을 연다),
-/// 만들고 지우고 초기화한다. 고른 .app 이나 .app 을 담은 zip 을(풀어서) 기기에 설치하고 바로 실행한다(꺼져 있으면 켠다).
+/// 만들고 지우고 초기화한다. 고른 .app 이나 .app 을 담은 zip 을(풀어서) 기기에 설치하고 바로 실행하며,
+/// 입력한 링크(딥링크·웹 주소)를 기기에서 연다 (둘 다 꺼져 있으면 켠다).
 @MainActor
 @Observable
 public final class LauncherModel {
   public private(set) var listState: LauncherListState = .loading
   /// 목록을 읽는 중이다 (첫 로딩 포함).
   public private(set) var isRefreshing = false
-  /// 기기별 진행 작업(켜기·끄기·삭제·초기화·앱 설치). 같은 기기의 작업은 겹치지 않는다.
+  /// 기기별 진행 작업(켜기·끄기·삭제·초기화·앱 설치·링크 열기). 같은 기기의 작업은 겹치지 않는다.
   public private(set) var activity = DeviceActivity()
   /// 닫지 않은 알림 줄.
   public private(set) var noticeQueue = LauncherNotices()
@@ -26,11 +27,13 @@ public final class LauncherModel {
   public private(set) var isCreating = false
   /// 확인을 기다리는 삭제·초기화. nil 이면 대화상자가 없다.
   public private(set) var pendingConfirmation: DeviceConfirmation?
+  /// 링크 열기 시트 초안. nil 이면 시트가 닫혀 있다.
+  public private(set) var openURLDraft: OpenURLDraft?
 
-  /// + 버튼을 누를 수 있는지: 목록을 읽었고, 선택지가 있고, 만드는 중이 아니고, 시트가 닫혀 있다.
+  /// + 버튼을 누를 수 있는지: 목록을 읽었고, 선택지가 있고, 만드는 중이 아니고, 생성·링크 시트가 닫혀 있다.
   public var canCreateDevice: Bool {
     guard case .loaded = self.listState else { return false }
-    return !self.creationOptions.isEmpty && !self.isCreating && self.createDraft == nil
+    return !self.creationOptions.isEmpty && !self.isCreating && self.createDraft == nil && self.openURLDraft == nil
   }
 
   /// 목록을 읽었지만 만들 수 있는 기기 종류가 없어 + 버튼을 쓸 수 없다. 툴바 + 툴팁 문구를 고르고,
@@ -265,7 +268,8 @@ public extension LauncherModel {
     guard case let .loaded(list) = self.listState,
           let device = list.device(id: id),
           self.activity.canStart(action.task, on: device),
-          self.pendingConfirmation == nil
+          self.pendingConfirmation == nil,
+          self.openURLDraft == nil
     else { return }
     self.pendingConfirmation = DeviceConfirmation(action: action, deviceID: id, device: Self.label(for: device))
   }
@@ -386,6 +390,80 @@ public extension LauncherModel {
       try await self.simulator.launch(info.bundleID, on: device.id)
     } catch {
       self.enqueue(.launchFailed(label, error))
+    }
+    await self.reload()
+  }
+}
+
+// MARK: - 링크 열기
+
+// `private(set)` 상태를 바꾸므로 같은 파일에 둔다.
+public extension LauncherModel {
+  /// 행의 "링크 열기…": 링크를 열 수 있는 기기이고 다른 시트·확인 대화상자가 없으면 시트를 연다.
+  func openURLButtonTapped(_ id: VirtualDevice.ID) {
+    guard case let .loaded(list) = self.listState,
+          let device = list.device(id: id),
+          self.activity.canStart(.openURL, on: device),
+          self.openURLDraft == nil,
+          self.createDraft == nil,
+          self.pendingConfirmation == nil
+    else { return }
+    self.openURLDraft = OpenURLDraft(deviceID: id, device: Self.label(for: device))
+  }
+
+  func openURLTextChanged(_ text: String) {
+    self.openURLDraft?.textChanged(text)
+  }
+
+  func openURLCancelTapped() {
+    self.openURLDraft = nil
+  }
+
+  func openURLSheetDismissed() {
+    self.openURLDraft = nil
+  }
+
+  /// 시트를 닫고, 꺼져 있으면 켜고, Simulator 앱을 연 뒤 링크를 열고 다시 읽는다. 실패하면 알림을 띄운다.
+  /// 기기는 시트를 연 사이 바뀌었을 수 있어 지금 목록으로 다시 확인한다 (명령 전 거절은 다시 읽지 않는다).
+  func openURLConfirmTapped() async {
+    // 링크에 문제가 있으면 버튼이 비활성이라 드물다. 시트와 입력은 그대로 둔다.
+    guard let draft = self.openURLDraft, let link = draft.link else { return }
+    // 첫 await 전에 닫아, 연타해도 두 번째 호출은 위에서 끝난다.
+    self.openURLDraft = nil
+    let label = draft.device
+    guard case let .loaded(list) = self.listState else { return }
+    guard let device = list.device(id: draft.deviceID) else {
+      self.enqueue(.openURLFailed(label, .simulator(.deviceNotFound)))
+      return
+    }
+    if case let .blocked(reason) = device.appInstallAvailability {
+      self.enqueue(.openURLFailed(label, .deviceNotReady(reason)))
+      return
+    }
+    // 남은 거절은 같은 기기의 다른 작업뿐이다. 시트가 창을 막아 시트를 연 뒤 그 기기 작업을 시작할 수 없어 드물고,
+    // 행의 진행 표시가 이유를 보인다.
+    guard self.activity.begin(.openURL, on: device) else { return }
+    defer { self.activity.end(on: device.id) }
+    if device.state == .shutdown {
+      do throws(SimulatorError) {
+        try await self.simulator.boot(device.id)
+      } catch {
+        self.enqueue(.bootFailed(label, error))
+        await self.reload()
+        return
+      }
+    }
+    // 열린 링크가 보이게 켜져 있던 기기도 연다. 열지 못해도 링크는 창 없이 열린다.
+    do throws(SimulatorError) {
+      try await self.simulator.openSimulatorApp()
+    } catch {
+      self.enqueue(.openAppFailed(label, error))
+    }
+    // 막 켠 기기는 준비가 끝날 때까지 돌아오지 않는다 (콜드 부팅 직후 수십 초). 그동안 행이 진행 중을 보인다.
+    do throws(SimulatorError) {
+      try await self.simulator.openURL(link, on: device.id)
+    } catch {
+      self.enqueue(.openURLFailed(label, .simulator(error)))
     }
     await self.reload()
   }

@@ -2,7 +2,7 @@ import Core
 import Foundation
 import SwiftUI
 
-/// 기기 한 줄: 종류 아이콘, 이름, 상태, 앱 설치 버튼(파일 패널)과 드롭, 켜기·끄기 버튼,
+/// 기기 한 줄: 종류 아이콘, 이름, 상태, 앱 설치 버튼(파일 패널)과 드롭, 링크 열기 버튼(시트), 켜기·끄기 버튼,
 /// 기기 작업 메뉴(… 버튼과 컨텍스트 메뉴: 초기화·삭제).
 /// 쓸 수 없는 기기는 흐리게 그리고 이유를 보인다. 막힌 메뉴 항목은 비활성으로 두고 이유를 메뉴 맨 위에 보인다.
 struct DeviceRow: View {
@@ -11,6 +11,7 @@ struct DeviceRow: View {
   let task: DeviceTask?
   let installTapped: () -> Void
   let appDropped: ([URL]) -> Void
+  let openURLTapped: () -> Void
   let bootTapped: () -> Void
   let shutdownTapped: () -> Void
   let eraseTapped: () -> Void
@@ -39,6 +40,10 @@ struct DeviceRow: View {
       Button(LauncherText.installAppButton, action: self.installTapped)
         .disabled(!self.canInstall)
         .help(self.installBlockReason ?? LauncherText.installAppHelp)
+      // 링크 열기도 설치와 같은 규칙이다 (꺼져 있으면 켜고 연다).
+      Button(LauncherText.openURLButton, action: self.openURLTapped)
+        .disabled(!self.canInstall)
+        .help(self.openURLBlockReason ?? LauncherText.openURLHelp)
       self.action
       Menu {
         self.menuItems
@@ -108,7 +113,7 @@ struct DeviceRow: View {
     self.task != nil
   }
 
-  /// 앱 설치 버튼·드롭을 받을 수 있다: 진행 중인 작업이 없고 설치할 수 있는 기기다.
+  /// 앱 설치 버튼·드롭과 링크 열기 버튼을 받을 수 있다: 진행 중인 작업이 없고 설치할 수 있는 기기다.
   private var canInstall: Bool {
     !self.isBusy && self.device.appInstallAvailability == .allowed
   }
@@ -119,13 +124,24 @@ struct DeviceRow: View {
     return LauncherText.installBlockReason(reason)
   }
 
+  /// 링크 열기 버튼 툴팁에 보일 막힌 이유. 진행 중이면 행의 진행 표시가 이유라 따로 보이지 않는다.
+  private var openURLBlockReason: String? {
+    guard case let .blocked(reason) = self.device.appInstallAvailability else { return nil }
+    return LauncherText.openURLBlockReason(reason)
+  }
+
   private var isAvailable: Bool {
     self.device.availability == .available
   }
 
   private var statusText: String {
-    if self.task == .installApp {
+    switch self.task {
+    case .installApp:
       return LauncherText.installingLabel
+    case .openURL:
+      return LauncherText.openingURLLabel
+    case .boot, .shutdown, .delete, .erase, .none:
+      break
     }
     return self.isAvailable ? LauncherText.stateLabel(for: self.device.state) : LauncherText.unavailableLabel
   }

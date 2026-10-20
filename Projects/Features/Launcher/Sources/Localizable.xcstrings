@@ -131,6 +131,26 @@
         }
       }
     },
+    "“%@” (%@) 기기에서 링크 열기" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” (%@) 기기에서 링크 열기"
+          }
+        }
+      }
+    },
+    "“%@” (%@) 기기에서 링크를 열지 못했습니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” (%@) 기기에서 링크를 열지 못했습니다"
+          }
+        }
+      }
+    },
     "iOS 버전" : {
       "localizations" : {
         "ko" : {
@@ -371,12 +391,22 @@
         }
       }
     },
-    "기기가 켜져 있지 않아 앱을 설치하거나 실행하지 못했습니다. 기기를 켠 뒤 다시 시도하세요." : {
+    "기기가 이 링크의 형식을 받아들이지 않았습니다. 링크를 다시 확인해 입력하세요." : {
       "localizations" : {
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "기기가 켜져 있지 않아 앱을 설치하거나 실행하지 못했습니다. 기기를 켠 뒤 다시 시도하세요."
+            "value" : "기기가 이 링크의 형식을 받아들이지 않았습니다. 링크를 다시 확인해 입력하세요."
+          }
+        }
+      }
+    },
+    "기기가 켜져 있지 않아 앱 설치·실행이나 링크 열기를 하지 못했습니다. 기기를 켠 뒤 다시 시도하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기기가 켜져 있지 않아 앱 설치·실행이나 링크 열기를 하지 못했습니다. 기기를 켠 뒤 다시 시도하세요."
           }
         }
       }
@@ -387,6 +417,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "기기를 만드는 중…"
+          }
+        }
+      }
+    },
+    "기기를 켜거나 끄는 중에는 링크를 열 수 없습니다. 끝난 뒤 다시 시도하세요" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기기를 켜거나 끄는 중에는 링크를 열 수 없습니다. 끝난 뒤 다시 시도하세요"
           }
         }
       }
@@ -461,6 +501,56 @@
         }
       }
     },
+    "링크" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "링크"
+          }
+        }
+      }
+    },
+    "링크 앞에 myapp:// 나 https:// 같은 스킴을 붙여 입력하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "링크 앞에 myapp:// 나 https:// 같은 스킴을 붙여 입력하세요."
+          }
+        }
+      }
+    },
+    "링크 열기…" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "링크 열기…"
+          }
+        }
+      }
+    },
+    "링크로 읽을 수 없습니다. 앞에 myapp:// 나 https:// 같은 스킴이 있는지, 스킴과 호스트(:// 앞뒤)에 공백이나 쓸 수 없는 문자가 없는지 확인하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "링크로 읽을 수 없습니다. 앞에 myapp:// 나 https:// 같은 스킴이 있는지, 스킴과 호스트(:// 앞뒤)에 공백이나 쓸 수 없는 문자가 없는지 확인하세요."
+          }
+        }
+      }
+    },
+    "링크를 여는 중…" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "링크를 여는 중…"
+          }
+        }
+      }
+    },
     "만들 수 있는 iPhone·iPad 기기 종류가 없습니다" : {
       "localizations" : {
         "ko" : {
@@ -497,6 +587,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "사용할 수 없는 기기에는 앱을 설치할 수 없습니다"
+          }
+        }
+      }
+    },
+    "사용할 수 없는 기기에서는 링크를 열 수 없습니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "사용할 수 없는 기기에서는 링크를 열 수 없습니다"
           }
         }
       }
@@ -611,6 +711,16 @@
         }
       }
     },
+    "앱 스킴 링크(딥링크)나 웹 주소를 입력해 이 기기에서 엽니다. 기기가 꺼져 있으면 켭니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "앱 스킴 링크(딥링크)나 웹 주소를 입력해 이 기기에서 엽니다. 기기가 꺼져 있으면 켭니다."
+          }
+        }
+      }
+    },
     "앱 정보(Info.plist)나 실행 파일을 읽지 못했습니다. 빌드가 끝까지 완료된 .app 인지 확인하거나 파일을 다시 받아 주세요." : {
       "localizations" : {
         "ko" : {
@@ -637,6 +747,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "앱이 시작되지 않았거나 시작하자마자 종료되었습니다. 시뮬레이터에서 앱 아이콘을 눌러 다시 실행해 보고, 계속되면 앱 개발자에게 알려 주세요."
+          }
+        }
+      }
+    },
+    "열기" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "열기"
+          }
+        }
+      }
+    },
+    "예: myapp://item/1 또는 https://example.com" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "예: myapp://item/1 또는 https://example.com"
           }
         }
       }
@@ -717,6 +847,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "이 기기의 iOS 버전을 지금 사용할 수 없습니다. Xcode 를 한 번 실행해 준비를 마친 뒤 목록을 새로 고치세요."
+          }
+        }
+      }
+    },
+    "이 링크를 열 수 있는 앱이 기기에 없습니다. 링크를 처리할 앱을 이 기기에 먼저 설치했는지, 링크의 스킴(:// 앞부분) 철자가 맞는지 확인하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 링크를 열 수 있는 앱이 기기에 없습니다. 링크를 처리할 앱을 이 기기에 먼저 설치했는지, 링크의 스킴(:// 앞부분) 철자가 맞는지 확인하세요."
           }
         }
       }

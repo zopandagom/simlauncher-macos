@@ -64,7 +64,7 @@ struct LauncherTextTests {
   func eachErrorHasExactlyOneMessageFamily(error: SimulatorError) {
     let messages = [
       LauncherText.setupMessage(for: error), LauncherText.deviceMessage(for: error),
-      LauncherText.appCommandMessage(for: error),
+      LauncherText.appCommandMessage(for: error), LauncherText.linkMessage(for: error),
     ].compactMap(\.self)
     #expect(messages.count == 1)
     #expect(messages.first == LauncherText.message(for: error))
@@ -106,6 +106,36 @@ struct LauncherTextTests {
       LauncherText.title(for: .launchFailed(device, .appLaunchFailed))
         == "“iPhone 17” (iOS 26.0) 기기에 앱을 설치했지만 실행하지 못했습니다"
     )
+    #expect(
+      LauncherText.title(for: .openURLFailed(device, .simulator(.urlNotHandled)))
+        == "“iPhone 17” (iOS 26.0) 기기에서 링크를 열지 못했습니다"
+    )
+    #expect(LauncherText.openURLSheetTitle(for: device) == "“iPhone 17” (iOS 26.0) 기기에서 링크 열기")
+  }
+
+  @Test("링크 열기 실패 본문: 기기 상태는 막힌 이유, 명령 실패는 오류 분류 문구이고, 꺼진 기기 문구는 링크 열기도 말한다")
+  func openURLFailureMessages() {
+    for reason in LauncherTextCatalog.installBlockReasons {
+      let message = LauncherText.message(for: OpenURLFailure.deviceNotReady(reason))
+      #expect(message == LauncherText.openURLBlockReason(reason))
+    }
+    for error in LauncherTextCatalog.errors {
+      #expect(LauncherText.message(for: OpenURLFailure.simulator(error)) == LauncherText.message(for: error))
+    }
+    #expect(LauncherText.message(for: .urlNotHandled).contains("열 수 있는 앱이 기기에 없습니다"))
+    #expect(LauncherText.message(for: .invalidURL).contains("형식을 받아들이지 않았습니다"))
+    #expect(
+      LauncherText.message(for: .deviceNotBooted)
+        == "기기가 켜져 있지 않아 앱 설치·실행이나 링크 열기를 하지 못했습니다. 기기를 켠 뒤 다시 시도하세요."
+    )
+  }
+
+  @Test("링크 입력 문제: 비어 있으면 문구가 없고(버튼만 비활성), 나머지는 스킴을 안내한다")
+  func linkProblemTexts() {
+    #expect(LauncherText.linkProblem(.empty) == nil)
+    for problem in [DeepLinkProblem.malformed, .missingScheme] {
+      #expect(LauncherText.linkProblem(problem)?.contains("myapp://") == true, "\(problem)")
+    }
   }
 
   @Test("결과를 알 수 없는 만들기 실패만 제목에서 단정하지 않고 목록을 확인하라고 안내하며, 다른 실패는 일반 문구다")
@@ -145,7 +175,8 @@ enum LauncherTextCatalog {
   static let errors: [SimulatorError] = [
     .developerToolsUnavailable, .deviceNotFound, .deviceNotShutdown, .creationOptionUnavailable, .invalidDeviceName,
     .creationResultUnknown, .simulatorAppNotFound, .unexpectedOutput, .commandFailed, .deviceNotBooted, .appNotFound,
-    .appInvalid, .appIncompatible, .appRequiresNewerOS, .appNotInstalled, .appLaunchFailed,
+    .appInvalid, .appIncompatible, .appRequiresNewerOS, .appNotInstalled, .appLaunchFailed, .urlNotHandled,
+    .invalidURL,
   ]
 
   static let sampleDevice = LauncherNotice.Device(name: "iPhone 17", runtimeName: "iOS 26.0")
@@ -157,9 +188,10 @@ enum LauncherTextCatalog {
     .createFailed(sampleDevice, .commandFailed), .deleteFailed(sampleDevice, .commandFailed),
     .eraseFailed(sampleDevice, .commandFailed), .createFailed(sampleDevice, .creationResultUnknown),
     .installFailed(sampleDevice, .multipleItems), .launchFailed(sampleDevice, .appLaunchFailed),
+    .openURLFailed(sampleDevice, .simulator(.urlNotHandled)),
   ]
 
-  /// 기기 이름이 들어가는 제목의 카탈로그 키. 순서는 `notices.dropFirst()` 와 같다.
+  /// 기기 이름이 들어가는 제목의 카탈로그 키. 순서는 `notices.dropFirst()` 뒤에 링크 시트 제목이다 (`formattedTitles`).
   static let formatKeys = [
     "“%@” (%@) 기기를 켜지 못했습니다",
     "“%@” (%@) 기기를 끄지 못했습니다",
@@ -170,11 +202,13 @@ enum LauncherTextCatalog {
     "“%@” (%@) 기기를 만들었는지 확인하지 못했습니다",
     "“%@” (%@) 기기에 앱을 설치하지 못했습니다",
     "“%@” (%@) 기기에 앱을 설치했지만 실행하지 못했습니다",
+    "“%@” (%@) 기기에서 링크를 열지 못했습니다",
+    "“%@” (%@) 기기에서 링크 열기",
   ]
 
-  /// `sampleDevice` 를 넣은 기기 작업 실패 제목.
+  /// `sampleDevice` 를 넣은 기기 작업 실패 제목과 링크 시트 제목.
   static var formattedTitles: [String] {
-    self.notices.dropFirst().map { LauncherText.title(for: $0) }
+    self.notices.dropFirst().map { LauncherText.title(for: $0) } + [LauncherText.openURLSheetTitle(for: sampleDevice)]
   }
 
   /// 확인 대화상자 제목의 카탈로그 키. 순서는 `confirmations` 와 같다.
@@ -244,6 +278,12 @@ enum LauncherTextCatalog {
       + self.installProblems.map { LauncherText.message(for: $0) }
       + self.installBlockReasons.map { LauncherText.installBlockReason($0) }
       + [LauncherText.installAppButton, LauncherText.installAppHelp, LauncherText.installingLabel]
+      + self.installBlockReasons.map { LauncherText.openURLBlockReason($0) }
+      + [DeepLinkProblem.malformed, .missingScheme].compactMap { LauncherText.linkProblem($0) }
+      + [
+        LauncherText.openURLButton, LauncherText.openURLHelp, LauncherText.openingURLLabel, LauncherText.linkField,
+        LauncherText.linkPrompt, LauncherText.openURLConfirmButton,
+      ]
       + [
         LauncherText.okButton, LauncherText.unavailableLabel, LauncherText.bootButton, LauncherText.shutdownButton,
         LauncherText.loading, LauncherText.loadFailedTitle, LauncherText.refreshButton, LauncherText.retryButton,

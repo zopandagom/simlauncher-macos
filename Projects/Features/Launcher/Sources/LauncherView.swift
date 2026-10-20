@@ -90,6 +90,19 @@ public struct LauncherView: View {
       ) {
         DeviceCreationSheet(model: self.model)
       }
+      // 생성 시트와 같은 체인에 둔다. Model 이 둘이 함께 열리지 않게 막는다.
+      .sheet(
+        isPresented: Binding(
+          get: { self.model.openURLDraft != nil },
+          set: { isPresented in
+            if !isPresented {
+              self.model.openURLSheetDismissed()
+            }
+          }
+        )
+      ) {
+        OpenURLSheet(model: self.model)
+      }
       .confirmationDialog(
         LauncherText.confirmationTitle(for: self.model.pendingConfirmation ?? self.presentedConfirmation),
         isPresented: Binding(
@@ -233,6 +246,9 @@ public struct LauncherView: View {
               },
               appDropped: { urls in
                 Task { await self.model.appDropped(urls, on: device.id) }
+              },
+              openURLTapped: {
+                self.model.openURLButtonTapped(device.id)
               },
               bootTapped: {
                 Task { await self.model.bootButtonTapped(device.id) }
