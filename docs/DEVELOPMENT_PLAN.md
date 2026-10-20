@@ -17,7 +17,7 @@
 | 앱 설치 | 로컬 .app(또는 .app 을 담은 zip)을 골라 설치. 드래그 앤 드롭 | `simctl install <기기> <.app>`. `AppBundle` Client 가 `Info.plist`(XML·바이너리)의 지원 플랫폼·`MinimumOSVersion` 과 실행 파일 Mach-O 헤더의 아키텍처를 읽고, Core 규칙이 대상 기기와 대조해 .ipa·Mac 앱·기기용·아키텍처·iOS 버전이 맞지 않는 빌드를 이유와 함께 거절. 꺼진 기기는 켜고, Simulator 앱을 열어(켜진 기기도) 설치하고 바로 실행. zip 은 `AppBundle` Client 가 임시 폴더에 `ditto -x -k` 로 풀어 맨 위 .app 하나를 쓰고(다른 맨 위 항목은 무시), 경로 탈출(`../`·절대 경로·밖을 가리키는 심볼릭 링크)은 거절하고, 풀기 전에 디스크 여유를 확인한다. 설치가 끝나면 임시 폴더를 지우고, 앱을 시작할 때 앞선 실행이 남긴 폴더를 정리한다 |
 | 앱 설치 | URL 의 .app(zip) 을 내려받아 설치 ("직접 설치") | `URLSession` 다운로드(진행률·취소), `ditto -x -k` 로 압축 해제 |
 | 빌드 카탈로그 | 설정에서 카탈로그 URL 을 등록하고, 앱·버전 목록에서 골라 설치 | 정적 `catalog.json` 하나 (규격은 아래). 서버 없이 GitHub Releases·S3·사내 웹 서버 어디든 둘 수 있다 |
-| 앱 실행 | 설치한 앱 실행, 딥링크 열기 | `Info.plist` 의 번들 ID 로 `simctl launch`, `simctl openurl <기기> <url>` |
+| 앱 실행 | 설치한 앱 실행, 딥링크 열기 | `Info.plist` 의 번들 ID 로 `simctl launch`, `simctl openurl <기기> <url>`. 스킴이 있는 링크는 모두 연다(Core `DeepLink`: 앞뒤 공백을 빼고 경로·쿼리의 공백·한글은 퍼센트 인코딩). 꺼진 기기는 켜고, Simulator 앱을 열어(켜진 기기도) 연다. 링크는 기기 안의 앱(Safari 등)이 열고 SimLauncher 는 내려받지 않는다 |
 
 ## 빌드 카탈로그
 특정 회사 인프라에 묶이지 않도록, 앱이 읽는 카탈로그 형식을 이 프로젝트의 공개 규격으로 정한다.
@@ -33,7 +33,7 @@
 |---|---|---|
 | 0 | 하네스 확인과 첫 화면 (`Home` → `Launcher`) | `/verify` PASS, 앱이 실행되어 첫 화면이 보인다 |
 | 1 | 기기 목록·부팅·종료·생성·삭제·초기화 (`Core` 값 타입, `Simulator` Client. Impl 은 Xcode 경로 provider 를 주입받고, 이 단계에서 App 은 `nil` 을 넘겨 `xcode-select` 기본값으로 실행) | 기기가 OS 별로 보이고, 부팅하면 Simulator 창이 뜬다. `simctl` JSON 해석 테스트 |
-| 2 | 로컬 .app 설치·실행, 딥링크 (`AppBundle` Client 는 번들 검사·압축 해제만, 설치·실행·딥링크는 `Simulator` Client 에 추가) | 시뮬레이터용 .app 은 설치·실행되고, .ipa·기기용·아키텍처가 맞지 않는 빌드는 이유와 함께 거절된다 |
+| 2 | 로컬 .app 설치·실행, 딥링크 (`AppBundle` Client 는 번들 검사·압축 해제만, 설치·실행·딥링크는 `Simulator` Client 에 추가) | 시뮬레이터용 .app 은 설치·실행되고, .ipa·기기용·아키텍처가 맞지 않는 빌드는 이유와 함께 거절된다. 링크를 입력하면 기기에서 열리고(꺼져 있으면 켠다), 형식이 틀리거나 처리할 앱이 없는 링크는 이유와 함께 알린다 |
 | 3 | 환경 확인과 런타임 설치 (`DevEnvironment` Client 는 Xcode 확인·선택·런타임 설치이고, `DevEnvironment` Client 가 고른 Xcode 경로를 App 이 `Simulator` Client 의 provider 로 연결한다. 런타임 목록은 `Simulator` Client 가 제공. `Setup` Feature) | Xcode·런타임이 없는 Mac 에서 할 일이 화면에 나오고, 런타임은 앱에서 설치된다 |
 | 4 | 직접 URL 설치, 카탈로그 URL 설정·목록 (`Download` Client), 카탈로그 규격 문서와 예시 GitHub Actions | URL 이나 카탈로그 항목을 고르면 다운로드 → 압축 해제 → 설치 → 실행까지 이어진다. 네트워크 오류·잘못된 파일 처리 |
 | 5 | 스크린샷·녹화, 여러 기기 동시 실행 | `simctl io screenshot`/`recordVideo` 결과가 저장되고 Finder 에서 열린다. 한 빌드를 여러 기기에 설치한다 |
