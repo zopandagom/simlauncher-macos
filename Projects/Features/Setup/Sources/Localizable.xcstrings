@@ -1,0 +1,326 @@
+{
+  "sourceLanguage" : "ko",
+  "strings" : {
+    "App Store 를 열지 못했습니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App Store 를 열지 못했습니다"
+          }
+        }
+      }
+    },
+    "App Store 앱을 직접 열고 Xcode 를 검색해 설치하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App Store 앱을 직접 열고 Xcode 를 검색해 설치하세요."
+          }
+        }
+      }
+    },
+    "App Store 열기" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App Store 열기"
+          }
+        }
+      }
+    },
+    "Finder 의 응용 프로그램 폴더에서 Xcode 를 직접 열어 주세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finder 의 응용 프로그램 폴더에서 Xcode 를 직접 열어 주세요."
+          }
+        }
+      }
+    },
+    "iOS 시뮬레이터를 쓰려면 Xcode 가 필요합니다. App Store 열기를 눌러 Xcode 를 설치하세요. 내려받는 데 시간이 걸릴 수 있습니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS 시뮬레이터를 쓰려면 Xcode 가 필요합니다. App Store 열기를 눌러 Xcode 를 설치하세요. 내려받는 데 시간이 걸릴 수 있습니다."
+          }
+        }
+      }
+    },
+    "Xcode 가 삭제되었거나 옮겨졌습니다. 화면의 안내에 따라 Xcode 를 다시 설치하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xcode 가 삭제되었거나 옮겨졌습니다. 화면의 안내에 따라 Xcode 를 다시 설치하세요."
+          }
+        }
+      }
+    },
+    "Xcode 라이선스에 동의하세요" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xcode 라이선스에 동의하세요"
+          }
+        }
+      }
+    },
+    "Xcode 를 설치하거나 업데이트하는 중이면 끝난 뒤 다시 확인을 누르세요. 계속 실패하면 App Store 에서 Xcode 를 다시 설치하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xcode 를 설치하거나 업데이트하는 중이면 끝난 뒤 다시 확인을 누르세요. 계속 실패하면 App Store 에서 Xcode 를 다시 설치하세요."
+          }
+        }
+      }
+    },
+    "Xcode 를 설치하세요" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xcode 를 설치하세요"
+          }
+        }
+      }
+    },
+    "Xcode 를 열지 못했습니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xcode 를 열지 못했습니다"
+          }
+        }
+      }
+    },
+    "Xcode 를 찾지 못했습니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xcode 를 찾지 못했습니다"
+          }
+        }
+      }
+    },
+    "Xcode 를 찾지 못했습니다. App Store 에서 Xcode 를 설치한 뒤 다시 확인을 누르세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xcode 를 찾지 못했습니다. App Store 에서 Xcode 를 설치한 뒤 다시 확인을 누르세요."
+          }
+        }
+      }
+    },
+    "Xcode 상태를 확인하지 못했습니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xcode 상태를 확인하지 못했습니다"
+          }
+        }
+      }
+    },
+    "Xcode 설치" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xcode 설치"
+          }
+        }
+      }
+    },
+    "Xcode 열기" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xcode 열기"
+          }
+        }
+      }
+    },
+    "Xcode 열기를 누르면 Xcode 가 라이선스 동의 창을 띄웁니다. 창의 안내에 따라 동의하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xcode 열기를 누르면 Xcode 가 라이선스 동의 창을 띄웁니다. 창의 안내에 따라 동의하세요."
+          }
+        }
+      }
+    },
+    "Xcode 열기를 누르면 Xcode 가 추가 구성요소를 설치하는 창을 띄웁니다. 창의 안내에 따라 설치하고 끝날 때까지 기다리세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xcode 열기를 누르면 Xcode 가 추가 구성요소를 설치하는 창을 띄웁니다. 창의 안내에 따라 설치하고 끝날 때까지 기다리세요."
+          }
+        }
+      }
+    },
+    "Xcode 첫 실행 준비를 마치세요" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xcode 첫 실행 준비를 마치세요"
+          }
+        }
+      }
+    },
+    "개발 환경을 확인하는 중…" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "개발 환경을 확인하는 중…"
+          }
+        }
+      }
+    },
+    "관리자 암호가 필요합니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "관리자 암호가 필요합니다"
+          }
+        }
+      }
+    },
+    "기기 목록 열기" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기기 목록 열기"
+          }
+        }
+      }
+    },
+    "다시 확인" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다시 확인"
+          }
+        }
+      }
+    },
+    "다시 확인을 누르세요. 계속 실패하면 Mac 을 재시동한 뒤 다시 시도하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다시 확인을 누르세요. 계속 실패하면 Mac 을 재시동한 뒤 다시 시도하세요."
+          }
+        }
+      }
+    },
+    "단계를 마치고 이 앱으로 돌아오면 자동으로 다시 확인합니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "단계를 마치고 이 앱으로 돌아오면 자동으로 다시 확인합니다."
+          }
+        }
+      }
+    },
+    "라이선스 동의" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "라이선스 동의"
+          }
+        }
+      }
+    },
+    "사용하는 Xcode" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "사용하는 Xcode"
+          }
+        }
+      }
+    },
+    "이 Mac 에는 Command Line Tools 만 설치되어 있습니다. Command Line Tools 로는 iOS 시뮬레이터를 쓸 수 없어 Xcode 가 필요합니다. App Store 열기를 눌러 Xcode 를 설치하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 Mac 에는 Command Line Tools 만 설치되어 있습니다. Command Line Tools 로는 iOS 시뮬레이터를 쓸 수 없어 Xcode 가 필요합니다. App Store 열기를 눌러 Xcode 를 설치하세요."
+          }
+        }
+      }
+    },
+    "이제 iOS 시뮬레이터 기기를 켜고 앱을 설치할 수 있습니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이제 iOS 시뮬레이터 기기를 켜고 앱을 설치할 수 있습니다."
+          }
+        }
+      }
+    },
+    "준비가 끝났습니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "준비가 끝났습니다"
+          }
+        }
+      }
+    },
+    "첫 실행 준비" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "첫 실행 준비"
+          }
+        }
+      }
+    },
+    "확인" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "확인"
+          }
+        }
+      }
+    },
+    "확인 중…" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "확인 중…"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}
