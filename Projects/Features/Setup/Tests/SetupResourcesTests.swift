@@ -77,21 +77,27 @@ enum SetupTextCatalog {
   static let errors: [DevEnvironmentError] = [.checkFailed, .xcodeNotFound, .openFailed]
 
   static var notices: [SetupNotice] {
-    self.errors.map { .openAppStoreFailed($0) } + self.errors.map { .openXcodeFailed($0) }
+    let appStore: [SetupNotice] = self.errors.map { SetupNotice.openAppStoreFailed($0) }
+    let xcode: [SetupNotice] = self.errors.map { SetupNotice.openXcodeFailed($0) }
+    return appStore + xcode
   }
 
+  /// 식 하나로 이으면 타입 추론이 오래 걸려 Xcode 26 에서 컴파일이 실패하므로 문장마다 더한다.
   static var all: [String] {
-    self.statuses.map { SetupText.title(for: $0) }
-      + self.statuses.map { SetupText.message(for: $0) }
-      + [SetupText.failedTitle]
-      + self.errors.map { SetupText.message(for: $0) }
-      + SetupStep.Kind.allCases.map { SetupText.stepTitle($0) }
-      + self.notices.map { SetupText.title(for: $0) }
-      + self.notices.map { SetupText.message(for: $0) }
-      + [
-        SetupText.checkingTitle, SetupText.adminPasswordNote, SetupText.autoRecheckNote, SetupText.currentXcodeLabel,
-        SetupText.openAppStoreButton, SetupText.openXcodeButton, SetupText.recheckButton, SetupText.finishButton,
-        SetupText.okButton, SetupText.recheckingLabel,
-      ]
+    var texts: [String] = []
+    texts += self.statuses.map { (status: DevEnvironmentStatus) -> String in SetupText.title(for: status) }
+    texts += self.statuses.map { (status: DevEnvironmentStatus) -> String in SetupText.message(for: status) }
+    texts.append(SetupText.failedTitle)
+    texts += self.errors.map { (error: DevEnvironmentError) -> String in SetupText.message(for: error) }
+    texts += SetupStep.Kind.allCases.map { (kind: SetupStep.Kind) -> String in SetupText.stepTitle(kind) }
+    texts += self.notices.map { (notice: SetupNotice) -> String in SetupText.title(for: notice) }
+    texts += self.notices.map { (notice: SetupNotice) -> String in SetupText.message(for: notice) }
+    let labels: [String] = [
+      SetupText.checkingTitle, SetupText.adminPasswordNote, SetupText.autoRecheckNote, SetupText.currentXcodeLabel,
+      SetupText.openAppStoreButton, SetupText.openXcodeButton, SetupText.recheckButton, SetupText.finishButton,
+      SetupText.okButton, SetupText.recheckingLabel,
+    ]
+    texts += labels
+    return texts
   }
 }
