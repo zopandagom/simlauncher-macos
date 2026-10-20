@@ -249,6 +249,15 @@ enum LauncherText {
     String(localized: "다시 시도", bundle: .module)
   }
 
+  /// 툴바 버튼: Setup 화면(Xcode 준비 단계 안내)을 다시 연다.
+  static var setupButton: String {
+    String(localized: "개발 환경", bundle: .module)
+  }
+
+  static var setupButtonHelp: String {
+    String(localized: "Xcode 준비 상태를 확인하고 안내를 봅니다", bundle: .module)
+  }
+
   static func emptyTitle(for reason: DeviceListEmptyReason) -> String {
     switch reason {
     case .noIOSRuntime:

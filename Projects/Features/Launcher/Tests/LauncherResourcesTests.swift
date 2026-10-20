@@ -287,6 +287,7 @@ enum LauncherTextCatalog {
       + [
         LauncherText.okButton, LauncherText.unavailableLabel, LauncherText.bootButton, LauncherText.shutdownButton,
         LauncherText.loading, LauncherText.loadFailedTitle, LauncherText.refreshButton, LauncherText.retryButton,
+        LauncherText.setupButton, LauncherText.setupButtonHelp,
         LauncherText.cancelButton, LauncherText.deviceActionsMenu, LauncherText.eraseMenuItem,
         LauncherText.deleteMenuItem, LauncherText.createDeviceButton, LauncherText.creatingLabel,
         LauncherText.createSheetTitle, LauncherText.nameField, LauncherText.runtimePicker,

@@ -55,6 +55,14 @@ public struct LauncherView: View {
           }
           .disabled(self.model.isRefreshing)
         }
+        ToolbarItem {
+          Button {
+            self.model.setupButtonTapped()
+          } label: {
+            Label(LauncherText.setupButton, systemImage: "wrench.and.screwdriver")
+          }
+          .help(LauncherText.setupButtonHelp)
+        }
       }
       .alert(
         LauncherText.title(for: self.presentedNotice?.notice),
