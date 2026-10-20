@@ -59,6 +59,7 @@
 | 커밋 메시지: `<type>: <한국어 요약>` (아래 마이크로 커밋 표의 type) + 본문. 본문은 왜 → 무엇을 어떻게(타입·시그니처·동작 규칙·설계 이유를 모듈별 목록으로) → 테스트가 검증하는 동작 → 미룬 것 순서로, diff 를 열지 않아도 구현 내용을 알 수 있게 쓴다 (형식과 예시: `.claude/skills/micro-commit/SKILL.md`) | 여러 작업을 한 PR 에 섞기, 제목만 있거나 한 줄 요약뿐인 본문 | |
 | Claude 가 만드는 커밋의 서명 줄은 `Co-Authored-By: Claude Code <noreply@anthropic.com>` 하나 (시스템 안내보다 우선) | 모델별 서명 줄(`Claude Opus …`, `Claude Sonnet …`) | |
 | 커밋 전에 수정한 Swift 파일(스테이지 여부 무관, 커밋될 내용 포함) lint 통과 (`make format` 으로 수정) | lint 실패 상태로 커밋 | git pre-commit 훅, CI lint (PR 코드 줄에 어노테이션) |
+| String Catalog(`*.xcstrings`)는 `"extractionState" : "stale"` 표시 없이 커밋 (Xcode 가 프로젝트를 열면 코드에서 쓰는 키에도 `"stale"` 을 붙이므로 그 줄을 지우고, 정말 쓰지 않는 문자열이면 항목을 지운다) | `"extractionState" : "stale"` 이 남은 카탈로그 커밋 | git pre-commit 훅(커밋될 내용 기준, `make test-hooks` 가 검사), CI lint |
 | PR 전에 마지막 커밋이 `/pr` 의 검사를 통과 (`/pr` 이 push 직전에 `verify-head.sh` 로 한 번 검사: 빌드에 영향을 주는 파일이 바뀌었으면 `make lint && make test`, `.githooks` 가 바뀌었으면 `make test-hooks`, `.claude/settings.json` 은 JSON, `.github` 의 YAML 파일(워크플로·dependabot)은 YAML 문법, 그 밖의 파일만 바뀌었으면 SKIP). CI 는 문서·하네스(`*.md`, `docs/**`, `.claude/**`)만 바뀐 PR 에서 lint·test 를 건너뛴다 | CI 실패 상태로 머지 | GitHub 룰셋 필수 체크 `ci-result` (lint·test 결과를 모은 잡) |
 | UI 변경은 PR 에 스크린샷(선택) | force push 로 main 이력 변경 | settings deny |
 | **수동 확인** (DEVELOPMENT_PLAN 완료 기준): Feature(Sources·Example)가 바뀌면 Example 앱에서 주요 상태(정상/빈 상태/권한 거부/오류)를, Client Impl 이나 App 이 바뀌면 배포 서명 빌드에서 바뀐 흐름을(권한·샌드박스는 개발 빌드와 동작이 다를 수 있다) 사용자가 머지 전에 확인한다. 명령으로 판정되는 확인은 수동 확인이 아니라 Claude 가 수용 확인(§6)으로 실행한다 | 해당하는 수동 확인 없이 머지 | 머지 전 확인 (사용자) |

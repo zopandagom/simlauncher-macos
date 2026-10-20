@@ -48,8 +48,8 @@ jobs:
 
   # lint 는 macOS 러너보다 빨리 뜨는 Ubuntu 컨테이너에서 먼저 돌려, 실패하면 macOS 테스트를 건너뛴다.
   # 버전은 .mise.toml 과 맞춘다.
-  # 위반은 Checks API 로 "lint 결과" 체크에 어노테이션으로 올려 PR 의 Files changed 에서 해당 줄에 전부 표시한다.
-  # 판정은 SwiftFormat·SwiftLint 단계의 종료 코드가 한다.
+  # SwiftFormat·SwiftLint 위반은 Checks API 로 "lint 결과" 체크에 어노테이션으로 올려 PR 의 Files changed 에서 해당 줄에 전부 표시한다.
+  # String Catalog stale 표시는 ::error 워크플로 명령으로 올린다. 판정은 SwiftFormat·SwiftLint·String Catalog stale 표시 단계의 종료 코드가 한다.
   lint:
     needs: changes
     if: ${{ needs.changes.outputs.code == 'true' }}
@@ -78,6 +78,16 @@ jobs:
         run: |
           docker run --rm -v "$PWD:/work" -w /work --entrypoint swiftlint ghcr.io/realm/swiftlint:0.65.1 \
             lint --strict --quiet --reporter json > build/swiftlint.json
+      - name: String Catalog stale 표시
+        # pre-commit 훅과 같은 검사. --no-verify·훅 미연결 커밋도 머지 전에 막는다. 위반 줄은 어노테이션으로 올린다.
+        if: ${{ !cancelled() }}
+        run: |
+          if git grep -nE '"extractionState"[[:space:]]*:[[:space:]]*"stale"' -- '*.xcstrings' > build/stale.txt; then
+            while IFS=: read -r file line _; do
+              echo "::error file=$file,line=$line::String Catalog 에 \"extractionState\" : \"stale\" 표시가 있습니다. 코드에서 쓰는 문자열이면 표시만, 쓰지 않으면 항목을 지우세요."
+            done < build/stale.txt
+            exit 1
+          fi
       - name: lint 결과 어노테이션
         if: ${{ !cancelled() }}
         run: .github/scripts/annotate-lint.sh build/swiftformat.json build/swiftlint.json
