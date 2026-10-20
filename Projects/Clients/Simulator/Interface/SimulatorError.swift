@@ -18,7 +18,8 @@ public enum SimulatorError: Error, Hashable, Sendable {
   case unexpectedOutput
   /// `simctl create` 는 성공(exit 0)했지만 출력에서 새 기기 UDID 를 읽지 못했다. 기기가 만들어졌을 수 있다. `create` 만 던진다.
   case creationResultUnknown
-  /// 기기가 켜져 있지 않아 앱을 설치·실행하지 못했다: SimError 405 "Unable to lookup in current state" (install·launch).
+  /// 기기가 켜져 있지 않아 앱 설치·실행이나 링크 열기를 하지 못했다: SimError 405 "Unable to lookup in current state"
+  /// (install·launch·openurl).
   case deviceNotBooted
   /// 설치할 .app 이 그 경로에 없다: 파일 URL 이 아니어서 실행하지 않았거나 NSPOSIXErrorDomain 2 (install).
   case appNotFound
@@ -33,6 +34,13 @@ public enum SimulatorError: Error, Hashable, Sendable {
   case appNotInstalled
   /// 실행을 요청했지만 프로세스가 시작되지 않았다: NSPOSIXErrorDomain 3, 그 밖의 FBSOpenApplicationServiceErrorDomain (launch).
   case appLaunchFailed
-  /// 그 밖의 실패. 설치·실행에서는 위에 없는 domain·code (예: IXUserPresentableErrorDomain 1 실행 파일 없음).
+  /// 기기에 이 링크를 처리할 앱이 없다: LSApplicationWorkspaceErrorDomain 115 (openurl).
+  /// 등록되지 않은 앱 스킴, 시뮬레이터에 없는 시스템 앱(mailto:·tel:), Safari 가 받지 않는 스킴(about:·javascript:·data:)이 여기 든다.
+  case urlNotHandled
+  /// simctl 이 링크 형식을 거절했다: NSPOSIXErrorDomain 22 "Invalid URL", NSOSStatusErrorDomain -50 (openurl).
+  /// `DeepLink` 를 거친 값으로는 확인한 범위에서 생기지 않지만, Foundation 과 simctl 판정이 어긋날 때
+  /// 일반 "Xcode 준비" 문구 대신 링크를 확인하라고 알리려고 둔다.
+  case invalidURL
+  /// 그 밖의 실패. 설치·실행·링크 열기에서는 위에 없는 domain·code (예: IXUserPresentableErrorDomain 1 실행 파일 없음).
   case commandFailed
 }

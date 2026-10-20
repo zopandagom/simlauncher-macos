@@ -1,7 +1,7 @@
 import Core
 import Foundation
 
-/// iOS 시뮬레이터 기기·런타임·기기 종류를 읽고, 켜고 끄고, 만들고 지우고 초기화하고, 앱을 설치·실행하는 Client.
+/// iOS 시뮬레이터 기기·런타임·기기 종류를 읽고, 켜고 끄고, 만들고 지우고 초기화하고, 앱을 설치·실행하고 링크를 여는 Client.
 /// Impl 은 `xcrun simctl` 과 같은 개발자 디렉터리를 쓴다.
 public protocol SimulatorClient: Sendable {
   /// 모든 플랫폼의 기기·런타임·기기 종류 목록 (`simctl list -j` 한 번). 화면용 필터는 `DeviceList` 가 한다.
@@ -40,4 +40,10 @@ public protocol SimulatorClient: Sendable {
   /// 설치된 앱을 실행한다 (`simctl launch`). 이미 실행 중이면 다시 띄운다(새 pid).
   /// 성공해도 앱이 곧바로 종료됐을 수 있다 (simctl 이 결정적으로 알려 주지 않는다).
   func launch(_ bundleID: AppBundleID, on id: VirtualDevice.ID) async throws(SimulatorError)
+
+  /// 켜진 기기에서 링크를 연다 (`simctl openurl`). 사전 목록 확인·재조회는 하지 않는다 (꺼져 있으면 simctl 이 `.deviceNotBooted`).
+  /// 처리할 앱이 없으면 `.urlNotHandled`, simctl 이 형식을 거절하면 `.invalidURL`.
+  /// 성공은 기기에 열기 요청이 전달됐다는 뜻이고, 앱이 링크를 어떻게 처리했는지는 알 수 없다.
+  /// 막 켠(콜드 부팅) 기기에서는 기기 준비가 끝날 때까지 돌아오지 않는다 (Xcode 27.1 에서 약 40초).
+  func openURL(_ link: DeepLink, on id: VirtualDevice.ID) async throws(SimulatorError)
 }

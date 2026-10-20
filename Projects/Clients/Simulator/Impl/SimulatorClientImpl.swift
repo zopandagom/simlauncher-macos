@@ -168,6 +168,22 @@ public struct SimulatorClientImpl: SimulatorClient {
     }
   }
 
+  /// 재조회하지 않는다: 실패 뒤 목록으로 링크가 열렸는지 판정할 수 없다.
+  public func openURL(_ link: DeepLink, on id: VirtualDevice.ID) async throws(SimulatorError) {
+    guard let udid = SimctlCommand.validatedUDID(id.rawValue) else {
+      throw .deviceNotFound
+    }
+    let result = try await self.run(
+      SimctlCommand.xcrun,
+      SimctlCommand.openURL(udid: udid, url: link.url.absoluteString),
+      developerDirectory: self.resolveDeveloperDirectory(),
+      launchFailure: .developerToolsUnavailable
+    )
+    guard result.exitCode == 0 else {
+      throw SimctlErrorClassifier.openURLError(exitCode: result.exitCode, stderr: Self.stderr(result))
+    }
+  }
+
   private func resolveDeveloperDirectory() async -> URL? {
     guard let developerDirectory = self.developerDirectory else { return nil }
     return await developerDirectory()
@@ -261,7 +277,7 @@ public struct SimulatorClientImpl: SimulatorClient {
     SimctlErrorClassifier.error(exitCode: result.exitCode, stderr: String(bytes: result.stderr, encoding: .utf8) ?? "")
   }
 
-  /// install·launch 의 stderr 에는 앱이 정한 글자가 섞인다. 잘못된 UTF-8 이면 Latin-1 로 읽는다
+  /// install·launch·openurl 의 stderr 에는 앱이 정한 글자나 사용자가 넣은 URL 이 섞인다. 잘못된 UTF-8 이면 Latin-1 로 읽는다
   /// (실패하지 않고, 분류가 보는 domain 줄·"reason: NotFound" 는 ASCII 라 그대로 남는다).
   private static func stderr(_ result: CommandResult) -> String {
     String(bytes: result.stderr, encoding: .utf8) ?? String(bytes: result.stderr, encoding: .isoLatin1) ?? ""

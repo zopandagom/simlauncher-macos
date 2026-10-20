@@ -7,7 +7,7 @@ import Synchronization
 /// boot 가 성공하면 그 기기를 `.booted`, shutdown 이 성공하면 `.shutdown` 으로 바꾼 목록을 저장한다.
 /// create 가 성공하면 꺼진 새 기기를 목록 끝에 더하고, delete 가 성공하면 그 기기를 뺀다. 꺼짐 여부는 검사하지 않는다.
 /// 목록을 다시 만들 때 런타임·기기 종류는 그대로 둔다.
-/// install 은 실제처럼 목록의 기기 상태를 본다(없으면 `.deviceNotFound`, 켜져 있지 않으면 `.deviceNotBooted`),
+/// install·openURL 은 실제처럼 목록의 기기 상태를 본다(없으면 `.deviceNotFound`, 켜져 있지 않으면 `.deviceNotBooted`),
 /// 성공해도 목록은 바꾸지 않는다. launch 는 설치 여부를 보지 않고 설정한 에러가 없으면 성공한다.
 public final class SimulatorClientFake: SimulatorClient {
   public enum Call: Hashable, Sendable {
@@ -20,10 +20,11 @@ public final class SimulatorClientFake: SimulatorClient {
     case erase(VirtualDevice.ID)
     case install(URL, VirtualDevice.ID)
     case launch(AppBundleID, VirtualDevice.ID)
+    case openURL(DeepLink, VirtualDevice.ID)
   }
 
   private enum SuspendableCall: Hashable {
-    case fetch, boot, create, delete, erase, install
+    case fetch, boot, create, delete, erase, install, openURL
   }
 
   private struct State {
@@ -38,6 +39,7 @@ public final class SimulatorClientFake: SimulatorClient {
     var eraseError: SimulatorError?
     var installError: SimulatorError?
     var launchError: SimulatorError?
+    var openURLError: SimulatorError?
     var delay: Duration?
     var createdCount = 0
     var suspended: Set<SuspendableCall> = []
@@ -315,7 +317,7 @@ public final class SimulatorClientFake: SimulatorClient {
   }
 }
 
-// MARK: - 앱 설치·실행
+// MARK: - 앱 설치·실행·링크 열기
 
 public extension SimulatorClientFake {
   func setInstallError(_ error: SimulatorError?) {
@@ -342,16 +344,7 @@ public extension SimulatorClientFake {
     self.record(.install(app, id))
     await self.waitIfSuspended(.install)
     await self.sleepIfNeeded()
-    let error: SimulatorError? = self.state.withLock { state in
-      if let error = state.installError {
-        return error
-      }
-      guard let device = state.inventory.devices.first(where: { $0.id == id }) else {
-        return .deviceNotFound
-      }
-      return device.state == .booted ? nil : .deviceNotBooted
-    }
-    if let error {
+    if let error = self.bootedDeviceError(id, configured: \.installError) {
       throw error
     }
   }
@@ -362,6 +355,46 @@ public extension SimulatorClientFake {
     await self.sleepIfNeeded()
     if let error = self.state.withLock({ $0.launchError }) {
       throw error
+    }
+  }
+
+  func setOpenURLError(_ error: SimulatorError?) {
+    self.state.withLock { $0.openURLError = error }
+  }
+
+  /// 이후 `openURL(_:on:)` 이 기록만 하고 `resumeOpenURLs()` 까지 기다린다.
+  func suspendOpenURLs() {
+    self.suspend(.openURL)
+  }
+
+  /// 기다리는 `openURL(_:on:)` 을 모두 깨우고, 이후 호출은 기다리지 않는다.
+  func resumeOpenURLs() {
+    self.resume(.openURL)
+  }
+
+  /// `install(_:on:)` 과 같은 순서로 기록·멈춤·지연·에러·기기 상태를 본다. 성공해도 목록은 바꾸지 않는다.
+  func openURL(_ link: DeepLink, on id: VirtualDevice.ID) async throws(SimulatorError) {
+    self.record(.openURL(link, id))
+    await self.waitIfSuspended(.openURL)
+    await self.sleepIfNeeded()
+    if let error = self.bootedDeviceError(id, configured: \.openURLError) {
+      throw error
+    }
+  }
+
+  /// 설정한 에러, 없으면 목록의 기기 상태: 없으면 `.deviceNotFound`, `.booted` 가 아니면 `.deviceNotBooted`.
+  private func bootedDeviceError(
+    _ id: VirtualDevice.ID,
+    configured: KeyPath<State, SimulatorError?>
+  ) -> SimulatorError? {
+    self.state.withLock { state in
+      if let error = state[keyPath: configured] {
+        return error
+      }
+      guard let device = state.inventory.devices.first(where: { $0.id == id }) else {
+        return .deviceNotFound
+      }
+      return device.state == .booted ? nil : .deviceNotBooted
     }
   }
 }
