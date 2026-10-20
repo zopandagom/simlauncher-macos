@@ -30,6 +30,30 @@ enum XcodeCommand {
     ["-license", "check"]
   }
 
+  /// 고른 Xcode 의 기본 iOS 런타임을 내려받아 설치한다 (버전 지정 없음, 이미 있으면 내려받지 않고 exit 0).
+  /// `-exportPath` 도 시스템에 설치하므로 쓰지 않는다.
+  static func downloadPlatformIOS() -> [String] {
+    ["-downloadPlatform", "iOS"]
+  }
+
+  /// 고른 Xcode 의 iOS Simulator SDK 설정 (`Version` 이 기본 iOS 런타임 버전).
+  static func iOSSimulatorSDKSettings(in xcode: XcodeInstallation) -> URL {
+    self.iOSSimulatorSDK(in: xcode).appending(path: "SDKSettings.plist", directoryHint: .notDirectory)
+  }
+
+  /// 고른 Xcode 의 iOS Simulator SDK 시스템 버전 (`ProductBuildVersion` 이 기본 iOS 런타임 build).
+  static func iOSSimulatorSDKSystemVersion(in xcode: XcodeInstallation) -> URL {
+    self.iOSSimulatorSDK(in: xcode)
+      .appending(path: "System/Library/CoreServices/SystemVersion.plist", directoryHint: .notDirectory)
+  }
+
+  private static func iOSSimulatorSDK(in xcode: XcodeInstallation) -> URL {
+    xcode.developerDirectory.appending(
+      path: "Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk",
+      directoryHint: .isDirectory
+    )
+  }
+
   /// `bundlePath` 는 `XcodeInstallation.bundleURL` 의 절대 경로만 넘긴다 (`/` 로 시작해 옵션으로 읽히지 않는다).
   static func openApp(bundlePath: String) -> [String] {
     [bundlePath]

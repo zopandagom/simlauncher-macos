@@ -63,4 +63,26 @@ struct XcodeBundleReaderTests {
     )
     #expect(XcodeBundleReader.unique([first, other, first]) == [first, other])
   }
+
+  @Test("SDKSettings 의 Version 을 OS 버전으로 읽는다", arguments: [PropertyListSerialization.PropertyListFormat.xml, .binary])
+  func sdkVersion(format: PropertyListSerialization.PropertyListFormat) throws {
+    let data = try Self.plist(["Version": "27.1", "CanonicalName": "iphonesimulator27.1"], format: format)
+    #expect(XcodeBundleReader.sdkVersion(settings: data) == OSVersion(major: 27, minor: 1))
+  }
+
+  @Test("SDKSettings 의 Version 이 없거나 형식이 틀리거나 plist 가 아니면 nil")
+  func sdkVersionInvalid() throws {
+    #expect(try XcodeBundleReader.sdkVersion(settings: Self.plist(["CanonicalName": "iphonesimulator27.1"])) == nil)
+    #expect(try XcodeBundleReader.sdkVersion(settings: Self.plist(["Version": "27.x"])) == nil)
+    #expect(XcodeBundleReader.sdkVersion(settings: Data("oops".utf8)) == nil)
+  }
+
+  @Test("SystemVersion 의 ProductBuildVersion 을 읽고, 없거나 비었으면 nil")
+  func sdkBuild() throws {
+    #expect(try XcodeBundleReader
+      .sdkBuild(systemVersion: Self.plist(["ProductBuildVersion": "24A94232"])) == "24A94232")
+    #expect(try XcodeBundleReader.sdkBuild(systemVersion: Self.plist(["ProductBuildVersion": ""])) == nil)
+    #expect(try XcodeBundleReader.sdkBuild(systemVersion: Self.plist(["ProductVersion": "27.1"])) == nil)
+    #expect(XcodeBundleReader.sdkBuild(systemVersion: Data("oops".utf8)) == nil)
+  }
 }

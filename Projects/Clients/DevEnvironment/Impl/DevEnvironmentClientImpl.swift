@@ -2,13 +2,18 @@ import CommandInterface
 import Core
 import DevEnvironmentInterface
 import Foundation
+import Synchronization
 
-/// xcode-select(`CommandClient`)와 `/Applications` 의 번들로 쓸 Xcode 를 고르고, 그 안의 xcodebuild 로 준비 상태를 보는
-/// `DevEnvironmentClient`. 실행하는 것은 `/usr/bin/xcode-select`, 고른 Xcode 안의 xcodebuild, `/usr/bin/open` 뿐이다.
+/// xcode-select(`CommandClient`)와 `/Applications` 의 번들로 쓸 Xcode 를 고르고, 그 안의 xcodebuild 로 준비 상태를 보고
+/// 기본 iOS 런타임을 설치하는 `DevEnvironmentClient`. 실행하는 것은 `/usr/bin/xcode-select`, 고른 Xcode 안의 xcodebuild,
+/// `/usr/bin/open` 뿐이다.
 /// 상태를 갖지 않아 여러 호출이 동시에 와도 각자 다시 찾는다.
 public struct DevEnvironmentClientImpl: DevEnvironmentClient {
   /// Info.plist 를 읽는 상한. 넘으면 그 번들은 Xcode 로 보지 않는다.
   static let infoPlistSizeLimit = 1_048_576
+  /// 확인 명령(xcode-select -p·-checkFirstLaunchStatus·-license check)의 시간 제한. 정상 값은 합쳐 0.3초 미만이다.
+  /// 지나면 멈추기 시작해(SIGINT → SIGTERM → SIGKILL) 실패로 본다.
+  static let checkTimeout: Duration = .seconds(30)
 
   private let command: any CommandClient
   private let applicationsDirectory: URL
@@ -77,6 +82,71 @@ public struct DevEnvironmentClientImpl: DevEnvironmentClient {
     try await self.runOpen(XcodeCommand.openAppStorePage())
   }
 
+  /// 고른 Xcode 의 iOS Simulator SDK 파일을 읽는다 (명령은 xcode-select 하나, 네트워크 없음).
+  @concurrent
+  public func defaultIOSRuntime() async -> DefaultIOSRuntime? {
+    guard
+      let xcode = await self.choose().xcode,
+      let settings = Self.readInfoPlist(XcodeCommand.iOSSimulatorSDKSettings(in: xcode)),
+      let version = XcodeBundleReader.sdkVersion(settings: settings)
+    else {
+      return nil
+    }
+    let systemVersion = Self.readInfoPlist(XcodeCommand.iOSSimulatorSDKSystemVersion(in: xcode))
+    let build = systemVersion.flatMap(XcodeBundleReader.sdkBuild(systemVersion:))
+    return DefaultIOSRuntime(version: version, build: build)
+  }
+
+  /// 고른 Xcode 안의 xcodebuild 로 `-downloadPlatform iOS` 를 시간 제한 없이 실행한다 (느린 회선에서 1시간을 넘을 수 있고,
+  /// 끊김에도 실패하지 않고 기다린다). 진행은 출력 해석기가 바뀐 것만 알리고,
+  /// 결과는 전체 출력(`CommandResult`)의 종료 코드, xcodebuild 의 취소 알림(`Download was cancelled.`), 내려받기 줄 여부로
+  /// 정한다 (넘기지 못한 조각이 있어도 같다).
+  @concurrent
+  public func installDefaultIOSRuntime(
+    progress: @escaping @Sendable (RuntimeInstallProgress) async -> Void
+  ) async throws(RuntimeInstallError) -> RuntimeInstallOutcome {
+    guard let xcode = await self.choose().xcode else {
+      throw .xcodeNotFound
+    }
+    guard !Task.isCancelled else {
+      throw .cancelled
+    }
+    await progress(.preparing)
+    let parser = ParserBox()
+    let environment = XcodeCommand.environment(base: self.baseEnvironment, developerDirectory: xcode.developerDirectory)
+    let result: CommandResult
+    do throws(CommandError) {
+      result = try await self.command.runCancellable(
+        XcodeCommand.xcodebuild(in: xcode),
+        XcodeCommand.downloadPlatformIOS(),
+        environment: environment,
+        timeout: nil
+      ) { output in
+        // 해석은 lock 안에서, 알림은 lock 밖에서 하나씩 기다린다.
+        let updates = parser.state.withLock { $0.feed(output) }
+        for update in updates {
+          await progress(update)
+        }
+      }
+    } catch {
+      switch error {
+      case .launchFailed:
+        throw .launchFailed
+      case .cancelled:
+        throw .cancelled
+      case .timedOut:
+        throw .failed
+      }
+    }
+    // 진행 해석기는 알림에만 쓴다: 늦게 온 취소로 넘기지 못한 조각이 있어도 결과는 전체 출력으로 정한다.
+    let outcome = RuntimeInstallOutputParser.outcome(
+      stdout: result.stdout,
+      stderr: result.stderr,
+      exitCode: result.exitCode
+    )
+    return try outcome.get()
+  }
+
   /// realpath(3) 로 링크·`..` 를 푼 번들 경로. 대상이 없으면 nil.
   /// `URL.resolvingSymlinksInPath()` 는 `/private` 접두어를 지워 같은 번들이 경로마다 달라지므로 쓰지 않는다.
   static func canonicalBundleURL(_ url: URL) -> URL? {
@@ -97,15 +167,22 @@ public struct DevEnvironmentClientImpl: DevEnvironmentClient {
     return (xcode, selection.commandLineToolsSelected)
   }
 
-  /// `xcode-select -p` 를 `DEVELOPER_DIR` 를 지운 환경에서 실행한다. 시작 실패·0 아님·해석 실패면 선택 없음.
+  /// `xcode-select -p` 를 `DEVELOPER_DIR` 를 지운 환경에서 실행한다. 시작 실패·시간 초과·0 아님·해석 실패면 선택 없음.
+  /// 비구조 Task 안에서 실행해 호출한 Task 의 취소를 전하지 않는다: 취소로 "선택 없음"이 되면 `/Applications` 의
+  /// 다른 Xcode 를 골라, xcode-select 와 다른 Xcode 로 명령을 돌리게 된다 (시간 제한만 받는다).
   private func selection() async -> (selected: XcodeInstallation?, commandLineToolsSelected: Bool) {
     let environment = XcodeCommand.environment(base: self.baseEnvironment, developerDirectory: nil)
-    guard
-      let result = try? await self.command.run(
+    let command = self.command
+    let output: CommandResult? = await Task {
+      try? await command.runCancellable(
         XcodeCommand.xcodeSelect,
         XcodeCommand.printDeveloperDirectory(),
-        environment: environment
-      ),
+        environment: environment,
+        timeout: Self.checkTimeout
+      ) { _ in }
+    }.value
+    guard
+      let result = output,
       let directory = XcodeCommand.selectedDeveloperDirectory(from: result)
     else {
       return (nil, false)
@@ -139,7 +216,7 @@ public struct DevEnvironmentClientImpl: DevEnvironmentClient {
     return installation
   }
 
-  /// 링크를 따라간 일반 파일을 상한 + 1 바이트까지 읽는다. 일반 파일이 아니거나(폴더·FIFO·대상 없는 링크),
+  /// 링크를 따라간 일반 파일(Info.plist·SDK plist)을 상한 + 1 바이트까지 읽는다. 일반 파일이 아니거나(폴더·FIFO·대상 없는 링크),
   /// 읽지 못하거나, 상한을 넘으면 nil (전체를 메모리에 올리지 않는다).
   static func readInfoPlist(_ url: URL, limit: Int = Self.infoPlistSizeLimit) -> Data? {
     guard let path = realPath(url.path(percentEncoded: false)), isRegularFile(path) else {
@@ -175,13 +252,19 @@ public struct DevEnvironmentClientImpl: DevEnvironmentClient {
     return String(cString: resolved)
   }
 
-  /// 고른 Xcode 안의 xcodebuild 를 그 개발자 디렉터리로 실행한다. 시작하지 못하면 `.checkFailed`.
+  /// 고른 Xcode 안의 xcodebuild 를 그 개발자 디렉터리로 `checkTimeout` 안에 실행한다.
+  /// 시작하지 못했거나, 시간 초과·취소로 멈췄으면 `.checkFailed`.
   private func runCheck(_ xcode: XcodeInstallation, _ arguments: [String]) async throws(DevEnvironmentError)
     -> CommandResult
   {
     let environment = XcodeCommand.environment(base: self.baseEnvironment, developerDirectory: xcode.developerDirectory)
     do {
-      return try await self.command.run(XcodeCommand.xcodebuild(in: xcode), arguments, environment: environment)
+      return try await self.command.runCancellable(
+        XcodeCommand.xcodebuild(in: xcode),
+        arguments,
+        environment: environment,
+        timeout: Self.checkTimeout
+      ) { _ in }
     } catch {
       throw .checkFailed
     }
@@ -200,4 +283,9 @@ public struct DevEnvironmentClientImpl: DevEnvironmentClient {
       throw .openFailed
     }
   }
+}
+
+/// 진행 알림용 설치 출력 해석기 (결과 판정에는 쓰지 않는다). 출력 전달 클로저(@Sendable)가 바꾸므로 lock 으로 감싼다.
+private final class ParserBox: Sendable {
+  let state = Mutex(RuntimeInstallOutputParser())
 }

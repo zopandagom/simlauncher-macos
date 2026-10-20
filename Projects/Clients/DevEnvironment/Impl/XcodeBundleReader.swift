@@ -25,6 +25,32 @@ enum XcodeBundleReader {
     return XcodeInstallation(bundleURL: bundleURL, version: version)
   }
 
+  /// iOS Simulator SDK `SDKSettings.plist` 의 `Version` (예: "27.1"). 사전이 아니거나 읽지 못하면 nil.
+  static func sdkVersion(settings: Data) -> OSVersion? {
+    guard let version = string("Version", in: settings) else {
+      return nil
+    }
+    return OSVersion(version)
+  }
+
+  /// SDK `SystemVersion.plist` 의 `ProductBuildVersion` (예: "24A94232"). 비었거나 읽지 못하면 nil.
+  static func sdkBuild(systemVersion: Data) -> String? {
+    guard let build = string("ProductBuildVersion", in: systemVersion), !build.isEmpty else {
+      return nil
+    }
+    return build
+  }
+
+  private static func string(_ key: String, in plistData: Data) -> String? {
+    guard
+      let plist = try? PropertyListSerialization.propertyList(from: plistData, format: nil),
+      let dictionary = plist as? [String: Any]
+    else {
+      return nil
+    }
+    return dictionary[key] as? String
+  }
+
   /// `bundleURL` 경로 문자열이 같은 것은 먼저 나온 하나만 남긴다 (링크로 찾은 같은 번들을 합친다).
   static func unique(_ installations: [XcodeInstallation]) -> [XcodeInstallation] {
     var seen: Set<String> = []

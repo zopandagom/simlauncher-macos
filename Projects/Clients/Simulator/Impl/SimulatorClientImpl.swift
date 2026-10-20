@@ -291,3 +291,21 @@ public struct SimulatorClientImpl: SimulatorClient {
     String(bytes: result.stderr, encoding: .utf8) ?? String(bytes: result.stderr, encoding: .isoLatin1) ?? ""
   }
 }
+
+// MARK: - 런타임 이미지
+
+public extension SimulatorClientImpl {
+  func fetchRuntimeImages() async throws(SimulatorError) -> [RuntimeImage] {
+    let directory = try await self.resolveDeveloperDirectory()
+    let result = try await self.run(
+      SimctlCommand.xcrun,
+      SimctlCommand.runtimeList(),
+      developerDirectory: directory,
+      launchFailure: .developerToolsUnavailable
+    )
+    guard result.exitCode == 0 else {
+      throw Self.classify(result)
+    }
+    return try SimctlRuntimeListDecoder.images(from: result.stdout)
+  }
+}

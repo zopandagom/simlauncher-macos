@@ -22,14 +22,16 @@ public struct Client: Hashable, Sendable {
 
 // 새 Client 는 이 extension 에 static 상수로 추가한다.
 public extension Client {
-  /// iOS 시뮬레이터 기기·런타임 목록, 켜기·끄기·만들기·삭제·초기화, 앱 설치·실행, Simulator 앱 열기 (`xcrun simctl`).
+  /// iOS 시뮬레이터 기기·런타임 목록과 런타임 디스크 이미지 목록, 켜기·끄기·만들기·삭제·초기화, 앱 설치·실행, Simulator 앱 열기 (`xcrun simctl`).
   static let simulator = Client("Simulator")
   /// 로컬 iOS 앱 번들(.app) 검사와 zip 풀기.
   static let appBundle = Client("AppBundle")
   /// 실행 파일을 인자 배열로 실행하고 종료 코드·stdout·stderr 를 돌려준다 (셸을 거치지 않는다).
+  /// 끝날 때까지 기다리는 실행과, 취소·시간 제한으로 멈추고 출력을 받는 대로 넘기는 실행 두 가지.
   /// 인자 구성·결과 해석은 이것을 조합하는 Client Impl 이 한다.
   static let command = Client("Command")
-  /// 쓸 Xcode 확인·선택(xcode-select, /Applications), 라이선스·첫 실행 준비 확인, Xcode·App Store 열기. 3-C 에서 런타임 설치.
+  /// 쓸 Xcode 확인·선택(xcode-select, /Applications), 라이선스·첫 실행 준비 확인, Xcode·App Store 열기,
+  /// 기본 iOS 런타임 확인·설치(`xcodebuild -downloadPlatform iOS`).
   static let devEnvironment = Client("DevEnvironment")
 }
 
