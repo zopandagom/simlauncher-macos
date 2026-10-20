@@ -37,6 +37,8 @@ flowchart TD
 
 같은 화면의 상태(기기 목록·진행 작업·알림)를 함께 쓰는 흐름은 하위 Model 로 나누지 않고, 공유 상태와 규칙을 Feature 의 값 타입(예: `LauncherNotices`·`DeviceActivity`)으로 떼어 별도 파일에 둔다. 다른 흐름과 공유하지 않는 독립 상태(예: 생성 시트 초안 `DeviceCreationDraft`)도 값 타입으로 둔다. Model 은 그 값을 `public private(set) var` 로 갖고 mutating 메서드만 부른다 (View 는 setter 가 없어 부를 수 없다). `private(set)` 은 같은 파일에서만 바꿀 수 있으므로 Model 의 async 흐름은 Model 파일에 둔다.
 
+화면 전환(규칙 6)은 App 이 Setup 과 Launcher 사이에서 한다. `SimLauncherApp` 은 `SetupModel.isFinished` 로 둘 중 하나를 보인다: 앱 시작 직후 첫 판정이 준비됨이면 곧바로 Launcher(기기 목록), 아니면 Setup 의 단계 안내이고, Setup 안에서 준비가 끝나면 "기기 목록 열기"로 넘어간다. Launcher 의 툴바 "개발 환경"은 `LauncherModel.setupButtonTapped()` 가 App 이 주입한 클로저(`setupRequested`)를 불러 App 이 `SetupModel.reopened()` 로 Setup 을 다시 연다 (Feature 끼리 의존하지 않는다). 판정 전에는 `LauncherView` 를 만들지 않아 `simctl` 이 돌지 않고, Launcher 로 돌아올 때마다 View 가 새로 만들어져 목록을 다시 읽는다. Setup 은 보이는 동안 앱 활성화(`NSApplication.didBecomeActiveNotification`. macOS 에서는 다른 앱에 갔다 와도 `scenePhase` 가 바뀌지 않는다)마다 다시 확인한다.
+
 ### 예시 (알림 권한을 묻는 OnboardingFeature)
 ```swift
 @MainActor
@@ -69,6 +71,7 @@ flowchart TD
     App["App (SimLauncher)<br/>조립 지점"]
     subgraph Features
       Launcher["LauncherFeature"]
+      Setup["SetupFeature"]
       Other["…Feature"]
     end
     subgraph Clients
@@ -80,12 +83,12 @@ flowchart TD
       Core["Core<br/>도메인 값 타입·규칙"]
     end
 
-    App --> Launcher & Other
+    App --> Launcher & Setup & Other
     App --> XImpl
-    Launcher & Other --> XI
+    Launcher & Setup & Other --> XI
     XImpl --> XI
     XT --> XI
-    Launcher & XI & XImpl --> Core
+    Launcher & Setup & XI & XImpl --> Core
 ```
 
 ### 모듈 종류와 타깃
