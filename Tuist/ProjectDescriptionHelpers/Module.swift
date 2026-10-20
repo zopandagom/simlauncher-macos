@@ -29,6 +29,8 @@ public extension Client {
   /// 실행 파일을 인자 배열로 실행하고 종료 코드·stdout·stderr 를 돌려준다 (셸을 거치지 않는다).
   /// 인자 구성·결과 해석은 이것을 조합하는 Client Impl 이 한다.
   static let command = Client("Command")
+  /// 쓸 Xcode 확인·선택(xcode-select, /Applications), 라이선스·첫 실행 준비 확인, Xcode·App Store 열기. 3-C 에서 런타임 설치.
+  static let devEnvironment = Client("DevEnvironment")
 }
 
 /// 화면 단위 기능 모듈. Feature 끼리는 서로 의존하지 않는다.
