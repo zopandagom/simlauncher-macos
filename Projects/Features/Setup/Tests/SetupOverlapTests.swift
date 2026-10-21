@@ -46,7 +46,7 @@ struct SetupOverlapTests: SetupModelTesting {
   func firstCheckLoopResultDecidesAutoFinish() async {
     let fake = DevEnvironmentClientFake(status: .xcodeNotInstalled)
     fake.suspendChecks()
-    let model = SetupModel(devEnvironment: fake)
+    let model = Self.makeModel(fake)
 
     let appear = Self.start { await model.onAppear() }
     await Self.waitUntil { Self.checkCount(in: fake) == 1 }
