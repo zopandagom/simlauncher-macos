@@ -14,19 +14,22 @@ struct SimLauncherApp: App {
   @State private var launcherModel: LauncherModel
 
   /// 명령 실행 Client 하나를 개발 환경·시뮬레이터·앱 번들 Client 가 함께 쓰고,
-  /// 개발 환경 Client 하나를 Setup 과 시뮬레이터의 개발자 디렉터리가 함께 쓴다.
+  /// 개발 환경 Client 하나를 Setup 과 시뮬레이터의 개발자 디렉터리가 함께 쓰며,
+  /// 시뮬레이터 Client 하나를 Setup(Xcode 가 준비된 뒤 런타임 목록 읽기)과 Launcher 가 함께 쓴다.
   init() {
     let command = CommandClientImpl()
     let devEnvironment = DevEnvironmentClientImpl(command: command)
-    let setup = SetupModel(devEnvironment: devEnvironment)
-    self._setupModel = State(initialValue: setup)
     // 개발자 디렉터리는 DevEnvironment 가 고른 Xcode (호출마다 다시 고른다). 없으면 Simulator 는 명령을 실행하지 않는다.
-    // Client 생성자는 명령을 실행하지 않으므로, 판정 전에 만들어 두어도 기기 목록이 보이기 전에는 simctl 이 돌지 않는다.
+    // Client 생성자는 명령을 실행하지 않는다. Setup 은 Xcode 가 준비됐다고 판정한 뒤에만 런타임 목록을 읽고,
+    // 기기 목록 화면이 보이기 전에는 기기 목록을 읽는 simctl 이 돌지 않는다.
+    let simulator = SimulatorClientImpl(
+      developerDirectory: { await devEnvironment.selectedXcode()?.developerDirectory },
+      command: command
+    )
+    let setup = SetupModel(devEnvironment: devEnvironment, simulator: simulator)
+    self._setupModel = State(initialValue: setup)
     self._launcherModel = State(initialValue: LauncherModel(
-      simulator: SimulatorClientImpl(
-        developerDirectory: { await devEnvironment.selectedXcode()?.developerDirectory },
-        command: command
-      ),
+      simulator: simulator,
       appBundle: AppBundleClientImpl(command: command),
       setupRequested: { setup.reopened() }
     ))
