@@ -94,3 +94,11 @@ custom_rules:
     match_kinds: [identifier, typeidentifier]
     message: "Process(NSTask) 생성·호출은 Command Client Impl 에만 둡니다. Feature·Core·다른 Client Impl 에서는 하지 않고, 명령이 필요한 Client Impl 은 CommandClient 를 주입받아 실행하세요."
     severity: error
+  network_only_in_download_impl:
+    name: "네트워크 요청은 Download Client Impl 에서만"
+    included: "Projects/"
+    excluded: "Projects/Clients/Download/Impl/"
+    regex: "\\b(URLSession\\w*|NSURLSession\\w*|NSURLConnection|NWConnection|NWListener|NWBrowser|NWPathMonitor)\\b"
+    match_kinds: [identifier, typeidentifier]
+    message: "네트워크 요청(URLSession 등)은 Download Client Impl 에만 둡니다. Feature·Core·다른 Client(Interface·Testing 포함)는 DownloadClient 를 주입받아 쓰고, 테스트는 URLProtocol 스텁을 Impl 의 protocolClasses 로 주입하세요."
+    severity: error
