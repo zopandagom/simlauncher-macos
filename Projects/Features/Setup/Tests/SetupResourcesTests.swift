@@ -2,6 +2,8 @@ import Core
 import DevEnvironmentInterface
 import DevEnvironmentTesting
 import Foundation
+import SimulatorInterface
+import SimulatorTesting
 import Testing
 @testable import SetupFeature
 
@@ -58,6 +60,57 @@ struct SetupTextTests {
     )
   }
 
+  @Test("내려받기 숫자는 퍼센트·바이트를 보이고 없는 값은 뺀다")
+  func downloadDetail() {
+    let locale = Locale(identifier: "ko_KR")
+    let full = RuntimeInstallProgress.downloading(fraction: 0.149, completed: 558_600_000, total: 3_760_000_000)
+    #expect(SetupText.downloadDetail(full, locale: locale) == "14.9% · 558.6MB / 3.76GB")
+    #expect(SetupText.downloadDetail(.downloading(fraction: 0.149), locale: locale) == "14.9%")
+    let bytesOnly = RuntimeInstallProgress.downloading(fraction: nil, completed: 558_600_000, total: 3_760_000_000)
+    #expect(SetupText.downloadDetail(bytesOnly, locale: locale) == "558.6MB / 3.76GB")
+    // 받은 양과 전체 중 하나만 있으면 바이트는 뺀다.
+    let partial = RuntimeInstallProgress.downloading(fraction: 0.5, completed: 558_600_000, total: nil)
+    #expect(SetupText.downloadDetail(partial, locale: locale) == "50.0%")
+    #expect(SetupText.downloadDetail(.downloading(fraction: nil), locale: locale) == nil)
+    // 내려받기 단계가 아니면 숫자 줄이 없다.
+    #expect(SetupText.downloadDetail(.preparing, locale: locale) == nil)
+    #expect(SetupText.downloadDetail(.installing, locale: locale) == nil)
+  }
+
+  @Test("결과 줄은 기본 iOS 가 설치됨이면 방금 설치한 경우만 보이고 지난 실패·취소는 보이지 않는다")
+  func resultLineWhenInstalled() {
+    let installed = SetupRuntimeState.checked(.sample, .installed(SampleRuntimeImage.iOS27Point1))
+    #expect(SetupText.installResultMessage(for: .finished(.installed), runtime: installed) == "iOS 시뮬레이터를 설치했습니다.")
+    #expect(SetupText.installResultMessage(for: .finished(.alreadyInstalled), runtime: installed) == nil)
+    // 늦은 취소로 설치된 경우 포함.
+    for error in SetupTextCatalog.installErrors {
+      #expect(SetupText.installResultMessage(for: .failed(error), runtime: installed) == nil, "\(error)")
+    }
+    #expect(SetupText.installResultMessage(for: nil, runtime: installed) == nil)
+  }
+
+  @Test("결과 줄은 설치되지 않았으면 결과마다 다르다")
+  func resultLineWhenNotInstalled() {
+    let notInstalled = SetupRuntimeState.checked(.sample, .notInstalled)
+    let finished = SetupText.installResultMessage(for: .finished(.installed), runtime: notInstalled)
+    #expect(finished == "설치가 끝났지만 iOS 시뮬레이터가 아직 보이지 않습니다. 잠시 뒤 다시 확인을 누르세요.")
+    #expect(SetupText.installResultMessage(for: .finished(.alreadyInstalled), runtime: notInstalled) == finished)
+    let failures: [String?] = SetupTextCatalog.installErrors.map { (error: RuntimeInstallError) -> String? in
+      SetupText.installResultMessage(for: .failed(error), runtime: notInstalled)
+    }
+    #expect(!failures.contains(nil))
+    #expect(Set(failures + [finished]).count == SetupTextCatalog.installErrors.count + 1)
+    #expect(SetupText.installResultMessage(for: .failed(.cancelled), runtime: notInstalled) == "설치를 취소했습니다.")
+    #expect(SetupText.installResultMessage(for: nil, runtime: notInstalled) == nil)
+
+    // 그 밖의 런타임 상태는 상태 제목·본문이 안내하므로 결과 줄이 없다.
+    for runtime in SetupTextCatalog.runtimes where !runtime.isInstalled && runtime != notInstalled {
+      for result in SetupTextCatalog.installResults {
+        #expect(SetupText.installResultMessage(for: result, runtime: runtime) == nil, "\(runtime) \(result)")
+      }
+    }
+  }
+
   @Test("Xcode 경로는 끝 / 를 떼고, 없으면 그대로 보인다")
   func xcodeLocation() {
     #expect(SetupText.xcodeLocation(XcodeInstallation.sample.bundleURL) == "/Applications/Xcode.app")
@@ -75,6 +128,24 @@ enum SetupTextCatalog {
   ]
 
   static let errors: [DevEnvironmentError] = [.checkFailed, .xcodeNotFound, .openFailed]
+
+  static let runtimes: [SetupRuntimeState] = [
+    .notChecked,
+    .checked(.sample, .installed(SampleRuntimeImage.iOS27Point1)),
+    .checked(.sample, .notInstalled),
+    .checked(.sample, .preparing(SampleRuntimeImage.iOS27Point1)),
+    .checked(.sample, .unusable(SampleRuntimeImage.iOS27Point1)),
+    .defaultRuntimeUnknown,
+    .failed(.commandFailed),
+  ]
+
+  static let installErrors: [RuntimeInstallError] = [.xcodeNotFound, .launchFailed, .cancelled, .failed]
+
+  static var installResults: [SetupInstallResult] {
+    var results: [SetupInstallResult] = [.finished(.installed), .finished(.alreadyInstalled)]
+    results += self.installErrors.map { (error: RuntimeInstallError) -> SetupInstallResult in .failed(error) }
+    return results
+  }
 
   static var notices: [SetupNotice] {
     let appStore: [SetupNotice] = self.errors.map { SetupNotice.openAppStoreFailed($0) }
@@ -96,6 +167,32 @@ enum SetupTextCatalog {
       SetupText.checkingTitle, SetupText.adminPasswordNote, SetupText.autoRecheckNote, SetupText.currentXcodeLabel,
       SetupText.openAppStoreButton, SetupText.openXcodeButton, SetupText.recheckButton, SetupText.finishButton,
       SetupText.okButton, SetupText.recheckingLabel,
+    ]
+    texts += labels
+    texts += self.runtimes.map { (runtime: SetupRuntimeState) -> String in SetupText.title(for: runtime) }
+    texts += self.runtimes.compactMap { (runtime: SetupRuntimeState) -> String? in SetupText.message(for: runtime) }
+    texts += self.installTexts
+    return texts
+  }
+
+  /// 설치 진행·결과·종료 확인 문구.
+  static var installTexts: [String] {
+    var texts: [String] = []
+    let phases: [RuntimeInstallProgress.Phase] = [.preparing, .downloading, .installing]
+    texts += phases.map { (phase: RuntimeInstallProgress.Phase) -> String in SetupText.phaseTitle(phase) }
+    for runtime in self.runtimes {
+      for result in self.installResults {
+        if let message = SetupText.installResultMessage(for: result, runtime: runtime) {
+          texts.append(message)
+        }
+      }
+    }
+    let labels: [String] = [
+      SetupText.installingTitle, SetupText.installingMessage, SetupText.verifyingInstallTitle,
+      SetupText.installButton, SetupText.otherVersionNote, SetupText.defaultRuntimeLabel,
+      SetupText.cancelInstallButton, SetupText.cancellingLabel, SetupText.cannotCancelNote, SetupText.stalledNote,
+      SetupText.quitAfterCancelNote, SetupText.quitAfterInstallNote, SetupText.terminationTitle,
+      SetupText.terminationMessage, SetupText.continueInstallButton, SetupText.quitButton,
     ]
     texts += labels
     return texts
