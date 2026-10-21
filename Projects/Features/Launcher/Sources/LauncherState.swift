@@ -25,6 +25,11 @@ public enum LauncherNotice: Hashable, Sendable {
       self.name = name
       self.runtimeName = runtimeName
     }
+
+    /// 지금 목록의 기기 값으로 만든다.
+    public init(_ device: VirtualDevice) {
+      self.init(name: device.name, runtimeName: device.runtime.name)
+    }
   }
 
   case refreshFailed(SimulatorError)

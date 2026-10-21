@@ -8,6 +8,7 @@ import SimulatorInterface
 /// 만들고 지우고 초기화한다. 고른 .app 이나 .app 을 담은 zip 을(풀어서) 기기에 설치하고 바로 실행하며,
 /// 입력한 링크(딥링크·웹 주소)를 기기에서 연다 (둘 다 꺼져 있으면 켠다).
 /// Xcode 준비와 iOS 시뮬레이터 설치는 여기서 하지 않고, Setup 진입 버튼으로 App 에 Setup 화면을 요청한다.
+/// 상태를 바꾸지 않는 읽기 API(`canCreateDevice` 등)는 `LauncherModel+Reading.swift` 에 있다.
 @MainActor
 @Observable
 public final class LauncherModel {
@@ -30,31 +31,6 @@ public final class LauncherModel {
   public private(set) var pendingConfirmation: DeviceConfirmation?
   /// 링크 열기 시트 초안. nil 이면 시트가 닫혀 있다.
   public private(set) var openURLDraft: OpenURLDraft?
-
-  /// + 버튼을 누를 수 있는지: 목록을 읽었고, 선택지가 있고, 만드는 중이 아니고, 생성·링크 시트가 닫혀 있다.
-  public var canCreateDevice: Bool {
-    guard case .loaded = self.listState else { return false }
-    return !self.creationOptions.isEmpty && !self.isCreating && self.createDraft == nil && self.openURLDraft == nil
-  }
-
-  /// 목록을 읽었지만 만들 수 있는 기기 종류가 없어 + 버튼을 쓸 수 없다. 툴바 + 툴팁 문구를 고르고,
-  /// 기기가 있으면 목록 위 안내 줄로 이유와 iOS 설치 버튼을 보인다 (목록이 비면 빈 화면 안내가 보인다).
-  /// 만드는 중·시트 열림·읽는 중은 다른 표시가 이유를 보이므로 여기 들지 않는다.
-  public var isCreationUnavailable: Bool {
-    guard case .loaded = self.listState else { return false }
-    return self.creationOptions.isEmpty
-  }
-
-  /// 작업이 진행 중인 기기 (`activity.busyDeviceIDs` 와 같다). 화면은 행마다 `activity.task(on:)` 를 읽고,
-  /// 이 값은 진행 중인 기기 전체를 한 번에 볼 때(테스트) 쓴다.
-  public var busyDeviceIDs: Set<VirtualDevice.ID> {
-    self.activity.busyDeviceIDs
-  }
-
-  /// 닫지 않은 알림. 쌓인 순서이고, 화면은 첫 항목을 보인다. `noticeQueue` 에서 계산하는 읽기 API 다.
-  public var notices: [LauncherNoticeItem] {
-    self.noticeQueue.items
-  }
 
   @ObservationIgnored private let simulator: any SimulatorClient
   @ObservationIgnored private let appBundle: any AppBundleClient
@@ -101,19 +77,8 @@ public final class LauncherModel {
           self.activity.begin(.boot, on: device)
     else { return }
     defer { self.activity.end(on: id) }
-    let label = Self.label(for: device)
-    do throws(SimulatorError) {
-      try await self.simulator.boot(id)
-    } catch {
-      self.enqueue(.bootFailed(label, error))
-      await self.reload()
-      return
-    }
-    do throws(SimulatorError) {
-      try await self.simulator.openSimulatorApp()
-    } catch {
-      self.enqueue(.openAppFailed(label, error))
-    }
+    // `begin(.boot)` 이 꺼진 기기만 받으므로 늘 켠다.
+    guard await self.bootIfNeededAndShowSimulator(device, label: LauncherNotice.Device(device)) else { return }
     await self.reload()
   }
 
@@ -124,7 +89,7 @@ public final class LauncherModel {
           self.activity.begin(.shutdown, on: device)
     else { return }
     defer { self.activity.end(on: id) }
-    let label = Self.label(for: device)
+    let label = LauncherNotice.Device(device)
     do throws(SimulatorError) {
       try await self.simulator.shutdown(id)
     } catch {
@@ -193,8 +158,24 @@ public final class LauncherModel {
     self.noticeQueue.enqueue(notice)
   }
 
-  private static func label(for device: VirtualDevice) -> LauncherNotice.Device {
-    LauncherNotice.Device(name: device.name, runtimeName: device.runtime.name)
+  /// 꺼져 있으면 켜고, 켜져 있던 기기도 Simulator 앱을 연다 (창을 닫아 두었어도 결과가 보이게). 켜기에 실패하면 알림을
+  /// 띄우고 다시 읽은 뒤 false. 앱을 열지 못하면 알림만 띄우고 true (설치·실행·링크 열기는 창 없이 된다).
+  private func bootIfNeededAndShowSimulator(_ device: VirtualDevice, label: LauncherNotice.Device) async -> Bool {
+    if device.state == .shutdown {
+      do throws(SimulatorError) {
+        try await self.simulator.boot(device.id)
+      } catch {
+        self.enqueue(.bootFailed(label, error))
+        await self.reload()
+        return false
+      }
+    }
+    do throws(SimulatorError) {
+      try await self.simulator.openSimulatorApp()
+    } catch {
+      self.enqueue(.openAppFailed(label, error))
+    }
+    return true
   }
 
   /// 목록을 읽는다. 읽는 중이면 새로 시작하지 않고 그 읽기를 기다리며, 끝난 뒤 한 번 더 읽게 한다.
@@ -288,7 +269,7 @@ public extension LauncherModel {
           self.pendingConfirmation == nil,
           self.openURLDraft == nil
     else { return }
-    self.pendingConfirmation = DeviceConfirmation(action: action, deviceID: id, device: Self.label(for: device))
+    self.pendingConfirmation = DeviceConfirmation(action: action, deviceID: id, device: LauncherNotice.Device(device))
   }
 }
 
@@ -307,40 +288,51 @@ public extension LauncherModel {
   }
 
   /// 진행 중 기록은 여기서만 시작하고 끝낸다. 아래 단계의 어느 반환에서든 이 defer 하나가 진행 중을 푼다.
-  /// zip 이면 풀고, 성공·실패와 관계없이 설치 흐름이 끝난 뒤 임시 폴더를 지운다 (비동기 defer 를 쓰지 않으려고
-  /// 실패가 모두 안에서 끝나는 `installBundle` 뒤에 둔다).
   private func installApp(_ items: [URL], on id: VirtualDevice.ID) async {
     guard case let .loaded(list) = self.listState,
           let device = list.device(id: id),
           self.activity.begin(.installApp, on: device)
     else { return }
     defer { self.activity.end(on: id) }
-    let label = Self.label(for: device)
+    let label = LauncherNotice.Device(device)
     guard let url = items.first else { return }
     guard items.count == 1 else {
       self.enqueue(.installFailed(label, .multipleItems))
       return
     }
-    guard Self.isZip(url) else {
+    guard AppInstallSource.isZip(url) else {
       await self.installBundle(url, on: id, label: label)
       return
     }
-    let extracted: ExtractedApp
-    do throws(AppBundleError) {
-      extracted = try await self.appBundle.extractApp(fromZip: url)
-    } catch {
-      // 명령을 실행하기 전이라 다시 읽지 않는다. 풀다 만 폴더는 Impl 이 지웠다.
-      self.enqueue(.installFailed(label, .bundle(error)))
-      return
-    }
-    await self.installBundle(extracted.app, on: id, label: label)
-    // 설치 명령이 번들을 기기로 복사한 뒤라 지워도 된다. 지우지 못하면 다음에 기기 목록 화면을 열 때 지운다.
-    await self.appBundle.removeExtracted(extracted)
+    guard let extracted = await self.extract(url, label: label, failure: AppInstallFailure.bundle) else { return }
+    await self.installExtracted(extracted, on: id, label: label)
   }
 
-  /// 확장자가 zip 이면(대소문자 무시) 풀어서 설치한다.
-  private static func isZip(_ url: URL) -> Bool {
-    url.pathExtension.lowercased() == "zip"
+  /// zip 을 푼다. 실패하면 `failure` 로 만든 알림을 쌓고 nil (명령을 실행하기 전이라 다시 읽지 않는다.
+  /// 풀다 만 폴더는 Impl 이 지웠다).
+  private func extract(
+    _ zip: URL,
+    label: LauncherNotice.Device,
+    failure: (AppBundleError) -> AppInstallFailure
+  ) async -> ExtractedApp? {
+    do throws(AppBundleError) {
+      return try await self.appBundle.extractApp(fromZip: zip)
+    } catch {
+      self.enqueue(.installFailed(label, failure(error)))
+      return nil
+    }
+  }
+
+  /// 푼 .app 을 설치하고, 성공·실패와 관계없이 끝나면 임시 폴더를 지운다 (비동기 defer 를 쓰지 않으려고 실패가 모두
+  /// 안에서 끝나는 `installBundle` 뒤에 둔다). 설치 명령이 번들을 기기로 복사한 뒤라 지워도 된다.
+  /// 지우지 못하면 다음에 기기 목록 화면을 열 때 지운다.
+  private func installExtracted(
+    _ extracted: ExtractedApp,
+    on id: VirtualDevice.ID,
+    label: LauncherNotice.Device
+  ) async {
+    await self.installBundle(extracted.app, on: id, label: label)
+    await self.appBundle.removeExtracted(extracted)
   }
 
   /// 검사·판정을 통과하면 설치하고 실행한다. 모든 실패가 안에서 알림으로 끝나 던지지 않는다.
@@ -364,12 +356,11 @@ public extension LauncherModel {
       return nil
     }
     // 검사하는 동안 새로 고침으로 목록이 바뀌었을 수 있다. 이 기기의 작업은 지금 이 설치라 진행 중은 보지 않는다.
-    guard case let .loaded(list) = self.listState, let device = list.device(id: id) else {
-      self.enqueue(.installFailed(label, .simulator(.deviceNotFound)))
-      return nil
-    }
-    if case let .blocked(reason) = device.appInstallAvailability {
-      self.enqueue(.installFailed(label, .deviceNotReady(reason)))
+    let target = AppInstallTarget.current(id, in: self.listState)
+    guard case let .ready(device) = target else {
+      if let failure = target.installFailure {
+        self.enqueue(.installFailed(label, failure))
+      }
       return nil
     }
     if let problem = info.installProblem(on: device.runtime, hostArchitecture: self.appBundle.hostArchitecture) {
@@ -381,21 +372,7 @@ public extension LauncherModel {
 
   /// 꺼져 있으면 켜고, Simulator 앱을 열고, 검사한 경로를 설치하고, 검사한 번들 ID 로 실행한 뒤 다시 읽는다.
   private func runInstall(_ info: AppBundleInfo, on device: VirtualDevice, label: LauncherNotice.Device) async {
-    if device.state == .shutdown {
-      do throws(SimulatorError) {
-        try await self.simulator.boot(device.id)
-      } catch {
-        self.enqueue(.bootFailed(label, error))
-        await self.reload()
-        return
-      }
-    }
-    // 창을 닫아 두었어도 실행한 앱이 보이게 켜져 있던 기기도 연다. 열지 못해도 설치·실행은 창 없이 된다.
-    do throws(SimulatorError) {
-      try await self.simulator.openSimulatorApp()
-    } catch {
-      self.enqueue(.openAppFailed(label, error))
-    }
+    guard await self.bootIfNeededAndShowSimulator(device, label: label) else { return }
     do throws(SimulatorError) {
       try await self.simulator.install(info.location, on: device.id)
     } catch {
@@ -425,7 +402,7 @@ public extension LauncherModel {
           self.createDraft == nil,
           self.pendingConfirmation == nil
     else { return }
-    self.openURLDraft = OpenURLDraft(deviceID: id, device: Self.label(for: device))
+    self.openURLDraft = OpenURLDraft(deviceID: id, device: LauncherNotice.Device(device))
   }
 
   func openURLTextChanged(_ text: String) {
@@ -448,35 +425,19 @@ public extension LauncherModel {
     // 첫 await 전에 닫아, 연타해도 두 번째 호출은 위에서 끝난다.
     self.openURLDraft = nil
     let label = draft.device
-    guard case let .loaded(list) = self.listState else { return }
-    guard let device = list.device(id: draft.deviceID) else {
-      self.enqueue(.openURLFailed(label, .simulator(.deviceNotFound)))
-      return
-    }
-    if case let .blocked(reason) = device.appInstallAvailability {
-      self.enqueue(.openURLFailed(label, .deviceNotReady(reason)))
+    let target = AppInstallTarget.current(draft.deviceID, in: self.listState)
+    guard case let .ready(device) = target else {
+      if let failure = target.openURLFailure {
+        self.enqueue(.openURLFailed(label, failure))
+      }
       return
     }
     // 남은 거절은 같은 기기의 다른 작업뿐이다. 시트가 창을 막아 시트를 연 뒤 그 기기 작업을 시작할 수 없어 드물고,
     // 행의 진행 표시가 이유를 보인다.
     guard self.activity.begin(.openURL, on: device) else { return }
     defer { self.activity.end(on: device.id) }
-    if device.state == .shutdown {
-      do throws(SimulatorError) {
-        try await self.simulator.boot(device.id)
-      } catch {
-        self.enqueue(.bootFailed(label, error))
-        await self.reload()
-        return
-      }
-    }
-    // 열린 링크가 보이게 켜져 있던 기기도 연다. 열지 못해도 링크는 창 없이 열린다.
-    do throws(SimulatorError) {
-      try await self.simulator.openSimulatorApp()
-    } catch {
-      self.enqueue(.openAppFailed(label, error))
-    }
     // 막 켠 기기는 준비가 끝날 때까지 돌아오지 않는다 (콜드 부팅 직후 수십 초). 그동안 행이 진행 중을 보인다.
+    guard await self.bootIfNeededAndShowSimulator(device, label: label) else { return }
     do throws(SimulatorError) {
       try await self.simulator.openURL(link, on: device.id)
     } catch {
