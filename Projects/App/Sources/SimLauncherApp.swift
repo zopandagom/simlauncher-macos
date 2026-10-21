@@ -1,6 +1,7 @@
 import AppBundleImpl
 import CommandImpl
 import DevEnvironmentImpl
+import DownloadImpl
 import LauncherFeature
 import SetupFeature
 import SimulatorImpl
@@ -18,6 +19,7 @@ struct SimLauncherApp: App {
   /// 명령 실행 Client 하나를 개발 환경·시뮬레이터·앱 번들 Client 가 함께 쓰고,
   /// 개발 환경 Client 하나를 Setup 과 시뮬레이터의 개발자 디렉터리가 함께 쓰며,
   /// 시뮬레이터 Client 하나를 Setup(Xcode 가 준비된 뒤 런타임 목록 읽기)과 Launcher 가 함께 쓴다.
+  /// 받기 Client 는 하나만 만들어 Launcher 의 URL 설치에 준다 (지금 받는 폴더 목록을 그 안에서 함께 쓴다).
   init() {
     let command = CommandClientImpl()
     let devEnvironment = DevEnvironmentClientImpl(command: command)
@@ -33,6 +35,7 @@ struct SimLauncherApp: App {
     self._launcherModel = State(initialValue: LauncherModel(
       simulator: simulator,
       appBundle: AppBundleClientImpl(command: command),
+      download: DownloadClientImpl(),
       setupRequested: { setup.reopened() }
     ))
     // 종료 요청 때 AppDelegate 가 Setup 에 설치 상태를 묻는다: 준비·내려받기 중이면 확인을 받아 멈추게 하고,
