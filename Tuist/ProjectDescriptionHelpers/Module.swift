@@ -36,6 +36,9 @@ public extension Client {
   /// 사용자가 입력·등록한 HTTPS 주소에서 큰 파일(임시 폴더, 진행률·취소)과 작은 파일(메모리, 상한)을 받는다 (URLSession).
   /// https 로만 리다이렉트를 따라가고 인증은 하지 않는다.
   static let download = Client("Download")
+  /// 사용자 설정(UserDefaults 표준 도메인 = 앱 번들 ID): 빌드 카탈로그 주소 목록 읽기·추가·삭제.
+  /// 관리자가 구성 프로필로 강제한 키(`objectIsForced`)는 잠김이라 쓰지 않는다.
+  static let preferences = Client("Preferences")
 }
 
 /// 화면 단위 기능 모듈. Feature 끼리는 서로 의존하지 않는다.
@@ -44,6 +47,8 @@ public enum Feature: String, CaseIterable {
   case launcher = "Launcher"
   /// Xcode 설치·라이선스·첫 실행 준비 단계별 안내와 다시 확인, 기본 iOS 런타임 설치(진행·취소).
   case setup = "Setup"
+  /// 설정 창(⌘,): 빌드 카탈로그 주소 등록(한 번 받아 형식 확인)·삭제, 관리자 강제 목록은 잠금 안내.
+  case settings = "Settings"
 
   public var name: String { "\(self.rawValue)Feature" }
   public var tests: String { "\(self.name)Tests" }
