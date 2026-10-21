@@ -15,7 +15,7 @@
 | 사용 환경 | Xcode·시뮬레이터 런타임 확인, 없으면 안내. iOS 런타임은 앱에서 설치 | `xcode-select -p`(물려받은 `DEVELOPER_DIR` 를 지운 환경), `simctl runtime list -j`(런타임 디스크 이미지와 상태), `xcodebuild -downloadPlatform iOS`. 기본 iOS 런타임은 고른 Xcode 의 iOS Simulator SDK 버전이고(SDK 의 `SDKSettings.plist`·`SystemVersion.plist` 를 읽는다), 같은 major.minor 의 iOS 이미지(patch·build 는 보지 않는다)가 Ready 면 설치됨, 받은 뒤 확인·마운트 중이면 준비 중, Unusable 이면 쓸 수 없음으로 보고, 삭제 중이거나 상태를 알 수 없는 이미지는 없는 것으로 본다. 설치는 사용자가 누를 때만 버전을 지정하지 않는 `-downloadPlatform iOS` 로 하고, 진행률(준비 → 내려받기 퍼센트·바이트 → 설치)을 보이고 취소할 수 있다(설치 단계는 취소하지 않는다). 60초 동안 진행이 없으면 연결 확인 안내를 보이되 실패로 바꾸지 않고, 결과(설치함·이미 있음·실패·취소)와 관계없이 끝나면 환경과 런타임을 다시 확인한다. 다른 iOS 버전 목록은 네트워크 없이 얻는 CLI 명령이 없어 제공하지 않는다. xcode-select 가 Xcode 를 가리키지 않으면(Command Line Tools·없음·깨진 경로) `/Applications` 맨 위의 Xcode 번들(Info.plist 의 식별자 `com.apple.dt.Xcode`·버전) 중 가장 높은 버전을 골라 `DEVELOPER_DIR` 를 지정해 실행한다 (사용자에게 `xcode-select -s` 를 시키지 않는다). 이렇게 고른 Xcode 를 `simctl`·`xcodebuild` 가 함께 쓰고, 쓸 Xcode 가 없으면 `simctl` 을 실행하지 않는다 (ARCHITECTURE §4). 준비 상태는 고른 Xcode 안의 `xcodebuild -checkFirstLaunchStatus`·`-license check` 로 확인한다 (`/usr/bin/xcodebuild` shim 은 쓰지 않는다). Xcode 는 App Store 페이지를 열고, 라이선스 동의·첫 실행 준비는 "Xcode 열기"(관리자 암호 필요)로 단계별 안내 (`Setup` Feature. 단계는 Xcode 설치 → 라이선스 동의 → 첫 실행 준비 → iOS 시뮬레이터 설치이고, iOS 런타임은 Xcode 가 준비된 뒤에만 확인한다. 앱 시작 때 확인해 Xcode 가 미준비면 Setup, 준비되면(기본 iOS 가 없어도) 기기 목록. 단계마다 "다시 확인", 앱으로 돌아오면 자동 확인(설치 중에는 확인·기기 목록 이동을 막는다). 기기 목록 툴바 "개발 환경", iOS 런타임 없음·만들 수 있는 기기 종류 없음 화면의 설치 버튼, 목록 읽기 실패 화면의 "개발 환경 열기"로 다시 연다. 설치 중 앱을 끝내면 준비·내려받기 중이면 확인을 받아 설치를 멈추고, 설치 단계이거나 이미 멈추는 중이면 묻지 않고 끝나기를 기다린 뒤 앱을 끝낸다) |
 | 시뮬레이터 | 기기 목록, 부팅·종료, 생성·삭제·초기화, Simulator 앱 띄우기 | `simctl list -j`, `boot`/`shutdown`, `create`/`delete`/`erase`, 개발자 디렉터리의 Simulator 앱(Xcode 27.1 은 DeviceHub)을 `open` |
 | 앱 설치 | 로컬 .app(또는 .app 을 담은 zip)을 골라 설치. 드래그 앤 드롭 | `simctl install <기기> <.app>`. `AppBundle` Client 가 `Info.plist`(XML·바이너리)의 지원 플랫폼·`MinimumOSVersion` 과 실행 파일 Mach-O 헤더의 아키텍처를 읽고, Core 규칙이 대상 기기와 대조해 .ipa·Mac 앱·기기용·아키텍처·iOS 버전이 맞지 않는 빌드를 이유와 함께 거절. 꺼진 기기는 켜고, Simulator 앱을 열어(켜진 기기도) 설치하고 바로 실행. zip 은 `AppBundle` Client 가 임시 폴더에 `ditto -x -k` 로 풀어 맨 위 .app 하나를 쓰고(다른 맨 위 항목은 무시), 경로 탈출(`../`·절대 경로·밖을 가리키는 심볼릭 링크)은 거절하고, 풀기 전에 디스크 여유를 확인한다. 설치가 끝나면 임시 폴더를 지우고, 기기 목록 화면을 열 때 남은 폴더(앞선 실행이 남겼거나 지우지 못한 것)를 정리한다 |
-| 앱 설치 | URL 의 .app(zip) 을 내려받아 설치 ("직접 설치") | `URLSession` 다운로드(진행률·취소), `ditto -x -k` 로 압축 해제 |
+| 앱 설치 | URL 의 .app(zip) 을 내려받아 설치 ("직접 설치") | `Download` Client 가 URLSession 데이터 작업으로 `SimLauncher-Download-<UUID>` 임시 폴더에 받는다(진행률·취소, https 만·http 리다이렉트 거절, Content-Length 와 디스크 여유 비교·받다가 차면 지움, 받은 파일 이름은 고정). 압축 해제는 로컬 zip 과 같은 `AppBundle` 경로 |
 | 빌드 카탈로그 | 설정에서 카탈로그 URL 을 등록하고, 앱·버전 목록에서 골라 설치 | 정적 `catalog.json` 하나 (규격은 아래). 서버 없이 GitHub Releases·S3·사내 웹 서버 어디든 둘 수 있다 |
 | 앱 실행 | 설치한 앱 실행, 딥링크 열기 | `Info.plist` 의 번들 ID 로 `simctl launch`, `simctl openurl <기기> <url>`. 스킴이 있는 링크는 모두 연다(Core `DeepLink`: 앞뒤 공백을 빼고 경로·쿼리의 공백·한글은 퍼센트 인코딩). 꺼진 기기는 켜고, Simulator 앱을 열어(켜진 기기도) 연다. 링크는 기기 안의 앱(Safari 등)이 열고 SimLauncher 는 내려받지 않는다 |
 
@@ -24,7 +24,7 @@
 - 사용자가 설정 화면에서 카탈로그 URL 을 하나 이상 등록한다. 회사 일괄 배포용으로 `defaults write` 나 MDM 으로 미리 넣을 수 있게 한다 (선택). 미리 넣은 값도 같은 사용자 설정 키라서 네트워크 규칙의 "사용자가 등록한 카탈로그"에 든다
 - `catalog.json` 은 `schemaVersion` 과 앱 → 버전(이름·브랜치·태그·빌드 번호·생성 시각) → 빌드 zip URL 을 담는다. 규격 문서는 4단계에서 확정한다
 - 레포에 예시 GitHub Actions 워크플로를 둔다: `xcodebuild -sdk iphonesimulator` → zip → Release 업로드 → `catalog.json` 갱신
-- 첫 버전은 인증 없는 HTTPS URL 만 지원한다. 비공개 저장소(토큰 헤더 등) 인증은 후속
+- 첫 버전은 인증 없는 HTTPS URL 만 지원한다(사용자 이름·비밀번호가 든 주소는 거절하고, 서버의 인증 요구에도 응하지 않는다). 비공개 저장소(토큰 헤더 등) 인증은 후속
 - 공개 레포의 GitHub Releases 는 누구나 받을 수 있다. 개발 중 확인은 샘플 앱 빌드로만 하고, 회사 앱 빌드는 각자 비공개 저장소에 둔다
 - GitHub Releases 로 둘 때 고정 URL: `https://github.com/<owner>/<repo>/releases/latest/download/catalog.json` (파일당 2 GiB 미만, 릴리스당 파일 1000개, 전체 용량·트래픽 제한 없음)
 
@@ -76,4 +76,4 @@
 | `xcrun simctl` 실행에는 App Sandbox 밖 동작이 필요해 Mac App Store 배포가 어려움 | Developer ID 서명·공증 배포 (ARCHITECTURE §4) |
 | Apple 실리콘 Mac 에서는 arm64 slice 가 없는 시뮬레이터 빌드가 설치되지 않음 (`simctl install` 이 거절, Xcode 27.1·iOS 27.0 에서 확인) | 설치 전에 실행 파일 아키텍처를 검사해 이유를 보여 준다 (2단계) |
 | 공개 레포라 외부 PR 이 워크플로를 돌리거나 Releases 의 빌드가 누구에게나 공개됨 | PR 트리거는 `pull_request` 만 쓰고 `pull_request_target` 은 쓰지 않는다(fork PR 은 시크릿 없음), 외부 기여자 워크플로는 승인 후 실행. Releases 에 올리는 iOS 앱 빌드는 샘플 앱만 (회사 앱 빌드는 각자 비공개 저장소에) |
-| 입력받은 URL·zip 이 신뢰할 수 없는 내용일 수 있음 | HTTPS 만 허용, 압축 해제 경로가 대상 폴더를 벗어나지 않는지 검사 (CONVENTIONS §4) |
+| 입력받은 URL·zip 이 신뢰할 수 없는 내용일 수 있음 | HTTPS 만 허용(리다이렉트 포함), 압축 해제 경로가 대상 폴더를 벗어나지 않는지 검사 (CONVENTIONS §4) |

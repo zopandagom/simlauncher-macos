@@ -33,6 +33,9 @@ public extension Client {
   /// 쓸 Xcode 확인·선택(xcode-select, /Applications), 라이선스·첫 실행 준비 확인, Xcode·App Store 열기,
   /// 기본 iOS 런타임 확인·설치(`xcodebuild -downloadPlatform iOS`).
   static let devEnvironment = Client("DevEnvironment")
+  /// 사용자가 입력·등록한 HTTPS 주소에서 큰 파일(임시 폴더, 진행률·취소)과 작은 파일(메모리, 상한)을 받는다 (URLSession).
+  /// https 로만 리다이렉트를 따라가고 인증은 하지 않는다.
+  static let download = Client("Download")
 }
 
 /// 화면 단위 기능 모듈. Feature 끼리는 서로 의존하지 않는다.
