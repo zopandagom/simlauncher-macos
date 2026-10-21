@@ -3,6 +3,8 @@ import CommandImpl
 import DevEnvironmentImpl
 import DownloadImpl
 import LauncherFeature
+import PreferencesImpl
+import SettingsFeature
 import SetupFeature
 import SimulatorImpl
 import SwiftUI
@@ -10,16 +12,19 @@ import SwiftUI
 /// 조립 지점. Client Impl 을 만들어 Feature Model 에 주입하는 곳은 여기뿐이다.
 /// 화면 간 흐름도 여기서 잇는다: Setup 이 끝나면(`SetupModel.isFinished`) 기기 목록, 기기 목록의 Setup 진입 버튼
 /// ("개발 환경", 빈 화면의 iOS 설치 등)이면 다시 Setup. 앱 종료 요청은 `AppDelegate` 가 받아 런타임 설치 중이면 Setup 에 맡긴다.
+/// 설정 창(`Settings` 씬, ⌘,)은 메인 창의 화면(Setup·기기 목록)과 관계없이 열린다.
 @main
 struct SimLauncherApp: App {
   @NSApplicationDelegateAdaptor private var appDelegate: AppDelegate
   @State private var setupModel: SetupModel
   @State private var launcherModel: LauncherModel
+  @State private var settingsModel: SettingsModel
 
   /// 명령 실행 Client 하나를 개발 환경·시뮬레이터·앱 번들 Client 가 함께 쓰고,
   /// 개발 환경 Client 하나를 Setup 과 시뮬레이터의 개발자 디렉터리가 함께 쓰며,
   /// 시뮬레이터 Client 하나를 Setup(Xcode 가 준비된 뒤 런타임 목록 읽기)과 Launcher 가 함께 쓴다.
-  /// 받기 Client 는 하나만 만들어 Launcher 의 URL 설치에 준다 (지금 받는 폴더 목록을 그 안에서 함께 쓴다).
+  /// 받기 Client 는 하나만 만들어 Launcher 의 URL 설치와 설정 창의 카탈로그 등록 확인이 함께 쓴다
+  /// (지금 받는 폴더 목록을 그 안에서 함께 쓴다).
   init() {
     let command = CommandClientImpl()
     let devEnvironment = DevEnvironmentClientImpl(command: command)
@@ -30,14 +35,18 @@ struct SimLauncherApp: App {
       developerDirectory: { await devEnvironment.selectedXcode()?.developerDirectory },
       command: command
     )
+    let download = DownloadClientImpl()
     let setup = SetupModel(devEnvironment: devEnvironment, simulator: simulator)
     self._setupModel = State(initialValue: setup)
     self._launcherModel = State(initialValue: LauncherModel(
       simulator: simulator,
       appBundle: AppBundleClientImpl(command: command),
-      download: DownloadClientImpl(),
+      download: download,
       setupRequested: { setup.reopened() }
     ))
+    // 설정 창의 내용은 앱 시작 때 한 번 만들어진다(측정). 생성자는 Client 를 저장만 하고, 목록 읽기는 창을 열 때,
+    // 카탈로그 받기는 "등록" 을 누를 때만 한다.
+    self._settingsModel = State(initialValue: SettingsModel(preferences: PreferencesClientImpl(), download: download))
     // 종료 요청 때 AppDelegate 가 Setup 에 설치 상태를 묻는다: 준비·내려받기 중이면 확인을 받아 멈추게 하고,
     // 설치 단계·멈추는 중이면 끝나기를 기다린다 (어댑터는 init 에서 넣은 값을 종료 요청 때 그대로 본다, 측정).
     self.appDelegate.setupModel = setup
@@ -52,6 +61,10 @@ struct SimLauncherApp: App {
       } else {
         SetupView(model: self.setupModel)
       }
+    }
+    // 창을 닫으면 진행 중인 등록 확인을 취소한다 (SettingsView 의 onDisappear).
+    Settings {
+      SettingsView(model: self.settingsModel)
     }
   }
 }
