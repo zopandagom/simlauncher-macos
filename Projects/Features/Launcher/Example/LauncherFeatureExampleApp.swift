@@ -7,7 +7,8 @@ import SwiftUI
 /// App 없이 Launcher 화면만 띄우는 데모 앱. Preview 도 여기에 둔다.
 /// 실제 시뮬레이터 대신 Testing 모듈의 `SimulatorClientFake`(샘플 목록, 호출마다 1초 지연, 링크는 켜진 기기면
 /// 어떤 링크든 열린 것으로 끝난다)와 `AppBundleClientFake`(어떤 파일을 골라도 샘플 앱, zip 도 1초 풀기 뒤 샘플 앱,
-/// 1초 지연)를 주입한다.
+/// 1초 지연)를 주입한다. Setup 화면이 없으므로 Setup 진입 버튼("개발 환경"·"iOS 설치"·"다른 iOS 버전 설치"·
+/// "개발 환경 열기")은 눌러도 아무 일도 하지 않는다.
 @main
 struct LauncherFeatureExampleApp: App {
   @State private var model = Self.makeModel()
@@ -49,11 +50,11 @@ private func previewLauncher(
   previewLauncher { $0.suspendFetches() }
 }
 
-#Preview("불러오기 실패") {
+#Preview("불러오기 실패 (다시 시도·개발 환경 열기 버튼)") {
   previewLauncher { $0.setFetchError(.developerToolsUnavailable) }
 }
 
-#Preview("런타임 없음") {
+#Preview("런타임 없음 (iOS 설치 버튼)") {
   previewLauncher(.noRuntime)
 }
 
@@ -61,11 +62,11 @@ private func previewLauncher(
   previewLauncher(.noDevices)
 }
 
-#Preview("만들 수 있는 기기 종류 없음") {
+#Preview("만들 수 있는 기기 종류 없음 (다른 iOS 버전 설치 버튼)") {
   previewLauncher(.noCreatableDeviceType)
 }
 
-#Preview("기기는 있지만 만들 수 없음") {
+#Preview("기기는 있지만 만들 수 없음 (안내 줄의 다른 iOS 버전 설치 버튼)") {
   previewLauncher(
     DeviceInventory(devices: DeviceInventory.sample.devices, runtimes: DeviceInventory.sample.runtimes, deviceTypes: [])
   )

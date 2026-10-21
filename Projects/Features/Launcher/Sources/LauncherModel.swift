@@ -7,6 +7,7 @@ import SimulatorInterface
 /// 기기 목록 화면의 상태와 로직. iOS 시뮬레이터 기기 목록을 읽고, 기기를 켜고 끄며(켠 뒤 Simulator 앱을 연다),
 /// 만들고 지우고 초기화한다. 고른 .app 이나 .app 을 담은 zip 을(풀어서) 기기에 설치하고 바로 실행하며,
 /// 입력한 링크(딥링크·웹 주소)를 기기에서 연다 (둘 다 꺼져 있으면 켠다).
+/// Xcode 준비와 iOS 시뮬레이터 설치는 여기서 하지 않고, Setup 진입 버튼으로 App 에 Setup 화면을 요청한다.
 @MainActor
 @Observable
 public final class LauncherModel {
@@ -37,7 +38,7 @@ public final class LauncherModel {
   }
 
   /// 목록을 읽었지만 만들 수 있는 기기 종류가 없어 + 버튼을 쓸 수 없다. 툴바 + 툴팁 문구를 고르고,
-  /// 기기가 있으면 목록 위 안내 줄로 이유를 보인다 (목록이 비면 빈 화면 안내가 이유를 보인다).
+  /// 기기가 있으면 목록 위 안내 줄로 이유와 iOS 설치 버튼을 보인다 (목록이 비면 빈 화면 안내가 보인다).
   /// 만드는 중·시트 열림·읽는 중은 다른 표시가 이유를 보이므로 여기 들지 않는다.
   public var isCreationUnavailable: Bool {
     guard case .loaded = self.listState else { return false }
@@ -57,7 +58,8 @@ public final class LauncherModel {
 
   @ObservationIgnored private let simulator: any SimulatorClient
   @ObservationIgnored private let appBundle: any AppBundleClient
-  /// 툴바 "개발 환경"을 눌렀을 때 부른다. App 이 Setup 화면을 다시 연다 (화면 간 흐름은 App 이 잇는다).
+  /// Setup 진입 버튼(툴바 "개발 환경", 빈 화면의 "iOS 설치"·"다른 iOS 버전 설치", 목록 위 안내 줄의 "다른 iOS 버전 설치",
+  /// 목록 읽기 실패 화면의 "개발 환경 열기")을 눌렀을 때 부른다. App 이 Setup 화면을 다시 연다 (화면 간 흐름은 App 이 잇는다).
   @ObservationIgnored private let setupRequested: @MainActor () -> Void
   /// 진행 중인 목록 읽기. Model 이 소유해 View 의 `.task` 가 취소돼도 끝까지 돈다.
   @ObservationIgnored private var loadTask: Task<Void, Never>?
@@ -85,7 +87,9 @@ public final class LauncherModel {
     await self.reload()
   }
 
-  /// 툴바 "개발 환경": App 이 Setup 화면을 다시 연다. 진행 중 작업과 관계없이 늘 누를 수 있다.
+  /// Setup 진입 버튼(툴바 "개발 환경", 빈 화면·안내 줄의 iOS 설치, 목록 읽기 실패 화면의 "개발 환경 열기"): App 이 Setup 화면을
+  /// 다시 연다. iOS 설치 버튼도 Setup 의 iOS 시뮬레이터 설치 단계로 갈 뿐 여기서 설치하지 않는다.
+  /// 진행 중 작업과 관계없이 늘 누를 수 있다.
   public func setupButtonTapped() {
     self.setupRequested()
   }

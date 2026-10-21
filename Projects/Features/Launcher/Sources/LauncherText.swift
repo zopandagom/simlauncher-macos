@@ -115,13 +115,16 @@ enum LauncherText {
       String(localized: "이 기기에 필요한 iOS 버전이 이 Mac 에 설치되어 있지 않아 사용할 수 없습니다.", bundle: .module)
     case .runtimeUnavailable:
       String(
-        localized: "이 기기의 iOS 버전을 지금 사용할 수 없습니다. Xcode 를 한 번 실행해 준비를 마친 뒤 목록을 새로 고치세요.",
+        localized: "이 기기의 iOS 버전을 지금 사용할 수 없습니다. 오른쪽 위 개발 환경에서 Xcode 준비 상태를 확인한 뒤 목록을 새로 고치세요.",
         bundle: .module
       )
     case .deviceTypeNotSupported:
       String(localized: "지금 Xcode 가 이 기기 모델을 지원하지 않아 사용할 수 없습니다.", bundle: .module)
     case .unknown:
-      String(localized: "이 기기를 지금 사용할 수 없습니다. Xcode 를 한 번 실행해 준비를 마친 뒤 목록을 새로 고치세요.", bundle: .module)
+      String(
+        localized: "이 기기를 지금 사용할 수 없습니다. 오른쪽 위 개발 환경에서 Xcode 준비 상태를 확인한 뒤 목록을 새로 고치세요.",
+        bundle: .module
+      )
     }
   }
 
@@ -182,14 +185,14 @@ enum LauncherText {
 
   /// 만들 수 있는 기기 종류가 없을 때 툴바 + 버튼 도움말. 기기가 있으면 목록 위 안내 줄에도 쓴다
   /// (`LauncherModel.isCreationUnavailable`).
-  /// 원인이 런타임과 Xcode 버전 불일치면 다른 iOS 를 설치하는 것도 해결책이다.
-  /// 3단계 런타임 설치 안내에서 문구를 함께 고친다.
+  /// 원인이 런타임과 Xcode 버전 불일치면 이 Xcode 의 기본 iOS 를 설치하는 것도 해결책이라, 안내 줄에는
+  /// "다른 iOS 버전 설치"(`installButton(for: .noCreatableDeviceType)`) 버튼을 함께 둔다.
   static var createUnavailableNotice: String {
     // 키가 한 줄 길이 제한을 넘어 줄 끝 `\` 로 이어 쓴다 (키는 한 줄이다).
     String(
       localized: """
-      지금 이 Mac 에서 만들 수 있는 iPhone·iPad 기기 종류가 없습니다. iOS 가 설치되어 있는지 확인하고, \
-      Xcode 를 최신 버전으로 업데이트하거나 한 번 실행해 준비를 마친 뒤 새로 고치세요.
+      지금 이 Mac 에서 만들 수 있는 iPhone·iPad 기기 종류가 없습니다. 다른 iOS 버전 설치를 눌러 \
+      이 Xcode 의 기본 iOS 를 설치하거나, Xcode 를 최신 버전으로 업데이트한 뒤 새로 고치세요.
       """,
       bundle: .module
     )
@@ -249,13 +252,32 @@ enum LauncherText {
     String(localized: "다시 시도", bundle: .module)
   }
 
-  /// 툴바 버튼: Setup 화면(Xcode 준비 단계 안내)을 다시 연다.
+  /// 툴바 버튼: Setup 화면(Xcode 준비 단계 안내와 iOS 시뮬레이터 설치)을 다시 연다.
+  /// 오류 문구의 "오른쪽 위 개발 환경"이 이 글자를 가리킨다 (툴바는 글자와 아이콘을 함께 보인다).
   static var setupButton: String {
     String(localized: "개발 환경", bundle: .module)
   }
 
   static var setupButtonHelp: String {
-    String(localized: "Xcode 준비 상태를 확인하고 안내를 봅니다", bundle: .module)
+    String(localized: "Xcode 준비 상태와 iOS 시뮬레이터 설치를 확인합니다", bundle: .module)
+  }
+
+  /// 목록 읽기 실패 화면의 버튼: 툴바 "개발 환경"과 같이 Setup 화면을 다시 연다.
+  static var openSetupButton: String {
+    String(localized: "개발 환경 열기", bundle: .module)
+  }
+
+  /// 빈 화면 이유마다 Setup 화면(iOS 시뮬레이터 설치 단계)을 여는 버튼 문구. iOS 를 설치해도 풀리지 않는 이유면 nil.
+  /// 다른 iOS 버전을 고르는 기능은 없고, 어느 버튼이든 이 Xcode 의 기본 iOS 설치로 간다.
+  static func installButton(for reason: DeviceListEmptyReason) -> String? {
+    switch reason {
+    case .noIOSRuntime:
+      String(localized: "iOS 설치", bundle: .module)
+    case .noCreatableDeviceType:
+      String(localized: "다른 iOS 버전 설치", bundle: .module)
+    case .noDevices:
+      nil
+    }
   }
 
   static func emptyTitle(for reason: DeviceListEmptyReason) -> String {
@@ -272,11 +294,13 @@ enum LauncherText {
   static func emptyMessage(for reason: DeviceListEmptyReason) -> String {
     switch reason {
     case .noIOSRuntime:
-      // 3단계(Xcode·런타임 설치 안내)에서 바꾼다.
-      String(localized: "Xcode 를 처음 실행할 때 나오는 안내에서 iOS 를 설치한 뒤 새로 고치세요.", bundle: .module)
+      String(localized: "iOS 설치를 누르면 이 Xcode 에 맞는 iOS 시뮬레이터를 설치할 수 있습니다.", bundle: .module)
     case .noCreatableDeviceType:
       String(
-        localized: "설치된 iOS 버전으로 만들 수 있는 기기 종류를 찾지 못했습니다. Xcode 를 최신 버전으로 업데이트하거나 한 번 실행해 준비를 마친 뒤 새로 고치세요.",
+        localized: """
+        설치된 iOS 버전으로 만들 수 있는 기기 종류를 찾지 못했습니다. 다른 iOS 버전 설치를 눌러 \
+        이 Xcode 의 기본 iOS 를 설치하거나, Xcode 를 최신 버전으로 업데이트한 뒤 새로 고치세요.
+        """,
         bundle: .module
       )
     case .noDevices:

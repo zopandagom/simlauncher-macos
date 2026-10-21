@@ -60,6 +60,14 @@ struct LauncherTextTests {
     #expect(LauncherText.confirmationTitle(for: nil).isEmpty)
   }
 
+  @Test("빈 화면 이유마다 설치 버튼 문구가 정해져 있다")
+  func emptyReasonInstallButtons() {
+    #expect(LauncherText.installButton(for: .noIOSRuntime) == "iOS 설치")
+    #expect(LauncherText.installButton(for: .noCreatableDeviceType) == "다른 iOS 버전 설치")
+    // 기기만 없으면 iOS 를 설치할 일이 아니라 버튼이 없다 (기기 만들기 버튼을 보인다).
+    #expect(LauncherText.installButton(for: .noDevices) == nil)
+  }
+
   @Test("시뮬레이터 오류마다 정확히 한 분류가 본문을 돌려준다", arguments: LauncherTextCatalog.errors)
   func eachErrorHasExactlyOneMessageFamily(error: SimulatorError) {
     let messages = [
@@ -263,35 +271,38 @@ enum LauncherTextCatalog {
   }
 
   static var all: [String] {
-    self.errors.map { LauncherText.message(for: $0) }
-      + [LauncherText.title(for: self.notices[0])]
-      + self.notices.map { LauncherText.message(for: $0) }
-      + self.reasons.map { LauncherText.reason(for: $0) }
-      + self.states.map { LauncherText.stateLabel(for: $0) }
-      + self.emptyReasons.map { LauncherText.emptyTitle(for: $0) }
-      + self.emptyReasons.map { LauncherText.emptyMessage(for: $0) }
-      + self.actions.map { LauncherText.confirmationMessage(for: $0) }
-      + self.actions.map { LauncherText.confirmButton(for: $0) }
-      + self.blockReasons.map { LauncherText.blockReason($0) }
-      + self.nameProblems.map { LauncherText.nameProblem($0) }
-      + self.bundleErrors.map { LauncherText.message(for: $0) }
-      + self.installProblems.map { LauncherText.message(for: $0) }
-      + self.installBlockReasons.map { LauncherText.installBlockReason($0) }
-      + [LauncherText.installAppButton, LauncherText.installAppHelp, LauncherText.installingLabel]
-      + self.installBlockReasons.map { LauncherText.openURLBlockReason($0) }
-      + [DeepLinkProblem.malformed, .missingScheme].compactMap { LauncherText.linkProblem($0) }
-      + [
-        LauncherText.openURLButton, LauncherText.openURLHelp, LauncherText.openingURLLabel, LauncherText.linkField,
-        LauncherText.linkPrompt, LauncherText.openURLConfirmButton,
-      ]
-      + [
-        LauncherText.okButton, LauncherText.unavailableLabel, LauncherText.bootButton, LauncherText.shutdownButton,
-        LauncherText.loading, LauncherText.loadFailedTitle, LauncherText.refreshButton, LauncherText.retryButton,
-        LauncherText.setupButton, LauncherText.setupButtonHelp,
-        LauncherText.cancelButton, LauncherText.deviceActionsMenu, LauncherText.eraseMenuItem,
-        LauncherText.deleteMenuItem, LauncherText.createDeviceButton, LauncherText.creatingLabel,
-        LauncherText.createSheetTitle, LauncherText.nameField, LauncherText.runtimePicker,
-        LauncherText.deviceTypePicker, LauncherText.createConfirmButton, LauncherText.createUnavailableNotice,
-      ]
+    // 긴 `+` 연결식은 타입 추론이 느려 CI 의 Xcode 에서 시간 초과가 나므로 줄마다 `+=` 로 붙인다.
+    var texts: [String] = self.errors.map { LauncherText.message(for: $0) }
+    texts += [LauncherText.title(for: self.notices[0])]
+    texts += self.notices.map { LauncherText.message(for: $0) }
+    texts += self.reasons.map { LauncherText.reason(for: $0) }
+    texts += self.states.map { LauncherText.stateLabel(for: $0) }
+    texts += self.emptyReasons.map { LauncherText.emptyTitle(for: $0) }
+    texts += self.emptyReasons.map { LauncherText.emptyMessage(for: $0) }
+    texts += self.emptyReasons.compactMap { LauncherText.installButton(for: $0) }
+    texts += self.actions.map { LauncherText.confirmationMessage(for: $0) }
+    texts += self.actions.map { LauncherText.confirmButton(for: $0) }
+    texts += self.blockReasons.map { LauncherText.blockReason($0) }
+    texts += self.nameProblems.map { LauncherText.nameProblem($0) }
+    texts += self.bundleErrors.map { LauncherText.message(for: $0) }
+    texts += self.installProblems.map { LauncherText.message(for: $0) }
+    texts += self.installBlockReasons.map { LauncherText.installBlockReason($0) }
+    texts += [LauncherText.installAppButton, LauncherText.installAppHelp, LauncherText.installingLabel]
+    texts += self.installBlockReasons.map { LauncherText.openURLBlockReason($0) }
+    texts += [DeepLinkProblem.malformed, .missingScheme].compactMap { LauncherText.linkProblem($0) }
+    texts += [
+      LauncherText.openURLButton, LauncherText.openURLHelp, LauncherText.openingURLLabel, LauncherText.linkField,
+      LauncherText.linkPrompt, LauncherText.openURLConfirmButton,
+    ]
+    texts += [
+      LauncherText.okButton, LauncherText.unavailableLabel, LauncherText.bootButton, LauncherText.shutdownButton,
+      LauncherText.loading, LauncherText.loadFailedTitle, LauncherText.refreshButton, LauncherText.retryButton,
+      LauncherText.setupButton, LauncherText.setupButtonHelp, LauncherText.openSetupButton,
+      LauncherText.cancelButton, LauncherText.deviceActionsMenu, LauncherText.eraseMenuItem,
+      LauncherText.deleteMenuItem, LauncherText.createDeviceButton, LauncherText.creatingLabel,
+      LauncherText.createSheetTitle, LauncherText.nameField, LauncherText.runtimePicker,
+      LauncherText.deviceTypePicker, LauncherText.createConfirmButton, LauncherText.createUnavailableNotice,
+    ]
+    return texts
   }
 }

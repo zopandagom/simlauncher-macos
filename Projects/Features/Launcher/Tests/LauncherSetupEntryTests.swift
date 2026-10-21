@@ -5,7 +5,8 @@ import SimulatorTesting
 import Testing
 @testable import LauncherFeature
 
-/// 툴바 "개발 환경": App 이 주입한 클로저로 Setup 화면을 다시 연다.
+/// Setup 진입: 툴바 "개발 환경"·빈 화면과 안내 줄의 iOS 설치·목록 읽기 실패 화면의 "개발 환경 열기" 버튼이 모두 같은 이벤트
+/// (`setupButtonTapped()`)로 App 이 주입한 클로저를 불러 Setup 화면을 다시 연다.
 @MainActor
 struct LauncherSetupEntryTests: LauncherModelTesting {
   @Test("setupButtonTapped 는 목록을 읽는 중에도 주입한 클로저를 한 번 부르고, 목록 상태를 바꾸지 않는다")
