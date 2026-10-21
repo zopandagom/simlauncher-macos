@@ -3,10 +3,11 @@ import Core
 // 상태를 바꾸지 않는 읽기 API. `private(set)` 은 쓰기만 막으므로 다른 파일의 extension 에 둘 수 있다
 // (상태를 바꾸는 흐름은 `LauncherModel.swift` 에 둔다).
 public extension LauncherModel {
-  /// + 버튼을 누를 수 있는지: 목록을 읽었고, 선택지가 있고, 만드는 중이 아니고, 생성·링크 시트가 닫혀 있다.
+  /// + 버튼을 누를 수 있는지: 목록을 읽었고, 선택지가 있고, 만드는 중이 아니고, 생성·링크·URL 설치 시트가 닫혀 있다.
   var canCreateDevice: Bool {
     guard case .loaded = self.listState else { return false }
-    return !self.creationOptions.isEmpty && !self.isCreating && self.createDraft == nil && self.openURLDraft == nil
+    let isSheetClosed = self.createDraft == nil && self.openURLDraft == nil && self.installURLDraft == nil
+    return !self.creationOptions.isEmpty && !self.isCreating && isSheetClosed
   }
 
   /// 목록을 읽었지만 만들 수 있는 기기 종류가 없어 + 버튼을 쓸 수 없다. 툴바 + 툴팁 문구를 고르고,
