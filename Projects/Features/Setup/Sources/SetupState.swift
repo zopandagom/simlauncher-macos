@@ -7,7 +7,8 @@ public enum SetupCheckState: Hashable, Sendable {
   case checking
   /// 마지막 확인 결과.
   case checked(DevEnvironmentStatus)
-  /// 마지막 확인이 실패했다 (Impl 은 `.checkFailed` 만 던지지만 타입의 모든 케이스를 다룬다).
+  /// 마지막 확인이 실패했다. Impl 은 `.checkFailed`(xcodebuild 시작 실패·30초 시간 초과)만 던진다
+  /// (Setup 은 확인을 취소하지 않는다). 타입의 모든 케이스를 다룬다.
   case failed(DevEnvironmentError)
 }
 

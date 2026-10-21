@@ -58,7 +58,10 @@ enum SetupText {
     switch error {
     case .checkFailed:
       String(
-        localized: "Xcode 를 설치하거나 업데이트하는 중이면 끝난 뒤 다시 확인을 누르세요. 계속 실패하면 App Store 에서 Xcode 를 다시 설치하세요.",
+        localized: """
+        Xcode 가 응답하지 않았거나 시작되지 않았습니다. Xcode 를 설치하거나 업데이트하는 중이면 끝난 뒤 다시 확인을 누르세요. \
+        계속 실패하면 Mac 을 재시동하거나 App Store 에서 Xcode 를 다시 설치하세요.
+        """,
         bundle: .module
       )
     case .xcodeNotFound:
