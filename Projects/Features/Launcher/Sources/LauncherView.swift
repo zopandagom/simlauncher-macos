@@ -61,6 +61,8 @@ public struct LauncherView: View {
           } label: {
             Label(LauncherText.setupButton, systemImage: "wrench.and.screwdriver")
           }
+          // 오류 문구가 "오른쪽 위 개발 환경"으로 이 버튼을 가리키므로 글자를 함께 보인다.
+          .labelStyle(.titleAndIcon)
           .help(LauncherText.setupButtonHelp)
         }
       }
@@ -186,6 +188,10 @@ public struct LauncherView: View {
           Task { await self.model.refreshButtonTapped() }
         }
         .disabled(self.model.isRefreshing)
+        // 읽기 실패는 대개 Xcode 준비 문제라 Setup 화면으로 가는 길을 함께 둔다.
+        Button(LauncherText.openSetupButton) {
+          self.model.setupButtonTapped()
+        }
       }
     case let .loaded(list):
       if let reason = list.emptyReason {
@@ -200,6 +206,12 @@ public struct LauncherView: View {
             }
             .disabled(!self.model.canCreateDevice)
           }
+          if let install = LauncherText.installButton(for: reason) {
+            Button(install) {
+              self.model.setupButtonTapped()
+            }
+            .buttonStyle(.borderedProminent)
+          }
           Button(LauncherText.refreshButton) {
             Task { await self.model.refreshButtonTapped() }
           }
@@ -210,7 +222,11 @@ public struct LauncherView: View {
       }
     }
   }
+}
 
+// MARK: - 기기 목록
+
+extension LauncherView {
   private func deviceList(_ list: DeviceList) -> some View {
     self.deviceRows(list)
       .safeAreaInset(edge: .top, spacing: 0) {
@@ -220,19 +236,27 @@ public struct LauncherView: View {
       }
   }
 
-  /// 기기는 있지만 만들 수 있는 종류가 없을 때 목록 위에 고정해 보이는 안내 줄 (툴바 + 가 비활성인 이유).
-  /// 목록이 비어 있으면 빈 화면 안내가 같은 이유를 보이므로 목록이 있을 때만 쓴다.
+  /// 기기는 있지만 만들 수 있는 종류가 없을 때 목록 위에 고정해 보이는 안내 줄 (툴바 + 가 비활성인 이유)과,
+  /// 해결책 하나인 "다른 iOS 버전 설치" 버튼 (Setup 화면의 iOS 시뮬레이터 설치 단계를 연다).
+  /// 목록이 비어 있으면 빈 화면 안내가 같은 이유와 버튼을 보이므로 목록이 있을 때만 쓴다.
   private var createUnavailableNotice: some View {
     VStack(spacing: 0) {
-      Label {
-        Text(LauncherText.createUnavailableNotice)
-          .fixedSize(horizontal: false, vertical: true)
-      } icon: {
-        Image(systemName: "info.circle")
+      HStack(spacing: 12) {
+        Label {
+          Text(LauncherText.createUnavailableNotice)
+            .fixedSize(horizontal: false, vertical: true)
+        } icon: {
+          Image(systemName: "info.circle")
+        }
+        .font(.callout)
+        .foregroundStyle(.secondary)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        if let install = LauncherText.installButton(for: .noCreatableDeviceType) {
+          Button(install) {
+            self.model.setupButtonTapped()
+          }
+        }
       }
-      .font(.callout)
-      .foregroundStyle(.secondary)
-      .frame(maxWidth: .infinity, alignment: .leading)
       .padding(.horizontal, 16)
       .padding(.vertical, 10)
       Divider()

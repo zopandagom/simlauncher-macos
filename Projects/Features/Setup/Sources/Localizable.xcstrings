@@ -41,12 +41,112 @@
         }
       }
     },
+    "iOS 버전을 확인하지 못했습니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS 버전을 확인하지 못했습니다"
+          }
+        }
+      }
+    },
+    "iOS 시뮬레이터 상태를 확인하지 못했습니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS 시뮬레이터 상태를 확인하지 못했습니다"
+          }
+        }
+      }
+    },
+    "iOS 시뮬레이터 설치" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS 시뮬레이터 설치"
+          }
+        }
+      }
+    },
+    "iOS 시뮬레이터가 이 Mac 에 없습니다. 설치를 누르면 Apple 서버에서 내려받아 설치합니다. 수 GB 를 내려받아 시간이 오래 걸릴 수 있고, 인터넷 연결과 Mac 의 저장 공간이 필요합니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS 시뮬레이터가 이 Mac 에 없습니다. 설치를 누르면 Apple 서버에서 내려받아 설치합니다. 수 GB 를 내려받아 시간이 오래 걸릴 수 있고, 인터넷 연결과 Mac 의 저장 공간이 필요합니다."
+          }
+        }
+      }
+    },
+    "iOS 시뮬레이터를 설치하는 중입니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS 시뮬레이터를 설치하는 중입니다"
+          }
+        }
+      }
+    },
+    "iOS 시뮬레이터를 설치하세요" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS 시뮬레이터를 설치하세요"
+          }
+        }
+      }
+    },
+    "iOS 시뮬레이터를 설치하지 못했습니다. 인터넷 연결과 Mac 의 저장 공간이 충분한지 확인한 뒤 다시 설치를 누르세요. 계속 실패하면 Mac 을 재시동한 뒤 다시 시도하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS 시뮬레이터를 설치하지 못했습니다. 인터넷 연결과 Mac 의 저장 공간이 충분한지 확인한 뒤 다시 설치를 누르세요. 계속 실패하면 Mac 을 재시동한 뒤 다시 시도하세요."
+          }
+        }
+      }
+    },
+    "iOS 시뮬레이터를 설치했습니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS 시뮬레이터를 설치했습니다."
+          }
+        }
+      }
+    },
     "iOS 시뮬레이터를 쓰려면 Xcode 가 필요합니다. App Store 열기를 눌러 Xcode 를 설치하세요. 내려받는 데 시간이 걸릴 수 있습니다." : {
       "localizations" : {
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "iOS 시뮬레이터를 쓰려면 Xcode 가 필요합니다. App Store 열기를 눌러 Xcode 를 설치하세요. 내려받는 데 시간이 걸릴 수 있습니다."
+          }
+        }
+      }
+    },
+    "iOS 시뮬레이터를 쓸 수 없습니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS 시뮬레이터를 쓸 수 없습니다"
+          }
+        }
+      }
+    },
+    "iOS 시뮬레이터를 준비하는 중입니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS 시뮬레이터를 준비하는 중입니다"
           }
         }
       }
@@ -61,22 +161,22 @@
         }
       }
     },
+    "Xcode 가 응답하지 않았거나 시작되지 않았습니다. Xcode 를 설치하거나 업데이트하는 중이면 끝난 뒤 다시 확인을 누르세요. 계속 실패하면 Mac 을 재시동하거나 App Store 에서 Xcode 를 다시 설치하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xcode 가 응답하지 않았거나 시작되지 않았습니다. Xcode 를 설치하거나 업데이트하는 중이면 끝난 뒤 다시 확인을 누르세요. 계속 실패하면 Mac 을 재시동하거나 App Store 에서 Xcode 를 다시 설치하세요."
+          }
+        }
+      }
+    },
     "Xcode 라이선스에 동의하세요" : {
       "localizations" : {
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Xcode 라이선스에 동의하세요"
-          }
-        }
-      }
-    },
-    "Xcode 를 설치하거나 업데이트하는 중이면 끝난 뒤 다시 확인을 누르세요. 계속 실패하면 App Store 에서 Xcode 를 다시 설치하세요." : {
-      "localizations" : {
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Xcode 를 설치하거나 업데이트하는 중이면 끝난 뒤 다시 확인을 누르세요. 계속 실패하면 App Store 에서 Xcode 를 다시 설치하세요."
           }
         }
       }
@@ -97,6 +197,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Xcode 를 열지 못했습니다"
+          }
+        }
+      }
+    },
+    "Xcode 를 찾지 못해 설치하지 못했습니다. 화면의 안내에 따라 Xcode 를 설치하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xcode 를 찾지 못해 설치하지 못했습니다. 화면의 안내에 따라 Xcode 를 설치하세요."
           }
         }
       }
@@ -171,6 +281,16 @@
         }
       }
     },
+    "Xcode 의 설치 도구를 시작하지 못했습니다. Xcode 를 설치하거나 업데이트하는 중이면 끝난 뒤 다시 설치를 누르세요. 계속 실패하면 App Store 에서 Xcode 를 다시 설치하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xcode 의 설치 도구를 시작하지 못했습니다. Xcode 를 설치하거나 업데이트하는 중이면 끝난 뒤 다시 설치를 누르세요. 계속 실패하면 App Store 에서 Xcode 를 다시 설치하세요."
+          }
+        }
+      }
+    },
     "Xcode 첫 실행 준비를 마치세요" : {
       "localizations" : {
         "ko" : {
@@ -191,6 +311,16 @@
         }
       }
     },
+    "계속 설치" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "계속 설치"
+          }
+        }
+      }
+    },
     "관리자 암호가 필요합니다" : {
       "localizations" : {
         "ko" : {
@@ -207,6 +337,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "기기 목록 열기"
+          }
+        }
+      }
+    },
+    "내려받기가 멈춰 있습니다. 인터넷 연결을 확인하세요. 잠깐 끊긴 경우에는 연결되면 이어서 받습니다. 계속 멈춰 있으면 취소한 뒤 다시 설치하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "내려받기가 멈춰 있습니다. 인터넷 연결을 확인하세요. 잠깐 끊긴 경우에는 연결되면 이어서 받습니다. 계속 멈춰 있으면 취소한 뒤 다시 설치하세요."
+          }
+        }
+      }
+    },
+    "내려받는 중…" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "내려받는 중…"
+          }
+        }
+      }
+    },
+    "내려받은 iOS 시뮬레이터를 확인하고 있습니다. 잠시 뒤 다시 확인을 누르세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "내려받은 iOS 시뮬레이터를 확인하고 있습니다. 잠시 뒤 다시 확인을 누르세요."
           }
         }
       }
@@ -261,12 +421,132 @@
         }
       }
     },
+    "설치 결과를 확인하는 중…" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "설치 결과를 확인하는 중…"
+          }
+        }
+      }
+    },
+    "설치 마무리 단계라 취소할 수 없습니다. 곧 끝납니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "설치 마무리 단계라 취소할 수 없습니다. 곧 끝납니다."
+          }
+        }
+      }
+    },
+    "설치가 끝날 때까지 기다리세요. 창을 닫아도 설치는 계속됩니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "설치가 끝날 때까지 기다리세요. 창을 닫아도 설치는 계속됩니다."
+          }
+        }
+      }
+    },
+    "설치가 끝났지만 iOS 시뮬레이터가 아직 보이지 않습니다. 잠시 뒤 다시 확인을 누르세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "설치가 끝났지만 iOS 시뮬레이터가 아직 보이지 않습니다. 잠시 뒤 다시 확인을 누르세요."
+          }
+        }
+      }
+    },
+    "설치된 iOS 시뮬레이터를 쓸 수 없는 상태입니다. Mac 을 재시동한 뒤 다시 확인을 누르세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "설치된 iOS 시뮬레이터를 쓸 수 없는 상태입니다. Mac 을 재시동한 뒤 다시 확인을 누르세요."
+          }
+        }
+      }
+    },
+    "설치를 마치면 앱을 종료합니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "설치를 마치면 앱을 종료합니다."
+          }
+        }
+      }
+    },
+    "설치를 준비하는 중…" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "설치를 준비하는 중…"
+          }
+        }
+      }
+    },
+    "설치를 취소했습니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "설치를 취소했습니다."
+          }
+        }
+      }
+    },
+    "설치하는 중…" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "설치하는 중…"
+          }
+        }
+      }
+    },
+    "설치할 iOS" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "설치할 iOS"
+          }
+        }
+      }
+    },
     "이 Mac 에는 Command Line Tools 만 설치되어 있습니다. Command Line Tools 로는 iOS 시뮬레이터를 쓸 수 없어 Xcode 가 필요합니다. App Store 열기를 눌러 Xcode 를 설치하세요." : {
       "localizations" : {
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "이 Mac 에는 Command Line Tools 만 설치되어 있습니다. Command Line Tools 로는 iOS 시뮬레이터를 쓸 수 없어 Xcode 가 필요합니다. App Store 열기를 눌러 Xcode 를 설치하세요."
+          }
+        }
+      }
+    },
+    "이 Xcode 가 쓰는 iOS 버전을 읽지 못했습니다. App Store 에서 Xcode 를 최신 버전으로 업데이트하거나 다시 설치하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 Xcode 가 쓰는 iOS 버전을 읽지 못했습니다. App Store 에서 Xcode 를 최신 버전으로 업데이트하거나 다시 설치하세요."
+          }
+        }
+      }
+    },
+    "이미 다른 iOS 버전의 기기가 있으면 설치하지 않고 기기 목록을 열어도 됩니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이미 다른 iOS 버전의 기기가 있으면 설치하지 않고 기기 목록을 열어도 됩니다."
           }
         }
       }
@@ -281,6 +561,16 @@
         }
       }
     },
+    "종료" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "종료"
+          }
+        }
+      }
+    },
     "준비가 끝났습니다" : {
       "localizations" : {
         "ko" : {
@@ -291,12 +581,52 @@
         }
       }
     },
+    "지금 종료하면 설치가 취소됩니다. 취소를 마치는 데 몇 초 걸릴 수 있고, 끝나면 앱이 종료됩니다. 마무리 단계에 들어갔으면 설치를 마친 뒤 종료합니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "지금 종료하면 설치가 취소됩니다. 취소를 마치는 데 몇 초 걸릴 수 있고, 끝나면 앱이 종료됩니다. 마무리 단계에 들어갔으면 설치를 마친 뒤 종료합니다."
+          }
+        }
+      }
+    },
     "첫 실행 준비" : {
       "localizations" : {
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "첫 실행 준비"
+          }
+        }
+      }
+    },
+    "취소" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "취소"
+          }
+        }
+      }
+    },
+    "취소를 마치면 앱을 종료합니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "취소를 마치면 앱을 종료합니다."
+          }
+        }
+      }
+    },
+    "취소하는 중…" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "취소하는 중…"
           }
         }
       }

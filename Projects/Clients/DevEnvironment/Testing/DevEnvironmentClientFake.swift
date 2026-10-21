@@ -8,6 +8,7 @@ import Synchronization
 /// 멈춘 호출은 기록된 뒤 재개될 때까지 기다리고, 결과(상태·에러)는 재개한 뒤의 설정으로 정한다.
 /// 예외: 설치의 `.xcodeNotFound` 는 멈추기 전, 부를 때의 설정으로 정한다.
 /// 기본 iOS 런타임은 `DefaultIOSRuntime.sample`, 설치는 진행 `[.preparing]` 뒤 `.installed` (실제처럼 첫 알림 하나).
+/// 멈춘 설치(`suspendInstalls()`)에는 `sendInstallProgress(_:)` 로 진행 알림을 더 보낼 수 있다 (알림 사이의 상태를 테스트한다).
 public final class DevEnvironmentClientFake: DevEnvironmentClient {
   public enum Call: Hashable, Sendable {
     case selectedXcode
@@ -37,6 +38,8 @@ public final class DevEnvironmentClientFake: DevEnvironmentClient {
     var installsSuspended = false
     /// 멈춘 설치. 재개면 true, 취소면 false 로 깨운다.
     var installWaiters: [UUID: CheckedContinuation<Bool, Never>] = [:]
+    /// 멈춘 설치의 progress 클로저. `sendInstallProgress(_:)` 가 부른다.
+    var installProgressHandlers: [UUID: @Sendable (RuntimeInstallProgress) async -> Void] = [:]
     /// 기다리기 전에 취소가 먼저 온 설치.
     var cancelledInstallWaits: Set<UUID> = []
   }
@@ -131,10 +134,25 @@ public final class DevEnvironmentClientFake: DevEnvironmentClient {
       state.installsSuspended = false
       let waiters = Array(state.installWaiters.values)
       state.installWaiters = [:]
+      state.installProgressHandlers = [:]
       return waiters
     }
     for waiter in waiters {
       waiter.resume(returning: true)
+    }
+  }
+
+  /// 지금 멈춰 재개를 기다리는 설치 수. 테스트가 `sendInstallProgress(_:)` 를 보내기 전에 기다린다.
+  public var suspendedInstallCount: Int {
+    self.state.withLock { $0.installWaiters.count }
+  }
+
+  /// 멈춘 설치(재개를 기다리는 중)마다 그 설치의 `progress` 클로저로 `update` 를 알리고, 알림이 끝난 뒤 돌아온다.
+  /// 멈춘 설치가 없으면 아무 일도 하지 않는다.
+  public func sendInstallProgress(_ update: RuntimeInstallProgress) async {
+    let handlers = self.state.withLock { Array($0.installProgressHandlers.values) }
+    for handler in handlers {
+      await handler(update)
     }
   }
 
@@ -223,7 +241,7 @@ public final class DevEnvironmentClientFake: DevEnvironmentClient {
       }
       await progress(update)
     }
-    guard await self.waitIfInstallsSuspended() else {
+    guard await self.waitIfInstallsSuspended(progress: progress) else {
       throw .cancelled
     }
     await self.sleepIfNeeded()
@@ -277,7 +295,10 @@ public final class DevEnvironmentClientFake: DevEnvironmentClient {
   }
 
   /// 멈춤이 아니면 바로 true. 멈춤이면 재개(true)나 Task 취소(false)까지 기다린다.
-  private func waitIfInstallsSuspended() async -> Bool {
+  /// 기다리는 동안 `progress` 를 `sendInstallProgress(_:)` 가 쓸 수 있게 둔다.
+  private func waitIfInstallsSuspended(
+    progress: @escaping @Sendable (RuntimeInstallProgress) async -> Void
+  ) async -> Bool {
     let id = UUID()
     return await withTaskCancellationHandler {
       await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
@@ -290,6 +311,7 @@ public final class DevEnvironmentClientFake: DevEnvironmentClient {
             return true
           }
           state.installWaiters[id] = continuation
+          state.installProgressHandlers[id] = progress
           return nil
         }
         if let immediate {
@@ -298,6 +320,7 @@ public final class DevEnvironmentClientFake: DevEnvironmentClient {
       }
     } onCancel: {
       let waiter = self.state.withLock { state in
+        state.installProgressHandlers[id] = nil
         guard let waiter = state.installWaiters.removeValue(forKey: id) else {
           if state.installsSuspended {
             state.cancelledInstallWaits.insert(id)

@@ -9,7 +9,7 @@ extension LauncherText {
     switch error {
     case .developerToolsUnavailable:
       String(
-        localized: "Xcode 를 찾지 못했거나 아직 준비되지 않았습니다. Xcode 를 설치하고 한 번 실행해 준비를 마친 뒤 다시 시도하세요.",
+        localized: "Xcode 를 찾지 못했거나 아직 준비되지 않았습니다. 오른쪽 위 개발 환경을 눌러 안내에 따라 준비를 마친 뒤 다시 시도하세요.",
         bundle: .module
       )
     case .simulatorAppNotFound:
@@ -65,10 +65,10 @@ extension LauncherText {
     }
   }
 
-  /// 그 밖의 실패.
+  /// 그 밖의 실패. Xcode 준비 상태는 Setup 화면("개발 환경")이 확인한다.
   static var commandFailedMessage: String {
     String(
-      localized: "Xcode 를 한 번 실행해 라이선스 동의와 준비를 마쳤는지 확인한 뒤 다시 시도하세요. 계속 실패하면 Mac 을 재시동한 뒤 다시 시도하세요.",
+      localized: "오른쪽 위 개발 환경을 눌러 Xcode 준비 상태를 확인한 뒤 다시 시도하세요. 계속 실패하면 Mac 을 재시동한 뒤 다시 시도하세요.",
       bundle: .module
     )
   }

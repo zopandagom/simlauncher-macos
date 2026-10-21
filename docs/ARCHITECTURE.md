@@ -37,7 +37,7 @@ flowchart TD
 
 같은 화면의 상태(기기 목록·진행 작업·알림)를 함께 쓰는 흐름은 하위 Model 로 나누지 않고, 공유 상태와 규칙을 Feature 의 값 타입(예: `LauncherNotices`·`DeviceActivity`)으로 떼어 별도 파일에 둔다. 다른 흐름과 공유하지 않는 독립 상태(예: 생성 시트 초안 `DeviceCreationDraft`)도 값 타입으로 둔다. Model 은 그 값을 `public private(set) var` 로 갖고 mutating 메서드만 부른다 (View 는 setter 가 없어 부를 수 없다). `private(set)` 은 같은 파일에서만 바꿀 수 있으므로 Model 의 async 흐름은 Model 파일에 둔다.
 
-화면 전환(규칙 6)은 App 이 Setup 과 Launcher 사이에서 한다. `SimLauncherApp` 은 `SetupModel.isFinished` 로 둘 중 하나를 보인다: 앱 시작 직후 첫 판정이 준비됨이면 곧바로 Launcher(기기 목록), 아니면 Setup 의 단계 안내이고, Setup 안에서 준비가 끝나면 "기기 목록 열기"로 넘어간다. Launcher 의 툴바 "개발 환경"은 `LauncherModel.setupButtonTapped()` 가 App 이 주입한 클로저(`setupRequested`)를 불러 App 이 `SetupModel.reopened()` 로 Setup 을 다시 연다 (Feature 끼리 의존하지 않는다). 판정 전에는 `LauncherView` 를 만들지 않아 `simctl` 이 돌지 않고, Launcher 로 돌아올 때마다 View 가 새로 만들어져 목록을 다시 읽는다. Setup 은 보이는 동안 앱 활성화(`NSApplication.didBecomeActiveNotification`. macOS 에서는 다른 앱에 갔다 와도 `scenePhase` 가 바뀌지 않는다)마다 다시 확인한다.
+화면 전환(규칙 6)은 App 이 Setup 과 Launcher 사이에서 한다. `SimLauncherApp` 은 `SetupModel.isFinished` 로 둘 중 하나를 보인다: 앱 시작 직후 첫 판정이 Xcode 준비됨이면 곧바로 Launcher(기기 목록. 기본 iOS 런타임 설치 여부는 보지 않는다), 아니면 Setup 의 단계 안내이고, Setup 안에서 Xcode 준비가 끝나면 "기기 목록 열기"로 넘어간다. Setup 은 Xcode 가 준비됨일 때만 같은 확인에서 기본 iOS 런타임도 확인하고(`simctl runtime list`·SDK plist, 네트워크 없음), 없으면 네 번째 단계 "iOS 시뮬레이터 설치"를 보인다. 설치는 사용자가 누를 때만 하고, 설치 중에는 다시 확인·앱 활성화 확인과 "기기 목록 열기"를 막는다. Launcher 의 Setup 진입 버튼(툴바 "개발 환경", 빈 화면(iOS 런타임 없음·만들 수 있는 기기 종류 없음)과 목록 위 안내 줄의 iOS 설치 버튼, 목록 읽기 실패 화면의 "개발 환경 열기")은 모두 `LauncherModel.setupButtonTapped()` 가 App 이 주입한 클로저(`setupRequested`)를 불러 App 이 `SetupModel.reopened()` 로 Setup 을 다시 연다 (Feature 끼리 의존하지 않는다). 판정 전에는 `LauncherView` 를 만들지 않아 기기 목록을 읽는 `simctl` 이 돌지 않고, Launcher 로 돌아올 때마다 View 가 새로 만들어져 목록을 다시 읽는다. Setup 은 보이는 동안 앱 활성화(`NSApplication.didBecomeActiveNotification`. macOS 에서는 다른 앱에 갔다 와도 `scenePhase` 가 바뀌지 않는다)마다 다시 확인한다(설치 중에는 Model 이 무시한다). 앱 종료 요청은 App 의 `AppDelegate`(`applicationShouldTerminate`)가 받는다: 런타임 설치가 준비·내려받기 중이면 확인 대화상자를 띄우고, "종료"면(설치 단계·멈추는 중이면 묻지 않고) `.terminateCancel` 을 돌려준 뒤 `SetupModel.appTerminationRequested()` 로 설치를 멈추고(설치 단계면 기다리고) 끝나면 `NSApp.terminate` 를 다시 부른다. `.terminateLater` 는 기다리는 동안 다시 종료를 요청하면 AppKit 이 바로 끝내 버려 쓰지 않는다. 창을 닫아도 앱과 설치는 계속되고, Dock 아이콘으로 다시 열면 진행이 보인다.
 
 ### 예시 (알림 권한을 묻는 OnboardingFeature)
 ```swift
@@ -94,7 +94,7 @@ flowchart TD
 ### 모듈 종류와 타깃
 | 종류 | 위치 | 타깃 | 역할 |
 |---|---|---|---|
-| App | `Projects/App` | `SimLauncher` | 유일한 조립 지점. Impl 을 생성해 Model 에 주입 |
+| App | `Projects/App` | `SimLauncher` | 유일한 조립 지점. Impl 을 생성해 Model 에 주입. 화면 간 흐름과 앱 종료 요청 처리(`AppDelegate`: 런타임 설치가 준비·내려받기 중이면 확인을 받아 설치를 멈추고, 설치 단계이거나 이미 멈추는 중이면 묻지 않고 끝나기를 기다린 뒤 종료) |
 | Feature | `Projects/Features/<Name>` | `<Name>Feature` · `<Name>FeatureTests` · `<Name>FeatureExample` | 화면 하나 또는 흐름 하나. Model + View |
 | Client | `Projects/Clients/<Name>` | `<Name>Interface` · `<Name>Impl` · `<Name>Testing` · `<Name>Tests` | 외부 시스템 경계 |
 | Shared | `Projects/Shared/<Name>` | `<Name>` · `<Name>Tests` | 여러 모듈이 함께 쓰는 코드. `Core`(도메인 값 타입·규칙), 필요해지면 `DesignSystem`(공용 UI) |

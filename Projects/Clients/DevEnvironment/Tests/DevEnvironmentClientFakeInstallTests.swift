@@ -209,6 +209,60 @@ struct DevEnvironmentClientFakeInstallTests {
     #expect(outcome == .installed)
     #expect(received.withLock { $0 } == [.preparing, Self.half])
   }
+
+  @Test("멈춘 설치에 보낸 진행은 그 설치의 progress 로 간다")
+  func sendProgressToSuspendedInstall() async throws {
+    let fake = DevEnvironmentClientFake()
+    fake.suspendInstalls()
+    let received = Mutex<[RuntimeInstallProgress]>([])
+
+    let install = Task {
+      try await fake.installDefaultIOSRuntime { progress in
+        received.withLock { $0.append(progress) }
+      }
+    }
+    await waitUntil { fake.suspendedInstallCount == 1 }
+
+    await fake.sendInstallProgress(Self.half)
+    // 알림이 끝난 뒤 돌아온다.
+    #expect(received.withLock { $0 } == [.preparing, Self.half])
+    await fake.sendInstallProgress(.installing)
+    #expect(received.withLock { $0 } == [.preparing, Self.half, .installing])
+
+    fake.resumeInstalls()
+    #expect(try await install.value == .installed)
+    #expect(fake.suspendedInstallCount == 0)
+    let sample = RuntimeInstallProgress.downloading(fraction: 0.5, completed: 1_880_000_000, total: 3_760_000_000)
+    #expect(sample == Self.half)
+  }
+
+  @Test("멈춘 설치가 없으면 진행 보내기는 아무 일도 하지 않는다")
+  func sendProgressWithoutSuspendedInstall() async throws {
+    let fake = DevEnvironmentClientFake()
+    let received = Mutex<[RuntimeInstallProgress]>([])
+
+    // 아직 설치가 없다.
+    await fake.sendInstallProgress(Self.half)
+    // 멈추지 않은 설치가 끝난 뒤.
+    _ = try await fake.installDefaultIOSRuntime { progress in
+      received.withLock { $0.append(progress) }
+    }
+    await fake.sendInstallProgress(Self.half)
+    // 멈춘 설치를 취소한 뒤.
+    fake.suspendInstalls()
+    let install = Task {
+      try await fake.installDefaultIOSRuntime { progress in
+        received.withLock { $0.append(progress) }
+      }
+    }
+    await waitUntil { fake.suspendedInstallCount == 1 }
+    install.cancel()
+    await #expect(throws: RuntimeInstallError.cancelled) { try await install.value }
+    await fake.sendInstallProgress(Self.half)
+
+    #expect(received.withLock { $0 } == [.preparing, .preparing])
+    #expect(fake.suspendedInstallCount == 0)
+  }
 }
 
 /// 조건이 참이 될 때까지 차례를 넘긴다. 10초 안에 참이 되지 않으면 실패를 기록하고 돌아온다.

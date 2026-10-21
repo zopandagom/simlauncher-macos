@@ -13,7 +13,7 @@ struct SetupModelTests: SetupModelTesting {
   @Test("만든 직후에는 확인 전이고 Client 를 부르지 않는다")
   func initialState() {
     let fake = DevEnvironmentClientFake()
-    let model = SetupModel(devEnvironment: fake)
+    let model = Self.makeModel(fake)
 
     #expect(model.checkState == .checking)
     #expect(!model.isChecking)
@@ -21,6 +21,11 @@ struct SetupModelTests: SetupModelTesting {
     #expect(model.notice == nil)
     #expect(!model.isFinished)
     #expect(model.steps.isEmpty)
+    #expect(model.runtimeState == .notChecked)
+    #expect(model.runtimeInstall == nil)
+    #expect(model.lastInstallResult == nil)
+    #expect(!model.isVerifyingInstall)
+    #expect(model.terminationAction == .terminateNow)
     #expect(fake.calls.isEmpty)
   }
 
@@ -28,7 +33,7 @@ struct SetupModelTests: SetupModelTesting {
   func firstCheckInProgress() async {
     let fake = DevEnvironmentClientFake()
     fake.suspendChecks()
-    let model = SetupModel(devEnvironment: fake)
+    let model = Self.makeModel(fake)
 
     let appear = Self.start { await model.onAppear() }
     await Self.waitUntil { fake.calls == [.checkEnvironment] }
@@ -50,7 +55,7 @@ struct SetupModelTests: SetupModelTesting {
 
     #expect(model.isFinished)
     #expect(model.checkState == .checked(.ready(.sample)))
-    #expect(fake.calls == [.checkEnvironment])
+    #expect(fake.calls == [.checkEnvironment, .defaultIOSRuntime])
   }
 
   @Test("첫 판정이 미준비면 끝나지 않고 그 상태를 보인다", arguments: notReadyStatuses)
@@ -59,7 +64,7 @@ struct SetupModelTests: SetupModelTesting {
 
     #expect(!model.isFinished)
     #expect(model.checkState == .checked(status))
-    #expect(model.steps == SetupStep.steps(for: status))
+    #expect(model.steps == SetupStep.steps(for: status, runtime: .notChecked))
     #expect(!model.canFinish)
   }
 
@@ -139,7 +144,7 @@ struct SetupModelTests: SetupModelTesting {
     failed.doneButtonTapped()
     #expect(!failed.isFinished)
 
-    let checking = SetupModel(devEnvironment: DevEnvironmentClientFake())
+    let checking = Self.makeModel(DevEnvironmentClientFake())
     checking.doneButtonTapped()
     #expect(!checking.isFinished)
   }
