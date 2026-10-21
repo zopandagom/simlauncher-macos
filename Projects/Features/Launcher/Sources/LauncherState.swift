@@ -1,5 +1,6 @@
 import AppBundleInterface
 import Core
+import DownloadInterface
 import SimulatorInterface
 
 /// 기기 목록 화면의 상태.
@@ -12,7 +13,8 @@ public enum LauncherListState: Hashable, Sendable {
   case failed(SimulatorError)
 }
 
-/// 목록 위에 띄우는 알림. 기기 작업(켜기·끄기·만들기·삭제·초기화·앱 설치·실행·링크 열기) 실패와, 목록이 있을 때의 새로 고침 실패.
+/// 목록 위에 띄우는 알림. 기기 작업(켜기·끄기·만들기·삭제·초기화·앱 설치(URL 의 받기 포함)·실행·링크 열기) 실패와,
+/// 목록이 있을 때의 새로 고침 실패.
 public enum LauncherNotice: Hashable, Sendable {
   /// 알림에 보일 기기. 누른 시점의 값이라, 실패 뒤 목록에서 사라져도 그대로 보인다.
   public struct Device: Hashable, Sendable {
@@ -25,6 +27,11 @@ public enum LauncherNotice: Hashable, Sendable {
       self.name = name
       self.runtimeName = runtimeName
     }
+
+    /// 지금 목록의 기기 값으로 만든다.
+    public init(_ device: VirtualDevice) {
+      self.init(name: device.name, runtimeName: device.runtime.name)
+    }
   }
 
   case refreshFailed(SimulatorError)
@@ -36,7 +43,7 @@ public enum LauncherNotice: Hashable, Sendable {
   case createFailed(Device, SimulatorError)
   case deleteFailed(Device, SimulatorError)
   case eraseFailed(Device, SimulatorError)
-  /// 앱을 설치하지 못했다 (설치 명령 전 거절 포함). Device 는 누른 시점의 기기.
+  /// 앱을 설치하지 못했다 (설치 명령 전 거절, URL 의 받기·받은 파일 풀기 실패 포함). Device 는 누른 시점의 기기.
   case installFailed(Device, AppInstallFailure)
   /// 앱은 설치했지만 실행하지 못했다.
   case launchFailed(Device, SimulatorError)
@@ -48,14 +55,30 @@ public enum LauncherNotice: Hashable, Sendable {
 public enum AppInstallFailure: Hashable, Sendable {
   /// 끌어다 놓은 항목이 둘 이상이다.
   case multipleItems
-  /// 번들 검사·zip 풀기 실패.
+  /// 고른·끌어다 놓은 zip 의 풀기 실패와 모든 .app 검사 실패 (받은 zip 의 풀기 실패는 `.downloadedNotZip`·`.downloadedZip`).
   case bundle(AppBundleError)
+  /// URL 에서 받지 못했다 (취소를 누르지 않았는데 온 `.cancelled` 포함).
+  case download(DownloadError)
+  /// 받은 내용이 zip 으로 읽히지 않는다. 응답 형식이 웹 페이지(HTML)면 `isWebPage` (로그인 페이지 등).
+  case downloadedNotZip(isWebPage: Bool)
+  /// 받은 zip 을 풀지 못했다 (zip 으로 읽히지 않는 경우 밖).
+  case downloadedZip(AppBundleError)
   /// Core 판정 거절.
   case rejected(AppInstallProblem)
   /// 검사하는 사이 기기가 설치할 수 없는 상태가 됐다.
   case deviceNotReady(AppInstallBlockReason)
   /// install 명령 실패, 또는 검사하는 사이 기기가 목록에서 사라짐(`.deviceNotFound`).
   case simulator(SimulatorError)
+}
+
+extension AppInstallFailure {
+  /// 받은 파일의 풀기 실패. zip 으로 읽히지 않으면(`.zipUnreadable`) 응답 형식으로 웹 페이지인지 나눈다
+  /// (zip 인지는 내용으로 판정하고, 형식은 문구만 고른다. 잘못된 형식으로 온 zip 도 설치된다).
+  static func downloaded(_ error: AppBundleError, mimeType: String?) -> AppInstallFailure {
+    guard error == .zipUnreadable else { return .downloadedZip(error) }
+    let webPageTypes: Set = ["text/html", "application/xhtml+xml"]
+    return .downloadedNotZip(isWebPage: webPageTypes.contains(mimeType?.lowercased() ?? ""))
+  }
 }
 
 /// 링크 열기 흐름의 실패 원인 (켜기·앱 열기 실패는 설치와 같이 기존 bootFailed·openAppFailed 를 쓴다).

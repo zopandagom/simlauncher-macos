@@ -1,5 +1,7 @@
 import AppBundleTesting
 import Core
+import DownloadInterface
+import DownloadTesting
 import SimulatorInterface
 import SimulatorTesting
 import Testing
@@ -11,14 +13,15 @@ protocol LauncherModelTesting {}
 
 @MainActor
 extension LauncherModelTesting {
-  /// 샘플 목록 Fake 를 설정하고 첫 목록까지 읽은 Model. 앱 번들 Fake 는 넘긴 것(기본: 샘플 앱)을 쓴다.
+  /// 샘플 목록 Fake 를 설정하고 첫 목록까지 읽은 Model. 앱 번들·받기 Client 는 넘긴 것(기본: 샘플 앱·샘플 받기 Fake)을 쓴다.
   static func loadedModel(
     appBundle: AppBundleClientFake = AppBundleClientFake(),
+    download: any DownloadClient = DownloadClientFake(),
     _ configure: (SimulatorClientFake) -> Void = { _ in }
   ) async -> (LauncherModel, SimulatorClientFake) {
     let fake = SimulatorClientFake(inventory: .sample)
     configure(fake)
-    let model = LauncherModel(simulator: fake, appBundle: appBundle)
+    let model = LauncherModel(simulator: fake, appBundle: appBundle, download: download)
     await model.onAppear()
     return (model, fake)
   }

@@ -1,5 +1,6 @@
 import AppBundleTesting
 import Core
+import DownloadTesting
 import SimulatorInterface
 import SimulatorTesting
 import Testing
@@ -40,7 +41,11 @@ struct LauncherOpenURLTests: LauncherModelTesting {
     model.openURLButtonTapped(SampleID.iPhoneOff)
     #expect(model.openURLDraft == nil)
 
-    let beforeLoad = LauncherModel(simulator: SimulatorClientFake(inventory: .sample), appBundle: AppBundleClientFake())
+    let beforeLoad = LauncherModel(
+      simulator: SimulatorClientFake(inventory: .sample),
+      appBundle: AppBundleClientFake(),
+      download: DownloadClientFake()
+    )
     beforeLoad.openURLButtonTapped(SampleID.iPhoneOn)
     #expect(beforeLoad.openURLDraft == nil)
   }

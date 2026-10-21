@@ -1,5 +1,6 @@
 import AppBundleInterface
 import Core
+import DownloadInterface
 import Foundation
 import SimulatorInterface
 import Testing
@@ -38,7 +39,31 @@ struct LauncherResourcesTests {
     let osKey = LauncherTextCatalog.requiresNewerOSKey
     #expect(table[osKey] == osKey)
     #expect(String(format: table[osKey] ?? "", "27.1") == LauncherTextCatalog.formattedRequiresNewerOS)
-    #expect(Set(texts + formatKeys + confirmationKeys + [osKey]) == Set(table.keys))
+    // 받는 중 바이트(%@ 둘·하나)와 HTTP 상태(%lld) 키는 형식이 달라 따로 넣어 본다.
+    let bytes = LauncherTextCatalog.byteSamples
+    let bothKey = LauncherTextCatalog.downloadingBothKey
+    #expect(table[bothKey] == bothKey)
+    #expect(
+      String(format: table[bothKey] ?? "", bytes.received, bytes.total)
+        == LauncherText.downloadingLabel(LauncherTextCatalog.knownTotalProgress)
+    )
+    let receivedKey = LauncherTextCatalog.downloadingReceivedKey
+    #expect(table[receivedKey] == receivedKey)
+    #expect(
+      String(format: table[receivedKey] ?? "", bytes.received)
+        == LauncherText.downloadingLabel(LauncherTextCatalog.unknownTotalProgress)
+    )
+    let httpKeys = LauncherTextCatalog.httpStatusKeys
+    for (key, code) in httpKeys {
+      #expect(table[key] == key, "\(key)")
+      #expect(String(format: table[key] ?? "", code) == LauncherText.httpStatusMessage(code), "\(key)")
+    }
+    var keys = Set(texts)
+    keys.formUnion(formatKeys)
+    keys.formUnion(confirmationKeys)
+    keys.formUnion([osKey, bothKey, receivedKey])
+    keys.formUnion(httpKeys.map(\.key))
+    #expect(keys == Set(table.keys))
   }
 }
 
@@ -53,6 +78,10 @@ struct LauncherTextTests {
     let formatted = LauncherTextCatalog.formattedTitles + LauncherTextCatalog.formattedConfirmationTitles
       + [LauncherTextCatalog.formattedRequiresNewerOS]
     for text in formatted {
+      #expect(!text.isEmpty)
+      #expect(text.unicodeScalars.contains { (0xAC00 ... 0xD7A3).contains($0.value) }, "\(text)")
+    }
+    for text in LauncherTextCatalog.formattedDownloadTexts {
       #expect(!text.isEmpty)
       #expect(text.unicodeScalars.contains { (0xAC00 ... 0xD7A3).contains($0.value) }, "\(text)")
     }
@@ -212,11 +241,52 @@ enum LauncherTextCatalog {
     "“%@” (%@) 기기에 앱을 설치했지만 실행하지 못했습니다",
     "“%@” (%@) 기기에서 링크를 열지 못했습니다",
     "“%@” (%@) 기기에서 링크 열기",
+    "“%@” (%@) 기기에 URL 에서 앱 설치",
   ]
 
-  /// `sampleDevice` 를 넣은 기기 작업 실패 제목과 링크 시트 제목.
+  /// `sampleDevice` 를 넣은 기기 작업 실패 제목과 링크 시트·URL 설치 시트 제목.
   static var formattedTitles: [String] {
-    self.notices.dropFirst().map { LauncherText.title(for: $0) } + [LauncherText.openURLSheetTitle(for: sampleDevice)]
+    var titles = self.notices.dropFirst().map { LauncherText.title(for: $0) }
+    titles += [LauncherText.openURLSheetTitle(for: sampleDevice), LauncherText.installURLSheetTitle(for: sampleDevice)]
+    return titles
+  }
+
+  // MARK: - URL 에서 설치
+
+  static let downloadingBothKey = "받는 중… %@ / %@"
+  static let downloadingReceivedKey = "받는 중… %@"
+  static let knownTotalProgress = DownloadProgress(receivedBytes: 1_000_000, expectedBytes: 2_000_000)
+  static let unknownTotalProgress = DownloadProgress(receivedBytes: 1_000_000, expectedBytes: nil)
+
+  /// `knownTotalProgress` 의 바이트를 화면과 같은 형식으로 쓴 값.
+  static var byteSamples: (received: String, total: String) {
+    (
+      Int64(1_000_000).formatted(.byteCount(style: .file)),
+      Int64(2_000_000).formatted(.byteCount(style: .file))
+    )
+  }
+
+  /// HTTP 상태가 들어가는 키와 그 키를 고르는 상태 코드 하나 (407 은 숫자를 넣은 고정 문구라 `all` 에 있다).
+  static let httpStatusKeys: [(key: String, code: Int)] = [
+    ("서버가 로그인이나 접근 권한을 요구해 받지 못했습니다 (HTTP %lld). 로그인 없이 받을 수 있는 주소인지 확인하세요.", 401),
+    ("서버에 파일이 없습니다 (HTTP %lld). 주소가 맞는지, 파일이 지워지지 않았는지 확인하세요.", 404),
+    ("서버 오류로 받지 못했습니다 (HTTP %lld). 잠시 뒤 다시 시도하세요.", 503),
+    ("서버가 파일을 주지 않았습니다 (HTTP %lld). 주소를 확인한 뒤 다시 시도하세요.", 400),
+  ]
+
+  /// HTTP 상태 문구를 뺀 받기 실패 (`.httpStatus` 는 `httpStatusKeys` 와 407 로 본다).
+  static let downloadErrors: [DownloadError] = [
+    .insecureRedirect, .offline, .hostNotFound, .cannotConnect, .timedOut, .connectionLost, .secureConnectionFailed,
+    .insufficientDiskSpace, .tooLarge, .cancelled, .storageUnavailable, .failed,
+  ]
+
+  /// 바이트·HTTP 상태를 넣은 받기 문구.
+  static var formattedDownloadTexts: [String] {
+    var texts = [
+      LauncherText.downloadingLabel(self.knownTotalProgress), LauncherText.downloadingLabel(self.unknownTotalProgress),
+    ]
+    texts += self.httpStatusKeys.map { LauncherText.httpStatusMessage($0.code) }
+    return texts
   }
 
   /// 확인 대화상자 제목의 카탈로그 키. 순서는 `confirmations` 와 같다.
@@ -288,6 +358,18 @@ enum LauncherTextCatalog {
     texts += self.installProblems.map { LauncherText.message(for: $0) }
     texts += self.installBlockReasons.map { LauncherText.installBlockReason($0) }
     texts += [LauncherText.installAppButton, LauncherText.installAppHelp, LauncherText.installingLabel]
+    texts += [
+      LauncherText.installFromFileMenuItem, LauncherText.installFromURLMenuItem, LauncherText.downloadingLabel(nil),
+      LauncherText.cancellingDownloadLabel, LauncherText.cancelDownloadAccessibilityLabel,
+      LauncherText.cancelDownloadHelp, LauncherText.downloadURLField, LauncherText.downloadURLPrompt,
+      LauncherText.downloadURLGuide, LauncherText.installURLConfirmButton, LauncherText.httpStatusMessage(407),
+    ]
+    texts += [DownloadURLProblem.malformed, .notHTTPS, .missingHost, .hasCredentials].compactMap {
+      LauncherText.downloadURLProblem($0)
+    }
+    texts += self.downloadErrors.map { LauncherText.message(for: $0) }
+    texts += [true, false].map { LauncherText.downloadedNotZipMessage(isWebPage: $0) }
+    texts += self.bundleErrors.map { LauncherText.downloadedZipMessage(for: $0) }
     texts += self.installBlockReasons.map { LauncherText.openURLBlockReason($0) }
     texts += [DeepLinkProblem.malformed, .missingScheme].compactMap { LauncherText.linkProblem($0) }
     texts += [

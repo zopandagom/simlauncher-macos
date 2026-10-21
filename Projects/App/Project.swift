@@ -12,6 +12,7 @@ let project = Project.app(
     .client(impl: .devEnvironment),
     .client(impl: .simulator),
     .client(impl: .appBundle),
+    .client(impl: .download),
     .shared(.core),
   ]
 )

@@ -1,6 +1,7 @@
 import AppBundleInterface
 import AppBundleTesting
 import Core
+import DownloadTesting
 import Foundation
 import SimulatorInterface
 import SimulatorTesting
@@ -158,7 +159,11 @@ struct LauncherInstallTests: LauncherModelTesting {
     #expect(model.notices.isEmpty)
 
     let before = AppBundleClientFake()
-    let beforeLoad = LauncherModel(simulator: SimulatorClientFake(inventory: .sample), appBundle: before)
+    let beforeLoad = LauncherModel(
+      simulator: SimulatorClientFake(inventory: .sample),
+      appBundle: before,
+      download: DownloadClientFake()
+    )
     await beforeLoad.appFileSelected(Self.picked, for: SampleID.iPhoneOff)
     #expect(before.calls.isEmpty)
   }

@@ -1,5 +1,6 @@
 import AppBundleTesting
 import Core
+import DownloadTesting
 import SimulatorInterface
 import SimulatorTesting
 import Testing
@@ -17,6 +18,7 @@ struct LauncherSetupEntryTests: LauncherModelTesting {
     let model = LauncherModel(
       simulator: fake,
       appBundle: AppBundleClientFake(),
+      download: DownloadClientFake(),
       setupRequested: { requestCount += 1 }
     )
     let appear = Task { await model.onAppear() }
@@ -42,6 +44,7 @@ struct LauncherSetupEntryTests: LauncherModelTesting {
     let model = LauncherModel(
       simulator: fake,
       appBundle: AppBundleClientFake(),
+      download: DownloadClientFake(),
       setupRequested: { requestCount += 1 }
     )
     await model.onAppear()

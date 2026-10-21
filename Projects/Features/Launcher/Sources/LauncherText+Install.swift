@@ -7,13 +7,17 @@ import SimulatorInterface
 extension LauncherText {
   // MARK: - 기기 행
 
+  /// 앱 설치 메뉴 제목 (항목은 `installFromFileMenuItem`·`installFromURLMenuItem`).
   static var installAppButton: String {
-    String(localized: "앱 설치…", bundle: .module)
+    String(localized: "앱 설치", bundle: .module)
   }
 
   static var installAppHelp: String {
     String(
-      localized: "시뮬레이터용 .app 이나 그 .app 을 압축한 zip 을 골라 이 기기에 설치하고 바로 실행합니다. 이 줄에 끌어다 놓아도 됩니다.",
+      localized: """
+      시뮬레이터용 .app 이나 그 .app 을 압축한 zip 을 파일에서 고르거나 https 주소에서 받아 이 기기에 설치하고 바로 실행합니다. \
+      이 줄에 .app 이나 zip 을 끌어다 놓아도 됩니다.
+      """,
       bundle: .module
     )
   }
@@ -55,6 +59,12 @@ extension LauncherText {
       String(localized: "한 번에 앱 하나만 설치할 수 있습니다. .app 이나 zip 하나만 끌어다 놓으세요.", bundle: .module)
     case let .bundle(error):
       self.message(for: error)
+    case let .download(error):
+      self.message(for: error)
+    case let .downloadedNotZip(isWebPage):
+      self.downloadedNotZipMessage(isWebPage: isWebPage)
+    case let .downloadedZip(error):
+      self.downloadedZipMessage(for: error)
     case let .rejected(problem):
       self.message(for: problem)
     case let .deviceNotReady(reason):
@@ -69,11 +79,14 @@ extension LauncherText {
     self.bundleFileMessage(for: error) ?? self.zipMessage(for: error) ?? self.appInvalid
   }
 
-  /// 고른 항목의 경로·종류나 .app 내용 문제 (검사와 풀기 공용). 다른 분류면 nil.
+  /// 설치할 항목의 경로·종류나 .app 내용 문제 (검사와 풀기 공용). 다른 분류면 nil.
   static func bundleFileMessage(for error: AppBundleError) -> String? {
     switch error {
     case .notLocalFile:
-      String(localized: "웹 주소는 아직 설치할 수 없습니다. 내려받은 .app 이나 zip 파일을 골라 주세요.", bundle: .module)
+      String(
+        localized: "웹 주소는 끌어다 놓아 설치할 수 없습니다. 앱 설치 메뉴의 “URL 에서…” 에 주소를 입력하세요.",
+        bundle: .module
+      )
     case .fileNotFound:
       self.appFileNotFound
     case .ipaFile:
@@ -88,7 +101,7 @@ extension LauncherText {
       )
     case .macOSApp:
       String(
-        localized: "Mac 용 앱은 iOS 시뮬레이터에 설치할 수 없습니다. 시뮬레이터용으로 빌드한 iOS 앱(.app)을 골라 주세요.",
+        localized: "Mac 용 앱은 iOS 시뮬레이터에 설치할 수 없습니다. 개발자에게 시뮬레이터용으로 빌드한 iOS 앱(.app)을 요청하세요.",
         bundle: .module
       )
     case .invalidBundle:
@@ -191,9 +204,12 @@ extension LauncherText {
     }
   }
 
-  /// 고른 .app·zip 이 없다 (검사·풀기 `.fileNotFound`, 설치 명령 `.appNotFound` 공용).
+  /// 설치할 .app·zip 이 없다 (검사·풀기 `.fileNotFound`, 설치 명령 `.appNotFound` 공용).
   static var appFileNotFound: String {
-    String(localized: "고른 파일을 찾을 수 없습니다. 옮기거나 지우지 않았는지 확인한 뒤 다시 골라 주세요.", bundle: .module)
+    String(
+      localized: "설치할 앱 파일을 찾을 수 없습니다. 파일이 옮겨지거나 지워졌을 수 있습니다. 파일을 다시 고르거나 주소에서 다시 받아 설치하세요.",
+      bundle: .module
+    )
   }
 
   /// .app 의 정보·실행 파일을 읽지 못했다 (검사 `.invalidBundle`, 설치 명령 `.appInvalid` 공용).

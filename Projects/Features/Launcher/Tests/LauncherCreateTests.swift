@@ -1,5 +1,6 @@
 import AppBundleTesting
 import Core
+import DownloadTesting
 import SimulatorInterface
 import SimulatorTesting
 import Testing
@@ -28,14 +29,19 @@ struct LauncherCreateTests: LauncherModelTesting {
 
   @Test("목록을 읽기 전이나 만들 수 있는 런타임이 없으면 + 가 비활성이고 초안이 열리지 않는다")
   func cannotCreateBeforeLoadOrWithoutRuntime() async {
-    let before = LauncherModel(simulator: SimulatorClientFake(inventory: .sample), appBundle: AppBundleClientFake())
+    let before = LauncherModel(
+      simulator: SimulatorClientFake(inventory: .sample),
+      appBundle: AppBundleClientFake(),
+      download: DownloadClientFake()
+    )
     #expect(before.canCreateDevice == false)
     before.createButtonTapped()
     #expect(before.createDraft == nil)
 
     let noRuntime = LauncherModel(
       simulator: SimulatorClientFake(inventory: .noRuntime),
-      appBundle: AppBundleClientFake()
+      appBundle: AppBundleClientFake(),
+      download: DownloadClientFake()
     )
     await noRuntime.onAppear()
     #expect(noRuntime.canCreateDevice == false)
@@ -45,7 +51,11 @@ struct LauncherCreateTests: LauncherModelTesting {
 
   @Test("기기가 없어도 만들 수 있는 런타임이 있으면 + 를 누를 수 있다")
   func canCreateWithNoDevices() async {
-    let model = LauncherModel(simulator: SimulatorClientFake(inventory: .noDevices), appBundle: AppBundleClientFake())
+    let model = LauncherModel(
+      simulator: SimulatorClientFake(inventory: .noDevices),
+      appBundle: AppBundleClientFake(),
+      download: DownloadClientFake()
+    )
     await model.onAppear()
 
     model.createButtonTapped()
@@ -279,7 +289,8 @@ extension LauncherCreateTests {
   func noCreatableDeviceTypeShowsReason() async {
     let model = LauncherModel(
       simulator: SimulatorClientFake(inventory: .noCreatableDeviceType),
-      appBundle: AppBundleClientFake()
+      appBundle: AppBundleClientFake(),
+      download: DownloadClientFake()
     )
     await model.onAppear()
 
@@ -298,7 +309,11 @@ extension LauncherCreateTests {
   func devicesWithoutCreatableTypeShowsReason() async {
     let sample = DeviceInventory.sample
     let inventory = DeviceInventory(devices: sample.devices, runtimes: sample.runtimes, deviceTypes: [])
-    let model = LauncherModel(simulator: SimulatorClientFake(inventory: inventory), appBundle: AppBundleClientFake())
+    let model = LauncherModel(
+      simulator: SimulatorClientFake(inventory: inventory),
+      appBundle: AppBundleClientFake(),
+      download: DownloadClientFake()
+    )
     await model.onAppear()
 
     guard case let .loaded(list) = model.listState else {
@@ -321,7 +336,8 @@ extension LauncherCreateTests {
   func notCreationUnavailableBeforeLoad() {
     let model = LauncherModel(
       simulator: SimulatorClientFake(inventory: .noCreatableDeviceType),
-      appBundle: AppBundleClientFake()
+      appBundle: AppBundleClientFake(),
+      download: DownloadClientFake()
     )
 
     #expect(model.canCreateDevice == false)

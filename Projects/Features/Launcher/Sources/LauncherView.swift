@@ -12,7 +12,7 @@ public struct LauncherView: View {
   @State private var isNoticePresented = false
   /// 마지막으로 띄운 삭제·초기화 확인. 닫히는 동안 Model 값이 nil 이어도 제목이 비지 않도록 View 가 들고 있는다.
   @State private var presentedConfirmation: DeviceConfirmation?
-  /// "앱 설치…" 를 누른 기기. 파일 패널이 닫힌 뒤 완료 처리에서 읽으므로 패널 표시 여부와 따로 둔다.
+  /// 앱 설치 메뉴에서 "파일에서 고르기…" 를 고른 기기. 파일 패널이 닫힌 뒤 완료 처리에서 읽으므로 패널 표시 여부와 따로 둔다.
   @State private var importDeviceID: VirtualDevice.ID?
   @State private var isImporterPresented = false
 
@@ -100,7 +100,7 @@ public struct LauncherView: View {
       ) {
         DeviceCreationSheet(model: self.model)
       }
-      // 생성 시트와 같은 체인에 둔다. Model 이 둘이 함께 열리지 않게 막는다.
+      // 생성·링크·URL 설치 시트는 같은 체인에 둔다. Model 이 둘 이상 함께 열리지 않게 막는다.
       .sheet(
         isPresented: Binding(
           get: { self.model.openURLDraft != nil },
@@ -112,6 +112,18 @@ public struct LauncherView: View {
         )
       ) {
         OpenURLSheet(model: self.model)
+      }
+      .sheet(
+        isPresented: Binding(
+          get: { self.model.installURLDraft != nil },
+          set: { isPresented in
+            if !isPresented {
+              self.model.installURLSheetDismissed()
+            }
+          }
+        )
+      ) {
+        InstallURLSheet(model: self.model)
       }
       .confirmationDialog(
         LauncherText.confirmationTitle(for: self.model.pendingConfirmation ?? self.presentedConfirmation),
@@ -272,9 +284,16 @@ extension LauncherView {
             DeviceRow(
               device: device,
               task: self.model.activity.task(on: device.id),
-              installTapped: {
+              downloadStage: self.model.activity.downloadStage(on: device.id),
+              installFromFileTapped: {
                 self.importDeviceID = device.id
                 self.isImporterPresented = true
+              },
+              installFromURLTapped: {
+                self.model.installFromURLMenuTapped(device.id)
+              },
+              cancelDownloadTapped: {
+                self.model.downloadCancelTapped(device.id)
               },
               appDropped: { urls in
                 Task { await self.model.appDropped(urls, on: device.id) }

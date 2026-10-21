@@ -1,4 +1,5 @@
 import Core
+import DownloadInterface
 import SimulatorTesting
 import Testing
 @testable import LauncherFeature
@@ -96,6 +97,103 @@ struct DeviceActivityTests {
 
     let beganAgain = activity.begin(.boot, on: first)
     #expect(beganAgain)
+  }
+
+  // MARK: - 받기 단계
+
+  @Test("beginDownload 는 앱 설치를 시작할 수 있을 때만 task .installApp 과 응답 전 받는 중(.receiving(nil))을 기록한다")
+  func beginDownloadRecordsTaskAndStage() {
+    var activity = DeviceActivity()
+    let device = Self.device(state: .shutdown)
+
+    let began = activity.beginDownload(on: device)
+    #expect(began)
+    #expect(activity.task(on: device.id) == .installApp)
+    #expect(activity.downloadStage(on: device.id) == .receiving(nil))
+
+    // 같은 기기에 다른 작업이 있으면 아무것도 바꾸지 않는다.
+    let beganAgain = activity.beginDownload(on: device)
+    #expect(!beganAgain)
+    #expect(activity.downloadStage(on: device.id) == .receiving(nil))
+
+    var other = DeviceActivity()
+    let beganBooting = other.beginDownload(on: Self.device(state: .booting))
+    #expect(!beganBooting)
+    #expect(other == DeviceActivity())
+    let bootBegan = other.begin(.boot, on: device)
+    #expect(bootBegan)
+    let beganWhileBooting = other.beginDownload(on: device)
+    #expect(!beganWhileBooting)
+    #expect(other.downloadStage(on: device.id) == nil)
+    #expect(other.task(on: device.id) == .boot)
+  }
+
+  @Test("진행은 받는 중일 때만 바뀌고, 취소 중이나 받기가 끝난 뒤 온 값은 무시한다")
+  func progressOnlyWhileReceiving() {
+    var activity = DeviceActivity()
+    let device = Self.device(state: .booted)
+    let progress = DownloadProgress(receivedBytes: 512, expectedBytes: 1024)
+    _ = activity.beginDownload(on: device)
+
+    activity.downloadProgressed(progress, on: device.id)
+    #expect(activity.downloadStage(on: device.id) == .receiving(progress))
+
+    _ = activity.requestDownloadCancel(on: device.id)
+    activity.downloadProgressed(DownloadProgress(receivedBytes: 1024, expectedBytes: 1024), on: device.id)
+    #expect(activity.downloadStage(on: device.id) == .cancelling)
+
+    var ended = DeviceActivity()
+    _ = ended.beginDownload(on: device)
+    ended.downloadEnded(on: device.id)
+    ended.downloadProgressed(progress, on: device.id)
+    #expect(ended.downloadStage(on: device.id) == nil)
+    ended.downloadProgressed(progress, on: SampleID.iPadOff)
+    #expect(ended.downloads.isEmpty)
+  }
+
+  @Test("취소 요청은 받는 중일 때만 .cancelling 으로 바꾸고 true, 취소 중·받기 끝남·작업 없음이면 바꾸지 않고 false")
+  func requestCancelOnlyWhileReceiving() {
+    var activity = DeviceActivity()
+    let device = Self.device(state: .booted)
+    let cancelledIdle = activity.requestDownloadCancel(on: device.id)
+    #expect(!cancelledIdle)
+    #expect(!activity.isDownloadCancelRequested(on: device.id))
+
+    _ = activity.beginDownload(on: device)
+    #expect(!activity.isDownloadCancelRequested(on: device.id))
+    let cancelled = activity.requestDownloadCancel(on: device.id)
+    #expect(cancelled)
+    #expect(activity.isDownloadCancelRequested(on: device.id))
+    let cancelledAgain = activity.requestDownloadCancel(on: device.id)
+    #expect(!cancelledAgain)
+    #expect(activity.downloadStage(on: device.id) == .cancelling)
+
+    var ended = DeviceActivity()
+    _ = ended.beginDownload(on: device)
+    ended.downloadEnded(on: device.id)
+    let cancelledEnded = ended.requestDownloadCancel(on: device.id)
+    #expect(!cancelledEnded)
+    #expect(ended.downloadStage(on: device.id) == nil)
+    #expect(ended.task(on: device.id) == .installApp)
+  }
+
+  @Test("downloadEnded 는 단계만 지우고 task 는 남기며, end 는 둘 다 지운다")
+  func endingClearsStage() {
+    var activity = DeviceActivity()
+    let device = Self.device(state: .booted)
+    _ = activity.beginDownload(on: device)
+
+    activity.downloadEnded(on: device.id)
+    #expect(activity.downloadStage(on: device.id) == nil)
+    #expect(activity.task(on: device.id) == .installApp)
+
+    var cancelled = DeviceActivity()
+    _ = cancelled.beginDownload(on: device)
+    _ = cancelled.requestDownloadCancel(on: device.id)
+    cancelled.end(on: device.id)
+    #expect(cancelled == DeviceActivity())
+    activity.end(on: device.id)
+    #expect(activity == DeviceActivity())
   }
 
   private static func device(
