@@ -103,3 +103,13 @@ custom_rules:
     match_kinds: [identifier, typeidentifier]
     message: "네트워크 요청(URLSession 등)은 Download Client Impl 에만 둡니다. Feature·Core·다른 Client(Interface·Testing 포함)는 DownloadClient 를 주입받아 쓰고, 테스트는 URLProtocol 스텁을 Impl 의 protocolClasses 로 주입하세요."
     severity: error
+  # 관리자 `defaults write`·구성 프로필(MDM)이 같은 도메인·키를 쓰고 강제 값 잠금(`objectIsForced`)을 한 곳에서 판정하도록,
+  # 사용자 설정 읽기·쓰기는 Preferences Client Impl 에만 둔다 (docs/ARCHITECTURE.md §4).
+  preferences_only_in_preferences_impl:
+    name: "사용자 설정 저장은 Preferences Client Impl 에서만"
+    included: "Projects/"
+    excluded: "Projects/Clients/Preferences/Impl/"
+    regex: "\\b(UserDefaults|NSUserDefaults\\w*|CFPreferences\\w*|NSUbiquitousKeyValueStore|AppStorage)\\b"
+    match_kinds: [identifier, typeidentifier]
+    message: "사용자 설정 저장(UserDefaults·@AppStorage 등)은 Preferences Client Impl 에만 둡니다. Feature·App·다른 Client 는 PreferencesClient 를 주입받고, Impl 테스트는 PreferenceStore 를 주입하세요. @SceneStorage 는 View 일시 상태라 허용합니다."
+    severity: error

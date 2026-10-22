@@ -16,12 +16,12 @@
 | 시뮬레이터 | 기기 목록, 부팅·종료, 생성·삭제·초기화, Simulator 앱 띄우기 | `simctl list -j`, `boot`/`shutdown`, `create`/`delete`/`erase`, 개발자 디렉터리의 Simulator 앱(Xcode 27.1 은 DeviceHub)을 `open` |
 | 앱 설치 | 기기 행 "앱 설치" 메뉴의 "파일에서 고르기…"로 로컬 .app(또는 .app 을 담은 zip)을 골라 설치. 드래그 앤 드롭 | `simctl install <기기> <.app>`. `AppBundle` Client 가 `Info.plist`(XML·바이너리)의 지원 플랫폼·`MinimumOSVersion` 과 실행 파일 Mach-O 헤더의 아키텍처를 읽고, Core 규칙이 대상 기기와 대조해 .ipa·Mac 앱·기기용·아키텍처·iOS 버전이 맞지 않는 빌드를 이유와 함께 거절. 꺼진 기기는 켜고, Simulator 앱을 열어(켜진 기기도) 설치하고 바로 실행. zip 은 `AppBundle` Client 가 임시 폴더에 `ditto -x -k` 로 풀어 맨 위 .app 하나를 쓰고(다른 맨 위 항목은 무시), 경로 탈출(`../`·절대 경로·밖을 가리키는 심볼릭 링크)은 거절하고, 풀기 전에 디스크 여유를 확인한다. 설치가 끝나면 임시 폴더를 지우고, 기기 목록 화면을 열 때 남은 폴더(앞선 실행이 남겼거나 지우지 못한 것)를 정리한다 |
 | 앱 설치 | URL 의 .app(zip) 을 내려받아 설치 ("직접 설치"). 기기 행 "앱 설치" 메뉴의 "URL 에서…" 시트에 https 주소를 입력한다 | `Download` Client 가 URLSession 데이터 작업으로 `SimLauncher-Download-<UUID>` 임시 폴더에 받는다(진행률·취소, https 만·http 리다이렉트 거절, Content-Length 와 디스크 여유 비교·받다가 차면 지움, 받은 파일 이름은 고정). 입력은 Core `DownloadURL` 로 검사하고, 받는 동안 기기 행에 받은 바이트·진행 막대와 취소 버튼을 보인다. 받은 zip 은 로컬 zip 과 같은 `AppBundle` 경로로 풀고, 받은 파일은 풀기 직후(성공·실패 모두) 지운 뒤 로컬 설치와 같은 검사·설치·실행으로 이어진다. 받은 내용이 zip 이 아니면(로그인 페이지 HTML 등) 응답의 MIME 형식으로 이유를 골라 알리고, 받기 실패는 원인(HTTP 상태·연결·인증서·디스크 등)과 다음 할 일을 알린다. 남은 받기 폴더는 기기 목록 화면을 열 때 정리한다 |
-| 빌드 카탈로그 | 설정에서 카탈로그 URL 을 등록하고, 앱·버전 목록에서 골라 설치 | 정적 `catalog.json` 하나 (규격: [CATALOG.md](CATALOG.md)). 서버 없이 GitHub Releases·S3·사내 웹 서버 어디든 둘 수 있다 |
+| 빌드 카탈로그 | 설정에서 카탈로그 URL 을 등록하고, 앱·버전 목록에서 골라 설치 | 정적 `catalog.json` 하나 (규격: [CATALOG.md](CATALOG.md)). 서버 없이 GitHub Releases·S3·사내 웹 서버 어디든 둘 수 있다. 설정 창(⌘,, `Settings` Feature)에서 등록할 때 한 번 받아 형식을 확인하고(통과해야 저장, 확인 중 취소·창 닫기는 저장 안 함), 같은 카탈로그(Core `DownloadURL.comparisonKey`)의 중복 등록을 막는다. 목록은 `Preferences` Client 가 UserDefaults 키 `CatalogURLs` 에 둔다 |
 | 앱 실행 | 설치한 앱 실행, 딥링크 열기 | `Info.plist` 의 번들 ID 로 `simctl launch`, `simctl openurl <기기> <url>`. 스킴이 있는 링크는 모두 연다(Core `DeepLink`: 앞뒤 공백을 빼고 경로·쿼리의 공백·한글은 퍼센트 인코딩). 꺼진 기기는 켜고, Simulator 앱을 열어(켜진 기기도) 연다. 링크는 기기 안의 앱(Safari 등)이 열고 SimLauncher 는 내려받지 않는다 |
 
 ## 빌드 카탈로그
 특정 회사 인프라에 묶이지 않도록, 앱이 읽는 카탈로그 형식을 이 프로젝트의 공개 규격으로 정한다.
-- 사용자가 설정 화면에서 카탈로그 URL 을 하나 이상 등록한다. 회사 일괄 배포용으로 `defaults write` 나 MDM 으로 미리 넣을 수 있게 한다 (선택). 미리 넣은 값도 같은 사용자 설정 키라서 네트워크 규칙의 "사용자가 등록한 카탈로그"에 든다
+- 사용자가 설정 창에서 카탈로그 URL 을 하나 이상 등록한다. 회사 일괄 배포용으로 `defaults write com.zopandagom.simlauncher CatalogURLs -array "https://…/catalog.json"` 나 MDM 으로 미리 넣을 수 있다. 미리 넣은 값도 같은 사용자 설정 키라서 네트워크 규칙의 "사용자가 등록한 카탈로그"에 든다. MDM 구성 프로필로 키를 강제하면 목록 전체가 잠겨 앱에서 바꿀 수 없다 (관리자 안내: [CATALOG.md](CATALOG.md) 9절)
 - `catalog.json` 은 `schemaVersion` 과 앱 → 버전(이름·브랜치·태그·빌드 번호·생성 시각) → 빌드 zip URL 을 담는다. 규격: [CATALOG.md](CATALOG.md) (schemaVersion 1)
 - 레포에 예시 GitHub Actions 워크플로를 둔다: `xcodebuild -sdk iphonesimulator` → zip → Release 업로드 → `catalog.json` 갱신
 - 첫 버전은 인증 없는 HTTPS URL 만 지원한다(사용자 이름·비밀번호가 든 주소는 거절하고, 서버의 인증 요구에도 응하지 않는다). 비공개 저장소(토큰 헤더 등) 인증은 후속

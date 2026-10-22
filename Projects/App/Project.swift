@@ -8,11 +8,13 @@ let project = Project.app(
   dependencies: [
     .feature(.launcher),
     .feature(.setup),
+    .feature(.settings),
     .client(impl: .command),
     .client(impl: .devEnvironment),
     .client(impl: .simulator),
     .client(impl: .appBundle),
     .client(impl: .download),
+    .client(impl: .preferences),
     .shared(.core),
   ]
 )

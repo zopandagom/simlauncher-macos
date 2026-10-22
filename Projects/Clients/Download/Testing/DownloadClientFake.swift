@@ -8,6 +8,8 @@ import Synchronization
 /// `.fake(index: k)` 를 돌려준다. 취소 계약은 Impl 과 같다: 시작 전 취소면 기록 뒤 바로, 진행 사이·멈춤 중·결과 전
 /// (마지막 진행 콜백 안 포함) 취소면 그때 `.cancelled`, 돌아온 뒤에는 `onProgress` 를 부르지 않는다.
 /// 멈춘 받기에 `sendDownloadProgress(_:)` 가 진행을 넘기는 중에 온 취소·재개는 그 콜백이 끝난 뒤 받기를 깨운다.
+/// `fetchData` 는 기록 → 취소 확인 → 멈춤(`suspendFetches()` 뒤면 `resumeFetches()` 나 Task 취소까지) → 지연 → 취소 확인 →
+/// 결과 순서이고, 시작 전·멈춤 중·결과 전 취소면 그때 `.cancelled` 다 (Impl 과 같은 취소 계약).
 /// 내부 취소(-999)는 흉내 내지 않는다 (필요하면 결과를 `.failure(.failed)` 로 둔다).
 public final class DownloadClientFake: DownloadClient {
   public enum Call: Hashable, Sendable {
@@ -39,6 +41,11 @@ public final class DownloadClientFake: DownloadClient {
     var suspendedDownloads: [UUID: SuspendedDownload] = [:]
     /// 기다리기 전에 취소가 먼저 온 받기.
     var cancelledWaits: Set<UUID> = []
+    var fetchesSuspended = false
+    /// 멈춘 `fetchData`. 재개면 true, 취소면 false 로 깨우고 목록에서 뺀다.
+    var suspendedFetches: [UUID: CheckedContinuation<Bool, Never>] = [:]
+    /// 기다리기 전에 취소가 먼저 온 `fetchData`.
+    var cancelledFetchWaits: Set<UUID> = []
   }
 
   private let state = Mutex(State())
@@ -185,10 +192,13 @@ public final class DownloadClientFake: DownloadClient {
     return try result.get()
   }
 
-  /// 기록 → 취소 확인 → 지연 → 취소 확인 → 결과.
+  /// 기록 → 취소 확인 → 멈춤 → 지연 → 취소 확인 → 결과.
   public func fetchData(_ url: DownloadURL, maxBytes: Int) async throws(DownloadError) -> Data {
     self.state.withLock { $0.calls.append(.fetchData(url.url, maxBytes: maxBytes)) }
     guard !Task.isCancelled else {
+      throw .cancelled
+    }
+    guard await self.waitIfFetchesSuspended() else {
       throw .cancelled
     }
     await self.sleepIfNeeded()
@@ -271,5 +281,69 @@ public final class DownloadClientFake: DownloadClient {
     }
     state.suspendedDownloads[id] = nil
     return download.continuation
+  }
+}
+
+// MARK: - fetchData 멈춤
+
+public extension DownloadClientFake {
+  /// 지금 멈춰 있고 아직 재개·취소를 받지 않은 `fetchData` 수. 테스트가 멈춘 뒤의 동작(취소·재개)을 하기 전에 기다린다.
+  var suspendedFetchCount: Int {
+    self.state.withLock { $0.suspendedFetches.count }
+  }
+
+  /// 이후 `fetchData` 가 기록·취소 확인 뒤 결과 전에 `resumeFetches()` 까지 기다린다.
+  /// 기다리는 동안 Task 가 취소되면 `.cancelled` 를 던진다.
+  func suspendFetches() {
+    self.state.withLock { $0.fetchesSuspended = true }
+  }
+
+  /// 멈춘 `fetchData` 를 모두 재개하고, 이후 호출은 기다리지 않는다.
+  func resumeFetches() {
+    let ready: [CheckedContinuation<Bool, Never>] = self.state.withLock { state in
+      state.fetchesSuspended = false
+      let ready = Array(state.suspendedFetches.values)
+      state.suspendedFetches = [:]
+      return ready
+    }
+    for continuation in ready {
+      continuation.resume(returning: true)
+    }
+  }
+}
+
+extension DownloadClientFake {
+  /// 멈춤이 아니면 바로 true. 멈춤이면 재개(true)나 Task 취소(false)까지 기다린다.
+  private func waitIfFetchesSuspended() async -> Bool {
+    let id = UUID()
+    return await withTaskCancellationHandler {
+      await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
+        // 플래그·취소 확인과 continuation 저장을 한 lock 안에서 해야 재개·취소를 놓치지 않는다.
+        let immediate: Bool? = self.state.withLock { state in
+          if state.cancelledFetchWaits.remove(id) != nil {
+            return false
+          }
+          guard state.fetchesSuspended else {
+            return true
+          }
+          state.suspendedFetches[id] = continuation
+          return nil
+        }
+        if let immediate {
+          continuation.resume(returning: immediate)
+        }
+      }
+    } onCancel: {
+      let ready: CheckedContinuation<Bool, Never>? = self.state.withLock { state in
+        guard let continuation = state.suspendedFetches.removeValue(forKey: id) else {
+          if state.fetchesSuspended {
+            state.cancelledFetchWaits.insert(id)
+          }
+          return nil
+        }
+        return continuation
+      }
+      ready?.resume(returning: false)
+    }
   }
 }

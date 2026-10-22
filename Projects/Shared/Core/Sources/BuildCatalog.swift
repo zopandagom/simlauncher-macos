@@ -4,7 +4,7 @@ import Foundation
 public struct BuildCatalog: Hashable, Sendable {
   /// 이 앱이 읽는 규격 버전.
   public static let supportedSchemaVersion = 1
-  /// 카탈로그 파일 크기 상한 (5 MiB). 받는 쪽(4-D·4-E)이 `DownloadClient.fetchData` 의 `maxBytes` 로 넘긴다.
+  /// 카탈로그 파일 크기 상한 (5 MiB). 받는 쪽(Settings 의 등록 확인·4-E)이 `DownloadClient.fetchData` 의 `maxBytes` 로 넘긴다.
   public static let maxByteCount = 5 * 1024 * 1024
 
   /// 파일 순서.

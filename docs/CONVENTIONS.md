@@ -15,6 +15,7 @@
 | Shared 는 Client 와 부수효과 프레임워크 없이 | Shared 에서 Client 모듈이나 부수효과 프레임워크 import | `shared_independent_of_clients`, `system_framework_only_in_impl` |
 | 화면 코드는 Feature·DesignSystem 에 둔다 | Core 에서 `import SwiftUI`, `import UIKit`, `import AppKit` | `core_no_ui_framework` |
 | 부수효과 프레임워크(lint `system_framework_only_in_impl` 목록) 밖의 부수효과 없는 Apple 프레임워크(CoreGraphics·ImageIO 등)는 Core 를 포함한 모든 레이어에서 쓴다 | 의존 규칙을 지키려고 변환·재인코딩 같은 실행 비용을 들이기 | |
+| 사용자 설정 저장(읽기·쓰기)은 Preferences Client 로 한다. `@SceneStorage` 같은 View 일시 상태(ARCHITECTURE §1 규칙 8)는 저장이 아니라 그대로 쓴다 | Feature·App·다른 Client(Preferences 의 Interface·Testing·Tests 포함)에서 `UserDefaults`·`@AppStorage`·`CFPreferences*`·`NSUbiquitousKeyValueStore` 직접 사용 | `preferences_only_in_preferences_impl` (`UserDefaults`·`NSUserDefaults*`·`CFPreferences*`·`NSUbiquitousKeyValueStore`·`AppStorage` 식별자만 잡는다. `defaults` 명령 실행은 `process_only_in_command_impl`) |
 | 새 모듈은 `Module.swift` 의 enum 과 `Project.client/feature/shared` 템플릿으로 | 매니페스트에서 `Target` 을 직접 만들거나 빌드 설정을 덮어쓰기 | |
 
 ## 2. Swift / 동시성
@@ -22,7 +23,7 @@
 |---|---|
 | Model 은 `@MainActor @Observable final class` | `ObservableObject` / `@Published` (구 방식) |
 | Client 프로토콜은 `Sendable`, 입출력도 `Sendable` 값 타입 | `@unchecked Sendable`, `nonisolated(unsafe)` 로 경고 숨기기 (불가피하면 이유를 주석으로) |
-| 무거운 동기 작업(대량 조회, 이미지 처리)은 Impl 에서 `@concurrent` 로 메인 밖에서 | Model 에서 `Task.detached` 로 우회 |
+| 무거운 동기 작업(대량 조회, 이미지 처리)은 Impl 에서 `@concurrent` 로 메인 밖에서. Core 의 순수 계산(카탈로그 해석 등)은 Core 의 `@concurrent` async 진입점(`BuildCatalog.decoded(from:)`)으로 메인 밖에서 | Model 에서 `Task.detached` 로 우회 |
 | 에러는 Interface 에 도메인 에러 타입으로 정의해 던진다 | Feature 에 `SwiftDataError`, `StoreKitError` 같은 프레임워크 에러가 새어 나오기 |
 | 강제 언래핑 대신 `guard let` / 기본값 | `!`, `try!` (테스트 제외) |
 | 명시적 `self.` (SwiftFormat 이 자동 삽입) | |
@@ -47,7 +48,7 @@
 | 서드파티 SDK 는 합의 후에만 | 분석·크래시 SDK 를 합의 없이 추가 | |
 | 권한은 필요한 시점에 요청하고 거부·제한도 정상 흐름으로 처리 | 앱 시작 즉시 권한 팝업 | |
 | 비개발자가 앱 화면만으로 시뮬레이터 실행과 앱 설치·실행을 끝낼 수 있게 한다. 실패는 원인과 다음 할 일을 화면에 보여 준다 | 터미널 명령 입력이나 Xcode 조작을 사용자에게 요구 (Xcode 설치·라이선스 동의·첫 실행 준비 안내는 예외), `simctl` 출력 원문만 보여 주기 | |
-| 네트워크는 사용자가 등록한 카탈로그와 사용자가 고르거나 입력한 빌드 URL 을 내려받을 때, 사용자가 설치를 고를 때 쓸 Xcode 의 기본 iOS 시뮬레이터 런타임을 Apple 서버에서 설치할 때(`xcodebuild -downloadPlatform iOS`, 버전 지정 없음)만 쓴다. 카탈로그·빌드 다운로드는 Download Client Impl 에, 런타임 설치는 DevEnvironment Client Impl 에 둔다 | 그 밖의 서버로 데이터 전송, Download Client Impl 밖(Feature·Core·다른 Client·Download 의 Interface·Testing·Tests)에서 `URLSession`·`NWConnection` 등 네트워크 API 직접 사용 | `network_only_in_download_impl` (`URLSession*`·`NSURLSession*`·`NSURLConnection`·`NWConnection`·`NWListener`·`NWBrowser`·`NWPathMonitor` 식별자만 잡는다. 원격 URL 을 받는 API(`Data`·`String`·`NSData`·`XMLParser` 등의 `contentsOf:` 이니셜라이저, `URL.resourceBytes`·`URL.lines`)와 WebKit 은 리뷰) |
+| 네트워크는 사용자가 등록한 카탈로그(등록할 때 한 번 받아 형식을 확인하는 것 포함)와 사용자가 고르거나 입력한 빌드 URL 을 내려받을 때, 사용자가 설치를 고를 때 쓸 Xcode 의 기본 iOS 시뮬레이터 런타임을 Apple 서버에서 설치할 때(`xcodebuild -downloadPlatform iOS`, 버전 지정 없음)만 쓴다. 카탈로그·빌드 다운로드는 Download Client Impl 에 두고 Feature(Launcher 의 URL 설치, Settings 의 카탈로그 등록 확인)는 `DownloadClient` 를 주입받는다. 런타임 설치는 DevEnvironment Client Impl 에 둔다 | 그 밖의 서버로 데이터 전송, Download Client Impl 밖(Feature·Core·다른 Client·Download 의 Interface·Testing·Tests)에서 `URLSession`·`NWConnection` 등 네트워크 API 직접 사용 | `network_only_in_download_impl` (`URLSession*`·`NSURLSession*`·`NSURLConnection`·`NWConnection`·`NWListener`·`NWBrowser`·`NWPathMonitor` 식별자만 잡는다. 원격 URL 을 받는 API(`Data`·`String`·`NSData`·`XMLParser` 등의 `contentsOf:` 이니셜라이저, `URL.resourceBytes`·`URL.lines`)와 WebKit 은 리뷰) |
 | 내려받는 URL 은 HTTPS 만 허용하고(리다이렉트도 https 로만 따라간다), 받기 전에 Content-Length 와 디스크 여유를 비교하고, 받다가 디스크가 차면 받은 것을 지운다. 압축을 풀 때 모든 항목이 대상 폴더 안에 있는지 확인한다. 풀기 전 목록(zipinfo) 검사로 빨리 거절하고, 판정은 푼 뒤 실제 파일(심볼릭 링크는 실제 경로)로 한다. 풀기 전에 선언된 크기와 디스크 여유를 비교하고, 풀다가 디스크가 차면 푼 것을 지운다 | `http://` 다운로드, http 로 리다이렉트 따라가기, 경로(`../`·절대 경로·심볼릭 링크)가 대상 폴더를 벗어나는 zip 풀기 | |
 | 특정 회사 인프라(서버 주소·인증 방식)를 코드에 넣지 않는다. 연결 정보는 사용자 설정으로 받는다 | 기본 카탈로그 URL·사내 주소 하드코딩 | |
 | `Process` 생성·호출(명령 실행)과 프로세스 신호(`kill`)는 Command Client Impl 에만 둔다. `xcrun simctl`·`ditto`·`zipinfo`·`xcodebuild` 같은 명령의 인자 구성·결과 해석은 그 일을 맡은 Client Impl 이 하고, 실행·취소는 주입받은 `CommandClient`(`run`·`runCancellable`, ARCHITECTURE §4)로 한다. Command Client 는 Client Impl 만 조합해 쓴다 | Feature·Core·다른 Client Impl 에서 `Process` 생성·호출이나 `kill`, Feature 가 Command Client 에 의존 | `process_only_in_command_impl` (`Process(`·`Process.` 형태만 잡는다. `let p: Process = .init()` 같은 형태와 `kill(` 은 리뷰) |
