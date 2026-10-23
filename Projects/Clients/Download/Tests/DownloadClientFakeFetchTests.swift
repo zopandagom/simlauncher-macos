@@ -9,6 +9,7 @@ import Testing
 /// `waitUntil`(10초 상한)로 기다린 뒤 정리로만 재개한다.
 struct DownloadClientFakeFetchTests {
   static let url = DownloadURL("https://example.com/catalog.json")!
+  static let otherURL = DownloadURL("https://example.org/other.json")!
 
   @Test("멈춘 fetch 는 기록된 뒤 기다리고, 재개하면 설정한 결과로 끝난다")
   func suspendAndResume() async throws {
@@ -100,9 +101,82 @@ struct DownloadClientFakeFetchTests {
     #expect(fake.calls == [.fetchData(Self.url.url, maxBytes: 10), .download(Self.url.url)])
   }
 
-  static func fetchResult(_ fake: DownloadClientFake) async -> Result<Data, DownloadError> {
+  @Test("주소별 결과가 있는 주소는 그 결과를, 없는 주소는 공통 결과를 돌려준다")
+  func perURLResult() async {
+    let fake = DownloadClientFake()
+    fake.setFetchResult(.success(Data("common".utf8)))
+    fake.setFetchResult(.failure(.httpStatus(404)), for: Self.otherURL)
+
+    #expect(await Self.fetchResult(fake) == .success(Data("common".utf8)))
+    #expect(await Self.fetchResult(fake, url: Self.otherURL) == .failure(.httpStatus(404)))
+    #expect(fake.calls == [.fetchData(Self.url.url, maxBytes: 10), .fetchData(Self.otherURL.url, maxBytes: 10)])
+  }
+
+  @Test("주소별 멈춤은 그 주소만 기다리게 하고, 그 주소만 재개하거나 취소할 수 있다")
+  func perURLSuspension() async throws {
+    let fake = DownloadClientFake()
+    fake.suspendFetches(for: Self.otherURL)
+    let first = FetchTask(fake: fake, url: Self.otherURL)
+    let second = FetchTask(fake: fake, url: Self.otherURL)
+    try await waitUntil { fake.suspendedFetchCount == 2 }
+
+    // 멈추지 않은 주소는 바로 끝난다.
+    #expect(await Self.fetchResult(fake) == .success(Data()))
+    first.cancel()
+    try await waitUntil { first.isFinished && fake.suspendedFetchCount == 1 }
+    #expect(first.result == .failure(.cancelled))
+    #expect(!second.isFinished)
+
+    fake.resumeFetches(for: Self.otherURL)
+    try await waitUntil { second.isFinished }
+    #expect(second.result == .success(Data()))
+    #expect(fake.suspendedFetchCount == 0)
+    // 재개한 주소의 다음 호출은 기다리지 않는다.
+    #expect(await Self.fetchResult(fake, url: Self.otherURL) == .success(Data()))
+  }
+
+  @Test("공통 resumeFetches 는 주소별 멈춤도 풀고, 이후 그 주소도 기다리지 않는다")
+  func resumeAllClearsPerURL() async throws {
+    let fake = DownloadClientFake()
+    fake.suspendFetches(for: Self.otherURL)
+    let task = FetchTask(fake: fake, url: Self.otherURL)
+    try await waitUntil { fake.suspendedFetchCount == 1 }
+
+    fake.resumeFetches()
+    try await waitUntil { task.isFinished }
+    #expect(task.result == .success(Data()))
+    #expect(await Self.fetchResult(fake, url: Self.otherURL) == .success(Data()))
+    #expect(fake.suspendedFetchCount == 0)
+  }
+
+  @Test("공통 멈춤은 모든 주소를 멈추고, 주소별 재개는 공통 멈춤을 풀지 않는다")
+  func commonSuspensionCoversAllURLs() async throws {
+    let fake = DownloadClientFake()
+    fake.suspendFetches()
+    let first = FetchTask(fake: fake, url: Self.url)
+    let second = FetchTask(fake: fake, url: Self.otherURL)
+    try await waitUntil { fake.suspendedFetchCount == 2 }
+
+    // 그 주소로 기다리던 호출만 깨우고, 공통 멈춤이 남아 그 주소의 다음 호출은 다시 기다린다.
+    fake.resumeFetches(for: Self.otherURL)
+    try await waitUntil { second.isFinished && fake.suspendedFetchCount == 1 }
+    #expect(!first.isFinished)
+    let third = FetchTask(fake: fake, url: Self.otherURL)
+    try await waitUntil { fake.suspendedFetchCount == 2 }
+    #expect(!third.isFinished)
+
+    fake.resumeFetches()
+    try await waitUntil { first.isFinished && third.isFinished }
+    #expect(first.result == .success(Data()))
+    #expect(third.result == .success(Data()))
+  }
+
+  static func fetchResult(
+    _ fake: DownloadClientFake,
+    url: DownloadURL = Self.url
+  ) async -> Result<Data, DownloadError> {
     do throws(DownloadError) {
-      return try await .success(fake.fetchData(Self.url, maxBytes: 10))
+      return try await .success(fake.fetchData(url, maxBytes: 10))
     } catch {
       return .failure(error)
     }

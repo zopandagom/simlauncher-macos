@@ -8,8 +8,10 @@ import Synchronization
 /// `.fake(index: k)` 를 돌려준다. 취소 계약은 Impl 과 같다: 시작 전 취소면 기록 뒤 바로, 진행 사이·멈춤 중·결과 전
 /// (마지막 진행 콜백 안 포함) 취소면 그때 `.cancelled`, 돌아온 뒤에는 `onProgress` 를 부르지 않는다.
 /// 멈춘 받기에 `sendDownloadProgress(_:)` 가 진행을 넘기는 중에 온 취소·재개는 그 콜백이 끝난 뒤 받기를 깨운다.
-/// `fetchData` 는 기록 → 취소 확인 → 멈춤(`suspendFetches()` 뒤면 `resumeFetches()` 나 Task 취소까지) → 지연 → 취소 확인 →
-/// 결과 순서이고, 시작 전·멈춤 중·결과 전 취소면 그때 `.cancelled` 다 (Impl 과 같은 취소 계약).
+/// `fetchData` 는 기록 → 취소 확인 → 멈춤(`suspendFetches()` 뒤거나 그 주소가 `suspendFetches(for:)` 로 멈췄으면 재개나
+/// Task 취소까지) → 지연 → 취소 확인 → 결과 순서이고, 시작 전·멈춤 중·결과 전 취소면 그때 `.cancelled` 다 (Impl 과 같은 취소
+/// 계약). 결과는 `setFetchResult(_:for:)` 로 정한 주소별 결과가 있으면 그것, 없으면 `setFetchResult(_:)` 의 공통 결과다.
+/// 주소는 `url.url.absoluteString`(기록과 같은 값)으로 비교한다.
 /// 내부 취소(-999)는 흉내 내지 않는다 (필요하면 결과를 `.failure(.failed)` 로 둔다).
 public final class DownloadClientFake: DownloadClient {
   public enum Call: Hashable, Sendable {
@@ -28,6 +30,12 @@ public final class DownloadClientFake: DownloadClient {
     var pendingWake: Bool?
   }
 
+  /// 멈춘 `fetchData` 하나. 주소별 재개가 그 주소만 깨우도록 주소를 함께 둔다.
+  private struct SuspendedFetch {
+    let key: String
+    let continuation: CheckedContinuation<Bool, Never>
+  }
+
   private struct State {
     var calls: [Call] = []
     var downloadProgress: [DownloadProgress] = DownloadProgress.samples
@@ -41,9 +49,13 @@ public final class DownloadClientFake: DownloadClient {
     var suspendedDownloads: [UUID: SuspendedDownload] = [:]
     /// 기다리기 전에 취소가 먼저 온 받기.
     var cancelledWaits: Set<UUID> = []
+    /// 주소별 `fetchData` 결과 (키는 `absoluteString`). 없으면 `fetchResult`.
+    var fetchResultsByURL: [String: Result<Data, DownloadError>] = [:]
     var fetchesSuspended = false
-    /// 멈춘 `fetchData`. 재개면 true, 취소면 false 로 깨우고 목록에서 뺀다.
-    var suspendedFetches: [UUID: CheckedContinuation<Bool, Never>] = [:]
+    /// `suspendFetches(for:)` 로 멈춘 주소 (키는 `absoluteString`).
+    var suspendedFetchURLs: Set<String> = []
+    /// 멈춘 `fetchData` 와 그 주소. 재개면 true, 취소면 false 로 깨우고 목록에서 뺀다.
+    var suspendedFetches: [UUID: SuspendedFetch] = [:]
     /// 기다리기 전에 취소가 먼저 온 `fetchData`.
     var cancelledFetchWaits: Set<UUID> = []
   }
@@ -86,9 +98,14 @@ public final class DownloadClientFake: DownloadClient {
     }
   }
 
-  /// 이후 `fetchData` 결과 (기본은 빈 Data).
+  /// 이후 `fetchData` 결과 (기본은 빈 Data). 주소별 결과(`setFetchResult(_:for:)`)가 있는 주소에는 쓰지 않는다.
   public func setFetchResult(_ result: Result<Data, DownloadError>) {
     self.state.withLock { $0.fetchResult = result }
+  }
+
+  /// 이후 `url` 로 들어오는 `fetchData` 결과. 공통 결과보다 먼저 쓴다.
+  public func setFetchResult(_ result: Result<Data, DownloadError>, for url: DownloadURL) {
+    self.state.withLock { $0.fetchResultsByURL[Self.fetchKey(url)] = result }
   }
 
   /// Example 용. `download` 는 진행 알림 사이와 결과 전에, `fetchData` 는 결과 전에 이만큼 기다린다 (`nil` 이면 바로).
@@ -194,18 +211,19 @@ public final class DownloadClientFake: DownloadClient {
 
   /// 기록 → 취소 확인 → 멈춤 → 지연 → 취소 확인 → 결과.
   public func fetchData(_ url: DownloadURL, maxBytes: Int) async throws(DownloadError) -> Data {
+    let key = Self.fetchKey(url)
     self.state.withLock { $0.calls.append(.fetchData(url.url, maxBytes: maxBytes)) }
     guard !Task.isCancelled else {
       throw .cancelled
     }
-    guard await self.waitIfFetchesSuspended() else {
+    guard await self.waitIfFetchesSuspended(key: key) else {
       throw .cancelled
     }
     await self.sleepIfNeeded()
     guard !Task.isCancelled else {
       throw .cancelled
     }
-    return try self.state.withLock { $0.fetchResult }.get()
+    return try self.state.withLock { $0.fetchResultsByURL[key] ?? $0.fetchResult }.get()
   }
 
   /// 기록만 한다.
@@ -298,11 +316,36 @@ public extension DownloadClientFake {
     self.state.withLock { $0.fetchesSuspended = true }
   }
 
-  /// 멈춘 `fetchData` 를 모두 재개하고, 이후 호출은 기다리지 않는다.
+  /// 이후 `url` 로 들어오는 `fetchData` 만 `resumeFetches(for:)`·`resumeFetches()` 까지 기다린다 (다른 주소는 기다리지 않는다).
+  /// 기다리는 동안 Task 가 취소되면 그 호출만 빠지고 `.cancelled` 를 던진다.
+  func suspendFetches(for url: DownloadURL) {
+    self.state.withLock { $0.suspendedFetchURLs.insert(Self.fetchKey(url)) }
+  }
+
+  /// `url` 의 주소별 멈춤을 풀고 그 주소로 기다리는 `fetchData` 만 재개한다. 공통 멈춤(`suspendFetches()`) 중이면
+  /// 그 멈춤은 남아 이 주소의 다음 호출도 기다린다.
+  func resumeFetches(for url: DownloadURL) {
+    let key = Self.fetchKey(url)
+    let ready: [CheckedContinuation<Bool, Never>] = self.state.withLock { state in
+      state.suspendedFetchURLs.remove(key)
+      var ready: [CheckedContinuation<Bool, Never>] = []
+      for (id, fetch) in state.suspendedFetches where fetch.key == key {
+        state.suspendedFetches[id] = nil
+        ready.append(fetch.continuation)
+      }
+      return ready
+    }
+    for continuation in ready {
+      continuation.resume(returning: true)
+    }
+  }
+
+  /// 공통·주소별 멈춤을 모두 풀고 멈춘 `fetchData` 를 모두 재개한다. 이후 호출은 기다리지 않는다.
   func resumeFetches() {
     let ready: [CheckedContinuation<Bool, Never>] = self.state.withLock { state in
       state.fetchesSuspended = false
-      let ready = Array(state.suspendedFetches.values)
+      state.suspendedFetchURLs = []
+      let ready = state.suspendedFetches.values.map(\.continuation)
       state.suspendedFetches = [:]
       return ready
     }
@@ -313,8 +356,13 @@ public extension DownloadClientFake {
 }
 
 extension DownloadClientFake {
-  /// 멈춤이 아니면 바로 true. 멈춤이면 재개(true)나 Task 취소(false)까지 기다린다.
-  private func waitIfFetchesSuspended() async -> Bool {
+  /// 주소별 결과·멈춤의 비교 키 (기록과 같은 `absoluteString`).
+  private static func fetchKey(_ url: DownloadURL) -> String {
+    url.url.absoluteString
+  }
+
+  /// 공통 멈춤도 그 주소의 멈춤도 아니면 바로 true. 멈춤이면 재개(true)나 Task 취소(false)까지 기다린다.
+  private func waitIfFetchesSuspended(key: String) async -> Bool {
     let id = UUID()
     return await withTaskCancellationHandler {
       await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
@@ -323,10 +371,10 @@ extension DownloadClientFake {
           if state.cancelledFetchWaits.remove(id) != nil {
             return false
           }
-          guard state.fetchesSuspended else {
+          guard state.fetchesSuspended || state.suspendedFetchURLs.contains(key) else {
             return true
           }
-          state.suspendedFetches[id] = continuation
+          state.suspendedFetches[id] = SuspendedFetch(key: key, continuation: continuation)
           return nil
         }
         if let immediate {
@@ -335,13 +383,13 @@ extension DownloadClientFake {
       }
     } onCancel: {
       let ready: CheckedContinuation<Bool, Never>? = self.state.withLock { state in
-        guard let continuation = state.suspendedFetches.removeValue(forKey: id) else {
-          if state.fetchesSuspended {
+        guard let fetch = state.suspendedFetches.removeValue(forKey: id) else {
+          if state.fetchesSuspended || state.suspendedFetchURLs.contains(key) {
             state.cancelledFetchWaits.insert(id)
           }
           return nil
         }
-        return continuation
+        return fetch.continuation
       }
       ready?.resume(returning: false)
     }
