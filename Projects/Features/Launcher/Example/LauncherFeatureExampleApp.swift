@@ -2,7 +2,10 @@ import AppBundleTesting
 import Core
 import DownloadInterface
 import DownloadTesting
+import Foundation
 import LauncherFeature
+import PreferencesInterface
+import PreferencesTesting
 import SimulatorTesting
 import SwiftUI
 
@@ -12,13 +15,23 @@ import SwiftUI
 /// 1초 지연), `DownloadClientFake`(어떤 주소든 0.3초마다 48 MB 까지 진행을 알린 뒤 zip 을 받은 것으로 끝나고,
 /// `AppBundleClientFake` 가 그 zip 을 샘플 앱으로 푼다)를 주입한다. Setup 화면이 없으므로 Setup 진입 버튼("개발 환경"·"iOS 설치"·"다른 iOS 버전 설치"·
 /// "개발 환경 열기")은 눌러도 아무 일도 하지 않는다.
+/// "카탈로그에서…" 시트는 `PreferencesClientFake`(카탈로그 2개 + http 주소 + 앞 항목과 같은 카탈로그)와 카탈로그 전용
+/// `DownloadClientFake`(주소별 카탈로그 내용, 1초 지연)로 읽고, 고른 버전은 같은 `LauncherModel` 이 받아 설치한다.
+/// Example 에는 Settings 씬이 없다(설정 창은 App 에서 확인한다).
 @main
 struct LauncherFeatureExampleApp: App {
-  @State private var model = Self.makeModel()
+  @State private var model: LauncherModel
+  @State private var catalogModel: CatalogInstallModel
+
+  init() {
+    let launcher = Self.makeModel()
+    self._model = State(initialValue: launcher)
+    self._catalogModel = State(initialValue: makeCatalogModel(.exampleCatalogs, installingWith: launcher))
+  }
 
   var body: some Scene {
     WindowGroup {
-      LauncherView(model: self.model)
+      LauncherView(model: self.model, catalogModel: self.catalogModel)
     }
   }
 
@@ -41,13 +54,37 @@ extension DownloadProgress {
   }
 }
 
-/// Fake 를 만들어 설정한 뒤 화면을 만든다.
+/// 카탈로그에서 설치 시트의 Model. 저장된 목록은 `setting`, 카탈로그 받기는 따로 만든 `DownloadClientFake`(1초 지연,
+/// 주소별 내용: `ExampleCatalog.teamURL` 은 `team`, `otherURL` 은 `other`, 그 밖은 빈 Data)다.
+/// 고른 버전은 `launcher` 가 URL 설치와 같은 경로로 받아 설치한다.
+@MainActor
+private func makeCatalogModel(
+  _ setting: CatalogURLSetting,
+  installingWith launcher: LauncherModel,
+  catalogDownload configure: (DownloadClientFake) -> Void = { _ in }
+) -> CatalogInstallModel {
+  let preferences = PreferencesClientFake(urls: setting.urls, isLocked: setting.isLocked)
+  let download = DownloadClientFake()
+  download.setDelay(.seconds(1))
+  download.setFetchResult(.success(ExampleCatalog.team), for: ExampleCatalog.teamURL)
+  download.setFetchResult(.success(ExampleCatalog.other), for: ExampleCatalog.otherURL)
+  configure(download)
+  return CatalogInstallModel(
+    preferences: preferences,
+    download: download,
+    installRequested: { request in await launcher.catalogInstallRequested(request) }
+  )
+}
+
+/// Fake 를 만들어 설정한 뒤 화면을 만든다. 카탈로그 시트는 기본이 빈 목록이고, `catalogs`·`catalogDownload` 로 바꾼다.
 @MainActor
 private func previewLauncher(
   _ inventory: DeviceInventory = .sample,
   configure: (SimulatorClientFake) -> Void = { _ in },
   appBundle configureAppBundle: (AppBundleClientFake) -> Void = { _ in },
-  download configureDownload: (DownloadClientFake) -> Void = { _ in }
+  download configureDownload: (DownloadClientFake) -> Void = { _ in },
+  catalogs: CatalogURLSetting = CatalogURLSetting(urls: [], isLocked: false),
+  catalogDownload configureCatalogDownload: (DownloadClientFake) -> Void = { _ in }
 ) -> LauncherView {
   let fake = SimulatorClientFake(inventory: inventory)
   configure(fake)
@@ -57,7 +94,9 @@ private func previewLauncher(
   download.setDownloadScript(progress: DownloadProgress.example, result: nil)
   download.setDelay(.milliseconds(300))
   configureDownload(download)
-  return LauncherView(model: LauncherModel(simulator: fake, appBundle: appBundle, download: download))
+  let launcher = LauncherModel(simulator: fake, appBundle: appBundle, download: download)
+  let catalogModel = makeCatalogModel(catalogs, installingWith: launcher, catalogDownload: configureCatalogDownload)
+  return LauncherView(model: launcher, catalogModel: catalogModel)
 }
 
 #Preview("목록") {
@@ -221,4 +260,177 @@ extension DownloadedFile {
       mimeType: "text/html"
     )
   }()
+}
+
+#Preview("카탈로그 목록 (앱 설치 → 카탈로그에서…, 쓸 수 없는 주소·같은 카탈로그 섞임)") {
+  previewLauncher(catalogs: .exampleCatalogs)
+}
+
+#Preview("카탈로그 읽는 중 (앱 설치 → 카탈로그에서…, 한 카탈로그가 끝나지 않음)") {
+  previewLauncher(catalogs: .exampleCatalogs, catalogDownload: { $0.suspendFetches(for: ExampleCatalog.otherURL) })
+}
+
+#Preview("한 카탈로그 실패: HTTP 404 (앱 설치 → 카탈로그에서…)") {
+  previewLauncher(
+    catalogs: .exampleCatalogs,
+    catalogDownload: { $0.setFetchResult(.failure(.httpStatus(404)), for: ExampleCatalog.otherURL) }
+  )
+}
+
+/// 관리자가 잠근 목록: 실패 이유의 주소 확인 안내와 쓸 수 없는 주소의 안내가 설정 창 대신 담당자를 가리킨다.
+#Preview("잠긴 목록에서 404 (앱 설치 → 카탈로그에서…)") {
+  previewLauncher(
+    catalogs: CatalogURLSetting(urls: CatalogURLSetting.exampleCatalogs.urls, isLocked: true),
+    catalogDownload: { $0.setFetchResult(.failure(.httpStatus(404)), for: ExampleCatalog.otherURL) }
+  )
+}
+
+#Preview("카탈로그 형식 문제: 새 규격·버전 날짜 (앱 설치 → 카탈로그에서…)") {
+  previewLauncher(catalogs: .exampleCatalogs, catalogDownload: {
+    $0.setFetchResult(.success(ExampleCatalog.newerSchema), for: ExampleCatalog.teamURL)
+    $0.setFetchResult(.success(ExampleCatalog.badCreatedAt), for: ExampleCatalog.otherURL)
+  })
+}
+
+#Preview("등록된 카탈로그 없음 (앱 설치 → 카탈로그에서…, 설정 열기 버튼)") {
+  previewLauncher()
+}
+
+#Preview("관리자가 정한 빈 목록 (앱 설치 → 카탈로그에서…)") {
+  previewLauncher(catalogs: CatalogURLSetting(urls: [], isLocked: true))
+}
+
+#Preview("카탈로그 버전 받기 실패: HTTP 404 (카탈로그에서… → 받아서 설치)") {
+  previewLauncher(
+    download: { $0.setDownloadScript(progress: [], result: .failure(.httpStatus(404))) },
+    catalogs: .exampleCatalogs
+  )
+}
+
+#Preview("카탈로그 버전에서 웹 페이지를 받음 (카탈로그에서… → 받아서 설치)") {
+  previewLauncher(
+    appBundle: { $0.setExtractError(.zipUnreadable) },
+    download: { $0.setDownloadScript(progress: DownloadProgress.example, result: .success(.loginPage)) },
+    catalogs: .exampleCatalogs
+  )
+}
+
+#Preview("카탈로그 버전의 zip 에 .app 없음 (카탈로그에서… → 받아서 설치)") {
+  previewLauncher(appBundle: { $0.setExtractError(.zipWithoutApp) }, catalogs: .exampleCatalogs)
+}
+
+extension CatalogURLSetting {
+  /// 카탈로그 2개, http 주소(쓸 수 없는 주소), 첫 카탈로그와 같은 카탈로그(한 번만 읽고 보이지 않는다).
+  static let exampleCatalogs = CatalogURLSetting(
+    urls: [
+      "https://builds.example.com/ios/catalog.json",
+      "https://cdn.example.org/team/catalog.json",
+      "http://builds.example.com/ios/catalog.json",
+      "HTTPS://BUILDS.EXAMPLE.COM:443/ios/catalog.json",
+    ],
+    isLocked: false
+  )
+}
+
+/// 카탈로그 받기가 돌려줄 내용 (docs/CATALOG.md).
+enum ExampleCatalog {
+  static let teamURL = DownloadURL("https://builds.example.com/ios/catalog.json")!
+  static let otherURL = DownloadURL("https://cdn.example.org/team/catalog.json")!
+
+  /// 버전이 셋(태그·브랜치·빌드 번호를 섞음)인 앱과 버전이 없는 앱.
+  static let team = Data("""
+  {
+    "schemaVersion": 1,
+    "apps": [
+      {
+        "id": "sample-app",
+        "name": "Sample",
+        "versions": [
+          {
+            "id": "build-41",
+            "name": "1.2.0 (41)",
+            "tag": "v1.2.0",
+            "buildNumber": "41",
+            "createdAt": "2026-10-14T02:00:00Z",
+            "buildURL": "https://builds.example.com/sample-41.zip"
+          },
+          {
+            "id": "build-43",
+            "name": "1.3.0 beta (43)",
+            "branch": "feature/login",
+            "buildNumber": "43",
+            "createdAt": "2026-10-21T09:30:00Z",
+            "buildURL": "https://builds.example.com/sample-43.zip"
+          },
+          {
+            "id": "build-42",
+            "name": "1.3.0 beta (42)",
+            "branch": "main",
+            "buildNumber": "42",
+            "createdAt": "2026-10-21T04:08:49Z",
+            "buildURL": "https://builds.example.com/sample-42.zip"
+          }
+        ]
+      },
+      { "id": "empty-app", "name": "Empty", "versions": [] }
+    ]
+  }
+  """.utf8)
+
+  /// 첫 카탈로그와 같은 앱 id 를 쓰는 다른 카탈로그 (합치지 않고 따로 보인다).
+  static let other = Data("""
+  {
+    "schemaVersion": 1,
+    "apps": [
+      {
+        "id": "sample-app",
+        "name": "Sample (QA)",
+        "versions": [
+          {
+            "id": "qa-7",
+            "name": "1.3.0 QA 7",
+            "tag": "qa-7",
+            "createdAt": "2026-10-20T08:00:00+09:00",
+            "buildURL": "https://cdn.example.org/team/sample-qa-7.zip"
+          }
+        ]
+      },
+      {
+        "id": "tool-app",
+        "name": "Tool",
+        "versions": [
+          {
+            "id": "1",
+            "name": "0.1",
+            "createdAt": "2026-09-01T00:00:00Z",
+            "buildURL": "https://cdn.example.org/team/tool-1.zip"
+          }
+        ]
+      }
+    ]
+  }
+  """.utf8)
+
+  static let newerSchema = Data(#"{ "schemaVersion": 2, "apps": [] }"#.utf8)
+
+  /// 첫 앱의 첫 버전 날짜에 시간대가 없다.
+  static let badCreatedAt = Data("""
+  {
+    "schemaVersion": 1,
+    "apps": [
+      {
+        "id": "sample-app",
+        "name": "Sample",
+        "versions": [
+          {
+            "id": "build-42",
+            "name": "1.0 (42)",
+            "createdAt": "2026-10-21T04:08:49",
+            "buildURL": "https://builds.example.com/sample-42.zip"
+          }
+        ]
+      }
+    ]
+  }
+  """.utf8)
 }
