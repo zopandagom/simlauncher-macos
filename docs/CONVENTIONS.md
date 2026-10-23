@@ -16,7 +16,7 @@
 | 화면 코드는 Feature·DesignSystem 에 둔다 | Core 에서 `import SwiftUI`, `import UIKit`, `import AppKit` | `core_no_ui_framework` |
 | 부수효과 프레임워크(lint `system_framework_only_in_impl` 목록) 밖의 부수효과 없는 Apple 프레임워크(CoreGraphics·ImageIO 등)는 Core 를 포함한 모든 레이어에서 쓴다 | 의존 규칙을 지키려고 변환·재인코딩 같은 실행 비용을 들이기 | |
 | 사용자 설정 저장(읽기·쓰기)은 Preferences Client 로 한다. `@SceneStorage` 같은 View 일시 상태(ARCHITECTURE §1 규칙 8)는 저장이 아니라 그대로 쓴다 | Feature·App·다른 Client(Preferences 의 Interface·Testing·Tests 포함)에서 `UserDefaults`·`@AppStorage`·`CFPreferences*`·`NSUbiquitousKeyValueStore` 직접 사용 | `preferences_only_in_preferences_impl` (`UserDefaults`·`NSUserDefaults*`·`CFPreferences*`·`NSUbiquitousKeyValueStore`·`AppStorage` 식별자만 잡는다. `defaults` 명령 실행은 `process_only_in_command_impl`) |
-| 새 모듈은 `Module.swift` 의 enum 과 `Project.client/feature/shared` 템플릿으로 | 매니페스트에서 `Target` 을 직접 만들거나 빌드 설정을 덮어쓰기 | |
+| 새 모듈은 `Module.swift` 의 enum 과 `Project.client/feature/shared` 템플릿으로. `Examples/` 의 샘플 앱(카탈로그 예시 워크플로가 빌드하는 iOS 앱)은 앱 모듈이 아니라 템플릿 밖의 독립 매니페스트로 둔다 (ARCHITECTURE §2 "빌드 설정") | `Projects/` 매니페스트에서 `Target` 을 직접 만들거나 빌드 설정을 덮어쓰기 | |
 
 ## 2. Swift / 동시성
 | ✅ | ❌ |

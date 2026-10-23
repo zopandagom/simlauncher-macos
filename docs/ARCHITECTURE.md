@@ -122,6 +122,7 @@ flowchart TD
 - 설정은 `Tuist/ProjectDescriptionHelpers/Project+Templates.swift` 의 `Env` 에서만 바꾼다. 개별 매니페스트에서 덮어쓰지 않는다.
 - 서명: 모든 타깃이 Xcode 자동 서명(`CODE_SIGN_STYLE=Automatic`)과 `Env.developmentTeam` 팀을 쓴다. 배포 빌드는 Xcode 가 인증서·프로파일을 관리한다(팀 ID 필요). 팀이 비어 있으면 이 Mac 에서 실행할 때만 ad-hoc 서명으로 돌고, `make build`/`make test` 와 CI 는 `CODE_SIGNING_ALLOWED=NO` 로 서명 없이 빌드한다.
 - 타깃 소스·리소스는 Xcode 동기화 폴더(`buildableFolders`)로 연결한다. 리소스가 없는 모듈의 폴더와 Tests 폴더(테스트 번들이 리소스를 직접 담는다)는 파일을 추가·삭제해도 다시 생성하지 않고 Xcode 와 빌드에 반영된다. 리소스가 있는 모듈(String Catalog 가 있는 Feature 등)은 static framework 라 Tuist 가 같은 폴더를 쓰는 리소스 번들 타깃(`<모듈>_<모듈>`)을 만들고, 생성할 때 있던 Swift 파일만 그 타깃에서 빼 둔다(pbxproj 의 `membershipExceptions`). 그래서 이런 모듈의 소스 폴더에 Swift 파일을 추가하면 `make project` 를 다시 돌린다. 돌리지 않으면 새 파일이 번들 타깃에서도 컴파일되어 `Unable to resolve module dependency` 로 빌드가 깨진다. 그 밖에 모듈·타깃·의존성을 바꿀 때와, 리소스가 없던 모듈에 첫 리소스(String Catalog 등)를 넣을 때도 다시 돌린다 (리소스 번들 타깃과 `Bundle.module` 접근자는 생성할 때 만들어진다).
+- 예외: `Examples/SampleApp` 은 모듈이 아니라 카탈로그 예시 워크플로(`.github/workflows/sample-catalog.yml`, docs/CATALOG.md 11절)가 빌드하는 샘플 iOS 앱이다. 워크스페이스(`Workspace.swift` 의 `Projects/**`)·`make test` 밖의 독립 Tuist 프로젝트라 이 절의 static framework·Mac 전용·macOS 26.0+·`Env`·자동 서명 설정을 따르지 않는다: iOS 17.0+ iPhone·iPad 앱이고, 설정은 `Env` 를 쓰지 않는 자기 매니페스트(`Examples/SampleApp/Project.swift`)에 두고, 서명 없이(`CODE_SIGNING_ALLOWED=NO`) 시뮬레이터용으로만 빌드한다(`make sample`). Swift 6 언어 모드·`SWIFT_STRICT_CONCURRENCY=complete`·동기화 폴더·개발 언어 `ko`(§4)는 따른다.
 
 ## 3. 모듈 추가 방법
 
