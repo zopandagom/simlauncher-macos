@@ -36,6 +36,9 @@ make generate    # SimLauncher.xcworkspace 생성 후 Xcode 로 열기
 make test        # 전체 모듈 빌드 + 테스트 + git 훅 테스트
 make test-hooks  # git 훅 동작 테스트만 (임시 레포에서 main 커밋·머지 커밋·push 차단, String Catalog stale 표시 커밋 차단과 기능 브랜치 통과 확인)
 make lint        # 포맷·아키텍처 규칙 검사 (make format 으로 자동 수정)
+make sample      # 샘플 iOS 앱을 시뮬레이터용으로 빌드해 build/SampleApp.zip 으로 묶기 (SAMPLE_BUILD_NUMBER=42 로 빌드 번호)
+make catalog-check CATALOG=catalog.json   # catalog.json 하나를 앱과 같은 규칙으로 검사
+make catalog-test  # 샘플 카탈로그 생성기·검증기 회귀 테스트
 ```
 
 ## 문서
