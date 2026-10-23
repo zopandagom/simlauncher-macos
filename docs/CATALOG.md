@@ -141,7 +141,7 @@ https://github.com/zopandagom/simlauncher-macos/releases/download/sample-catalog
 ```
 
 - 실행: Actions > Sample Catalog > Run workflow 를 **main 에서** 누른다(`workflow_dispatch` 만, 손으로 실행). 워크플로 파일이 기본 브랜치에 있어야 실행할 수 있다. 워크플로 파일이 main 과 다른 브랜치에서 실행하면 GitHub 이 기본 토큰으로 하는 릴리스 생성을 거절한다(draft 릴리스가 남을 수 있다. 카탈로그에는 영향이 없고 손으로 지운다).
-- 흐름: `build` 잡(읽기 권한)이 `make sample` 로 시뮬레이터용 .app 을 빌드해(빌드 번호 = 실행 번호) `SampleApp.zip` 으로 묶고, `publish` 잡(쓰기 권한, 쓰기 토큰은 게시 단계에만)이 넘겨받아:
+- 흐름: `build` 잡(읽기 권한)이 `make sample` 로 시뮬레이터용 .app 을 빌드해(빌드 번호 = 실행 번호) `SampleApp.zip` 으로 묶고, `publish` 잡(쓰기 권한. 쓰기 토큰은 빌드 릴리스 게시·카탈로그 생성(릴리스 목록 조회와 `sample-catalog.sh`·`jq` 실행)·카탈로그 게시 세 단계의 env 에만 두어, 그 단계 안의 명령이 모두 받는다)이 넘겨받아:
   1. 빌드 릴리스: 태그 `sample-build-<run_id>` 의 prerelease 릴리스에 `SampleApp.zip` 하나를 올린다. 이름은 `<버전> (<빌드 번호>)`, 본문에 `branch: …`·`buildNumber: …` 줄.
   2. 카탈로그 생성: 이전 `catalog.json` 을 읽지 않고, 릴리스 목록에서 태그가 `sample-build-<숫자>` 이고 draft 가 아니며 `SampleApp.zip` 이 다 올라간 릴리스마다 버전 하나를 처음부터 만든다([`.github/scripts/sample-catalog.sh`](../.github/scripts/sample-catalog.sh)). 버전 id·tag 는 태그, `createdAt` 은 릴리스 게시 시각(`published_at`. `created_at` 은 태그 커밋 시각이라 쓰지 않는다), `buildURL` 은 `releases/download/<태그>/SampleApp.zip`.
   3. 게시 전 검증: 앱과 같은 규칙(Core `BuildCatalog`·5 MiB, `make catalog-check`)과 모든 `buildURL` 이 태그 고정 주소인지, 이번 빌드가 들었는지 본다. 하나라도 어긋나면 올리지 않는다.
