@@ -28,11 +28,11 @@ flowchart TD
 |---|---|---|
 | 1 | Model 의 상태 프로퍼티는 모두 `public private(set) var` | 리뷰 |
 | 2 | View 는 Model 의 **이벤트 메서드**만 호출한다. 이름은 "무슨 일이 일어났는가"로 짓는다: `onAppear()`, `startButtonTapped()`, `queryChanged(_:)` | 리뷰 |
-| 3 | 입력 컨트롤은 `Binding(get: { model.query }, set: { model.queryChanged($0) })` 으로 연결한다. `$model.query` 금지 | `no_two_way_model_binding` |
+| 3 | 입력 컨트롤은 `Binding(get: { model.query }, set: { model.queryChanged($0) })` 으로 연결한다. `$model.query`·`$catalogModel.query` 처럼 Model 프로퍼티의 `$` 바인딩 금지 | `no_two_way_model_binding` (`$model.`·`$…Model.` 을 잡는다) |
 | 4 | 부수효과(권한, 저장, 알림, 결제)는 Model 메서드 안에서 Client 를 통해서만 실행한다. View 에서 `Task { UNUserNotificationCenter… }` 금지 | `system_framework_only_in_impl`, `preferences_only_in_preferences_impl`(사용자 설정 저장) |
 | 5 | Model 은 `@MainActor`, Client 가 주고받는 값은 `Sendable`. 비 Sendable 프레임워크 객체는 식별자나 Core 의 `Sendable` 값 타입으로 바꿔서 넘긴다 | 컴파일러 (Swift 6 strict) |
 | 6 | Model 끼리 직접 참조하지 않는다. 화면 간 흐름은 App 이 조립하거나 공유 Client 를 거친다 | 모듈 경계 |
-| 7 | Model 은 App(또는 Example 앱)이 `@State` 로 **소유**하고, View 는 `let model: XxxModel` 로 **참조**만 한다. View 안에서 Model 을 생성하거나 `@State` 로 다시 감싸지 않는다 | 리뷰 |
+| 7 | Model 은 App(또는 Example 앱)이 `@State` 로 **소유**하고, View 는 `let model: XxxModel` 로 **참조**만 한다. View 안에서 Model 을 생성하거나 `@State` 로 다시 감싸지 않는다. 한 View 가 Model 을 둘 받을 수 있다(예: `LauncherView(model:catalogModel:)`). View 의 Model 프로퍼티 이름은 `model` 또는 `…Model` 로 짓는다(lint `no_two_way_model_binding` 이 그 이름으로 잡는다) | 리뷰 |
 | 8 | View 전용 일시 상태(애니메이션, 포커스, 시트 표시 여부)는 View 의 `@State private var` 로 둬도 된다. 화면에만 걸린 시스템 UI 설정(예: 자동 잠금 끄기 `isIdleTimerDisabled`)도 View 가 맡는다. 저장·외부로 남지 않고 화면을 떠나면 되돌리므로 규칙 4 의 부수효과가 아니다. 비즈니스 의미가 있으면 Model 로 옮긴다 | 리뷰 |
 
 같은 화면의 상태(기기 목록·진행 작업·알림)를 함께 쓰는 흐름은 하위 Model 로 나누지 않고, 공유 상태와 규칙을 Feature 의 값 타입(예: `LauncherNotices`·`DeviceActivity`(기기별 진행 작업과 URL 설치의 받기 단계))으로 떼어 별도 파일에 둔다. 다른 흐름과 공유하지 않는 독립 상태(예: 생성 시트 초안 `DeviceCreationDraft`, URL 설치 시트 초안 `InstallURLDraft`)도 값 타입으로 둔다. Model 은 그 값을 `public private(set) var` 로 갖고 mutating 메서드만 부른다 (View 는 setter 가 없어 부를 수 없다). `private(set)` 은 같은 파일에서만 바꿀 수 있으므로 Model 의 async 흐름은 Model 파일에 둔다. 상태를 바꾸지 않는 읽기 전용 계산 프로퍼티는 Model 의 다른 파일 extension 에 둘 수 있다 (`private(set)` 은 쓰기만 막는다). 레포 전체의 lint `file_length` 경고 기준은 600 줄이다 (`.swiftlint.yml`. 한 화면에 흐름이 많은 Launcher Model 이 500 줄을 넘기 때문).
