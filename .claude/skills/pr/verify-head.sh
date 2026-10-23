@@ -3,7 +3,11 @@
 # 중간 커밋은 의미 단위로 나눠 빌드가 깨질 수 있으므로 검사하지 않는다 (docs/CONVENTIONS.md §5).
 # /pr 이 push 직전에 실행한다.
 # 사용: verify-head.sh [base]   (기본: origin/main)
-#   - 빌드에 영향을 주는 파일: make lint && make test
+#   - 빌드에 영향을 주는 파일(Projects/·Tuist/·Workspace.swift·Tuist.swift·Makefile·.mise.toml·.swiftlint.yml·.swiftformat): make lint && make test
+#   - 샘플 앱(Examples/)과 .github/scripts 의 Swift(카탈로그 검증기): make lint
+#   - 샘플 앱과 그 빌드 도구(Examples/·Makefile·.mise.toml·Tuist.swift·Tuist/): make sample
+#   - 카탈로그 생성기·검증기·픽스처(.github/scripts)와 검증기가 컴파일하는 Core 소스, Makefile: make catalog-test
+#   - 같은 검사는 한 번만, 순서는 lint → test → sample → catalog-test
 #   - .githooks/: make test-hooks
 #   - .claude/settings.json: JSON 문법
 #   - .github 의 YAML 파일(워크플로·dependabot): YAML 문법
@@ -21,8 +25,13 @@ git rev-parse --verify -q "$base^{commit}" >/dev/null || { echo "base 를 찾을
 subject=$(git log -1 --format='%h %s' HEAD)
 files=$(git diff --name-only "$base"...HEAD)
 build_paths='^(Projects/|Tuist/|Workspace\.swift|Tuist\.swift|Makefile|\.mise\.toml|\.swiftlint\.yml|\.swiftformat)'
+sample_paths='^(Examples/|Makefile|\.mise\.toml|Tuist\.swift|Tuist/)'
+catalog_paths='^(\.github/scripts/(validate-catalog\.swift|sample-catalog\.sh|Fixtures/)|Projects/Shared/Core/Sources/|Makefile)'
 checks=()
-grep -Eq "$build_paths" <<<"$files" && checks+=("make lint" "make test")
+grep -Eq "$build_paths|^Examples/|^\.github/scripts/.*\.swift$" <<<"$files" && checks+=("make lint")
+grep -Eq "$build_paths" <<<"$files" && checks+=("make test")
+grep -Eq "$sample_paths" <<<"$files" && checks+=("make sample")
+grep -Eq "$catalog_paths" <<<"$files" && checks+=("make catalog-test")
 grep -q '^\.githooks/' <<<"$files" && checks+=("make test-hooks")
 grep -q '^\.claude/settings\.json$' <<<"$files" && checks+=("jq empty .claude/settings.json")
 grep -Eq '^\.github/.*\.ya?ml$' <<<"$files" &&
