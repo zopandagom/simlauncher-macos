@@ -49,12 +49,13 @@ test: project
 test-hooks:
 	./.githooks/test-hooks.sh
 
+# SwiftFormat 은 숨김 폴더(.github)를 순회하지 않아 그 안의 Swift 가 든 폴더를 경로로 넘긴다. SwiftLint 는 순회한다.
 lint:
-	$(MISE) swiftformat --lint .
+	$(MISE) swiftformat --lint . .github/scripts
 	$(MISE) swiftlint lint --strict --quiet
 
 format:
-	$(MISE) swiftformat .
+	$(MISE) swiftformat . .github/scripts
 	$(MISE) swiftlint lint --fix --quiet
 
 ## 샘플 iOS 앱을 시뮬레이터용(arm64·x86_64, 서명 없음)으로 빌드해 build/SampleApp.zip 으로 묶는다. 빌드 번호: SAMPLE_BUILD_NUMBER=42 make sample
