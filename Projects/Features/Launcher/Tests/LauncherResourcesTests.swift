@@ -63,7 +63,22 @@ struct LauncherResourcesTests {
     keys.formUnion(confirmationKeys)
     keys.formUnion([osKey, bothKey, receivedKey])
     keys.formUnion(httpKeys.map(\.key))
+    keys.formUnion(Self.checkCatalogTexts(in: table))
     #expect(keys == Set(table.keys))
+  }
+
+  /// 카탈로그에서 설치 문구(`CatalogTextCatalog` 의 76개)가 표에 있고, 표의 값(보간 키는 인자를 넣은 값)이 코드 결과와 같은지 보고
+  /// 그 키를 돌려준다.
+  static func checkCatalogTexts(in table: [String: String]) -> Set<String> {
+    var checks = CatalogTextCatalog.checks(table)
+    checks += CatalogTextCatalog.fragmentChecks(table)
+    for check in checks {
+      #expect(table[check.key] == check.key, "\(check.key)")
+      #expect(check.actual == check.expected, "\(check.key)")
+    }
+    let keys = Set(checks.map(\.key))
+    #expect(keys.count == 76)
+    return keys
   }
 }
 

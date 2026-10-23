@@ -6,7 +6,7 @@
 | ✅ 해야 할 것 | ❌ 하지 말아야 할 것 | 강제 |
 |---|---|---|
 | Model 상태는 `public private(set) var` | View 나 다른 타입이 Model 상태를 직접 대입 | 컴파일러 |
-| View 는 이벤트 메서드(`onAppear()`, `xxxTapped()`, `xxxChanged(_:)`)만 호출 | `$model.x` 양방향 바인딩 | `no_two_way_model_binding` |
+| View 는 이벤트 메서드(`onAppear()`, `xxxTapped()`, `xxxChanged(_:)`)만 호출. View 의 Model 프로퍼티 이름은 `model` 또는 `…Model` (ARCHITECTURE §1 규칙 7) | `$model.x`·`$catalogModel.x` 처럼 Model 프로퍼티의 양방향 바인딩 | `no_two_way_model_binding` (`$model.`·`$…Model.` 을 잡는다) |
 | 외부 시스템은 Client 로 감싸고 Interface / Impl / Testing 으로 나눈다 | Feature 에서 `import SwiftData`, `import StoreKit`, `import UserNotifications` 등 | `system_framework_only_in_impl` |
 | Impl 은 App 에서만 만들어 주입 | Feature·Interface·Testing 이나 다른 Client 의 Impl 에서 `import …Impl` (Impl 이 다른 Client 를 조합할 때는 그 Interface 만) | `impl_import_only_in_app` |
 | Fake 는 Testing 모듈에 두고 Tests·Example 에서만 사용 | 프로덕션 코드에서 `import …Testing` | `testing_import_not_in_production` |
@@ -36,6 +36,7 @@
 | Client Impl 은 순수 로직(매핑, 파싱)을 분리해 `@testable` 로 테스트. 여러 Client 결과를 받아 판단하는 규칙은 Core 순수 함수로 두고 테스트 | 실제 기기 데이터·권한 팝업에 의존하는 테스트 |
 | 기기·OS 에 따라 동작이 다른 기능(Foundation Models 등)의 테스트는 `.enabled(if:)` 로 조건부 | CI 에서 기능이 없다고 실패하는 테스트 |
 | 픽스처는 직접 만든 샘플만 `Fixtures/` 에 | 개인 데이터를 픽스처로 커밋 |
+| 다른 Feature 와 같은 키·값으로 둔 문구 조각은 한쪽 Feature 의 동기화 테스트로 묶는다 (`#filePath` 로 다른 쪽 원본 `Localizable.xcstrings` 를 읽어 자기 문구 함수의 결과와 비교, ARCHITECTURE §4 화면 문자열 행) | 같은 조각을 한쪽 Feature 에서만 고치기 |
 | 실패하는 테스트는 고친다 | 테스트 삭제·`.disabled` 로 통과시키기 (필요하면 먼저 합의) |
 | 사용자와 합의해 미룬 알려진 오분류·누락은 원하는 동작을 `withKnownIssue("이유")` 로 감싸 남긴다. 지울 시점(예: 그 문제를 다룰 작업)을 주석에 적고, PR 본문 "검증 · 리뷰"에 `합의(withKnownIssue): 이유, 지울 시점` 으로 적는다 (리뷰 지적의 처리가 아니다, §5 "리뷰 지적 처리") | 합의 없이 `withKnownIssue` 로 실패를 감추기 |
 
@@ -48,7 +49,7 @@
 | 서드파티 SDK 는 합의 후에만 | 분석·크래시 SDK 를 합의 없이 추가 | |
 | 권한은 필요한 시점에 요청하고 거부·제한도 정상 흐름으로 처리 | 앱 시작 즉시 권한 팝업 | |
 | 비개발자가 앱 화면만으로 시뮬레이터 실행과 앱 설치·실행을 끝낼 수 있게 한다. 실패는 원인과 다음 할 일을 화면에 보여 준다 | 터미널 명령 입력이나 Xcode 조작을 사용자에게 요구 (Xcode 설치·라이선스 동의·첫 실행 준비 안내는 예외), `simctl` 출력 원문만 보여 주기 | |
-| 네트워크는 사용자가 등록한 카탈로그(등록할 때 한 번 받아 형식을 확인하는 것 포함)와 사용자가 고르거나 입력한 빌드 URL 을 내려받을 때, 사용자가 설치를 고를 때 쓸 Xcode 의 기본 iOS 시뮬레이터 런타임을 Apple 서버에서 설치할 때(`xcodebuild -downloadPlatform iOS`, 버전 지정 없음)만 쓴다. 카탈로그·빌드 다운로드는 Download Client Impl 에 두고 Feature(Launcher 의 URL 설치, Settings 의 카탈로그 등록 확인)는 `DownloadClient` 를 주입받는다. 런타임 설치는 DevEnvironment Client Impl 에 둔다 | 그 밖의 서버로 데이터 전송, Download Client Impl 밖(Feature·Core·다른 Client·Download 의 Interface·Testing·Tests)에서 `URLSession`·`NWConnection` 등 네트워크 API 직접 사용 | `network_only_in_download_impl` (`URLSession*`·`NSURLSession*`·`NSURLConnection`·`NWConnection`·`NWListener`·`NWBrowser`·`NWPathMonitor` 식별자만 잡는다. 원격 URL 을 받는 API(`Data`·`String`·`NSData`·`XMLParser` 등의 `contentsOf:` 이니셜라이저, `URL.resourceBytes`·`URL.lines`)와 WebKit 은 리뷰) |
+| 네트워크는 사용자가 등록한 카탈로그(설정 창에서 등록할 때 한 번 받아 형식을 확인하는 것과 카탈로그에서 설치 시트를 열 때·새로 고칠 때 받는 것)와 사용자가 고르거나 입력한 빌드 URL 을 내려받을 때, 사용자가 설치를 고를 때 쓸 Xcode 의 기본 iOS 시뮬레이터 런타임을 Apple 서버에서 설치할 때(`xcodebuild -downloadPlatform iOS`, 버전 지정 없음)만 쓴다. 카탈로그·빌드 다운로드는 Download Client Impl 에 두고 Feature(Launcher 의 URL 설치·카탈로그에서 설치, Settings 의 카탈로그 등록 확인)는 `DownloadClient` 를 주입받는다. 런타임 설치는 DevEnvironment Client Impl 에 둔다 | 그 밖의 서버로 데이터 전송, Download Client Impl 밖(Feature·Core·다른 Client·Download 의 Interface·Testing·Tests)에서 `URLSession`·`NWConnection` 등 네트워크 API 직접 사용 | `network_only_in_download_impl` (`URLSession*`·`NSURLSession*`·`NSURLConnection`·`NWConnection`·`NWListener`·`NWBrowser`·`NWPathMonitor` 식별자만 잡는다. 원격 URL 을 받는 API(`Data`·`String`·`NSData`·`XMLParser` 등의 `contentsOf:` 이니셜라이저, `URL.resourceBytes`·`URL.lines`)와 WebKit 은 리뷰) |
 | 내려받는 URL 은 HTTPS 만 허용하고(리다이렉트도 https 로만 따라간다), 받기 전에 Content-Length 와 디스크 여유를 비교하고, 받다가 디스크가 차면 받은 것을 지운다. 압축을 풀 때 모든 항목이 대상 폴더 안에 있는지 확인한다. 풀기 전 목록(zipinfo) 검사로 빨리 거절하고, 판정은 푼 뒤 실제 파일(심볼릭 링크는 실제 경로)로 한다. 풀기 전에 선언된 크기와 디스크 여유를 비교하고, 풀다가 디스크가 차면 푼 것을 지운다 | `http://` 다운로드, http 로 리다이렉트 따라가기, 경로(`../`·절대 경로·심볼릭 링크)가 대상 폴더를 벗어나는 zip 풀기 | |
 | 특정 회사 인프라(서버 주소·인증 방식)를 코드에 넣지 않는다. 연결 정보는 사용자 설정으로 받는다 | 기본 카탈로그 URL·사내 주소 하드코딩 | |
 | `Process` 생성·호출(명령 실행)과 프로세스 신호(`kill`)는 Command Client Impl 에만 둔다. `xcrun simctl`·`ditto`·`zipinfo`·`xcodebuild` 같은 명령의 인자 구성·결과 해석은 그 일을 맡은 Client Impl 이 하고, 실행·취소는 주입받은 `CommandClient`(`run`·`runCancellable`, ARCHITECTURE §4)로 한다. Command Client 는 Client Impl 만 조합해 쓴다 | Feature·Core·다른 Client Impl 에서 `Process` 생성·호출이나 `kill`, Feature 가 Command Client 에 의존 | `process_only_in_command_impl` (`Process(`·`Process.` 형태만 잡는다. `let p: Process = .init()` 같은 형태와 `kill(` 은 리뷰) |

@@ -8,6 +8,7 @@ import SimulatorInterface
 /// 기기 목록 화면의 상태와 로직. iOS 시뮬레이터 기기 목록을 읽고, 기기를 켜고 끄며(켠 뒤 Simulator 앱을 연다),
 /// 만들고 지우고 초기화한다. 고른 .app 이나 .app 을 담은 zip 을(풀어서), 또는 입력한 https 주소의 zip 을 받아 풀어서
 /// 기기에 설치하고 바로 실행하며, 입력한 링크(딥링크·웹 주소)를 기기에서 연다 (모두 꺼져 있으면 켠다).
+/// 카탈로그에서 설치 시트(`CatalogInstallModel`)가 고른 버전은 App 이 `catalogInstallRequested(_:)` 로 넘겨 같은 받기 경로로 설치한다.
 /// Xcode 준비와 iOS 시뮬레이터 설치는 여기서 하지 않고, Setup 진입 버튼으로 App 에 Setup 화면을 요청한다.
 /// 상태를 바꾸지 않는 읽기 API(`canCreateDevice` 등)는 `LauncherModel+Reading.swift` 에 있다.
 @MainActor
@@ -438,8 +439,24 @@ public extension LauncherModel {
     guard let draft = self.installURLDraft, let url = draft.url else { return }
     // 첫 await 전에 닫아, 연타해도 두 번째 호출은 위에서 끝난다.
     self.installURLDraft = nil
-    let label = draft.device
-    let target = AppInstallTarget.current(draft.deviceID, in: self.listState)
+    await self.installDownload(url, on: draft.deviceID, label: draft.device, origin: .enteredURL)
+  }
+
+  /// 카탈로그에서 설치 시트가 고른 버전 (App 이 `CatalogInstallModel` 의 설치 요청을 넘긴다). 시트를 연 사이 바뀌었을 수 있어
+  /// 지금 목록으로 기기를 다시 확인하고, URL 에서 설치와 같은 경로로 받아 설치한다. 받기·받은 파일 실패 알림은 출처 `.catalog` 로
+  /// 만든다 (어느 원인이 카탈로그 문맥 문구인지는 `LauncherText+CatalogInstall.swift`).
+  func catalogInstallRequested(_ request: CatalogInstallRequest) async {
+    await self.installDownload(request.buildURL, on: request.deviceID, label: request.device, origin: .catalog)
+  }
+
+  /// 대상 기기를 지금 목록으로 확인 → 받기 → 풀기 → 받은 파일 지우기 → 검사·설치·실행. `origin` 은 받기·받은 파일 실패 문구만 고른다.
+  private func installDownload(
+    _ url: DownloadURL,
+    on id: VirtualDevice.ID,
+    label: LauncherNotice.Device,
+    origin: DownloadOrigin
+  ) async {
+    let target = AppInstallTarget.current(id, in: self.listState)
     guard case let .ready(device) = target else {
       if let failure = target.installFailure {
         self.enqueue(.installFailed(label, failure))
@@ -450,7 +467,7 @@ public extension LauncherModel {
     // 시작과 받기 Task 저장 사이에 await 를 두지 않는다 (취소가 Task 를 놓치지 않게).
     guard self.activity.beginDownload(on: device) else { return }
     defer { self.activity.end(on: device.id) }
-    guard let file = await self.runDownload(url, on: device.id, label: label) else { return }
+    guard let file = await self.runDownload(url, on: device.id, label: label, origin: origin) else { return }
     self.activity.downloadEnded(on: device.id)
     // 받는 동안 기기가 목록에서 사라졌으면(외부 삭제, 드묾) 풀지 않는다. 켜는 중 같은 상태는 검사 뒤 판정에 맡긴다.
     if case .notFound = AppInstallTarget.current(device.id, in: self.listState) {
@@ -460,7 +477,7 @@ public extension LauncherModel {
     }
     let mimeType = file.mimeType
     let extracted = await self.extract(file.file, label: label) { error in
-      AppInstallFailure.downloaded(error, mimeType: mimeType)
+      AppInstallFailure.downloaded(error, mimeType: mimeType, from: origin)
     }
     // 푼 뒤에는 받은 파일이 필요 없다. 설치 명령이 푼 .app 을 기기로 복사하기 전에 지워 디스크를 덜 쓴다.
     await self.download.removeDownloaded(file)
@@ -481,7 +498,8 @@ public extension LauncherModel {
   private func runDownload(
     _ url: DownloadURL,
     on id: VirtualDevice.ID,
-    label: LauncherNotice.Device
+    label: LauncherNotice.Device,
+    origin: DownloadOrigin
   ) async -> DownloadedFile? {
     let download = self.download
     let onProgress: @Sendable (DownloadProgress) async -> Void = { progress in
@@ -504,7 +522,7 @@ public extension LauncherModel {
       return file
     case let .failure(error):
       // 취소를 누르지 않았는데 온 `.cancelled` 도 이유 없이 행만 돌아가지 않게 알린다 (코드상 나오지 않는다).
-      self.enqueue(.installFailed(label, .download(error)))
+      self.enqueue(.installFailed(label, .download(error, from: origin)))
       return nil
     }
   }

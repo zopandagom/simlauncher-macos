@@ -6,6 +6,8 @@ import UniformTypeIdentifiers
 /// 화면 문자열은 `LauncherText` 가 이 모듈의 `Localizable.xcstrings` 에서 찾는다.
 public struct LauncherView: View {
   let model: LauncherModel
+  /// 카탈로그에서 설치 시트. 기기 목록 상태를 함께 쓰지 않아 따로 둔 Model 이다 (App 이 소유한다).
+  let catalogModel: CatalogInstallModel
   /// 지금 띄운 알림. 닫히는 동안 Model 의 줄에서 빠져도 글자가 비지 않도록 View 가 들고 있는다.
   @State private var presentedNotice: LauncherNoticeItem?
   /// 알림을 띄웠는지. 다음 알림을 띄울 때 false → true 전이가 생기도록 Model 의 줄과 따로 둔다.
@@ -16,8 +18,9 @@ public struct LauncherView: View {
   @State private var importDeviceID: VirtualDevice.ID?
   @State private var isImporterPresented = false
 
-  public init(model: LauncherModel) {
+  public init(model: LauncherModel, catalogModel: CatalogInstallModel) {
     self.model = model
+    self.catalogModel = catalogModel
   }
 
   public var body: some View {
@@ -100,7 +103,8 @@ public struct LauncherView: View {
       ) {
         DeviceCreationSheet(model: self.model)
       }
-      // 생성·링크·URL 설치 시트는 같은 체인에 둔다. Model 이 둘 이상 함께 열리지 않게 막는다.
+      // 생성·링크·URL 설치·카탈로그 시트는 같은 체인에 둔다. 앞의 셋은 Model 이 둘 이상 함께 열리지 않게 막고, 카탈로그 시트는
+      // 다른 Model 이라 시트가 창을 막는 모달과 행 메뉴의 비활성에 기댄다.
       .sheet(
         isPresented: Binding(
           get: { self.model.openURLDraft != nil },
@@ -124,6 +128,18 @@ public struct LauncherView: View {
         )
       ) {
         InstallURLSheet(model: self.model)
+      }
+      .sheet(
+        isPresented: Binding(
+          get: { self.catalogModel.draft != nil },
+          set: { isPresented in
+            if !isPresented {
+              self.catalogModel.sheetDismissed()
+            }
+          }
+        )
+      ) {
+        CatalogInstallSheet(model: self.catalogModel)
       }
       .confirmationDialog(
         LauncherText.confirmationTitle(for: self.model.pendingConfirmation ?? self.presentedConfirmation),
@@ -291,6 +307,9 @@ extension LauncherView {
               },
               installFromURLTapped: {
                 self.model.installFromURLMenuTapped(device.id)
+              },
+              installFromCatalogTapped: {
+                Task { await self.catalogModel.menuTapped(device) }
               },
               cancelDownloadTapped: {
                 self.model.downloadCancelTapped(device.id)

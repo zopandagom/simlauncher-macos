@@ -3,7 +3,7 @@ import DownloadInterface
 import Foundation
 import SwiftUI
 
-/// 기기 한 줄: 종류 아이콘, 이름, 상태, 앱 설치 메뉴(파일에서 고르기… / URL 에서…)와 드롭, 링크 열기 버튼(시트),
+/// 기기 한 줄: 종류 아이콘, 이름, 상태, 앱 설치 메뉴(파일에서 고르기… / URL 에서… / 카탈로그에서…)와 드롭, 링크 열기 버튼(시트),
 /// 켜기·끄기 버튼(받는 중이면 진행 막대와 받기 취소 버튼), 기기 작업 메뉴(… 버튼과 컨텍스트 메뉴: 초기화·삭제).
 /// 쓸 수 없는 기기는 흐리게 그리고 이유를 보인다. 막힌 메뉴 항목은 비활성으로 두고 이유를 메뉴 맨 위에 보인다.
 struct DeviceRow: View {
@@ -14,6 +14,7 @@ struct DeviceRow: View {
   let downloadStage: DownloadStage?
   let installFromFileTapped: () -> Void
   let installFromURLTapped: () -> Void
+  let installFromCatalogTapped: () -> Void
   let cancelDownloadTapped: () -> Void
   let appDropped: ([URL]) -> Void
   let openURLTapped: () -> Void
@@ -45,6 +46,7 @@ struct DeviceRow: View {
       Menu(LauncherText.installAppButton) {
         Button(LauncherText.installFromFileMenuItem, action: self.installFromFileTapped)
         Button(LauncherText.installFromURLMenuItem, action: self.installFromURLTapped)
+        Button(LauncherText.installFromCatalogMenuItem, action: self.installFromCatalogTapped)
       }
       .menuStyle(.button)
       .fixedSize()

@@ -9,7 +9,7 @@ iPhone·iPad 가 없는 인원이 Mac 만으로 개발 중인 iOS 앱을 테스�
 - 시뮬레이터 기기 목록, 부팅·종료, 생성·삭제·초기화, Simulator 앱 띄우기
 - 로컬 .app(또는 zip) 을 골라 시뮬레이터에 설치·실행, 딥링크 열기
 - URL 의 .app(zip) 을 내려받아 설치
-- 빌드 카탈로그: 설정 창(⌘,)에 카탈로그 URL 을 등록하고 앱·버전 목록에서 골라 설치. 카탈로그는 정적 `catalog.json` 하나라 GitHub Releases·S3·사내 웹 서버 어디에 둬도 된다 ([규격](docs/CATALOG.md))
+- 빌드 카탈로그: 설정 창(⌘,)에 카탈로그 URL 을 등록하고, 기기 행 "앱 설치 > 카탈로그에서…" 의 앱·버전 목록에서 골라 설치. 카탈로그는 정적 `catalog.json` 하나라 GitHub Releases·S3·사내 웹 서버 어디에 둬도 된다 ([규격](docs/CATALOG.md))
 
 ## 기술 스택
 - SwiftUI (규칙 기반 단방향 MV), Swift 6 strict concurrency, macOS 26.0+
