@@ -11,6 +11,16 @@ iPhone·iPad 가 없는 인원이 Mac 만으로 개발 중인 iOS 앱을 테스�
 - URL 의 .app(zip) 을 내려받아 설치
 - 빌드 카탈로그: 설정 창(⌘,)에 카탈로그 URL 을 등록하고, 기기 행 "앱 설치 > 카탈로그에서…" 의 앱·버전 목록에서 골라 설치. 카탈로그는 정적 `catalog.json` 하나라 GitHub Releases·S3·사내 웹 서버 어디에 둬도 된다 ([규격](docs/CATALOG.md))
 
+## 샘플 카탈로그
+레포의 GitHub Actions 예시 워크플로가 샘플 iOS 앱을 빌드해 Releases 에 올리고 카탈로그를 만든다. 앱 설정 창에 아래 주소를 등록하면 "카탈로그에서…" 로 샘플 앱을 설치해 볼 수 있다.
+
+```
+https://github.com/zopandagom/simlauncher-macos/releases/download/sample-catalog/catalog.json
+```
+
+- 새 빌드 올리기: Actions > Sample Catalog > Run workflow 를 **main 에서** 실행한다. 워크플로 파일이 main 과 다른 브랜치에서 실행하면 GitHub 이 릴리스 생성을 거절한다(draft 릴리스가 남을 수 있다. 카탈로그에는 영향이 없고 손으로 지운다).
+- 동작, 자기 앱에 맞게 바꿀 곳, 재실행·정리 방법: [CATALOG.md 11절](docs/CATALOG.md#11-github-actions-예시)
+
 ## 기술 스택
 - SwiftUI (규칙 기반 단방향 MV), Swift 6 strict concurrency, macOS 26.0+
 - Tuist 모듈러 아키텍처 (Feature / Client Interface·Impl·Testing / Shared)
