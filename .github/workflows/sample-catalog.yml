@@ -1,0 +1,160 @@
+name: Sample Catalog
+
+# 카탈로그 예시 워크플로 (docs/CATALOG.md 11절). 샘플 iOS 앱(Examples/SampleApp)을 시뮬레이터용으로 빌드해
+# 빌드 릴리스(태그 sample-build-<run_id>, prerelease)에 올리고, 릴리스 목록에서 catalog.json 을 처음부터 다시 만들어
+# 고정 태그 sample-catalog 의 prerelease 릴리스에 올린다. 카탈로그 주소:
+#   https://github.com/<owner>/<repo>/releases/download/sample-catalog/catalog.json
+# releases/latest 는 쓰지 않는다 (앱 릴리스·업데이트 확인용으로 비워 둔다).
+# main 에서 실행한다. 워크플로 파일이 main 과 다른 브랜치에서 실행하면 GitHub 이 릴리스 생성을 거절한다.
+on:
+  workflow_dispatch:
+
+# 게시 도중(--clobber 의 삭제와 업로드 사이) 취소되지 않게 한 번에 하나만 돌린다.
+# 대기 중인 실행은 더 새 실행이 오면 취소되고, 마지막 실행의 카탈로그가 그때까지의 모든 빌드 릴리스를 담는다.
+concurrency:
+  group: sample-catalog
+  cancel-in-progress: false
+
+# 잡마다 필요한 권한만 준다.
+permissions: {}
+
+jobs:
+  # 쓰기 권한 없음. mise·tuist·xcodebuild 는 이 잡에서만 돈다.
+  build:
+    runs-on: macos-26
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      version-name: ${{ steps.info.outputs.name }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@v5
+      - name: 샘플 앱 빌드
+        env:
+          SAMPLE_BUILD_NUMBER: ${{ github.run_number }}
+        run: make sample
+      # 릴리스 이름 "<CFBundleShortVersionString> (<CFBundleVersion>)" 을 올릴 zip 안의 Info.plist 에서 읽는다.
+      - id: info
+        name: 버전 이름
+        run: |
+          plist=build/SampleApp-Info.plist
+          unzip -p build/SampleApp.zip SampleApp.app/Info.plist > "$plist"
+          version=$(plutil -extract CFBundleShortVersionString raw "$plist")
+          build=$(plutil -extract CFBundleVersion raw "$plist")
+          echo "name=$version ($build)" | tee -a "$GITHUB_OUTPUT"
+      # 7일 안에는 "Re-run failed jobs" 로 publish 만 다시 돌릴 수 있다. overwrite: "Re-run all jobs" 때 같은 이름과 겹치지 않게.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: SampleApp
+          path: build/SampleApp.zip
+          retention-days: 7
+          overwrite: true
+          if-no-files-found: error
+
+  # 쓰기 권한. GitHub 공식 액션만 쓴다(mise 없음, swiftc·gh·jq·curl 은 러너 기본). GH_TOKEN(쓰기 토큰)은 세 단계(빌드 릴리스 게시,
+  # 카탈로그 생성, 카탈로그 게시)의 env 에만 두어 그 단계 안의 명령이 모두 받는다(카탈로그 생성은 릴리스 목록 조회와 sample-catalog.sh·jq 실행).
+  # 그 밖에는 actions/checkout 이 입력 기본값으로 받는다(persist-credentials: false).
+  publish:
+    needs: build
+    runs-on: macos-26
+    timeout-minutes: 20
+    permissions:
+      contents: write # 릴리스·태그 생성, 자산 업로드. 레포 기본 토큰 권한이 read 라 명시한다
+    env:
+      GH_REPO: ${{ github.repository }}
+      # 셸에 ${{ }} 를 직접 넣지 않는다 (브랜치 이름의 $(…) 같은 문자)
+      BRANCH: ${{ github.ref_name }}
+      RUN_NUMBER: ${{ github.run_number }}
+      # 재실행(run attempt)에서 바뀌지 않는 id: 같은 run 을 다시 돌리면 같은 태그, 새 실행은 새 태그
+      TAG: sample-build-${{ github.run_id }}
+      VERSION_NAME: ${{ needs.build.outputs.version-name }}
+      CATALOG_URL: ${{ github.server_url }}/${{ github.repository }}/releases/download/sample-catalog/catalog.json
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v7
+        with:
+          name: SampleApp
+          path: build/
+      - name: 받은 zip 확인
+        run: |
+          top=$(zipinfo -1 build/SampleApp.zip | cut -d/ -f1 | sort -u)
+          [[ $top == SampleApp.app ]] || { echo "::error::zip 맨 위가 SampleApp.app 하나가 아닙니다: $top"; exit 1; }
+      # 원격에 쓰기 전에 검증기를 컴파일하고 생성기·검증기 회귀 테스트를 돌린다 (토큰 없음).
+      - name: 검증기 준비
+        run: make catalog-test
+      # 같은 run 을 다시 돌리면 이미 게시된 빌드는 그대로 둔다. draft 이거나 zip 이 다 올라가지 않았으면 다시 올리고 게시한다.
+      # 조회에 실패하면(없음·조회 오류) 새로 만든다. 실제로는 있었다면 create 가 실패해 멈춘다 (덮어쓰지 않는다).
+      - name: 빌드 릴리스 게시
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if state=$(gh release view "$TAG" --json isDraft,assets \
+              --jq '[.isDraft, any(.assets[]; .name == "SampleApp.zip" and .state == "uploaded")] | @tsv'); then
+            if [[ $state == $'false\ttrue' ]]; then
+              echo "이미 게시됨: $TAG"
+            else
+              gh release upload "$TAG" build/SampleApp.zip --clobber
+              gh release edit "$TAG" --draft=false --prerelease
+            fi
+          else
+            printf '%s\n' \
+              "SimLauncher 카탈로그 예시 워크플로가 만든 샘플 앱 시뮬레이터 빌드입니다." \
+              "branch: $BRANCH" \
+              "buildNumber: $RUN_NUMBER" \
+              "commit: $GITHUB_SHA" > build/release-notes.md
+            # --target 에 커밋을 준다: 브랜치 이름이면 그 사이 브랜치가 움직였을 때 다른 커밋에 태그가 붙는다
+            gh release create "$TAG" build/SampleApp.zip --target "$GITHUB_SHA" --prerelease \
+              --title "$VERSION_NAME" --notes-file build/release-notes.md
+          fi
+      # 이전 catalog.json 을 읽지 않고 릴리스 목록에서 처음부터 만든다. 방금 만든 릴리스가 목록에 아직 없으면 5초 간격으로 3번 다시 조회한다.
+      - name: 카탈로그 생성
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for attempt in 1 2 3 4; do
+            gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases?per_page=100" > build/releases.json
+            .github/scripts/sample-catalog.sh build/releases.json > build/catalog.json
+            if jq -e --arg tag "$TAG" 'any(.apps[0].versions[]; .id == $tag)' build/catalog.json > /dev/null; then
+              exit 0
+            fi
+            [[ $attempt == 4 ]] || sleep 5
+          done
+          echo "::error::릴리스 목록에 $TAG 가 없습니다."
+          exit 1
+      # 앱과 같은 규칙(Core)과 크기 상한, 모든 buildURL 이 태그 고정 주소인지, 이번 빌드가 들었는지. 하나라도 어긋나면 게시하지 않는다.
+      - name: 카탈로그 검증
+        run: |
+          make catalog-check CATALOG=build/catalog.json
+          jq -e --arg base "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/" --arg tag "$TAG" '
+            (.apps | length == 1)
+            and all(.apps[0].versions[];
+              (.id | test("^sample-build-[0-9]+$")) and .buildURL == $base + .id + "/SampleApp.zip")
+            and any(.apps[0].versions[]; .id == $tag)' build/catalog.json
+      # --clobber 는 기존 자산을 지운 뒤 올린다. 업로드가 실패하면 자산 없는 릴리스가 남고, 재실행·다음 실행이 목록에서 다시 만들어 올린다.
+      - name: 카탈로그 게시
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view sample-catalog > /dev/null; then
+            gh release create sample-catalog --prerelease --title "샘플 카탈로그" \
+              --notes "SimLauncher 카탈로그 예시 워크플로가 올리는 샘플 catalog.json 입니다. 실행마다 바뀝니다."
+          fi
+          gh release upload sample-catalog build/catalog.json --clobber
+      - name: 게시 확인
+        run: |
+          curl -fsSL --retry 3 "$CATALOG_URL" -o build/published.json
+          make catalog-check CATALOG=build/published.json
+          cmp build/catalog.json build/published.json
+      - name: 요약
+        run: |
+          {
+            echo "### 샘플 카탈로그"
+            echo "- 카탈로그: $CATALOG_URL"
+            echo "- 이번 버전: $VERSION_NAME ($TAG)"
+            echo "- 빌드: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/$TAG/SampleApp.zip"
+          } >> "$GITHUB_STEP_SUMMARY"

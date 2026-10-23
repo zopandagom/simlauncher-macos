@@ -23,10 +23,10 @@
 특정 회사 인프라에 묶이지 않도록, 앱이 읽는 카탈로그 형식을 이 프로젝트의 공개 규격으로 정한다.
 - 사용자가 설정 창에서 카탈로그 URL 을 하나 이상 등록한다. 회사 일괄 배포용으로 `defaults write com.zopandagom.simlauncher CatalogURLs -array "https://…/catalog.json"` 나 MDM 으로 미리 넣을 수 있다. 미리 넣은 값도 같은 사용자 설정 키라서 네트워크 규칙의 "사용자가 등록한 카탈로그"에 든다. MDM 구성 프로필로 키를 강제하면 목록 전체가 잠겨 앱에서 바꿀 수 없다 (관리자 안내: [CATALOG.md](CATALOG.md) 9절)
 - `catalog.json` 은 `schemaVersion` 과 앱 → 버전(이름·브랜치·태그·빌드 번호·생성 시각) → 빌드 zip URL 을 담는다. 규격: [CATALOG.md](CATALOG.md) (schemaVersion 1)
-- 레포에 예시 GitHub Actions 워크플로를 둔다: `xcodebuild -sdk iphonesimulator` → zip → Release 업로드 → `catalog.json` 갱신
+- 레포에 예시 GitHub Actions 워크플로를 둔다 (`.github/workflows/sample-catalog.yml` "Sample Catalog", 손으로 실행): 샘플 앱(`Examples/SampleApp`)을 `make sample`(`xcodebuild -sdk iphonesimulator`) → zip → 빌드 릴리스(태그 `sample-build-<run_id>`, prerelease) 업로드 → 릴리스 목록에서 `catalog.json` 을 처음부터 다시 만들어 검증(`make catalog-check`) → 고정 태그 `sample-catalog` 릴리스에 업로드 ([CATALOG.md](CATALOG.md) 11절)
 - 첫 버전은 인증 없는 HTTPS URL 만 지원한다(사용자 이름·비밀번호가 든 주소는 거절하고, 서버의 인증 요구에도 응하지 않는다). 비공개 저장소(토큰 헤더 등) 인증은 후속
 - 공개 레포의 GitHub Releases 는 누구나 받을 수 있다. 개발 중 확인은 샘플 앱 빌드로만 하고, 회사 앱 빌드는 각자 비공개 저장소에 둔다
-- GitHub Releases 로 둘 때 고정 URL: `https://github.com/<owner>/<repo>/releases/latest/download/catalog.json` (파일당 2 GiB 미만, 릴리스당 파일 1000개, 전체 용량·트래픽 제한 없음). 버전 항목의 빌드 URL 은 절대 주소로 쓴다(상대 주소는 거절, CATALOG.md)
+- GitHub Releases 로 둘 때 고정 URL: 빌드만 두는 레포면 `https://github.com/<owner>/<repo>/releases/latest/download/catalog.json`, 이 레포처럼 앱 릴리스와 같은 레포에 두면 latest 를 앱 릴리스에 남기고 고정 태그 릴리스(`…/releases/download/sample-catalog/catalog.json`)에 둔다 (파일당 2 GiB 미만, 릴리스당 파일 1000개, 전체 용량·트래픽 제한 없음). 버전 항목의 빌드 URL 은 절대 주소로 쓴다(상대 주소는 거절, CATALOG.md)
 
 ## 로드맵
 | 단계 | 목표 | 단계 목표 확인 |

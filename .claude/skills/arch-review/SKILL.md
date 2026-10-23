@@ -26,11 +26,11 @@ model: sonnet
 1. **정확성**: 로직 오류, 누락된 상태 전이(권한 거부·제한, 빈 결과, 실패), 잘못된 비동기 순서.
 2. **Swift 6 동시성**: `@MainActor` 밖에서 Model 상태 변경, 비 Sendable 값(프레임워크 객체, `UIImage` 등)이 actor 경계를 넘음, `@unchecked Sendable`·`nonisolated(unsafe)` 남용, 무거운 작업이 메인에서 실행.
 3. **단방향 MV**: `private(set)` 이 아닌 상태, View 가 부수효과를 직접 실행, 이벤트 메서드 이름이 "무슨 일이 일어났는가" 형식이 아님, Model 이 다른 Model 을 참조.
-4. **모듈 경계**: 의존 규칙 표 위반, Interface 에 부수효과 프레임워크 타입 노출(CoreGraphics·ImageIO 같은 부수효과 없는 타입은 허용), 매니페스트에서 템플릿 우회·빌드 설정 덮어쓰기.
+4. **모듈 경계**: 의존 규칙 표 위반, Interface 에 부수효과 프레임워크 타입 노출(CoreGraphics·ImageIO 같은 부수효과 없는 타입은 허용), `Projects/` 매니페스트에서 템플릿 우회·빌드 설정 덮어쓰기 (`Examples/` 샘플 앱의 독립 매니페스트는 예외, ARCHITECTURE §2 "빌드 설정").
 5. **제품 약속**: docs/CONVENTIONS.md §4 와 ARCHITECTURE §4 의 결정을 어기는 코드 (허용되지 않은 네트워크·외부 전송, 민감 정보 로그, 합의 없는 서드파티 SDK).
 6. **테스트**: CONVENTIONS §3 이 요구하는 테스트의 누락, 실제 기기 데이터·권한에 의존하는 테스트.
 7. **문서 정합성**: CONVENTIONS §5 "리뷰 기준"의 문서 불일치. 이번 변경과 관련된 문서 줄은 문서 범위를 바뀐 타입·함수·동작 이름과 바뀐 규칙의 핵심 문구로 grep 해서 찾는다.
-8. **하네스·빌드 설정**(`.claude/**`, `.githooks/**`, `.github/**`, `Makefile`, `Tuist/`, `.mise.toml`): 스크립트 정확성, CONVENTIONS §5 "리뷰 기준"의 fail-open·함께 지킬 수 없는 규칙.
+8. **하네스·빌드 설정**(`.claude/**`, `.githooks/**`, `.github/**`, `Examples/**`, `Makefile`, `Tuist/`, `.mise.toml`): 스크립트 정확성, CONVENTIONS §5 "리뷰 기준"의 fail-open·함께 지킬 수 없는 규칙.
 
 **보고하지 않는 것·범위 밖**: CONVENTIONS §5 "리뷰 기준"을 따른다. 범위 밖(CONVENTIONS §5 "리뷰 기준"의 범위)은 표에 넣지 않고 표 아래에 `범위 밖: 위치 · 문제` 로 한 줄씩 적는다 (🔴 에 해당하면 앞에 🔴, Out 이면 끝에 `(Out)`).
 

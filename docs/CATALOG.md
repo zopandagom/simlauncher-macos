@@ -132,3 +132,23 @@ defaults write com.zopandagom.simlauncher CatalogURLs -array "https://builds.exa
 - 새로 고침: 목록을 다시 읽고 모두 다시 받는다. 고른 앱·버전은 같은 카탈로그에 같은 id(3절)가 있으면 그대로 둔다. 고른 버전이 사라졌으면 다른 버전으로 바꾸지 않고 버전 선택만 비우고, 고른 앱이나 그 카탈로그가 사라졌거나 읽지 못하면 선택을 비운다.
 - 등록된 카탈로그가 없으면 설정 창에서 등록하라는 안내와 "설정 열기" 버튼을 보인다. 관리자가 잠근 목록이 비었으면 담당자에게 문의하라는 안내만 보인다.
 - "받아서 설치": 시트를 닫고 고른 버전의 `buildURL` 을 앱의 "URL 에서…" 설치와 같은 경로·검사(https 만, 받기·압축 풀기 보호, 시뮬레이터용 .app 검사)로 받아 설치하고 실행한다. 진행과 취소는 기기 행에 보인다. 받지 못했거나 받은 파일을 쓸 수 없으면 이유와 함께 알린다. 빌드 주소·빌드 파일 쪽 원인(https 가 아닌 주소로 넘겨 보냄, 407·5xx 밖의 HTTP 상태, 빌드 서버 주소를 찾지 못함·연결하지 못함·보안 연결 실패, 그 밖의 받기 실패, zip 대신 웹 페이지, zip 이 아님, zip 맨 위 .app 이 없거나 여럿)은 사용자가 고칠 주소가 없으므로 카탈로그를 만든 사람에게 알려 달라고 안내하고, 빌드가 없거나(HTTP 404·410) 접근이 거부되면(401·403) 다른 버전을 고르는 길도 함께 보인다. 빌드 주소와 관계없는 원인(인터넷 연결, 프록시 인증(HTTP 407), 서버 오류(HTTP 5xx), 시간 초과, 받는 중 끊김, 저장 공간, 임시 폴더), 그 밖의 받은 zip 풀기 실패(안전하지 않은 경로, 앱이 아닌 내용 등), 받은 뒤의 앱 검사·설치·실행 실패는 "URL 에서…" 설치와 같은 안내다.
+
+## 11. GitHub Actions 예시
+레포의 [`.github/workflows/sample-catalog.yml`](../.github/workflows/sample-catalog.yml)("Sample Catalog")이 샘플 iOS 앱([`Examples/SampleApp`](../Examples/SampleApp))을 빌드해 GitHub Releases 에 올리고 `catalog.json` 을 만들어 올리는 예시다. 이 레포의 샘플 카탈로그 주소:
+
+```
+https://github.com/zopandagom/simlauncher-macos/releases/download/sample-catalog/catalog.json
+```
+
+- 실행: Actions > Sample Catalog > Run workflow 를 **main 에서** 누른다(`workflow_dispatch` 만, 손으로 실행). 워크플로 파일이 기본 브랜치에 있어야 실행할 수 있다. 워크플로 파일이 main 과 다른 브랜치에서 실행하면 GitHub 이 기본 토큰으로 하는 릴리스 생성을 거절한다(draft 릴리스가 남을 수 있다. 카탈로그에는 영향이 없고 손으로 지운다).
+- 흐름: `build` 잡(읽기 권한)이 `make sample` 로 시뮬레이터용 .app 을 빌드해(빌드 번호 = 실행 번호) `SampleApp.zip` 으로 묶고, `publish` 잡(쓰기 권한. 쓰기 토큰은 빌드 릴리스 게시·카탈로그 생성(릴리스 목록 조회와 `sample-catalog.sh`·`jq` 실행)·카탈로그 게시 세 단계의 env 에만 두어, 그 단계 안의 명령이 모두 받는다)이 넘겨받아:
+  1. 빌드 릴리스: 태그 `sample-build-<run_id>` 의 prerelease 릴리스에 `SampleApp.zip` 하나를 올린다. 이름은 `<버전> (<빌드 번호>)`, 본문에 `branch: …`·`buildNumber: …` 줄.
+  2. 카탈로그 생성: 이전 `catalog.json` 을 읽지 않고, 릴리스 목록에서 태그가 `sample-build-<숫자>` 이고 draft 가 아니며 `SampleApp.zip` 이 다 올라간 릴리스마다 버전 하나를 처음부터 만든다([`.github/scripts/sample-catalog.sh`](../.github/scripts/sample-catalog.sh)). 버전 id·tag 는 태그, `createdAt` 은 릴리스 게시 시각(`published_at`. `created_at` 은 태그 커밋 시각이라 쓰지 않는다), `buildURL` 은 `releases/download/<태그>/SampleApp.zip`.
+  3. 게시 전 검증: 앱과 같은 규칙(Core `BuildCatalog`·5 MiB, `make catalog-check`)과 모든 `buildURL` 이 태그 고정 주소인지, 이번 빌드가 들었는지 본다. 하나라도 어긋나면 올리지 않는다.
+  4. 카탈로그 게시: 고정 태그 `sample-catalog` 의 prerelease 릴리스에 `catalog.json` 을 바꿔 올리고, 고정 주소에서 다시 받아 같은지 확인한다.
+- `releases/latest` 를 쓰지 않는 이유: 이 레포는 SimLauncher 앱 릴리스도 같은 레포에 두므로 latest 를 앱 릴리스용으로 비워 둔다. 샘플 릴리스는 모두 prerelease 라 latest 가 되지 않는다. 빌드만 두는 레포라면 `releases/latest/download/catalog.json` 도 고정 주소로 쓸 수 있지만, 버전의 `buildURL` 은 그때도 태그 고정 주소로 쓴다(6절).
+- 재실행: 같은 run 을 다시 돌리면 같은 태그라 버전이 늘지 않고, 이미 게시된 빌드는 다시 올리지 않는다. 새로 실행하면 새 태그가 생기고 옛 버전 주소는 그대로 옛 빌드를 가리킨다.
+- 실패: 카탈로그는 매번 릴리스 목록에서 다시 만들므로 실패한 실행은 다음 성공 실행이 고친다. 카탈로그를 바꿔 올리는 짧은 동안이나 그 업로드가 실패하면 주소가 404 가 되고(앱에는 받기 실패로 보인다), 재실행이나 다음 실행이 다시 올린다. 빌드 zip 은 7일 동안 run 에 남아, 그 안에는 실패한 `publish` 만 "Re-run failed jobs" 로 다시 돌릴 수 있다. 7일이 지났으면 "Re-run all jobs" 나 새 실행으로 한다.
+- 정리: 오래된 빌드는 자동으로 지우지 않는다. 버전 하나가 약 380 바이트라 5 MiB(1절)까지 약 1만 3천 번 실행할 수 있다. 지우려면 `gh release delete sample-build-<run_id> --cleanup-tag` 로 릴리스와 태그를 함께 지운다. 다음 실행의 카탈로그에서 빠지고, 그 전까지 그 버전을 고르면 빌드가 없다는 안내(10절)가 보인다.
+- 제약: 레포의 release immutability 를 켜면 게시된 `catalog.json` 을 바꿀 수 없어 게시가 실패한다. 이 예시는 끈 상태로 쓴다.
+- 자기 앱에 맞게 바꿀 곳: `make sample` 의 프로젝트·스킴(`Makefile`), 생성기의 앱 `id`·`name` 과 태그 접두어 `sample-build-`·자산 이름 `SampleApp.zip`(`sample-catalog.sh`), 워크플로의 태그·검증 패턴. 비공개 레포의 Releases 는 인증 없이 받을 수 없으므로 이 앱으로는 쓸 수 없다(1절 "두는 곳").

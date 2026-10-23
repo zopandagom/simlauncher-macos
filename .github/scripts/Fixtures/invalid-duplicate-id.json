@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "apps": [
+    {
+      "id": "com.zopandagom.simlauncher.sampleapp",
+      "name": "SimLauncher Sample",
+      "versions": [
+        {
+          "id": "sample-build-1",
+          "name": "1.0.0 (1)",
+          "createdAt": "2026-10-21T09:00:00Z",
+          "buildURL": "https://github.com/zopandagom/simlauncher-macos/releases/download/sample-build-1/SampleApp.zip"
+        },
+        {
+          "id": "Sample-Build-1",
+          "name": "1.0.0 (2)",
+          "createdAt": "2026-10-22T09:00:00Z",
+          "buildURL": "https://github.com/zopandagom/simlauncher-macos/releases/download/Sample-Build-1/SampleApp.zip"
+        }
+      ]
+    }
+  ]
+}

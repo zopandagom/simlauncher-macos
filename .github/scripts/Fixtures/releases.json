@@ -1,0 +1,171 @@
+[
+  [
+    {
+      "tag_name": "sample-build-300",
+      "name": "1.0.0 (4)",
+      "draft": false,
+      "prerelease": true,
+      "created_at": "2026-10-23T11:00:00Z",
+      "published_at": "2026-10-23T12:05:00Z",
+      "body": "샘플 빌드입니다.\r\nbranch: feature/login\r\nbuildNumber: 4\r\ncommit: 1111111\r\n",
+      "assets": [
+        {
+          "name": "SampleApp.zip",
+          "state": "uploaded",
+          "browser_download_url": "https://github.com/zopandagom/simlauncher-macos/releases/download/sample-build-300/SampleApp.zip"
+        }
+      ]
+    },
+    {
+      "tag_name": "sample-build-290",
+      "name": "1.0.0 (3)",
+      "draft": false,
+      "prerelease": true,
+      "created_at": "2026-10-23T11:00:00Z",
+      "published_at": "2026-10-23T11:30:00Z",
+      "body": "샘플 빌드입니다.\nbranch: main  \nbuildNumber: 3\ncommit: 1111111",
+      "assets": [
+        {
+          "name": "notes.txt",
+          "state": "uploaded",
+          "browser_download_url": "https://github.com/zopandagom/simlauncher-macos/releases/download/sample-build-290/notes.txt"
+        },
+        {
+          "name": "SampleApp.zip",
+          "state": "uploaded",
+          "browser_download_url": "https://github.com/zopandagom/simlauncher-macos/releases/download/sample-build-290/SampleApp.zip"
+        }
+      ]
+    },
+    {
+      "tag_name": "v1.0.0",
+      "name": "SimLauncher 1.0.0",
+      "draft": false,
+      "prerelease": false,
+      "created_at": "2026-10-24T09:00:00Z",
+      "published_at": "2026-10-24T09:00:00Z",
+      "body": "branch: main\nbuildNumber: 100",
+      "assets": [
+        {
+          "name": "SampleApp.zip",
+          "state": "uploaded",
+          "browser_download_url": "https://github.com/zopandagom/simlauncher-macos/releases/download/v1.0.0/SampleApp.zip"
+        }
+      ]
+    }
+  ],
+  [
+    {
+      "tag_name": "sample-build-200",
+      "name": null,
+      "draft": false,
+      "prerelease": true,
+      "created_at": "2026-10-22T08:00:00Z",
+      "published_at": "2026-10-22T09:00:00Z",
+      "body": null,
+      "assets": [
+        {
+          "name": "SampleApp.zip",
+          "state": "uploaded",
+          "browser_download_url": "https://github.com/zopandagom/simlauncher-macos/releases/download/sample-build-200/SampleApp.zip"
+        }
+      ]
+    },
+    {
+      "tag_name": "sample-build-150",
+      "name": "1.0.0 (2)",
+      "draft": false,
+      "prerelease": true,
+      "created_at": "2026-10-21T08:00:00Z",
+      "published_at": "2026-10-21T09:00:00Z",
+      "body": "브랜치 줄이 없는 본문\nbuildNumber: 2\n",
+      "assets": [
+        {
+          "name": "SampleApp.zip",
+          "state": "uploaded",
+          "browser_download_url": "https://github.com/zopandagom/simlauncher-macos/releases/download/sample-build-150/SampleApp.zip"
+        }
+      ]
+    },
+    {
+      "tag_name": "sample-build-140",
+      "name": "업로드가 끝나지 않은 빌드",
+      "draft": false,
+      "prerelease": true,
+      "created_at": "2026-10-20T08:00:00Z",
+      "published_at": "2026-10-20T09:00:00Z",
+      "body": "branch: main\nbuildNumber: 1",
+      "assets": [
+        {
+          "name": "SampleApp.zip",
+          "state": "starter",
+          "browser_download_url": "https://github.com/zopandagom/simlauncher-macos/releases/download/sample-build-140/SampleApp.zip"
+        }
+      ]
+    },
+    {
+      "tag_name": "sample-build-130",
+      "name": "게시되지 않은 draft",
+      "draft": true,
+      "prerelease": true,
+      "created_at": "2026-10-19T08:00:00Z",
+      "published_at": null,
+      "body": "",
+      "assets": [
+        {
+          "name": "SampleApp.zip",
+          "state": "uploaded",
+          "browser_download_url": "https://github.com/zopandagom/simlauncher-macos/releases/download/untagged-0123456789abcdef/SampleApp.zip"
+        }
+      ]
+    },
+    {
+      "tag_name": "sample-build-120",
+      "name": "다른 자산만 있는 릴리스",
+      "draft": false,
+      "prerelease": true,
+      "created_at": "2026-10-18T08:00:00Z",
+      "published_at": "2026-10-18T09:00:00Z",
+      "body": "",
+      "assets": [
+        {
+          "name": "Other.zip",
+          "state": "uploaded",
+          "browser_download_url": "https://github.com/zopandagom/simlauncher-macos/releases/download/sample-build-120/Other.zip"
+        }
+      ]
+    },
+    {
+      "tag_name": "sample-build-latest",
+      "name": "숫자가 아닌 태그",
+      "draft": false,
+      "prerelease": true,
+      "created_at": "2026-10-25T08:00:00Z",
+      "published_at": "2026-10-25T09:00:00Z",
+      "body": "",
+      "assets": [
+        {
+          "name": "SampleApp.zip",
+          "state": "uploaded",
+          "browser_download_url": "https://github.com/zopandagom/simlauncher-macos/releases/download/sample-build-latest/SampleApp.zip"
+        }
+      ]
+    },
+    {
+      "tag_name": "sample-catalog",
+      "name": "샘플 카탈로그",
+      "draft": false,
+      "prerelease": true,
+      "created_at": "2026-10-17T08:00:00Z",
+      "published_at": "2026-10-17T09:00:00Z",
+      "body": "",
+      "assets": [
+        {
+          "name": "catalog.json",
+          "state": "uploaded",
+          "browser_download_url": "https://github.com/zopandagom/simlauncher-macos/releases/download/sample-catalog/catalog.json"
+        }
+      ]
+    }
+  ]
+]

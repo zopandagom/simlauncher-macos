@@ -67,10 +67,11 @@ jobs:
           persist-credentials: false # 레포를 서드파티 lint 이미지에 마운트하므로 토큰을 .git/config 에 남기지 않는다
       - name: SwiftFormat
         # Linux static 빌드가 파일이 많을 때 세그폴트(exit 139)로 죽는다. --verbose 로 돌리면 재현되지 않는다.
+        # SwiftFormat 은 숨김 폴더(.github)를 순회하지 않아 그 안의 Swift 가 든 폴더를 경로로 넘긴다 (Makefile lint 와 같다).
         run: |
           mkdir -p build
           docker run --rm -v "$PWD:/work" -w /work ghcr.io/nicklockwood/swiftformat:0.63.0 \
-            --lint --verbose --reporter json --report build/swiftformat.json .
+            --lint --verbose --reporter json --report build/swiftformat.json . .github/scripts
       - name: SwiftLint
         # SwiftFormat 이 실패해도 SwiftLint 위반을 함께 보고한다.
         if: ${{ !cancelled() }}
