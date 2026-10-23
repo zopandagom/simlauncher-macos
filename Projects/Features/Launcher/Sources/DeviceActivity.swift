@@ -4,14 +4,14 @@ import DownloadInterface
 /// 기기 하나에서 진행 중인 작업. 같은 기기의 작업은 겹치지 않는다.
 public enum DeviceTask: Hashable, Sendable {
   case boot, shutdown, delete, erase
-  /// 앱 설치 흐름 전체 ((URL 이면 받기 → 풀기 → 받은 파일 지우기 →) (zip 이면 풀기 →) 검사 → 필요하면 켜기 →
-  /// Simulator 앱 열기 → 설치 → 실행 → 다시 읽기 (→ zip·URL 이면 임시 폴더 정리)). 받는 동안은 `DownloadStage` 도 있다.
+  /// 앱 설치 흐름 전체 ((URL·카탈로그 버전이면 받기 → 풀기 → 받은 파일 지우기 →) (zip 이면 풀기 →) 검사 → 필요하면 켜기 →
+  /// Simulator 앱 열기 → 설치 → 실행 → 다시 읽기 (→ zip·URL·카탈로그 버전이면 임시 폴더 정리)). 받는 동안은 `DownloadStage` 도 있다.
   case installApp
   /// 링크 열기 흐름 전체 (필요하면 켜기 → Simulator 앱 열기 → 링크 열기 → 다시 읽기).
   case openURL
 }
 
-/// URL 설치의 받기 단계. 받기가 끝나면(성공) 단계가 사라지고 task `.installApp` 만 남는다(풀기·검사·설치·실행).
+/// URL·카탈로그 버전 설치의 받기 단계. 받기가 끝나면(성공) 단계가 사라지고 task `.installApp` 만 남는다(풀기·검사·설치·실행).
 public enum DownloadStage: Hashable, Sendable {
   /// 받는 중. 응답 전이면 nil. 취소할 수 있다.
   case receiving(DownloadProgress?)

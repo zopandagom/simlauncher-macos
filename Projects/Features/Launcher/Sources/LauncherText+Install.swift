@@ -65,6 +65,8 @@ extension LauncherText {
       self.downloadedNotZipMessage(isWebPage: isWebPage)
     case let .downloadedZip(error):
       self.downloadedZipMessage(for: error)
+    case .catalogDownload, .catalogDownloadedNotZip, .catalogDownloadedZip:
+      self.catalogInstallMessage(for: failure)
     case let .rejected(problem):
       self.message(for: problem)
     case let .deviceNotReady(reason):
