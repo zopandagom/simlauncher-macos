@@ -54,7 +54,9 @@ jobs:
           overwrite: true
           if-no-files-found: error
 
-  # 쓰기 권한. GitHub 공식 액션만 쓰고(mise 없음, swiftc·gh·jq·curl 은 러너 기본), 쓰기 토큰(GH_TOKEN)은 게시 단계의 env 에만 둔다.
+  # 쓰기 권한. GitHub 공식 액션만 쓴다(mise 없음, swiftc·gh·jq·curl 은 러너 기본). GH_TOKEN(쓰기 토큰)은 세 단계(빌드 릴리스 게시,
+  # 카탈로그 생성, 카탈로그 게시)의 env 에만 두어 그 단계 안의 명령이 모두 받는다(카탈로그 생성은 릴리스 목록 조회와 sample-catalog.sh·jq 실행).
+  # 그 밖에는 actions/checkout 이 입력 기본값으로 받는다(persist-credentials: false).
   publish:
     needs: build
     runs-on: macos-26
