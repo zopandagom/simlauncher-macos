@@ -13,7 +13,7 @@ import Testing
 /// 카탈로그 출처의 알림으로 낸다.
 @MainActor
 struct LauncherCatalogInstallTests: LauncherModelTesting {
-  static let url = DownloadURL("https://builds.example.com/alpha-2.zip")!
+  static let url = CatalogData.alphaV2URL
   static let file = DownloadedFile.fake(index: 1)
   static let first = ExtractedApp.fake(index: 1)
   static let sample = AppBundleInfo.sample

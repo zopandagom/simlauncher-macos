@@ -7,7 +7,7 @@ import SimulatorInterface
 extension LauncherText {
   // MARK: - 기기 행
 
-  /// 앱 설치 메뉴 제목 (항목은 `installFromFileMenuItem`·`installFromURLMenuItem`).
+  /// 앱 설치 메뉴 제목 (항목은 `installFromFileMenuItem`·`installFromURLMenuItem`·`installFromCatalogMenuItem`).
   static var installAppButton: String {
     String(localized: "앱 설치", bundle: .module)
   }
@@ -15,8 +15,8 @@ extension LauncherText {
   static var installAppHelp: String {
     String(
       localized: """
-      시뮬레이터용 .app 이나 그 .app 을 압축한 zip 을 파일에서 고르거나 https 주소에서 받아 이 기기에 설치하고 바로 실행합니다. \
-      이 줄에 .app 이나 zip 을 끌어다 놓아도 됩니다.
+      시뮬레이터용 .app 이나 그 .app 을 압축한 zip 을 파일에서 고르거나, https 주소나 등록한 빌드 카탈로그에서 받아 \
+      이 기기에 설치하고 바로 실행합니다. 이 줄에 .app 이나 zip 을 끌어다 놓아도 됩니다.
       """,
       bundle: .module
     )
