@@ -122,14 +122,7 @@ enum SimctlErrorClassifier {
   /// `error(exitCode:stderr:)` 를 쓰지 않는다: 그 함수는 "Invalid device" 를 줄 어디서든 찾아 경로의 글자에 걸린다.
   static func screenshotError(exitCode: Int32, stderr: String) -> SimulatorError {
     guard let (domain, code) = domainAndCode(stderr) else {
-      if stderr.drop(while: \.isWhitespace).hasPrefix("xcrun: error:") {
-        return .developerToolsUnavailable
-      }
-      // 없는 기기: "Invalid device: <UDID>" (148).
-      if stderr.split(whereSeparator: \.isNewline).contains(where: { $0.hasPrefix("Invalid device:") }) {
-        return .deviceNotFound
-      }
-      return .commandFailed
+      return self.lineHeadError(stderr)
     }
     switch (domain, code) {
     // 꺼진 기기: 약 60초 뒤 "Timeout waiting for screen surfaces" (60).
@@ -137,5 +130,18 @@ enum SimctlErrorClassifier {
     // 저장 실패(NSCocoaErrorDomain 4·513)는 Workspace 가 방금 만든 폴더·파일이라 드물어 따로 나누지 않는다.
     default: return .commandFailed
     }
+  }
+
+  /// domain 줄이 없는 screenshot 실패. `error(exitCode:stderr:)` 는 "Invalid device" 를 줄 어디서든 찾아
+  /// 경로의 글자에 걸리므로 쓰지 않고, 앞 공백 뒤 `xcrun: error:` 와 `Invalid device:` 로 시작하는 줄만 본다.
+  private static func lineHeadError(_ stderr: String) -> SimulatorError {
+    if stderr.drop(while: \.isWhitespace).hasPrefix("xcrun: error:") {
+      return .developerToolsUnavailable
+    }
+    // 없는 기기: "Invalid device: <UDID>" (148).
+    if stderr.split(whereSeparator: \.isNewline).contains(where: { $0.hasPrefix("Invalid device:") }) {
+      return .deviceNotFound
+    }
+    return .commandFailed
   }
 }

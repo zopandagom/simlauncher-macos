@@ -197,19 +197,6 @@ public struct SimulatorClientImpl: SimulatorClient {
     return directory
   }
 
-  private func inventory(developerDirectory: URL?) async throws(SimulatorError) -> DeviceInventory {
-    let result = try await self.run(
-      SimctlCommand.xcrun,
-      SimctlCommand.list(),
-      developerDirectory: developerDirectory,
-      launchFailure: .developerToolsUnavailable
-    )
-    guard result.exitCode == 0 else {
-      throw Self.classify(result)
-    }
-    return try SimctlListDecoder.inventory(from: result.stdout)
-  }
-
   /// 명령이 실패하면 같은 디렉터리로 다시 읽어, 이미 원하는 상태면 성공으로 본다.
   /// 아니면(재조회가 실패해도) 처음 실패를 분류한 에러를 던진다.
   private func changeState(
@@ -305,13 +292,7 @@ public extension SimulatorClientImpl {
       throw .commandFailed
     }
     let directory = try await self.resolveDeveloperDirectory()
-    let inventory = try await self.inventory(developerDirectory: directory)
-    guard let device = inventory.devices.first(where: { SimctlCommand.validatedUDID($0.id.rawValue) == udid }) else {
-      throw .deviceNotFound
-    }
-    guard device.state == .booted else {
-      throw .deviceNotBooted
-    }
+    try await self.requireBootedDevice(udid, developerDirectory: directory)
     let result = try await self.run(
       SimctlCommand.xcrun,
       SimctlCommand.screenshot(udid: udid, path: file.standardizedFileURL.path(percentEncoded: false)),
@@ -320,6 +301,19 @@ public extension SimulatorClientImpl {
     )
     guard result.exitCode == 0 else {
       throw SimctlErrorClassifier.screenshotError(exitCode: result.exitCode, stderr: Self.stderr(result))
+    }
+  }
+}
+
+extension SimulatorClientImpl {
+  /// 같은 디렉터리로 목록을 다시 읽어 없으면 `.deviceNotFound`, `.booted` 가 아니면 `.deviceNotBooted` (스크린샷·녹화의 실행 전 확인).
+  func requireBootedDevice(_ udid: String, developerDirectory: URL?) async throws(SimulatorError) {
+    let inventory = try await self.inventory(developerDirectory: developerDirectory)
+    guard let device = inventory.devices.first(where: { SimctlCommand.validatedUDID($0.id.rawValue) == udid }) else {
+      throw .deviceNotFound
+    }
+    guard device.state == .booted else {
+      throw .deviceNotBooted
     }
   }
 }
@@ -339,5 +333,22 @@ public extension SimulatorClientImpl {
       throw Self.classify(result)
     }
     return try SimctlRuntimeListDecoder.images(from: result.stdout)
+  }
+}
+
+// MARK: - 목록 읽기
+
+extension SimulatorClientImpl {
+  func inventory(developerDirectory: URL?) async throws(SimulatorError) -> DeviceInventory {
+    let result = try await self.run(
+      SimctlCommand.xcrun,
+      SimctlCommand.list(),
+      developerDirectory: developerDirectory,
+      launchFailure: .developerToolsUnavailable
+    )
+    guard result.exitCode == 0 else {
+      throw Self.classify(result)
+    }
+    return try SimctlListDecoder.inventory(from: result.stdout)
   }
 }
