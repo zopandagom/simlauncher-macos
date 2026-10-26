@@ -38,7 +38,7 @@ struct AppInstallFlow {
       await self.installBundle(item, on: id, label: label, host: host)
       return
     }
-    guard let extracted = await self.extract(item, label: label, host: host, failure: AppInstallFailure.bundle)
+    guard let extracted = await self.extract(item, host: host, failed: { .installFailed(label, .bundle($0)) })
     else { return }
     await self.installExtracted(extracted, on: id, label: label, host: host)
   }
@@ -108,8 +108,8 @@ struct AppInstallFlow {
       return
     }
     let mimeType = file.mimeType
-    let extracted = await self.extract(file.file, label: label, host: host) { error in
-      AppInstallFailure.downloaded(error, mimeType: mimeType, from: origin)
+    let extracted = await self.extract(file.file, host: host) { error in
+      .installFailed(label, .downloaded(error, mimeType: mimeType, from: origin))
     }
     // 푼 뒤에는 받은 파일이 필요 없다. 설치 명령이 푼 .app 을 기기로 복사하기 전에 지워 디스크를 덜 쓴다.
     await self.download.removeDownloaded(file)
@@ -137,18 +137,17 @@ struct AppInstallFlow {
     return true
   }
 
-  /// zip 을 푼다. 실패하면 `failure` 로 만든 알림을 쌓고 nil (명령을 실행하기 전이라 다시 읽지 않는다.
+  /// zip 을 푼다. 실패하면 `failed` 로 만든 알림을 쌓고 nil (명령을 실행하기 전이라 다시 읽지 않는다.
   /// 풀다 만 폴더는 Impl 이 지웠다). 받은 zip 에도 쓴다.
   private func extract(
     _ zip: URL,
-    label: LauncherNotice.Device,
     host: Host,
-    failure: (AppBundleError) -> AppInstallFailure
+    failed: (AppBundleError) -> LauncherNotice
   ) async -> ExtractedApp? {
     do throws(AppBundleError) {
       return try await self.appBundle.extractApp(fromZip: zip)
     } catch {
-      host.enqueue(.installFailed(label, failure(error)))
+      host.enqueue(failed(error))
       return nil
     }
   }
@@ -168,25 +167,34 @@ struct AppInstallFlow {
 
   /// 검사·판정을 통과하면 설치하고 실행한다. 모든 실패가 안에서 알림으로 끝나 던지지 않는다.
   private func installBundle(_ url: URL, on id: VirtualDevice.ID, label: LauncherNotice.Device, host: Host) async {
-    guard let prepared = await self.prepareInstall(url, on: id, label: label, host: host) else { return }
-    await self.runInstall(prepared.info, on: prepared.device, label: label, host: host)
+    guard let info = await self.inspect(url, host: host, failed: { .installFailed(label, $0) }),
+          let device = self.judge(info, on: id, label: label, host: host)
+    else { return }
+    await self.runInstall(info, on: device, label: label, host: host)
   }
 
-  /// 검사하고, 검사가 끝난 시점의 목록으로 기기와 앱을 판정한다. 실패하면 알림을 쌓고 nil
-  /// (명령을 실행하지 않았으므로 다시 읽지 않는다).
-  private func prepareInstall(
+  /// 검사한다. 실패하면 `failed` 로 만든 알림을 쌓고 nil (명령을 실행하지 않았으므로 다시 읽지 않는다).
+  private func inspect(
     _ url: URL,
+    host: Host,
+    failed: (AppInstallFailure) -> LauncherNotice
+  ) async -> AppBundleInfo? {
+    do throws(AppBundleError) {
+      return try await self.appBundle.inspect(url)
+    } catch {
+      host.enqueue(failed(.bundle(error)))
+      return nil
+    }
+  }
+
+  /// 검사가 끝난 시점의 목록으로 기기와 앱을 판정한다. 실패하면 알림을 쌓고 nil
+  /// (명령을 실행하지 않았으므로 다시 읽지 않는다).
+  private func judge(
+    _ info: AppBundleInfo,
     on id: VirtualDevice.ID,
     label: LauncherNotice.Device,
     host: Host
-  ) async -> (info: AppBundleInfo, device: VirtualDevice)? {
-    let info: AppBundleInfo
-    do throws(AppBundleError) {
-      info = try await self.appBundle.inspect(url)
-    } catch {
-      host.enqueue(.installFailed(label, .bundle(error)))
-      return nil
-    }
+  ) -> VirtualDevice? {
     // 검사하는 동안 새로 고침으로 목록이 바뀌었을 수 있다. 이 기기의 작업은 지금 이 설치라 진행 중은 보지 않는다.
     let target = AppInstallTarget.current(id, in: host.listState())
     guard case let .ready(device) = target else {
@@ -199,7 +207,7 @@ struct AppInstallFlow {
       host.enqueue(.installFailed(label, .rejected(problem)))
       return nil
     }
-    return (info, device)
+    return device
   }
 
   /// 꺼져 있으면 켜고, Simulator 앱을 열고, 검사한 경로를 설치하고, 검사한 번들 ID 로 실행한 뒤 다시 읽는다.
