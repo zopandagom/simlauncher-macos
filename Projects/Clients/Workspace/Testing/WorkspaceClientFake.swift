@@ -69,22 +69,11 @@ public final class WorkspaceClientFake: WorkspaceClient {
   }
 
   public func reserveScreenshotFile(_ name: ScreenshotFileName) async throws(WorkspaceError) -> URL {
-    self.state.withLock { $0.calls.append(.reserveScreenshotFile(stem: name.stem)) }
-    await self.waitIfSuspended()
-    return try self.state.withLock { (current: inout State) throws(WorkspaceError) -> URL in
-      if let error = current.reserveError {
-        throw error
-      }
-      for attempt in 1 ... ScreenshotFileName.maxAttempts {
-        guard let fileName = name.fileName(attempt: attempt) else { break }
-        let file = Self.folder.appending(path: fileName, directoryHint: .notDirectory)
-        if !current.reservedFiles.contains(file) {
-          current.reservedFiles.append(file)
-          return file
-        }
-      }
-      throw .fileNameUnavailable
-    }
+    try await self.reserve(
+      .reserveScreenshotFile(stem: name.stem),
+      in: Self.folder,
+      maxAttempts: ScreenshotFileName.maxAttempts
+    ) { name.fileName(attempt: $0) }
   }
 
   public func removeReservedFile(_ file: URL) async {
@@ -100,6 +89,31 @@ public final class WorkspaceClientFake: WorkspaceClient {
       if let error = current.revealError {
         throw error
       }
+    }
+  }
+
+  /// 기록 → 멈춤 확인 → 오류 설정이면 throw → `folder` 아래 빈 번호 예약.
+  private func reserve(
+    _ call: Call,
+    in folder: URL,
+    maxAttempts: Int,
+    fileName: (Int) -> String?
+  ) async throws(WorkspaceError) -> URL {
+    self.state.withLock { $0.calls.append(call) }
+    await self.waitIfSuspended()
+    return try self.state.withLock { (current: inout State) throws(WorkspaceError) -> URL in
+      if let error = current.reserveError {
+        throw error
+      }
+      for attempt in 1 ... maxAttempts {
+        guard let fileName = fileName(attempt) else { break }
+        let file = folder.appending(path: fileName, directoryHint: .notDirectory)
+        if !current.reservedFiles.contains(file) {
+          current.reservedFiles.append(file)
+          return file
+        }
+      }
+      throw .fileNameUnavailable
     }
   }
 

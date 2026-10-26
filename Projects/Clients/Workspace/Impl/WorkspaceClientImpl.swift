@@ -27,33 +27,13 @@ public struct WorkspaceClientImpl: WorkspaceClient {
   }
 
   public func reserveScreenshotFile(_ name: ScreenshotFileName) async throws(WorkspaceError) -> URL {
-    guard let folder = self.folder else {
-      throw .folderUnavailable
+    try Self.reserve(in: Self.folder(in: self.picturesDirectory), maxAttempts: ScreenshotFileName.maxAttempts) {
+      name.fileName(attempt: $0)
     }
-    try Self.prepare(folder)
-    for attempt in 1 ... ScreenshotFileName.maxAttempts {
-      guard let fileName = name.fileName(attempt: attempt) else { break }
-      // 링크를 풀지 않은 폴더 기준이다: 돌려주는 URL·Finder 경로는 `…/SimLauncher/…` 이고 실제 쓰기는 커널이 링크를 따라간다.
-      let file = folder.appending(path: fileName, directoryHint: .notDirectory)
-      // Core 규칙상 생기지 않지만, 이름이 저장 폴더 밖을 가리키면 쓰지 않는다.
-      guard Self.isDirectChild(file, of: folder) else {
-        throw .folderUnavailable
-      }
-      do {
-        try Data().write(to: file, options: .withoutOverwriting)
-        return file
-      } catch let error as CocoaError where error.code == .fileWriteFileExists {
-        // 같은 이름의 파일(대상 없는 심볼릭 링크 포함)이 있다. 링크 대상은 만들지 않는다 (측정).
-        continue
-      } catch {
-        throw .folderUnavailable
-      }
-    }
-    throw .fileNameUnavailable
   }
 
   public func removeReservedFile(_ file: URL) async {
-    guard let folder = self.folder, Self.isDirectChild(file, of: folder) else {
+    guard let folder = Self.folder(in: self.picturesDirectory), Self.isDirectChild(file, of: folder) else {
       return
     }
     // 예약한 것은 빈 파일이다. 같은 자리의 폴더는 지우지 않는다 (링크는 링크 자체를 본다).
@@ -72,8 +52,39 @@ public struct WorkspaceClientImpl: WorkspaceClient {
   }
 
   /// 저장 폴더 (링크를 풀지 않은 경로). 사진 폴더를 찾지 못하면 nil.
-  private var folder: URL? {
-    self.picturesDirectory?.appending(path: Self.folderName, directoryHint: .isDirectory)
+  private static func folder(in directory: URL?) -> URL? {
+    directory?.appending(path: self.folderName, directoryHint: .isDirectory)
+  }
+
+  /// `folder` 를 준비하고 `fileName(1...maxAttempts)` 중 처음 독점 생성에 성공한 빈 파일을 돌려준다.
+  private static func reserve(
+    in folder: URL?,
+    maxAttempts: Int,
+    fileName: (Int) -> String?
+  ) throws(WorkspaceError) -> URL {
+    guard let folder else {
+      throw .folderUnavailable
+    }
+    try Self.prepare(folder)
+    for attempt in 1 ... maxAttempts {
+      guard let fileName = fileName(attempt) else { break }
+      // 링크를 풀지 않은 폴더 기준이다: 돌려주는 URL·Finder 경로는 `…/SimLauncher/…` 이고 실제 쓰기는 커널이 링크를 따라간다.
+      let file = folder.appending(path: fileName, directoryHint: .notDirectory)
+      // Core 규칙상 생기지 않지만, 이름이 저장 폴더 밖을 가리키면 쓰지 않는다.
+      guard Self.isDirectChild(file, of: folder) else {
+        throw .folderUnavailable
+      }
+      do {
+        try Data().write(to: file, options: .withoutOverwriting)
+        return file
+      } catch let error as CocoaError where error.code == .fileWriteFileExists {
+        // 같은 이름의 파일(대상 없는 심볼릭 링크 포함)이 있다. 링크 대상은 만들지 않는다 (측정).
+        continue
+      } catch {
+        throw .folderUnavailable
+      }
+    }
+    throw .fileNameUnavailable
   }
 
   /// 없으면 만들고, 링크를 따라간 결과가 디렉터리인지 확인한다.
