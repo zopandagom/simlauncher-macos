@@ -7,9 +7,26 @@ public enum Env {
   public static let deploymentTargets: DeploymentTargets = .macOS("26.0")
   /// 앱 타깃(App·Example) Info.plist 에 공통으로 넣는 값.
   static let appInfoPlist: [String: Plist.Value] = [:]
-  /// Apple Developer Program 팀 ID. 배포 빌드는 Xcode 자동 서명으로 프로비저닝한다.
-  /// 비어 있으면 이 Mac 에서 실행(ad-hoc 서명)과 CI 만 된다. 배포 전에 채운다.
-  static let developmentTeam = ""
+  /// Apple Developer Program 팀 ID(공개 값). 배포는 `make release` 가 Xcode 자동 서명(클라우드 관리 Developer ID 인증서)으로 내보낸다.
+  /// 개발 실행은 `CODE_SIGN_IDENTITY = "-"`(Tuist 기본)라 ad-hoc 으로 돌고, `make build`·`make test`·CI 는 서명하지 않는다.
+  static let developmentTeam = "XHV4ZL5K8T"
+  /// 배포 버전. `make release` 가 dmg 이름(`SimLauncher-<버전>.dmg`)에 쓴다. 올릴 때 여기만 고친다 (docs/RELEASING.md).
+  static let marketingVersion = "1.0.0"
+  /// 빌드 번호. 같은 버전을 다시 배포하면 올린다.
+  static let buildNumber = "1"
+  /// 앱 타깃(`SimLauncher`)에만 주는 설정. Example 앱·모듈·테스트에는 주지 않는다.
+  static let appTargetSettings: SettingsDictionary = [
+    // 공증 필수. entitlement 없이 simctl·xcodebuild·URLSession 등이 돈다 (실측, docs/RELEASING.md)
+    "ENABLE_HARDENED_RUNTIME": "YES",
+    "MARKETING_VERSION": .string(Self.marketingVersion),
+    "CURRENT_PROJECT_VERSION": .string(Self.buildNumber),
+  ]
+  /// 앱 타깃 Info.plist 에만 넣는 값. Tuist 기본 Info.plist 의 고정 버전(1.0·1)과 빈 저작권 문구를 바꾼다.
+  static let appVersionInfoPlist: [String: Plist.Value] = [
+    "CFBundleShortVersionString": "$(MARKETING_VERSION)",
+    "CFBundleVersion": "$(CURRENT_PROJECT_VERSION)",
+    "NSHumanReadableCopyright": "Copyright © 2026 Joongwon Kim. MIT License.",
+  ]
   /// 화면 문자열은 한국어 먼저. 모든 프로젝트가 같은 개발 언어를 써야 String Catalog 의 원문 언어가 맞는다.
   static let projectOptions: Project.Options = .options(defaultKnownRegions: ["ko", "en"], developmentRegion: "ko")
 
@@ -44,9 +61,12 @@ public extension Project {
           product: .app,
           bundleId: Env.bundleIdPrefix,
           deploymentTargets: Env.deploymentTargets,
-          infoPlist: .extendingDefault(with: Env.appInfoPlist.merging(infoPlist) { $1 }),
+          infoPlist: .extendingDefault(
+            with: Env.appInfoPlist.merging(Env.appVersionInfoPlist) { $1 }.merging(infoPlist) { $1 }
+          ),
           buildableFolders: ["Sources", "Resources"],
-          dependencies: dependencies
+          dependencies: dependencies,
+          settings: .settings(base: Env.appTargetSettings)
         ),
       ]
     )
