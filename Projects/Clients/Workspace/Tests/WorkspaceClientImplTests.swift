@@ -4,10 +4,11 @@ import Testing
 import WorkspaceInterface
 @testable import WorkspaceImpl
 
-/// 실제 파일 시스템을 쓰지만 사진 폴더 자리에 임시 폴더를 주입해 `~/Pictures` 는 건드리지 않는다. Finder 는 열지 않는다(기록 클로저).
+/// 실제 파일 시스템을 쓰지만 사진·동영상 폴더 자리에 임시 폴더를 주입해 `~/Pictures`·`~/Movies` 는 건드리지 않는다.
+/// Finder 는 열지 않는다(기록 클로저).
 struct WorkspaceClientImplTests {
   static func client(_ tmp: TemporaryDirectory, recorder: RevealRecorder = RevealRecorder()) -> WorkspaceClientImpl {
-    WorkspaceClientImpl(picturesDirectory: tmp.url, reveal: { recorder.record($0) })
+    WorkspaceClientImpl(picturesDirectory: tmp.url, moviesDirectory: tmp.movies, reveal: { recorder.record($0) })
   }
 
   static func size(_ url: URL) throws -> Int {
@@ -106,7 +107,7 @@ struct WorkspaceClientImplTests {
 
   @Test("사진 폴더를 찾지 못하면 folderUnavailable")
   func noPicturesDirectory() async {
-    let client = WorkspaceClientImpl(picturesDirectory: nil, reveal: { _ in })
+    let client = WorkspaceClientImpl(picturesDirectory: nil, moviesDirectory: nil, reveal: { _ in })
 
     await #expect(throws: WorkspaceError.folderUnavailable) {
       try await client.reserveScreenshotFile(Screenshot.name())
@@ -183,6 +184,40 @@ struct WorkspaceClientImplTests {
     #expect(FileManager.default.fileExists(atPath: outside.plainPath))
     #expect(FileManager.default.fileExists(atPath: nested.plainPath))
     #expect(FileManager.default.fileExists(atPath: directory.plainPath))
+  }
+
+  @Test("내용이 있는 파일은 저장 폴더 바로 안이어도 지우지 않는다 (사진·동영상 폴더 모두)")
+  func keepsFilesWithContent() async throws {
+    let tmp = try TemporaryDirectory()
+    defer { tmp.remove() }
+    let client = Self.client(tmp)
+    let screenshot = try await client.reserveScreenshotFile(Screenshot.name())
+    let recording = try await client.reserveRecordingFile(Recording.name())
+    try Data("png".utf8).write(to: screenshot)
+    try Data("mov".utf8).write(to: recording)
+
+    await client.removeReservedFile(screenshot)
+    await client.removeReservedFile(recording)
+
+    #expect(try String(contentsOf: screenshot, encoding: .utf8) == "png")
+    #expect(try String(contentsOf: recording, encoding: .utf8) == "mov")
+  }
+
+  @Test("같은 자리의 심볼릭 링크는 빈 파일을 가리켜도 지우지 않고 링크 대상도 그대로 둔다")
+  func keepsSymbolicLinkInFolder() async throws {
+    let tmp = try TemporaryDirectory()
+    defer { tmp.remove() }
+    let client = Self.client(tmp)
+    let target = tmp.url.appending(path: "empty.mov")
+    try Data().write(to: target)
+    try FileManager.default.createDirectory(at: tmp.moviesFolder, withIntermediateDirectories: true)
+    let link = try tmp.moviesFolder.appending(path: #require(Recording.name().fileName(attempt: 1)))
+    try FileManager.default.createSymbolicLink(at: link, withDestinationURL: target)
+
+    await client.removeReservedFile(link)
+
+    #expect(try FileManager.default.destinationOfSymbolicLink(atPath: link.plainPath) == target.plainPath)
+    #expect(FileManager.default.fileExists(atPath: target.plainPath))
   }
 
   @Test("있는 파일은 Finder 에서 한 번 선택해 보인다")

@@ -44,6 +44,13 @@ struct SimctlCommandTests {
     ])
   }
 
+  @Test("recordVideo 는 기기 뒤에 io recordVideo 와 h264·사각 전체 화면·덮어쓰기 옵션, 마지막에 경로를 넘긴다")
+  func recordVideoArguments() {
+    #expect(SimctlCommand.recordVideo(udid: "A", path: "/M/한글 (1).mov") == [
+      "simctl", "io", "A", "recordVideo", "--codec=h264", "--mask=ignored", "--force", "/M/한글 (1).mov",
+    ])
+  }
+
   @Test("create stdout 의 UDID 를 읽고 대문자로 맞춘다")
   func createdUDID() {
     #expect(

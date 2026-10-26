@@ -10,6 +10,7 @@ iPhone·iPad 가 없는 인원이 Mac 만으로 개발 중인 iOS 앱을 테스�
 - 로컬 .app(또는 zip) 을 골라 시뮬레이터에 설치·실행, 딥링크 열기
 - URL 의 .app(zip) 을 내려받아 설치
 - 켜진 기기 화면 스크린샷 (사진 폴더의 SimLauncher 폴더에 PNG 로 저장, Finder 에서 보이기)
+- 켜진 기기 화면 녹화 (동영상 폴더의 SimLauncher 폴더에 저장, Finder 에서 보이기)
 - 빌드 카탈로그: 설정 창(⌘,)에 카탈로그 URL 을 등록하고, 기기 행 "앱 설치 > 카탈로그에서…" 의 앱·버전 목록에서 골라 설치. 카탈로그는 정적 `catalog.json` 하나라 GitHub Releases·S3·사내 웹 서버 어디에 둬도 된다 ([규격](docs/CATALOG.md))
 
 ## 샘플 카탈로그
@@ -28,7 +29,7 @@ https://github.com/zopandagom/simlauncher-macos/releases/download/sample-catalog
 - Foundation `Process` 로 `xcrun simctl` 등 실행 (Command Client Impl)
 - Foundation `URLSession` 으로 카탈로그·빌드 다운로드 (Download Client Impl)
 - Foundation `UserDefaults` 로 사용자 설정(카탈로그 주소) 저장 (Preferences Client Impl)
-- AppKit `NSWorkspace` 로 Finder 에서 보이기, Foundation `FileManager` 로 사진 폴더에 스크린샷 저장 폴더 준비·파일 이름 예약 (Workspace Client Impl)
+- AppKit `NSWorkspace` 로 Finder 에서 보이기, Foundation `FileManager` 로 사진·동영상 폴더에 스크린샷·녹화 저장 폴더 준비·파일 이름 예약 (Workspace Client Impl)
 - 필요 환경: Xcode 와 iOS 시뮬레이터 런타임 (이 앱을 쓰는 Mac 에도 필요. 런타임은 없으면 앱의 "개발 환경" 화면에서 Xcode 의 기본 iOS 버전을 설치할 수 있다)
 
 ## 시작하기

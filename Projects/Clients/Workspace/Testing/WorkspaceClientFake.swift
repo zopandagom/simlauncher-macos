@@ -4,18 +4,23 @@ import Synchronization
 import WorkspaceInterface
 
 /// 테스트·Example 용 `WorkspaceClient`. 파일을 만들지 않고 메모리의 예약 목록과 호출 기록만 둔다. Finder 를 열지 않는다.
-/// 예약은 `folder` 아래 `name.fileName(attempt: n)` 을 돌려주고, n 은 지금 예약 목록에 그 이름이 없는 가장 작은 번호다
-/// (Impl 의 독점 생성과 같다: `removeReservedFile` 로 뺀 이름은 다시 쓸 수 있다). 99 까지 모두 있으면 `.fileNameUnavailable`.
+/// 예약은 스크린샷이면 `folder`, 녹화면 `moviesFolder` 아래 `name.fileName(attempt: n)` 을 돌려주고, n 은 지금 예약 목록에
+/// 그 파일이 없는 가장 작은 번호다 (Impl 의 독점 생성과 같다: `removeReservedFile` 로 뺀 이름은 다시 쓸 수 있다).
+/// 99 까지 모두 있으면 `.fileNameUnavailable`. 예약 목록은 하나다 (폴더가 달라 두 예약의 파일이 겹치지 않는다).
+/// 지우기는 크기를 보지 않고 목록에서 뺀다 (Fake 파일에는 내용이 없다).
 /// 보이기는 기록만 하고 성공한다 (예약 목록에 없어도). 오류는 `setReserveError(_:)`·`setRevealError(_:)` 로 바꾼다.
 public final class WorkspaceClientFake: WorkspaceClient {
   public enum Call: Hashable, Sendable {
     case reserveScreenshotFile(stem: String)
+    case reserveRecordingFile(stem: String)
     case removeReservedFile(URL)
     case revealInFinder(URL)
   }
 
-  /// 예약 파일이 들어가는 가짜 저장 폴더.
+  /// 스크린샷 예약 파일이 들어가는 가짜 저장 폴더.
   public static let folder = URL(filePath: "/SimLauncher-Fake/", directoryHint: .isDirectory)
+  /// 녹화 예약 파일이 들어가는 가짜 저장 폴더.
+  public static let moviesFolder = URL(filePath: "/SimLauncher-Fake-Movies/", directoryHint: .isDirectory)
 
   private struct State {
     var calls: [Call] = []
@@ -40,7 +45,7 @@ public final class WorkspaceClientFake: WorkspaceClient {
     self.state.withLock { $0.reservedFiles }
   }
 
-  /// 이후 예약이 이 오류로 실패한다 (`nil` 이면 성공). 기록은 그대로 한다.
+  /// 이후 예약(스크린샷·녹화)이 이 오류로 실패한다 (`nil` 이면 성공). 기록은 그대로 한다.
   public func setReserveError(_ error: WorkspaceError?) {
     self.state.withLock { $0.reserveError = error }
   }
@@ -50,7 +55,7 @@ public final class WorkspaceClientFake: WorkspaceClient {
     self.state.withLock { $0.revealError = error }
   }
 
-  /// 이후 `reserveScreenshotFile(_:)` 이 기록만 하고 `resumeReserves()` 까지 기다린다.
+  /// 이후 `reserveScreenshotFile(_:)`·`reserveRecordingFile(_:)` 이 기록만 하고 `resumeReserves()` 까지 기다린다.
   public func suspendReserves() {
     self.state.withLock { $0.reservesSuspended = true }
   }
@@ -69,22 +74,19 @@ public final class WorkspaceClientFake: WorkspaceClient {
   }
 
   public func reserveScreenshotFile(_ name: ScreenshotFileName) async throws(WorkspaceError) -> URL {
-    self.state.withLock { $0.calls.append(.reserveScreenshotFile(stem: name.stem)) }
-    await self.waitIfSuspended()
-    return try self.state.withLock { (current: inout State) throws(WorkspaceError) -> URL in
-      if let error = current.reserveError {
-        throw error
-      }
-      for attempt in 1 ... ScreenshotFileName.maxAttempts {
-        guard let fileName = name.fileName(attempt: attempt) else { break }
-        let file = Self.folder.appending(path: fileName, directoryHint: .notDirectory)
-        if !current.reservedFiles.contains(file) {
-          current.reservedFiles.append(file)
-          return file
-        }
-      }
-      throw .fileNameUnavailable
-    }
+    try await self.reserve(
+      .reserveScreenshotFile(stem: name.stem),
+      in: Self.folder,
+      maxAttempts: ScreenshotFileName.maxAttempts
+    ) { name.fileName(attempt: $0) }
+  }
+
+  public func reserveRecordingFile(_ name: RecordingFileName) async throws(WorkspaceError) -> URL {
+    try await self.reserve(
+      .reserveRecordingFile(stem: name.stem),
+      in: Self.moviesFolder,
+      maxAttempts: RecordingFileName.maxAttempts
+    ) { name.fileName(attempt: $0) }
   }
 
   public func removeReservedFile(_ file: URL) async {
@@ -100,6 +102,31 @@ public final class WorkspaceClientFake: WorkspaceClient {
       if let error = current.revealError {
         throw error
       }
+    }
+  }
+
+  /// 기록 → 멈춤 확인 → 오류 설정이면 throw → `folder` 아래 빈 번호 예약. 스크린샷·녹화가 함께 쓴다.
+  private func reserve(
+    _ call: Call,
+    in folder: URL,
+    maxAttempts: Int,
+    fileName: (Int) -> String?
+  ) async throws(WorkspaceError) -> URL {
+    self.state.withLock { $0.calls.append(call) }
+    await self.waitIfSuspended()
+    return try self.state.withLock { (current: inout State) throws(WorkspaceError) -> URL in
+      if let error = current.reserveError {
+        throw error
+      }
+      for attempt in 1 ... maxAttempts {
+        guard let fileName = fileName(attempt) else { break }
+        let file = folder.appending(path: fileName, directoryHint: .notDirectory)
+        if !current.reservedFiles.contains(file) {
+          current.reservedFiles.append(file)
+          return file
+        }
+      }
+      throw .fileNameUnavailable
     }
   }
 

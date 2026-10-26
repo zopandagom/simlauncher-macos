@@ -22,7 +22,7 @@ public struct Client: Hashable, Sendable {
 
 // 새 Client 는 이 extension 에 static 상수로 추가한다.
 public extension Client {
-  /// iOS 시뮬레이터 기기·런타임 목록과 런타임 디스크 이미지 목록, 켜기·끄기·만들기·삭제·초기화, 앱 설치·실행, 화면 찍기,
+  /// iOS 시뮬레이터 기기·런타임 목록과 런타임 디스크 이미지 목록, 켜기·끄기·만들기·삭제·초기화, 앱 설치·실행, 화면 찍기·녹화,
   /// Simulator 앱 열기 (`xcrun simctl`).
   static let simulator = Client("Simulator")
   /// 로컬 iOS 앱 번들(.app) 검사와 zip 풀기.
@@ -40,8 +40,8 @@ public extension Client {
   /// 사용자 설정(UserDefaults 표준 도메인 = 앱 번들 ID): 빌드 카탈로그 주소 목록 읽기·추가·삭제.
   /// 관리자가 구성 프로필로 강제한 키(`objectIsForced`)는 잠김이라 쓰지 않는다.
   static let preferences = Client("Preferences")
-  /// 사용자 폴더와 Finder: 스크린샷 저장 폴더(사진 폴더의 `SimLauncher`) 준비와 파일 이름 예약(덮어쓰지 않음)·
-  /// 예약 파일 지우기, Finder 에서 파일 선택해 보이기 (FileManager·NSWorkspace).
+  /// 사용자 폴더와 Finder: 스크린샷·녹화 저장 폴더(사진·동영상 폴더의 `SimLauncher`) 준비와 파일 이름 예약(덮어쓰지 않음)·
+  /// 빈 예약 파일 지우기, Finder 에서 파일 선택해 보이기 (FileManager·NSWorkspace).
   static let workspace = Client("Workspace")
 }
 

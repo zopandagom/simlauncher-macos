@@ -110,4 +110,59 @@ struct WorkspaceClientFakeTests {
     _ = try await fake.reserveScreenshotFile(name)
     #expect(fake.reservedFiles.count == 2)
   }
+
+  // MARK: - 녹화
+
+  @Test("녹화 예약은 동영상 가짜 폴더 아래 번호를 매기고 호출을 기록한다")
+  func recordingReserve() async throws {
+    let fake = WorkspaceClientFake()
+    let name = Recording.name()
+
+    let first = try await fake.reserveRecordingFile(name)
+    let second = try await fake.reserveRecordingFile(name)
+    let screenshot = try await fake.reserveScreenshotFile(Screenshot.name())
+
+    let firstName = try #require(name.fileName(attempt: 1))
+    let secondName = try #require(name.fileName(attempt: 2))
+    #expect(first == WorkspaceClientFake.moviesFolder.appending(path: firstName, directoryHint: .notDirectory))
+    #expect(second == WorkspaceClientFake.moviesFolder.appending(path: secondName, directoryHint: .notDirectory))
+    // 스크린샷은 같은 stem 이어도 다른 폴더라 번호 없이.
+    #expect(try screenshot == Self.file(Screenshot.name(), attempt: 1))
+    #expect(fake.calls == [
+      .reserveRecordingFile(stem: name.stem),
+      .reserveRecordingFile(stem: name.stem),
+      .reserveScreenshotFile(stem: Screenshot.name().stem),
+    ])
+
+    await fake.removeReservedFile(first)
+    #expect(fake.reservedFiles == [second, screenshot])
+  }
+
+  @Test("설정한 예약 오류가 녹화 예약에도 적용된다")
+  func recordingReserveError() async throws {
+    let fake = WorkspaceClientFake()
+    fake.setReserveError(.folderUnavailable)
+
+    await #expect(throws: WorkspaceError.folderUnavailable) {
+      try await fake.reserveRecordingFile(Recording.name())
+    }
+    #expect(fake.calls == [.reserveRecordingFile(stem: Recording.name().stem)])
+    #expect(fake.reservedFiles.isEmpty)
+  }
+
+  @Test("멈춘 예약 설정이 녹화 예약도 멈춘다")
+  func recordingSuspend() async throws {
+    let fake = WorkspaceClientFake()
+    fake.suspendReserves()
+
+    let task = Task { try await fake.reserveRecordingFile(Recording.name()) }
+    while fake.calls.isEmpty {
+      await Task.yield()
+    }
+    #expect(fake.reservedFiles.isEmpty)
+
+    fake.resumeReserves()
+    let file = try await task.value
+    #expect(fake.reservedFiles == [file])
+  }
 }

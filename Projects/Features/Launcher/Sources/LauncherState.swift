@@ -14,8 +14,8 @@ public enum LauncherListState: Hashable, Sendable {
   case failed(SimulatorError)
 }
 
-/// 목록 위에 띄우는 알림. 기기 작업(켜기·끄기·만들기·삭제·초기화·앱 설치(URL·카탈로그 버전의 받기 포함)·실행·링크 열기·스크린샷) 실패와,
-/// 목록이 있을 때의 새로 고침 실패.
+/// 목록 위에 띄우는 알림. 기기 작업(켜기·끄기·만들기·삭제·초기화·앱 설치(URL·카탈로그 버전의 받기 포함)·실행·링크 열기·스크린샷·
+/// 녹화) 실패와, 목록이 있을 때의 새로 고침 실패. 정보 알림은 기기가 꺼져 녹화를 자동으로 멈추고 저장한 것 하나다.
 public enum LauncherNotice: Hashable, Sendable {
   /// 알림에 보일 기기. 누른 시점의 값이라, 실패 뒤 목록에서 사라져도 그대로 보인다.
   public struct Device: Hashable, Sendable {
@@ -54,6 +54,14 @@ public enum LauncherNotice: Hashable, Sendable {
   case screenshotFailed(Device, ScreenshotFailure)
   /// 스크린샷을 저장했지만 Finder 에서 보이지 못했다.
   case screenshotRevealFailed(Device, WorkspaceError)
+  /// 녹화를 시작하지 못했거나 저장하지 못했다 (예약·시작·저장 실패). Device 는 "녹화" 를 누른 시점의 기기.
+  case recordingFailed(Device, RecordingFailure)
+  /// simctl 이 스스로 실패로 끝났지만 끝난 데까지 저장했다 (Finder 에서 보였다).
+  case recordingInterrupted(Device)
+  /// 정보 알림: 다시 읽은 목록에서 기기가 꺼져 있거나 없어 녹화를 자동으로 멈추고 저장했다 (Finder 에서 보였다).
+  case recordingStoppedByDevice(Device)
+  /// 녹화를 저장했지만 Finder 에서 보이지 못했다.
+  case recordingRevealFailed(Device, WorkspaceError)
 }
 
 /// 앱 설치 흐름의 실패 원인 (켜기·앱 열기 실패는 기존 bootFailed·openAppFailed 를 쓴다).
@@ -142,6 +150,14 @@ public enum ScreenshotFailure: Hashable, Sendable {
   /// 저장 폴더 준비·이름 예약 실패 (촬영 명령 전).
   case workspace(WorkspaceError)
   /// 촬영 명령 실패, 또는 실행 전 확인에서 기기가 없거나 꺼짐.
+  case simulator(SimulatorError)
+}
+
+/// 녹화 흐름의 실패 원인.
+public enum RecordingFailure: Hashable, Sendable {
+  /// 저장 폴더 준비·이름 예약 실패 (녹화 명령 전).
+  case workspace(WorkspaceError)
+  /// 녹화 시작·저장 실패, 또는 실행 전 확인에서 기기가 없거나 꺼짐.
   case simulator(SimulatorError)
 }
 

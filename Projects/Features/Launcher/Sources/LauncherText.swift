@@ -12,7 +12,7 @@ enum LauncherText {
   /// 모든 분류에서 잡고, 정확히 한 분류가 문구를 돌려준다 (`LauncherTextTests` 가 확인).
   static func message(for error: SimulatorError) -> String {
     self.setupMessage(for: error) ?? self.deviceMessage(for: error) ?? self.appCommandMessage(for: error)
-      ?? self.linkMessage(for: error) ?? self.commandFailedMessage
+      ?? self.linkMessage(for: error) ?? self.recordingMessage(for: error) ?? self.commandFailedMessage
   }
 
   // MARK: - 알림
@@ -44,7 +44,9 @@ enum LauncherText {
     case let .eraseFailed(device, _):
       String(localized: "“\(device.name)” (\(device.runtimeName)) 기기를 초기화하지 못했습니다", bundle: .module)
     case let .installFailed(device, _), let .launchFailed(device, _), let .openURLFailed(device, _),
-         let .screenshotFailed(device, _), let .screenshotRevealFailed(device, _):
+         let .screenshotFailed(device, _), let .screenshotRevealFailed(device, _),
+         let .recordingFailed(device, _), let .recordingInterrupted(device),
+         let .recordingStoppedByDevice(device), let .recordingRevealFailed(device, _):
       self.rowTaskNoticeTitle(for: notice, device: device)
     }
   }
@@ -69,6 +71,8 @@ enum LauncherText {
       self.message(for: failure)
     case let .screenshotRevealFailed(_, error):
       self.message(for: error)
+    case .recordingFailed, .recordingInterrupted, .recordingStoppedByDevice, .recordingRevealFailed:
+      self.recordingNoticeMessage(for: notice)
     }
   }
 

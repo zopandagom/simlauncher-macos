@@ -1,8 +1,8 @@
 import SimulatorInterface
 
 /// 실패한 명령의 종료 코드·stderr 를 `SimulatorError` 로 바꾼다 (순수). 원문은 담지 않는다.
-/// install·launch·openurl·screenshot 은 stderr 에 앱이 정한 글자(표시 이름)나 사용자가 넣은 URL 이 섞이므로
-/// "(domain=…, code=…)" 줄의 domain·code 로만 분류한다 (screenshot 은 경로의 기기 이름도 섞인다).
+/// install·launch·openurl·screenshot·recordVideo 는 stderr 에 앱이 정한 글자(표시 이름)나 사용자가 넣은 URL 이 섞이므로
+/// "(domain=…, code=…)" 줄의 domain·code 로만 분류한다 (screenshot·recordVideo 는 경로의 기기 이름도 섞인다).
 enum SimctlErrorClassifier {
   private static let domainLinePrefix = "An error was encountered processing the command (domain="
   private static let denialLinePrefix = "The request was denied by service delegate ("
@@ -122,14 +122,7 @@ enum SimctlErrorClassifier {
   /// `error(exitCode:stderr:)` 를 쓰지 않는다: 그 함수는 "Invalid device" 를 줄 어디서든 찾아 경로의 글자에 걸린다.
   static func screenshotError(exitCode: Int32, stderr: String) -> SimulatorError {
     guard let (domain, code) = domainAndCode(stderr) else {
-      if stderr.drop(while: \.isWhitespace).hasPrefix("xcrun: error:") {
-        return .developerToolsUnavailable
-      }
-      // 없는 기기: "Invalid device: <UDID>" (148).
-      if stderr.split(whereSeparator: \.isNewline).contains(where: { $0.hasPrefix("Invalid device:") }) {
-        return .deviceNotFound
-      }
-      return .commandFailed
+      return self.lineHeadError(stderr)
     }
     switch (domain, code) {
     // 꺼진 기기: 약 60초 뒤 "Timeout waiting for screen surfaces" (60).
@@ -137,5 +130,33 @@ enum SimctlErrorClassifier {
     // 저장 실패(NSCocoaErrorDomain 4·513)는 Workspace 가 방금 만든 폴더·파일이라 드물어 따로 나누지 않는다.
     default: return .commandFailed
     }
+  }
+
+  /// recordVideo 시작 실패. 오류 설명 줄에 경로(기기 이름이 든 파일 이름)가 나올 수 있어 screenshot 과 같이
+  /// 줄 머리의 domain 줄로만 분류하고, domain 줄이 없으면 줄 머리의 `xcrun: error:`·`Invalid device:` 만 본다.
+  static func recordingError(exitCode: Int32, stderr: String) -> SimulatorError {
+    guard let (domain, code) = domainAndCode(stderr) else {
+      return self.lineHeadError(stderr)
+    }
+    switch (domain, code) {
+    // 같은 기기를 다른 녹화가 쓰는 중: "Host recording is already in progress" (exit 16).
+    case ("NSPOSIXErrorDomain", 16): return .recordingInProgress
+    // 저장 실패(NSURLErrorDomain -3000 없는 폴더, NSCocoaErrorDomain 513 쓰기 권한 없음)는 Workspace 가 방금 만든 폴더라
+    // 드물어 따로 나누지 않는다.
+    default: return .commandFailed
+    }
+  }
+
+  /// domain 줄이 없는 screenshot·recordVideo 실패. `error(exitCode:stderr:)` 는 "Invalid device" 를 줄 어디서든 찾아
+  /// 경로의 글자에 걸리므로 쓰지 않고, 앞 공백 뒤 `xcrun: error:` 와 `Invalid device:` 로 시작하는 줄만 본다.
+  private static func lineHeadError(_ stderr: String) -> SimulatorError {
+    if stderr.drop(while: \.isWhitespace).hasPrefix("xcrun: error:") {
+      return .developerToolsUnavailable
+    }
+    // 없는 기기: "Invalid device: <UDID>" (148).
+    if stderr.split(whereSeparator: \.isNewline).contains(where: { $0.hasPrefix("Invalid device:") }) {
+      return .deviceNotFound
+    }
+    return .commandFailed
   }
 }

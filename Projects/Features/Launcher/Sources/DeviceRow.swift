@@ -4,8 +4,10 @@ import Foundation
 import SwiftUI
 
 /// 기기 한 줄: 종류 아이콘, 이름, 상태, 앱 설치 메뉴(파일에서 고르기… / URL 에서… / 카탈로그에서…)와 드롭, 링크 열기 버튼(시트),
-/// 스크린샷 버튼(켜진 기기만, 찍는 중이면 작은 진행 표시), 켜기·끄기 버튼(받는 중이면 진행 막대와 받기 취소 버튼), 기기 작업 메뉴(… 버튼과 컨텍스트 메뉴: 초기화·삭제).
-/// 쓸 수 없는 기기는 흐리게 그리고 이유를 보인다. 막힌 메뉴 항목은 비활성으로 두고 이유를 메뉴 맨 위에 보인다.
+/// 스크린샷 버튼(켜진 기기만, 찍는 중이면 작은 진행 표시), 녹화 표시(켜진 기기만: "녹화" 버튼, 녹화 중이면 경과 시간과 "중지",
+/// 저장 중이면 작은 진행 표시), 켜기·끄기 버튼(받는 중이면 진행 막대와 받기 취소 버튼, 녹화 중이면 끄기 비활성),
+/// 기기 작업 메뉴(… 버튼과 컨텍스트 메뉴: 초기화·삭제).
+/// 쓸 수 없는 기기는 흐리게 그리고 이유를 보인다. 막힌 메뉴 항목은 비활성으로 두고 이유를 메뉴 맨 위에 보인다 (녹화 중이면 녹화 이유를 먼저).
 struct DeviceRow: View {
   let device: VirtualDevice
   /// 이 기기에서 진행 중인 작업. nil 이면 없다.
@@ -23,6 +25,12 @@ struct DeviceRow: View {
   /// 이 기기의 스크린샷을 찍는 중이다 (버튼 자리에 진행 표시).
   let isTakingScreenshot: Bool
   let screenshotTapped: () -> Void
+  /// 이 기기의 녹화 단계. nil 이면 녹화 중이 아니다.
+  let recordingPhase: RecordingPhase?
+  /// 녹화 버튼을 누를 수 있다 (`RecordingActivity.canStart`: 스크린샷과 같은 기기·작업 규칙, 녹화 중이 아님).
+  let canStartRecording: Bool
+  let recordTapped: () -> Void
+  let stopRecordingTapped: () -> Void
   let bootTapped: () -> Void
   let shutdownTapped: () -> Void
   let eraseTapped: () -> Void
@@ -62,6 +70,13 @@ struct DeviceRow: View {
         .disabled(!self.canInstall)
         .help(self.openURLBlockReason ?? LauncherText.openURLHelp)
       self.screenshot
+      RecordingControl(
+        phase: self.recordingPhase,
+        canStart: self.canStartRecording,
+        blockReason: self.recordBlockReason,
+        recordTapped: self.recordTapped,
+        stopTapped: self.stopRecordingTapped
+      )
       self.action
       Menu {
         self.menuItems
@@ -99,13 +114,16 @@ struct DeviceRow: View {
       Divider()
     }
     Button(LauncherText.eraseMenuItem, action: self.eraseTapped)
-      .disabled(self.device.eraseAvailability != .allowed)
+      .disabled(self.device.eraseAvailability != .allowed || self.isRecording)
     Button(LauncherText.deleteMenuItem, role: .destructive, action: self.deleteTapped)
-      .disabled(self.device.deleteAvailability != .allowed)
+      .disabled(self.device.deleteAvailability != .allowed || self.isRecording)
   }
 
-  /// 메뉴 맨 위에 보일 이유. 켜져 있으면 삭제·초기화 모두, 쓸 수 없으면 초기화가 막힌다.
+  /// 메뉴 맨 위에 보일 이유. 녹화 중이면 녹화 이유를 먼저 보인다. 켜져 있으면 삭제·초기화 모두, 쓸 수 없으면 초기화가 막힌다.
   private var blockReason: String? {
+    if self.isRecording {
+      return LauncherText.recordingBlocksDeviceActions
+    }
     if case .blocked(.notShutdown) = self.device.deleteAvailability {
       return LauncherText.blockReason(.notShutdown)
     }
@@ -140,7 +158,13 @@ struct DeviceRow: View {
     } else if self.isAvailable, self.device.state == .shutdown {
       Button(LauncherText.bootButton, action: self.bootTapped)
     } else if self.device.state == .booted {
-      Button(LauncherText.shutdownButton, action: self.shutdownTapped)
+      let shutdown = Button(LauncherText.shutdownButton, action: self.shutdownTapped)
+        .disabled(self.isRecording)
+      if self.isRecording {
+        shutdown.help(LauncherText.stopRecordingFirstHelp)
+      } else {
+        shutdown
+      }
     }
   }
 
@@ -192,6 +216,17 @@ struct DeviceRow: View {
     return LauncherText.screenshotBlockReason(reason)
   }
 
+  /// 녹화 버튼 툴팁에 보일 막힌 이유. 기기 규칙은 스크린샷과 같다.
+  private var recordBlockReason: String? {
+    guard case let .blocked(reason) = self.device.screenshotAvailability else { return nil }
+    return LauncherText.recordBlockReason(reason)
+  }
+
+  /// 이 기기가 녹화 중이다 (저장 중 포함). 끄기·초기화·삭제를 막는다 (`RecordingActivity.blocks`).
+  private var isRecording: Bool {
+    self.recordingPhase != nil
+  }
+
   private var isAvailable: Bool {
     self.device.availability == .available
   }
@@ -223,5 +258,51 @@ struct DeviceRow: View {
     case .tablet: "ipad"
     case .watch, .tv, .vision, .other: "questionmark.square.dashed"
     }
+  }
+}
+
+/// 행의 녹화 표시: 단계가 없으면 "녹화" 버튼, 시작 중이면 작은 진행 표시와 "중지", 녹화 중이면 빨간 점·경과 시간과 "중지",
+/// 저장 중이면 작은 진행 표시. 경과 시간은 SwiftUI 가 스스로 다시 그리는 `Text(_:style: .timer)` 라 Model 은 시작 시각만 갖는다.
+private struct RecordingControl: View {
+  let phase: RecordingPhase?
+  let canStart: Bool
+  /// 버튼이 막힌 이유 (툴팁). nil 이면 도움말을 보인다.
+  let blockReason: String?
+  let recordTapped: () -> Void
+  let stopTapped: () -> Void
+
+  var body: some View {
+    switch self.phase {
+    case .none:
+      Button(LauncherText.recordButton, action: self.recordTapped)
+        .disabled(!self.canStart)
+        .help(self.blockReason ?? LauncherText.recordHelp)
+    case .starting:
+      ProgressView()
+        .controlSize(.small)
+        .help(LauncherText.startingRecordingLabel)
+        .accessibilityLabel(LauncherText.startingRecordingLabel)
+      self.stopButton
+    case let .recording(startedAt):
+      HStack(spacing: 4) {
+        Image(systemName: "record.circle.fill")
+          .foregroundStyle(.red)
+          .accessibilityLabel(LauncherText.recordingLabel)
+        Text(startedAt, style: .timer)
+          .monospacedDigit()
+      }
+      .accessibilityElement(children: .combine)
+      .help(LauncherText.recordingLabel)
+      self.stopButton
+    case .stopping:
+      ProgressView()
+        .controlSize(.small)
+        .help(LauncherText.stoppingRecordingLabel)
+        .accessibilityLabel(LauncherText.stoppingRecordingLabel)
+    }
+  }
+
+  private var stopButton: some View {
+    Button(LauncherText.stopRecordingButton, action: self.stopTapped)
   }
 }

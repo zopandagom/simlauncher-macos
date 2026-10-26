@@ -18,8 +18,9 @@ import WorkspaceTesting
 /// "개발 환경 열기")은 눌러도 아무 일도 하지 않는다.
 /// "카탈로그에서…" 시트는 `PreferencesClientFake`(카탈로그 2개 + http 주소 + 앞 항목과 같은 카탈로그)와 카탈로그 전용
 /// `DownloadClientFake`(주소별 카탈로그 내용, 1초 지연)로 읽고, 고른 버전은 같은 `LauncherModel` 이 받아 설치한다.
-/// "스크린샷" 은 `WorkspaceClientFake`(파일을 만들지 않고 가짜 폴더 이름만 예약한다)와 `SimulatorClientFake`(켜진 기기면 1초 뒤
-/// 찍은 것으로 끝난다)로 돌아, 사진 폴더에 파일이 생기지 않고 Finder 도 열리지 않는다.
+/// "스크린샷"·"녹화" 는 `WorkspaceClientFake`(파일을 만들지 않고 가짜 폴더 이름만 예약한다)와 `SimulatorClientFake`(켜진 기기면
+/// 1초 뒤 찍은 것으로 끝난다. 녹화는 1초 뒤 시작 신호를 보내고 "중지" 를 누를 때까지 녹화 중이다)로 돌아, 사진·동영상 폴더에
+/// 파일이 생기지 않고 Finder 도 열리지 않는다.
 /// Example 에는 Settings 씬이 없다(설정 창은 App 에서 확인한다).
 @main
 struct LauncherFeatureExampleApp: App {
@@ -80,7 +81,7 @@ private func makeCatalogModel(
 }
 
 /// Fake 를 만들어 설정한 뒤 화면을 만든다. 카탈로그 시트는 기본이 빈 목록이고, `catalogs`·`catalogDownload` 로 바꾼다.
-/// 스크린샷 저장은 `workspace` 로 바꾼다 (기본: 늘 예약·보이기에 성공하는 Fake).
+/// 스크린샷·녹화 저장은 `workspace` 로 바꾼다 (기본: 늘 예약·보이기에 성공하는 Fake).
 @MainActor
 private func previewLauncher(
   _ inventory: DeviceInventory = .sample,
@@ -239,6 +240,33 @@ private func previewLauncher(
 
 #Preview("스크린샷 저장 뒤 Finder 실패 (켜진 기기의 스크린샷)") {
   previewLauncher(workspace: { $0.setRevealError(.fileNotFound) })
+}
+
+/// 켜진 기기만 버튼이 활성이다. 녹화 중에는 끄기 버튼과 … 메뉴의 초기화·삭제가 비활성이고 이유가 보이며, 설치·링크 열기·
+/// 스크린샷은 된다. 경과 시간은 1초마다 바뀐다.
+#Preview("녹화 (켜진 기기의 녹화 → 중지)") {
+  previewLauncher { $0.setDelay(.seconds(1)) }
+}
+
+#Preview("녹화 시작 중 (켜진 기기의 녹화, 시작 신호가 오지 않음)") {
+  // 신호만 빼서 "중지" 가 실제처럼 시작 전 멈춤으로 곧 끝난다 (`suspendRecordings` 는 취소를 보지 않는다).
+  previewLauncher { $0.setRecordingSignalsStart(false) }
+}
+
+#Preview("녹화 실패: 다른 도구가 녹화 중 (켜진 기기의 녹화)") {
+  previewLauncher { $0.setRecordingStartError(.recordingInProgress) }
+}
+
+#Preview("녹화 실패: 저장 폴더 (켜진 기기의 녹화)") {
+  previewLauncher(workspace: { $0.setReserveError(.folderUnavailable) })
+}
+
+#Preview("녹화 저장을 마치지 못함 (켜진 기기의 녹화 → 중지)") {
+  previewLauncher { $0.setRecordingStopOutcome(.failure(.recordingUnfinished)) }
+}
+
+#Preview("녹화가 중간에 끝남 (켜진 기기의 녹화 → 중지)") {
+  previewLauncher { $0.setRecordingStopOutcome(.success(.savedAfterFailure)) }
 }
 
 #Preview("URL 에서 설치 (앱 설치 → URL 에서… → 받아서 설치)") {

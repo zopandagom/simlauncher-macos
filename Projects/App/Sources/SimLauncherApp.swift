@@ -12,7 +12,8 @@ import WorkspaceImpl
 
 /// 조립 지점. Client Impl 을 만들어 Feature Model 에 주입하는 곳은 여기뿐이다.
 /// 화면 간 흐름도 여기서 잇는다: Setup 이 끝나면(`SetupModel.isFinished`) 기기 목록, 기기 목록의 Setup 진입 버튼
-/// ("개발 환경", 빈 화면의 iOS 설치 등)이면 다시 Setup. 앱 종료 요청은 `AppDelegate` 가 받아 런타임 설치 중이면 Setup 에 맡긴다.
+/// ("개발 환경", 빈 화면의 iOS 설치 등)이면 다시 Setup. 앱 종료 요청은 `AppDelegate` 가 받아 녹화 중이면 기기 목록(`LauncherModel`)에
+/// 녹화를 멈추고 저장하게 하고, 런타임 설치 중이면 Setup 에 맡긴다.
 /// 기기 행의 "카탈로그에서…" 시트(`CatalogInstallModel`)가 고른 버전은 `installRequested` 로 기기 목록(`LauncherModel`)이 설치한다.
 /// 설정 창(`Settings` 씬, ⌘,)은 메인 창의 화면(Setup·기기 목록)과 관계없이 열린다.
 @main
@@ -44,7 +45,7 @@ struct SimLauncherApp: App {
     let preferences = PreferencesClientImpl()
     let setup = SetupModel(devEnvironment: devEnvironment, simulator: simulator)
     self._setupModel = State(initialValue: setup)
-    // 스크린샷 저장 폴더는 "스크린샷" 을 누를 때 만든다 (Workspace Client 생성자는 파일을 건드리지 않는다).
+    // 스크린샷·녹화 저장 폴더는 "스크린샷"·"녹화" 를 누를 때 만든다 (Workspace Client 생성자는 파일을 건드리지 않는다).
     let launcher = LauncherModel(
       simulator: simulator,
       appBundle: AppBundleClientImpl(command: command),
@@ -64,7 +65,9 @@ struct SimLauncherApp: App {
     self._settingsModel = State(initialValue: SettingsModel(preferences: preferences, download: download))
     // 종료 요청 때 AppDelegate 가 Setup 에 설치 상태를 묻는다: 준비·내려받기 중이면 확인을 받아 멈추게 하고,
     // 설치 단계·멈추는 중이면 끝나기를 기다린다 (어댑터는 init 에서 넣은 값을 종료 요청 때 그대로 본다, 측정).
+    // 기기 목록에는 녹화 중인지 묻는다: 녹화 중이면 확인을 받아 모든 녹화를 멈추고 저장한 뒤 종료한다.
     self.appDelegate.setupModel = setup
+    self.appDelegate.launcherModel = launcher
   }
 
   var body: some Scene {

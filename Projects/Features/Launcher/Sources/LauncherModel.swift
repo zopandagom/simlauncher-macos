@@ -10,9 +10,11 @@ import WorkspaceInterface
 /// 만들고 지우고 초기화한다. 고른 .app 이나 .app 을 담은 zip 을(풀어서), 또는 입력한 https 주소의 zip 을 받아 풀어서
 /// 기기에 설치하고 바로 실행하며, 입력한 링크(딥링크·웹 주소)를 기기에서 연다 (모두 꺼져 있으면 켠다).
 /// 켜진 기기 화면을 사진 폴더의 SimLauncher 폴더에 PNG 로 저장하고 Finder 에서 보인다 (꺼진 기기는 켜지 않는다).
+/// 켜진 기기 화면을 동영상 폴더의 SimLauncher 폴더에 녹화하고, 멈추거나(중지·기기 꺼짐·앱 종료) 스스로 끝나면 저장해 Finder 에서 보인다.
 /// 카탈로그에서 설치 시트(`CatalogInstallModel`)가 고른 버전은 App 이 `catalogInstallRequested(_:)` 로 넘겨 같은 받기 경로로 설치한다.
 /// Xcode 준비와 iOS 시뮬레이터 설치는 여기서 하지 않고, Setup 진입 버튼으로 App 에 Setup 화면을 요청한다.
-/// 앱 설치의 풀기·검사·설치·실행은 Model 이 소유한 `AppInstallFlow` 가 한다 (Model 상태에는 창구로만 닿는다).
+/// 앱 설치의 켜기·풀기·검사·설치·실행은 Model 이 소유한 `AppInstallFlow` 가, 스크린샷·녹화의 예약·찍기·녹화·보이기는
+/// `ScreenCaptureFlow` 가 한다 (Model 상태에는 창구로만 닿는다).
 /// 상태를 바꾸지 않는 읽기 API(`canCreateDevice` 등)는 `LauncherModel+Reading.swift` 에 있다.
 @MainActor
 @Observable
@@ -24,6 +26,8 @@ public final class LauncherModel {
   public private(set) var activity = DeviceActivity()
   /// 기기별로 찍고 있는 스크린샷. 기기 작업과 겹칠 수 있다 (앱 설치·링크 열기 중에도 찍는다).
   public private(set) var screenshots = ScreenshotActivity()
+  /// 기기별 화면 녹화 (시작 중·녹화 중(시작 시각)·저장 중). 기기 작업과 겹칠 수 있다.
+  public private(set) var recordings = RecordingActivity()
   /// 닫지 않은 알림 줄.
   public private(set) var noticeQueue = LauncherNotices()
   /// 마지막으로 읽은 목록의 생성 선택지. 다시 읽기가 실패하면 이전 값을 유지한다.
@@ -44,15 +48,13 @@ public final class LauncherModel {
   @ObservationIgnored private let simulator: any SimulatorClient
   @ObservationIgnored private let appBundle: any AppBundleClient
   @ObservationIgnored private let download: any DownloadClient
-  /// 스크린샷 저장 폴더 준비·이름 예약과 Finder 에서 보이기.
-  @ObservationIgnored private let workspace: any WorkspaceClient
   /// Setup 진입 버튼(툴바 "개발 환경", 빈 화면의 "iOS 설치"·"다른 iOS 버전 설치", 목록 위 안내 줄의 "다른 iOS 버전 설치",
   /// 목록 읽기 실패 화면의 "개발 환경 열기")을 눌렀을 때 부른다. App 이 Setup 화면을 다시 연다 (화면 간 흐름은 App 이 잇는다).
   @ObservationIgnored private let setupRequested: @MainActor () -> Void
   /// 앱 설치 흐름(풀기 → 검사·판정 → 켜기 → 설치 → 실행). Client 만 갖고 Model 상태에는 `installHost` 창구로만 닿는다.
   @ObservationIgnored private let installFlow: AppInstallFlow
-  /// 스크린샷 파일 이름의 시각. 테스트가 고정한다.
-  @ObservationIgnored private let now: @Sendable () -> Date
+  /// 화면 캡처 흐름(예약 → 찍기·녹화 → Finder 에서 보이기). Client·시계만 갖고 Model 상태에는 `captureHost` 창구로만 닿는다.
+  @ObservationIgnored private let captureFlow: ScreenCaptureFlow
   /// 진행 중인 목록 읽기. Model 이 소유해 View 의 `.task` 가 취소돼도 끝까지 돈다.
   @ObservationIgnored private var loadTask: Task<Void, Never>?
   /// 읽는 동안 들어온 요청. 진행 중인 읽기가 끝나면 한 번 더 읽는다.
@@ -62,6 +64,10 @@ public final class LauncherModel {
     VirtualDevice.ID: Task<Result<DownloadedFile, DownloadError>, Never>
   ] =
     [:]
+  /// 기기별 녹화 작업. Model 이 소유해 중지·기기 꺼짐·앱 종료가 이것을 취소해 멈춘다 (View 의 Task 취소는 전해지지 않는다).
+  @ObservationIgnored private var recordingTasks: [VirtualDevice.ID: Task<Void, Never>] = [:]
+  /// 앱 종료를 기다리는 중이다. 새 녹화를 시작하지 않는다 (곧 종료하므로 되돌리지 않는다).
+  @ObservationIgnored private var isTerminating = false
 
   public init(
     simulator: any SimulatorClient,
@@ -74,10 +80,9 @@ public final class LauncherModel {
     self.simulator = simulator
     self.appBundle = appBundle
     self.download = download
-    self.workspace = workspace
-    self.installFlow = AppInstallFlow(simulator: simulator, appBundle: appBundle)
+    self.installFlow = AppInstallFlow(simulator: simulator, appBundle: appBundle, download: download)
+    self.captureFlow = ScreenCaptureFlow(simulator: simulator, workspace: workspace, now: now)
     self.setupRequested = setupRequested
-    self.now = now
   }
 
   /// 목록을 읽은 뒤(목록을 먼저 보인다) 남은 zip 풀기·받기 임시 폴더(앞선 실행이 남겼거나 지우지 못한 것)를 정리한다.
@@ -107,14 +112,17 @@ public final class LauncherModel {
     else { return }
     defer { self.activity.end(on: id) }
     // `begin(.boot)` 이 꺼진 기기만 받으므로 늘 켠다.
-    guard await self.bootIfNeededAndShowSimulator(device, label: LauncherNotice.Device(device)) else { return }
+    let label = LauncherNotice.Device(device)
+    guard await self.installFlow.bootIfNeededAndShowSimulator(device, label: label, host: self.installHost)
+    else { return }
     await self.reload()
   }
 
-  /// 켜진 기기를 끄고 목록을 다시 읽는다. 실패하면 알림을 띄우고 다시 읽는다.
+  /// 켜진 기기를 끄고 목록을 다시 읽는다. 실패하면 알림을 띄우고 다시 읽는다. 녹화 중이면 끄지 않는다.
   public func shutdownButtonTapped(_ id: VirtualDevice.ID) async {
     guard case let .loaded(list) = self.listState,
           let device = list.device(id: id),
+          !self.recordings.blocks(.shutdown, on: id),
           self.activity.begin(.shutdown, on: device)
     else { return }
     defer { self.activity.end(on: id) }
@@ -187,26 +195,6 @@ public final class LauncherModel {
     self.noticeQueue.enqueue(notice)
   }
 
-  /// 꺼져 있으면 켜고, 켜져 있던 기기도 Simulator 앱을 연다 (창을 닫아 두었어도 결과가 보이게). 켜기에 실패하면 알림을
-  /// 띄우고 다시 읽은 뒤 false. 앱을 열지 못하면 알림만 띄우고 true (설치·실행·링크 열기는 창 없이 된다).
-  private func bootIfNeededAndShowSimulator(_ device: VirtualDevice, label: LauncherNotice.Device) async -> Bool {
-    if device.state == .shutdown {
-      do throws(SimulatorError) {
-        try await self.simulator.boot(device.id)
-      } catch {
-        self.enqueue(.bootFailed(label, error))
-        await self.reload()
-        return false
-      }
-    }
-    do throws(SimulatorError) {
-      try await self.simulator.openSimulatorApp()
-    } catch {
-      self.enqueue(.openAppFailed(label, error))
-    }
-    return true
-  }
-
   /// 목록을 읽는다. 읽는 중이면 새로 시작하지 않고 그 읽기를 기다리며, 끝난 뒤 한 번 더 읽게 한다.
   private func reload() async {
     if let loadTask = self.loadTask {
@@ -224,7 +212,12 @@ public final class LauncherModel {
         // Task 클로저 안에서는 catch 의 에러 타입이 any Error 로 추론되므로 명시한다.
         do throws(SimulatorError) {
           let inventory = try await self.simulator.fetchInventory()
-          self.listState = .loaded(DeviceList(inventory: inventory))
+          let list = DeviceList(inventory: inventory)
+          self.listState = .loaded(list)
+          // 녹화 중인 기기가 켜져 있지 않거나 없으면 멈춘다 (simctl 은 기기가 꺼져도 끝나지 않는다, 측정).
+          for id in self.recordings.requestStops(notBootedIn: list) {
+            self.recordingTasks[id]?.cancel()
+          }
           self.creationOptions = DeviceCreationOptions(inventory: inventory)
         } catch {
           if case .loaded = self.listState {
@@ -272,7 +265,8 @@ public extension LauncherModel {
       self.enqueue(confirmation.failedNotice(.deviceNotFound))
       return
     }
-    guard self.activity.task(on: device.id) == nil else { return }
+    guard self.activity.task(on: device.id) == nil, !self.recordings.blocks(confirmation.action.task, on: device.id)
+    else { return }
     if case .blocked(.notShutdown) = confirmation.action.availability(for: device) {
       self.enqueue(confirmation.failedNotice(.deviceNotShutdown))
       return
@@ -295,6 +289,7 @@ public extension LauncherModel {
     guard case let .loaded(list) = self.listState,
           let device = list.device(id: id),
           self.activity.canStart(action.task, on: device),
+          !self.recordings.blocks(action.task, on: id),
           self.pendingConfirmation == nil,
           self.openURLDraft == nil,
           self.installURLDraft == nil
@@ -339,8 +334,7 @@ public extension LauncherModel {
     AppInstallFlow.Host(
       enqueue: { self.enqueue($0) },
       reload: { await self.reload() },
-      listState: { self.listState },
-      bootIfNeededAndShowSimulator: { await self.bootIfNeededAndShowSimulator($0, label: $1) }
+      listState: { self.listState }
     )
   }
 }
@@ -410,21 +404,7 @@ public extension LauncherModel {
     defer { self.activity.end(on: device.id) }
     guard let file = await self.runDownload(url, on: device.id, label: label, origin: origin) else { return }
     self.activity.downloadEnded(on: device.id)
-    // 받는 동안 기기가 목록에서 사라졌으면(외부 삭제, 드묾) 풀지 않는다. 켜는 중 같은 상태는 검사 뒤 판정에 맡긴다.
-    if case .notFound = AppInstallTarget.current(device.id, in: self.listState) {
-      await self.download.removeDownloaded(file)
-      self.enqueue(.installFailed(label, .simulator(.deviceNotFound)))
-      return
-    }
-    let host = self.installHost
-    let mimeType = file.mimeType
-    let extracted = await self.installFlow.extract(file.file, label: label, host: host) { error in
-      AppInstallFailure.downloaded(error, mimeType: mimeType, from: origin)
-    }
-    // 푼 뒤에는 받은 파일이 필요 없다. 설치 명령이 푼 .app 을 기기로 복사하기 전에 지워 디스크를 덜 쓴다.
-    await self.download.removeDownloaded(file)
-    guard let extracted else { return }
-    await self.installFlow.installExtracted(extracted, on: device.id, label: label, host: host)
+    await self.installFlow.installDownloaded(file, on: device.id, label: label, origin: origin, host: self.installHost)
   }
 
   /// 행의 받기 취소: 받는 중일 때만 받기를 멈춘다. 받기가 막 끝났어도(늦은 취소) 받은 파일을 지우고 알림 없이 끝난다.
@@ -523,7 +503,8 @@ public extension LauncherModel {
     guard self.activity.begin(.openURL, on: device) else { return }
     defer { self.activity.end(on: device.id) }
     // 막 켠 기기는 준비가 끝날 때까지 돌아오지 않는다 (콜드 부팅 직후 수십 초). 그동안 행이 진행 중을 보인다.
-    guard await self.bootIfNeededAndShowSimulator(device, label: label) else { return }
+    guard await self.installFlow.bootIfNeededAndShowSimulator(device, label: label, host: self.installHost)
+    else { return }
     do throws(SimulatorError) {
       try await self.simulator.openURL(link, on: device.id)
     } catch {
@@ -547,30 +528,64 @@ public extension LauncherModel {
           self.screenshots.begin(on: device, during: self.activity.task(on: id))
     else { return }
     defer { self.screenshots.end(on: id) }
-    let label = LauncherNotice.Device(device)
-    let name = ScreenshotFileName(
-      deviceName: device.name, runtimeName: device.runtime.name, takenAt: self.now(), timeZone: .current
+    await self.captureFlow.takeScreenshot(of: device, label: LauncherNotice.Device(device), host: self.captureHost)
+  }
+
+  /// 캡처 흐름이 Model 상태에 닿는 창구. 부를 때마다 만들어 넘기고 흐름 타입은 저장하지 않는다.
+  private var captureHost: ScreenCaptureFlow.Host {
+    ScreenCaptureFlow.Host(
+      enqueue: { self.enqueue($0) },
+      reload: { await self.reload() },
+      recordingStarted: { id, date in self.recordings.started(at: date, on: id) },
+      recordingStopReason: { self.recordings.stopReason(on: $0) }
     )
-    let file: URL
-    do throws(WorkspaceError) {
-      file = try await self.workspace.reserveScreenshotFile(name)
-    } catch {
-      self.enqueue(.screenshotFailed(label, .workspace(error)))
-      return
+  }
+}
+
+// MARK: - 녹화
+
+// `private(set)` 상태와 Model 이 소유한 Task 를 바꾸므로 같은 파일에 둔다.
+public extension LauncherModel {
+  /// 행의 "녹화": 켜진 기기 화면을 동영상 폴더의 SimLauncher 폴더에 녹화한다. 같은 기기의 앱 설치·링크 열기 중에도 한다.
+  /// 중지·기기 꺼짐(다시 읽기)·앱 종료로 멈추거나 녹화가 스스로 끝나면 저장해 Finder 에서 보이고(실패면 알림), 그때까지 돌아오지 않는다.
+  /// 녹화는 Model 이 소유한 Task 로 돌아 View 의 Task 취소는 전해지지 않는다. 앱 종료를 기다리는 중이면 시작하지 않는다.
+  func recordButtonTapped(_ id: VirtualDevice.ID) async {
+    // `begin` 은 첫 await 전이라 연타해도 두 번째 호출은 여기서 끝난다. `begin` 과 Task 저장 사이에 await 를 두지 않는다
+    // (중지가 Task 를 놓치지 않게).
+    guard !self.isTerminating,
+          case let .loaded(list) = self.listState,
+          let device = list.device(id: id),
+          self.recordings.begin(on: device, during: self.activity.task(on: id))
+    else { return }
+    let label = LauncherNotice.Device(device)
+    // 창구는 Task 클로저 안에서 만든다 (흐름 호출 동안만 잡고 저장하지 않는다). 기록은 Task 안에서 지워,
+    // 같은 Task 를 기다리는 `appTerminationRequested` 가 어느 쪽이 먼저 깨어나든 끝난 기록을 보게 한다.
+    let task = Task {
+      await self.captureFlow.record(device, label: label, host: self.captureHost)
+      self.recordings.end(on: id)
+      self.recordingTasks[id] = nil
     }
-    // 기기가 그사이 꺼졌거나 사라졌으면 Client 가 실행 직전 목록으로 확인해 `.deviceNotBooted`·`.deviceNotFound` 로 끝난다.
-    do throws(SimulatorError) {
-      try await self.simulator.screenshot(on: device.id, to: file)
-    } catch {
-      await self.workspace.removeReservedFile(file)
-      self.enqueue(.screenshotFailed(label, .simulator(error)))
-      await self.reload()
-      return
+    self.recordingTasks[id] = task
+    await task.value
+  }
+
+  /// 행의 "중지": 시작 중·녹화 중이면 녹화 Task 를 취소해 멈춘다 (저장은 `recordButtonTapped` 의 흐름이 이어서 한다).
+  /// 이미 저장 중이면 아무 일도 하지 않는다.
+  func recordingStopTapped(_ id: VirtualDevice.ID) {
+    guard self.recordings.requestStop(on: id) else { return }
+    self.recordingTasks[id]?.cancel()
+  }
+
+  /// App 전용(앱 종료 요청): 새 녹화를 더 시작하지 않고, 모든 녹화를 멈춘 뒤 흐름(저장·Finder 보이기)이 끝나기를 기다린다.
+  /// 이미 저장 중인 녹화도 끝까지 기다린다.
+  func appTerminationRequested() async {
+    self.isTerminating = true
+    for id in self.recordings.requestStopAll() {
+      self.recordingTasks[id]?.cancel()
     }
-    do throws(WorkspaceError) {
-      try await self.workspace.revealInFinder(file)
-    } catch {
-      self.enqueue(.screenshotRevealFailed(label, error))
+    let tasks = Array(self.recordingTasks.values)
+    for task in tasks {
+      await task.value
     }
   }
 }
