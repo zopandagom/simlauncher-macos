@@ -1,7 +1,7 @@
 import Core
 import Foundation
 
-/// iOS 시뮬레이터 기기·런타임·기기 종류와 런타임 디스크 이미지 목록을 읽고, 켜고 끄고, 만들고 지우고 초기화하고, 앱을 설치·실행하고 링크를 열고 화면을 찍는 Client.
+/// iOS 시뮬레이터 기기·런타임·기기 종류와 런타임 디스크 이미지 목록을 읽고, 켜고 끄고, 만들고 지우고 초기화하고, 앱을 설치·실행하고 링크를 열고 화면을 찍고 녹화하는 Client.
 /// Impl 은 `xcrun simctl` 과 같은 개발자 디렉터리를 쓴다. 쓸 Xcode 가 없으면(App 이 넘긴 provider 가 nil 을 돌려줌)
 /// 어떤 명령도 실행하지 않고 `.developerToolsUnavailable` 를 던진다.
 public protocol SimulatorClient: Sendable {
@@ -58,4 +58,32 @@ public protocol SimulatorClient: Sendable {
   /// `.booted` 가 아니면 실행하지 않고 `.deviceNotBooted` (꺼진 기기에서는 simctl 이 약 60초 기다린 뒤 실패한다).
   /// 파일 URL 이 아니면 실행하지 않고 `.commandFailed`. 확인과 실행 사이에 꺼지는 드문 경우는 약 60초 뒤 `.deviceNotBooted`.
   func screenshot(on id: VirtualDevice.ID, to file: URL) async throws(SimulatorError)
+
+  /// 켜진 기기 화면을 H.264 QuickTime 동영상으로 `file` 에 녹화한다
+  /// (`simctl io <기기> recordVideo --codec=h264 --mask=ignored --force <경로>`, 사각 전체 화면, 소리 없음).
+  /// **호출한 Task 의 취소가 멈춤이다**: 취소하면 SIGINT 로 멈추고 마무리를 기다린 뒤 돌아온다(취소는 실패가 아니다).
+  /// 취소하지 않으면 simctl 이 스스로 끝날 때(시작 실패, 녹화 중 실패, 드물게 exit 0)까지 돌아오지 않는다
+  /// (기기가 꺼져도 simctl 은 끝나지 않는다, 측정).
+  /// 시작 신호(stderr `Recording started`)를 받으면 `onStarted` 를 한 번 부른다.
+  /// 있는 파일은 덮어쓴다 (호출한 쪽이 예약한 빈 파일. 시작에 실패하면 지워져 있을 수 있다).
+  /// 실행 직전에 같은 개발자 디렉터리로 목록을 다시 읽어 없으면 `.deviceNotFound`, `.booted` 가 아니면 실행하지 않고
+  /// `.deviceNotBooted` (꺼진 기기에서 simctl 은 0바이트 파일을 남기고 성공한다, 측정). 파일 URL 이 아니면 실행하지 않고 `.commandFailed`.
+  /// 같은 기기를 다른 녹화가 쓰고 있으면 `.recordingInProgress`. 스스로 끝났는데 파일이 비었거나 없으면 `.recordingEmpty`,
+  /// 멈춘 뒤(시작 신호 뒤) 파일이 비었으면 `.recordingUnfinished`.
+  func recordVideo(
+    on id: VirtualDevice.ID,
+    to file: URL,
+    onStarted: @escaping @Sendable () async -> Void
+  ) async throws(SimulatorError) -> ScreenRecordingResult
+}
+
+/// 화면 녹화의 끝.
+public enum ScreenRecordingResult: Hashable, Sendable {
+  /// 녹화한 화면을 파일에 저장했다 (크기 0 보다 큼).
+  case saved
+  /// simctl 이 스스로 실패(0 이 아닌 종료 코드)로 끝났지만 파일에 화면이 남았다 (크기 0 보다 큼). 끝난 데까지 저장됐다.
+  /// 호출한 쪽은 파일을 지우지 않는다.
+  case savedAfterFailure
+  /// 시작 신호 전에 멈췄고(호출한 Task 취소) 저장된 화면이 없다. 파일은 비었거나 없다.
+  case stoppedBeforeStart
 }
