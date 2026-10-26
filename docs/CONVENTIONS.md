@@ -66,7 +66,7 @@
 | String Catalog(`*.xcstrings`)는 `"extractionState" : "stale"` 표시 없이 커밋 (Xcode 가 프로젝트를 열면 코드에서 쓰는 키에도 `"stale"` 을 붙이므로 그 줄을 지우고, 정말 쓰지 않는 문자열이면 항목을 지운다) | `"extractionState" : "stale"` 이 남은 카탈로그 커밋 | git pre-commit 훅(커밋될 내용 기준, `make test-hooks` 가 검사), CI lint |
 | PR 전에 마지막 커밋이 `/pr` 의 검사를 통과 (`/pr` 이 push 직전에 `verify-head.sh` 로 한 번 검사: 빌드에 영향을 주는 파일이 바뀌었으면 `make lint && make test`, 샘플 앱(`Examples/`)이나 `.github/scripts` 의 Swift 파일이 바뀌었으면 `make lint`, 샘플 앱과 그 빌드 도구(`Examples/`·`Makefile`·`.mise.toml`·`Tuist.swift`·`Tuist/`)가 바뀌었으면 `make sample`, 카탈로그 생성기·검증기·픽스처(`.github/scripts`)나 검증기가 컴파일하는 Core 소스, `Makefile` 이 바뀌었으면 `make catalog-test` (같은 검사는 한 번만), `.githooks` 가 바뀌었으면 `make test-hooks`, `.claude/settings.json` 은 JSON, `.github` 의 YAML 파일(워크플로·dependabot)은 YAML 문법, 그 밖의 파일만 바뀌었으면 SKIP). CI 는 문서·하네스(`*.md`, `docs/**`, `.claude/**`)만 바뀐 PR 에서 lint·test 를 건너뛴다 | CI 실패 상태로 머지 | GitHub 룰셋 필수 체크 `ci-result` (lint·test 결과를 모은 잡) |
 | UI 변경은 PR 에 스크린샷(선택) | force push 로 main 이력 변경 | settings deny |
-| **수동 확인** (DEVELOPMENT_PLAN 완료 기준): Feature(Sources·Example)가 바뀌면 Example 앱에서 주요 상태(정상/빈 상태/권한 거부/오류)를, Client Impl 이나 App 이 바뀌면 배포 서명 빌드에서 바뀐 흐름을(권한·샌드박스는 개발 빌드와 동작이 다를 수 있다) 사용자가 머지 전에 확인한다. 명령으로 판정되는 확인은 수동 확인이 아니라 Claude 가 수용 확인(§6)으로 실행한다 | 해당하는 수동 확인 없이 머지 | 머지 전 확인 (사용자) |
+| **수동 확인** (DEVELOPMENT_PLAN 완료 기준): Feature(Sources·Example)가 바뀌면 Example 앱에서 주요 상태(정상/빈 상태/권한 거부/오류)를, Client Impl 이나 App 이 바뀌면 배포 서명 빌드(`make release` 의 export 앱. 공증 전 확인 질문에 `n` 이면 `build/release/export/SimLauncher.app` 이 남는다, docs/RELEASING.md)에서 바뀐 흐름을(권한·샌드박스는 개발 빌드와 동작이 다를 수 있다) 사용자가 머지 전에 확인한다. 명령으로 판정되는 확인은 수동 확인이 아니라 Claude 가 수용 확인(§6)으로 실행한다 | 해당하는 수동 확인 없이 머지 | 머지 전 확인 (사용자) |
 | **덮어쓰기 push**: 원격 브랜치에만 있는 커밋을 덮어쓰는 push 는 사용자가 직접 한다: `git log --oneline HEAD..origin/<브랜치>` 로 덮어쓸 커밋을 확인한 뒤 `git push --force-with-lease=<브랜치>:<확인한 원격 커밋> -u origin HEAD`. `/pr` 은 force push 하지 않고, 원격과 어긋나면 그 커밋 목록을 보이고 멈춘다 | 확인 없이 `--force`, 값 없는 `--force-with-lease` (확인 뒤 다시 fetch 되면 확인하지 않은 원격 커밋을 지운다) | `/pr` 스킬 규칙 (settings deny 는 `git push --force`·`git push -f` 로 시작하는 명령만 막고, 플래그가 뒤에 오는 명령과 `--force-with-lease` 는 막지 않는다) |
 | **CI 리뷰 갈음 PR**: 브랜치가 `.github/workflows/claude-review.yml` 을 바꿔 현재 main 과 다른 PR 은 `claude-code-action` 의 워크플로 검증(main 의 파일과 같아야 한다)에 걸려 리뷰를 건너뛰고(로그 `Workflow validation failed`) `review` 체크는 통과로 보인다. 이런 PR 은 CI 리뷰를 로컬 `/arch-review` 로 갈음하고 본문에 적는다 | CI 리뷰 갈음 PR 을 `review` 체크 통과만 보고 CI 리뷰를 받은 것으로 머지하기 | `/pr` 사전 확인 |
 | 머지는 **Merge commit** (마이크로 커밋을 브랜치에서 만든 hash 그대로 main 에 남긴다. PR 단위로 보려면 `git log --first-parent`) | Squash merge (커밋 단위가 사라진다), Rebase merge (GitHub 이 커밋을 다시 만들어 hash 가 바뀐다) | GitHub 룰셋 (`merge` 만 허용) |
@@ -76,7 +76,7 @@
 리뷰어(로컬 `/arch-review`, CI Claude 리뷰, 사용자가 요청한 그 밖의 리뷰)는 무엇을 어떤 심각도로 지적할지 이 절로 정한다. `/arch-review` 의 점검 항목(어디를 볼지)은 그 스킬의 "2. 점검 항목 (우선순위 순)"에 있다. 스킬과 CI 리뷰 프롬프트(`.github/workflows/claude-review.yml`)에 이 절과 다르게 적힌 곳이 있으면 이 절이 우선하고, 그 줄은 §6 에 따라 참조로 바꾼다.
 
 - 범위: 이번 변경분(PR 이면 `origin/main...HEAD`, 커밋 전이면 커밋되지 않은 변경 포함)과 그 변경이 영향을 주는 곳. 변경분 밖에 원래 있던 문제는 지적 표에 넣지 않고 `범위 밖` 으로 따로 보고한다. 작업 범위(In/Out, §6)는 PR 이면 본문 "범위" 절, 로컬 `/arch-review` 면 부르는 쪽이 넘긴 인자이고, 없으면 Out 이 없다. Out 에 든 기능·흐름·보호가 없다는 지적도 `범위 밖` 으로 보고한다. 변경분이 만든 동작이 틀린 것은 Out 에 든 흐름이어도 범위 안이다 (드문 경우면 🟡).
-- 문서 범위: `docs/`, `README.md`, `CLAUDE.md`, `.claude/skills`, `.claude/hooks`·`.githooks`·`.github/scripts` 의 주석, `.github` 의 PR 템플릿과 워크플로(프롬프트·주석), `.swiftlint.yml` custom_rules 의 `message`, `Makefile` 주석, 코드의 문서 주석.
+- 문서 범위: `docs/`, `README.md`, `CLAUDE.md`, `.claude/skills`, `.claude/hooks`·`.githooks`·`.github/scripts`·`scripts` 의 주석, `.github` 의 PR 템플릿과 워크플로(프롬프트·주석), `.swiftlint.yml` custom_rules 의 `message`, `Makefile` 주석, 코드의 문서 주석.
 - 이번 변경과 관련된 문서 줄: 바뀐 줄, 그리고 바뀐 동작·규칙을 설명하는 줄. 바뀐 식별자와 바뀐 규칙의 핵심 문구로 문서 범위를 검색해 찾는다.
 - 문서 불일치: 같은 동작이나 규칙을 서로 다르게 설명하는 것. 사실(값·이름·동작·명령·절차)이 다르면 사실 불일치, 같은 사실을 다른 말로 쓴 것은 표현 차이다. 규칙을 다시 적지 않고 절을 가리키기만 하는 줄은 불일치가 아니다.
 - 드문 경우: 발생 조건이 정상 흐름에서 생기지 않는 것. 정상 흐름은 앱이면 사용자가 보통 하는 조작과 사용자 조작이나 기기·계정 상태만으로 생기는 실패(권한 거부·제한 접근, 빈 결과, 저장 공간 부족), 문서·하네스면 문서·스킬이 정한 절차와 장치가 막으려는 실수(위협 모델)다. 드문 타이밍, 그 실수가 장치를 거치지 않는 드문 경로(예: main 에서 `git cherry-pick`·`git revert` 로 만든 커밋)로 오는 것, 의도적 우회, 가상의 입력, 정해진 설정(`make bootstrap` 등)을 건너뛴 환경이 드문 경우다.
@@ -132,7 +132,7 @@
 
 | type | 역할 | 예 | 검증 항목 |
 |---|---|---|---|
-| `build` | 도구 버전, Tuist 템플릿, Makefile | `.mise.toml`, `Tuist/`, `Workspace.swift`, `Makefile` | `make project` (+ `make test`·`make sample`·`make catalog-test` 영향 시) |
+| `build` | 도구 버전, Tuist 템플릿, Makefile, 릴리스 스크립트 | `.mise.toml`, `Tuist/`, `Workspace.swift`, `Makefile`, `scripts/` | `make project` (+ `make test`·`make sample`·`make catalog-test` 영향 시, `scripts/` 면 `bash -n scripts/*.sh`) |
 | `feat` / `fix` / `refactor` | 코드 구현 (**해당 테스트 포함**) | `Projects/**` | `make lint && make test` |
 | `test` | 기존 코드에 테스트만 추가 | `Projects/**/Tests` | `make test` |
 | `style` | 포맷·lint 설정과 그에 따른 일괄 포맷 | `.swiftformat`, `.swiftlint.yml` | `make lint` |
@@ -140,7 +140,7 @@
 | `docs` | 문서 | `docs/**`, `README.md` | 링크·코드·경로가 실제와 일치 |
 | `chore` | 하네스(Claude Code, git 훅) | `CLAUDE.md`, `.claude/**`, `.githooks/**` | `.claude/hooks` 는 입력 JSON 으로 직접 실행해 확인, `.githooks` 는 `make test-hooks` |
 
-검증 항목 중 `make lint`·`make test`·`make test-hooks`·`make sample`·`make catalog-test`·YAML·JSON 검사는 커밋마다 돌리지 않는다. `/micro-commit` 은 커밋만 하고, `/pr` 이 push 직전에 브랜치 마지막 커밋에서 한 번 돌린다 (`make test` 가 `make project` 를 포함한다). 커밋 뒤에 amend·rebase 를 해도 실제로 올릴 상태를 검사하기 위해서다. 이미 열린 PR 에 후속 커밋을 올릴 때도 `/pr` 로 push 한다 (원격 커밋을 덮어쓰는 push 는 §5 "덮어쓰기 push" 행대로 사용자가 직접 하고, 그 head 는 다음 `/pr` 이 검사한다). CI 는 `.claude/**` 만 바뀐 변경에서 lint·test 를 건너뛰고 settings.json 을 검사하지 않기 때문이다. 링크·경로 일치, Claude Code 훅(`.claude/hooks`) 직접 실행처럼 자동화되지 않은 확인은 구현할 때 한다.
+검증 항목 중 `make lint`·`make test`·`make test-hooks`·`make sample`·`make catalog-test`·YAML·JSON 검사는 커밋마다 돌리지 않는다. `/micro-commit` 은 커밋만 하고, `/pr` 이 push 직전에 브랜치 마지막 커밋에서 한 번 돌린다 (`make test` 가 `make project` 를 포함한다). 커밋 뒤에 amend·rebase 를 해도 실제로 올릴 상태를 검사하기 위해서다. 이미 열린 PR 에 후속 커밋을 올릴 때도 `/pr` 로 push 한다 (원격 커밋을 덮어쓰는 push 는 §5 "덮어쓰기 push" 행대로 사용자가 직접 하고, 그 head 는 다음 `/pr` 이 검사한다). CI 는 `.claude/**` 만 바뀐 변경에서 lint·test 를 건너뛰고 settings.json 을 검사하지 않기 때문이다. 링크·경로 일치, Claude Code 훅(`.claude/hooks`) 직접 실행, `scripts/` 의 `bash -n scripts/*.sh` 처럼 자동화되지 않은 확인은 구현할 때 한다.
 
 - 커밋 하나 = 목적 하나. 요약에 "그리고"가 들어가면 나눈다. 모듈이 다른 변경(Core 값 타입과 Client Interface), 이동·추출 `refactor` 와 그 위의 `feat`, 목적이 다른 문서 행·절은 따로 커밋한다. 한 파일에 목적이 섞여 있어도 hunk 단위로 나눈다 (hunk 하나에 두 목적이 섞였거나, 새 파일이거나, 커밋될 내용 기준 lint 가 실패하면 한 커밋에 두고 `/micro-commit` 보고에 적는다).
 - **의미 단위를 우선한다. 중간 커밋은 빌드가 깨질 수 있다.** 예를 들어 Client Interface + Fake 커밋 시점에는 Impl 소스가 없어 빌드되지 않을 수 있다. 중간 커밋을 빌드되게 맞추려고 여러 의미를 한 커밋에 합치지 않는다. 빌드·테스트가 보장되는 지점은 브랜치 마지막 커밋(`/pr` 이 검사)과 CI 를 통과한 머지 커밋뿐이다. 그래서 버그 원인은 `git bisect start --first-parent` 로 머지 커밋(PR) 단위로 찾고, 그 PR 안에서는 커밋 내용을 읽어 좁힌다 (중간 커밋은 bisect 대상이 아니다).

@@ -30,7 +30,7 @@ model: opus
 5. **제품 약속**: docs/CONVENTIONS.md §4 와 ARCHITECTURE §4 의 결정을 어기는 코드 (허용되지 않은 네트워크·외부 전송, 민감 정보 로그, 합의 없는 서드파티 SDK).
 6. **테스트**: CONVENTIONS §3 이 요구하는 테스트의 누락, 실제 기기 데이터·권한에 의존하는 테스트.
 7. **문서 정합성**: CONVENTIONS §5 "리뷰 기준"의 문서 불일치. 이번 변경과 관련된 문서 줄은 문서 범위를 바뀐 타입·함수·동작 이름과 바뀐 규칙의 핵심 문구로 grep 해서 찾는다.
-8. **하네스·빌드 설정**(`.claude/**`, `.githooks/**`, `.github/**`, `Examples/**`, `Makefile`, `Tuist/`, `.mise.toml`): 스크립트 정확성, CONVENTIONS §5 "리뷰 기준"의 fail-open·함께 지킬 수 없는 규칙.
+8. **하네스·빌드 설정**(`.claude/**`, `.githooks/**`, `.github/**`, `Examples/**`, `scripts/**`, `Makefile`, `Tuist/`, `.mise.toml`): 스크립트 정확성, CONVENTIONS §5 "리뷰 기준"의 fail-open·함께 지킬 수 없는 규칙.
 
 **보고하지 않는 것·범위 밖**: CONVENTIONS §5 "리뷰 기준"을 따른다. 범위 밖(CONVENTIONS §5 "리뷰 기준"의 범위)은 표에 넣지 않고 표 아래에 `범위 밖: 위치 · 문제` 로 한 줄씩 적는다 (🔴 에 해당하면 앞에 🔴, Out 이면 끝에 `(Out)`).
 

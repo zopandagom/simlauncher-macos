@@ -43,6 +43,7 @@ make lint        # 포맷·아키텍처 규칙 검사 (make format 으로 자동
 make sample      # 샘플 iOS 앱을 시뮬레이터용으로 빌드해 build/SampleApp.zip 으로 묶기 (SAMPLE_BUILD_NUMBER=42 로 빌드 번호)
 make catalog-check CATALOG=catalog.json   # catalog.json 하나를 앱과 같은 규칙으로 검사
 make catalog-test  # 샘플 카탈로그 생성기·검증기 회귀 테스트
+make release     # 서명·공증 dmg 만들기 (준비: docs/RELEASING.md)
 ```
 
 ## 문서
@@ -50,6 +51,7 @@ make catalog-test  # 샘플 카탈로그 생성기·검증기 회귀 테스트
 - [개발 규칙: 해야 할 것 / 하지 말아야 할 것](docs/CONVENTIONS.md)
 - [개발 계획과 로드맵](docs/DEVELOPMENT_PLAN.md)
 - [빌드 카탈로그 규격](docs/CATALOG.md)
+- [배포(서명·공증)](docs/RELEASING.md)
 - [Claude Code 작업 안내](CLAUDE.md)
 
 이 프로젝트는 [ios-harness](https://github.com/zopandagom/ios-harness) 템플릿으로 만들었다 (`.harness-version`).

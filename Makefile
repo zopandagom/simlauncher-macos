@@ -16,8 +16,10 @@ SAMPLE_ZIP := build/SampleApp.zip
 # catalog.json 검증기: Core 소스와 함께 컴파일해 앱과 같은 규칙으로 검사한다. mise 없이 돈다 (워크플로 publish 잡)
 CATALOG_VALIDATOR := build/validate-catalog
 CATALOG_FIXTURES := .github/scripts/Fixtures
+# make release 가 쓰는 공증 키체인 프로필 이름 (xcrun notarytool store-credentials 로 저장, docs/RELEASING.md)
+NOTARY_PROFILE ?= simlauncher-notary
 
-.PHONY: bootstrap generate project build test test-hooks lint format clean sample catalog-check catalog-test
+.PHONY: bootstrap generate project build test test-hooks lint format clean sample catalog-check catalog-test release
 
 ## 최초 1회: 도구 설치 + git 훅 연결
 bootstrap:
@@ -96,6 +98,11 @@ catalog-test: $(CATALOG_VALIDATOR)
 		fi; \
 		echo "거절 확인 $$file: $$output"; \
 	done
+
+## 배포 dmg: archive → Developer ID 내보내기 → (확인 뒤) 앱 공증·staple → dmg 서명·공증·staple → 검사. 준비·절차: docs/RELEASING.md
+## 공증 자격 증명은 키체인 프로필 이름만 넘긴다: NOTARY_PROFILE=<이름> make release
+release: project
+	NOTARY_PROFILE=$(NOTARY_PROFILE) WORKSPACE=$(WORKSPACE) ./scripts/release.sh
 
 clean:
 	$(MISE) tuist clean
