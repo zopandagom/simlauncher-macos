@@ -29,8 +29,10 @@ line_length:
   ignores_comments: true
   ignores_urls: true
 
-# Model 의 async 흐름은 private(set) 상태를 바꾸므로 Model 파일에 둔다 (읽기 전용 계산 프로퍼티만 다른 파일 extension 에 둘 수 있다,
-# docs/ARCHITECTURE.md:38). 그래서 레포 전체 경고 기준을 600줄로 둔다 (한 화면에 흐름이 많은 Launcher Model 이 500줄을 넘기 때문)
+# Model 상태를 직접 바꾸는 부분은 private(set) 때문에 Model 파일에 둔다 (읽기 전용 계산 프로퍼티는 다른 파일 extension 에,
+# Model 상태를 직접 바꾸지 않고(바꾸는 것은 창구로만) Client 를 잇는 부분은 Model 이 private 으로 소유하는 흐름 타입에 둘 수 있다,
+# docs/ARCHITECTURE.md:38). 레포 전체 경고 기준은 600줄이고 (한 화면에 흐름이 많은 Launcher Model 이 500줄을 넘기 때문),
+# 넘으면 기준을 올리지 않고 흐름 타입으로 뺀다
 file_length:
   warning: 600
 

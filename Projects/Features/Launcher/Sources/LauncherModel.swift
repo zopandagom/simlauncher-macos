@@ -10,6 +10,7 @@ import SimulatorInterface
 /// 기기에 설치하고 바로 실행하며, 입력한 링크(딥링크·웹 주소)를 기기에서 연다 (모두 꺼져 있으면 켠다).
 /// 카탈로그에서 설치 시트(`CatalogInstallModel`)가 고른 버전은 App 이 `catalogInstallRequested(_:)` 로 넘겨 같은 받기 경로로 설치한다.
 /// Xcode 준비와 iOS 시뮬레이터 설치는 여기서 하지 않고, Setup 진입 버튼으로 App 에 Setup 화면을 요청한다.
+/// 앱 설치의 풀기·검사·설치·실행은 Model 이 소유한 `AppInstallFlow` 가 한다 (Model 상태에는 창구로만 닿는다).
 /// 상태를 바꾸지 않는 읽기 API(`canCreateDevice` 등)는 `LauncherModel+Reading.swift` 에 있다.
 @MainActor
 @Observable
@@ -42,6 +43,8 @@ public final class LauncherModel {
   /// Setup 진입 버튼(툴바 "개발 환경", 빈 화면의 "iOS 설치"·"다른 iOS 버전 설치", 목록 위 안내 줄의 "다른 iOS 버전 설치",
   /// 목록 읽기 실패 화면의 "개발 환경 열기")을 눌렀을 때 부른다. App 이 Setup 화면을 다시 연다 (화면 간 흐름은 App 이 잇는다).
   @ObservationIgnored private let setupRequested: @MainActor () -> Void
+  /// 앱 설치 흐름(풀기 → 검사·판정 → 켜기 → 설치 → 실행). Client 만 갖고 Model 상태에는 `installHost` 창구로만 닿는다.
+  @ObservationIgnored private let installFlow: AppInstallFlow
   /// 진행 중인 목록 읽기. Model 이 소유해 View 의 `.task` 가 취소돼도 끝까지 돈다.
   @ObservationIgnored private var loadTask: Task<Void, Never>?
   /// 읽는 동안 들어온 요청. 진행 중인 읽기가 끝나면 한 번 더 읽는다.
@@ -61,6 +64,7 @@ public final class LauncherModel {
     self.simulator = simulator
     self.appBundle = appBundle
     self.download = download
+    self.installFlow = AppInstallFlow(simulator: simulator, appBundle: appBundle)
     self.setupRequested = setupRequested
   }
 
@@ -315,92 +319,17 @@ public extension LauncherModel {
       self.enqueue(.installFailed(label, .multipleItems))
       return
     }
-    guard AppInstallSource.isZip(url) else {
-      await self.installBundle(url, on: id, label: label)
-      return
-    }
-    guard let extracted = await self.extract(url, label: label, failure: AppInstallFailure.bundle) else { return }
-    await self.installExtracted(extracted, on: id, label: label)
+    await self.installFlow.install(url, on: id, label: label, host: self.installHost)
   }
 
-  /// zip 을 푼다. 실패하면 `failure` 로 만든 알림을 쌓고 nil (명령을 실행하기 전이라 다시 읽지 않는다.
-  /// 풀다 만 폴더는 Impl 이 지웠다).
-  private func extract(
-    _ zip: URL,
-    label: LauncherNotice.Device,
-    failure: (AppBundleError) -> AppInstallFailure
-  ) async -> ExtractedApp? {
-    do throws(AppBundleError) {
-      return try await self.appBundle.extractApp(fromZip: zip)
-    } catch {
-      self.enqueue(.installFailed(label, failure(error)))
-      return nil
-    }
-  }
-
-  /// 푼 .app 을 설치하고, 성공·실패와 관계없이 끝나면 임시 폴더를 지운다 (비동기 defer 를 쓰지 않으려고 실패가 모두
-  /// 안에서 끝나는 `installBundle` 뒤에 둔다). 설치 명령이 번들을 기기로 복사한 뒤라 지워도 된다.
-  /// 지우지 못하면 다음에 기기 목록 화면을 열 때 지운다.
-  private func installExtracted(
-    _ extracted: ExtractedApp,
-    on id: VirtualDevice.ID,
-    label: LauncherNotice.Device
-  ) async {
-    await self.installBundle(extracted.app, on: id, label: label)
-    await self.appBundle.removeExtracted(extracted)
-  }
-
-  /// 검사·판정을 통과하면 설치하고 실행한다. 모든 실패가 안에서 알림으로 끝나 던지지 않는다.
-  private func installBundle(_ url: URL, on id: VirtualDevice.ID, label: LauncherNotice.Device) async {
-    guard let prepared = await self.prepareInstall(url, on: id, label: label) else { return }
-    await self.runInstall(prepared.info, on: prepared.device, label: label)
-  }
-
-  /// 검사하고, 검사가 끝난 시점의 목록으로 기기와 앱을 판정한다. 실패하면 알림을 쌓고 nil
-  /// (명령을 실행하지 않았으므로 다시 읽지 않는다).
-  private func prepareInstall(
-    _ url: URL,
-    on id: VirtualDevice.ID,
-    label: LauncherNotice.Device
-  ) async -> (info: AppBundleInfo, device: VirtualDevice)? {
-    let info: AppBundleInfo
-    do throws(AppBundleError) {
-      info = try await self.appBundle.inspect(url)
-    } catch {
-      self.enqueue(.installFailed(label, .bundle(error)))
-      return nil
-    }
-    // 검사하는 동안 새로 고침으로 목록이 바뀌었을 수 있다. 이 기기의 작업은 지금 이 설치라 진행 중은 보지 않는다.
-    let target = AppInstallTarget.current(id, in: self.listState)
-    guard case let .ready(device) = target else {
-      if let failure = target.installFailure {
-        self.enqueue(.installFailed(label, failure))
-      }
-      return nil
-    }
-    if let problem = info.installProblem(on: device.runtime, hostArchitecture: self.appBundle.hostArchitecture) {
-      self.enqueue(.installFailed(label, .rejected(problem)))
-      return nil
-    }
-    return (info, device)
-  }
-
-  /// 꺼져 있으면 켜고, Simulator 앱을 열고, 검사한 경로를 설치하고, 검사한 번들 ID 로 실행한 뒤 다시 읽는다.
-  private func runInstall(_ info: AppBundleInfo, on device: VirtualDevice, label: LauncherNotice.Device) async {
-    guard await self.bootIfNeededAndShowSimulator(device, label: label) else { return }
-    do throws(SimulatorError) {
-      try await self.simulator.install(info.location, on: device.id)
-    } catch {
-      self.enqueue(.installFailed(label, .simulator(error)))
-      await self.reload()
-      return
-    }
-    do throws(SimulatorError) {
-      try await self.simulator.launch(info.bundleID, on: device.id)
-    } catch {
-      self.enqueue(.launchFailed(label, error))
-    }
-    await self.reload()
+  /// 설치 흐름이 Model 상태에 닿는 창구. 부를 때마다 만들어 넘기고 흐름 타입은 저장하지 않는다.
+  private var installHost: AppInstallFlow.Host {
+    AppInstallFlow.Host(
+      enqueue: { self.enqueue($0) },
+      reload: { await self.reload() },
+      listState: { self.listState },
+      bootIfNeededAndShowSimulator: { await self.bootIfNeededAndShowSimulator($0, label: $1) }
+    )
   }
 }
 
@@ -475,14 +404,15 @@ public extension LauncherModel {
       self.enqueue(.installFailed(label, .simulator(.deviceNotFound)))
       return
     }
+    let host = self.installHost
     let mimeType = file.mimeType
-    let extracted = await self.extract(file.file, label: label) { error in
+    let extracted = await self.installFlow.extract(file.file, label: label, host: host) { error in
       AppInstallFailure.downloaded(error, mimeType: mimeType, from: origin)
     }
     // 푼 뒤에는 받은 파일이 필요 없다. 설치 명령이 푼 .app 을 기기로 복사하기 전에 지워 디스크를 덜 쓴다.
     await self.download.removeDownloaded(file)
     guard let extracted else { return }
-    await self.installExtracted(extracted, on: device.id, label: label)
+    await self.installFlow.installExtracted(extracted, on: device.id, label: label, host: host)
   }
 
   /// 행의 받기 취소: 받는 중일 때만 받기를 멈춘다. 받기가 막 끝났어도(늦은 취소) 받은 파일을 지우고 알림 없이 끝난다.
