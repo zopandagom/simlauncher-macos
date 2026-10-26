@@ -57,6 +57,30 @@ extension LauncherText {
     }
   }
 
+  /// 기기 끄기·Simulator 앱 열기·만들기·삭제·초기화 실패 알림의 제목. `title(for:)` 가 다섯 케이스를 한 줄로 넘긴다 (복잡도를 나눈다).
+  static func deviceCommandNoticeTitle(for notice: LauncherNotice?) -> String {
+    switch notice {
+    case let .shutdownFailed(device, _):
+      String(localized: "“\(device.name)” (\(device.runtimeName)) 기기를 끄지 못했습니다", bundle: .module)
+    case let .openAppFailed(device, _):
+      String(
+        localized: "“\(device.name)” (\(device.runtimeName)) 기기는 켜졌지만 Simulator 앱을 열지 못했습니다",
+        bundle: .module
+      )
+    case let .createFailed(device, .creationResultUnknown):
+      // 만들기는 성공했지만 결과를 읽지 못한 경우라 실패로 단정하지 않는다 (본문이 목록 확인을 안내한다).
+      String(localized: "“\(device.name)” (\(device.runtimeName)) 기기를 만들었는지 확인하지 못했습니다", bundle: .module)
+    case let .createFailed(device, _):
+      String(localized: "“\(device.name)” (\(device.runtimeName)) 기기를 만들지 못했습니다", bundle: .module)
+    case let .deleteFailed(device, _):
+      String(localized: "“\(device.name)” (\(device.runtimeName)) 기기를 삭제하지 못했습니다", bundle: .module)
+    case let .eraseFailed(device, _):
+      String(localized: "“\(device.name)” (\(device.runtimeName)) 기기를 초기화하지 못했습니다", bundle: .module)
+    default:
+      ""
+    }
+  }
+
   static func message(for failure: AppInstallFailure) -> String {
     switch failure {
     case .multipleItems:
