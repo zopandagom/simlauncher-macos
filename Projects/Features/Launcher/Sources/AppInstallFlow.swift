@@ -6,6 +6,7 @@ import SimulatorInterface
 
 /// 앱 설치 흐름: (zip 이면) 풀기 → 검사 → 지금 목록으로 판정 → 켜기·Simulator 앱 열기 → 설치 → 실행 → 다시 읽기.
 /// 첫 단계인 켜기·Simulator 앱 열기(`bootIfNeededAndShowSimulator`)는 켜기 버튼·링크 열기도 함께 쓴다.
+/// 링크 열기와 받기 결과 해석도 같은 창구를 쓰므로 여기에 둔다.
 /// `LauncherModel` 이 `private` 으로 소유하고, 진행 기록(`activity`)을 시작한 Model 메서드(이벤트 메서드와 그것이 부르는
 /// private 도우미, 예: `installApp`·`installDownload`) 안에서만 부른다. Model 상태를 직접 바꾸지 않는다 (바꾸는 것은 창구로만).
 /// Client 는 직접 부르고, Model 상태에는 부를 때 넘겨받는 `Host` 창구로만 닿는다 (Model 상태는 `private(set)` 그대로).
@@ -26,8 +27,13 @@ struct AppInstallFlow {
   let appBundle: any AppBundleClient
   let download: any DownloadClient
 
-  /// 고르거나 끌어다 놓은 항목 하나: zip 이면 풀어서, 아니면 그대로 검사·설치·실행한다.
-  func install(_ item: URL, on id: VirtualDevice.ID, label: LauncherNotice.Device, host: Host) async {
+  /// 고르거나 끌어다 놓은 항목: 정확히 하나여야 하고(둘 이상이면 이유를 알린다), zip 이면 풀어서, 아니면 그대로 검사·설치·실행한다.
+  func install(_ items: [URL], on id: VirtualDevice.ID, label: LauncherNotice.Device, host: Host) async {
+    guard let item = items.first else { return }
+    guard items.count == 1 else {
+      host.enqueue(.installFailed(label, .multipleItems))
+      return
+    }
     guard AppInstallSource.isZip(item) else {
       await self.installBundle(item, on: id, label: label, host: host)
       return
@@ -35,6 +41,55 @@ struct AppInstallFlow {
     guard let extracted = await self.extract(item, label: label, host: host, failure: AppInstallFailure.bundle)
     else { return }
     await self.installExtracted(extracted, on: id, label: label, host: host)
+  }
+
+  /// 링크 열기 대상: 시트를 연 사이 바뀌었을 수 있어 지금 목록으로 다시 확인한다. 열 수 없으면 알림을 쌓고 nil.
+  func openLinkTarget(_ draft: OpenURLDraft, host: Host) -> VirtualDevice? {
+    let target = AppInstallTarget.current(draft.deviceID, in: host.listState())
+    guard case let .ready(device) = target else {
+      if let failure = target.openURLFailure {
+        host.enqueue(.openURLFailed(draft.device, failure))
+      }
+      return nil
+    }
+    return device
+  }
+
+  /// 꺼져 있으면 켜고, Simulator 앱을 연 뒤 링크를 열고 다시 읽는다. 실패하면 알림을 쌓는다.
+  func openLink(_ link: DeepLink, on device: VirtualDevice, label: LauncherNotice.Device, host: Host) async {
+    // 막 켠 기기는 준비가 끝날 때까지 돌아오지 않는다 (콜드 부팅 직후 수십 초). 그동안 행이 진행 중을 보인다.
+    guard await self.bootIfNeededAndShowSimulator(device, label: label, host: host) else { return }
+    do throws(SimulatorError) {
+      try await self.simulator.openURL(link, on: device.id)
+    } catch {
+      host.enqueue(.openURLFailed(label, .simulator(error)))
+    }
+    await host.reload()
+  }
+
+  /// 받기 결과를 해석한다. 취소를 눌렀으면 결과와 관계없이 알림 없이 nil (성공했으면 받은 파일을 지운다).
+  /// 실패는 알림을 쌓고 nil (Client 가 폴더를 지웠다).
+  func downloadedFile(
+    from result: Result<DownloadedFile, DownloadError>,
+    cancelRequested: Bool,
+    label: LauncherNotice.Device,
+    origin: DownloadOrigin,
+    host: Host
+  ) async -> DownloadedFile? {
+    if cancelRequested {
+      if case let .success(file) = result {
+        await self.download.removeDownloaded(file)
+      }
+      return nil
+    }
+    switch result {
+    case let .success(file):
+      return file
+    case let .failure(error):
+      // 취소를 누르지 않았는데 온 `.cancelled` 도 이유 없이 행만 돌아가지 않게 알린다 (코드상 나오지 않는다).
+      host.enqueue(.installFailed(label, .download(error, from: origin)))
+      return nil
+    }
   }
 
   /// URL·카탈로그에서 받은 zip: 받는 동안 기기가 사라졌는지 확인 → 풀기 → 받은 파일 지우기 → 검사·설치·실행.

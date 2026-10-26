@@ -13,8 +13,8 @@ import WorkspaceInterface
 /// 켜진 기기 화면을 동영상 폴더의 SimLauncher 폴더에 녹화하고, 멈추거나(중지·기기 꺼짐·앱 종료) 스스로 끝나면 저장해 Finder 에서 보인다.
 /// 카탈로그에서 설치 시트(`CatalogInstallModel`)가 고른 버전은 App 이 `catalogInstallRequested(_:)` 로 넘겨 같은 받기 경로로 설치한다.
 /// Xcode 준비와 iOS 시뮬레이터 설치는 여기서 하지 않고, Setup 진입 버튼으로 App 에 Setup 화면을 요청한다.
-/// 앱 설치의 켜기·풀기·검사·설치·실행은 Model 이 소유한 `AppInstallFlow` 가, 스크린샷·녹화의 예약·찍기·녹화·보이기는
-/// `ScreenCaptureFlow` 가 한다 (Model 상태에는 창구로만 닿는다).
+/// 앱 설치의 켜기·풀기·검사·설치·실행은 Model 이 소유한 `AppInstallFlow` 가, 끄기·만들기·삭제·초기화 명령은
+/// `DeviceCommandFlow` 가, 스크린샷·녹화의 예약·찍기·녹화·보이기는 `ScreenCaptureFlow` 가 한다 (Model 상태에는 창구로만 닿는다).
 /// 상태를 바꾸지 않는 읽기 API(`canCreateDevice` 등)는 `LauncherModel+Reading.swift` 에 있다.
 @MainActor
 @Observable
@@ -53,6 +53,8 @@ public final class LauncherModel {
   @ObservationIgnored private let setupRequested: @MainActor () -> Void
   /// 앱 설치 흐름(풀기 → 검사·판정 → 켜기 → 설치 → 실행). Client 만 갖고 Model 상태에는 `installHost` 창구로만 닿는다.
   @ObservationIgnored private let installFlow: AppInstallFlow
+  /// 기기 명령 흐름(끄기·만들기·삭제·초기화). Client 만 갖고 Model 상태에는 `installHost` 창구로만 닿는다.
+  @ObservationIgnored private let commandFlow: DeviceCommandFlow
   /// 화면 캡처 흐름(예약 → 찍기·녹화 → Finder 에서 보이기). Client·시계만 갖고 Model 상태에는 `captureHost` 창구로만 닿는다.
   @ObservationIgnored private let captureFlow: ScreenCaptureFlow
   /// 진행 중인 목록 읽기. Model 이 소유해 View 의 `.task` 가 취소돼도 끝까지 돈다.
@@ -81,6 +83,7 @@ public final class LauncherModel {
     self.appBundle = appBundle
     self.download = download
     self.installFlow = AppInstallFlow(simulator: simulator, appBundle: appBundle, download: download)
+    self.commandFlow = DeviceCommandFlow(simulator: simulator)
     self.captureFlow = ScreenCaptureFlow(simulator: simulator, workspace: workspace, now: now)
     self.setupRequested = setupRequested
   }
@@ -126,13 +129,7 @@ public final class LauncherModel {
           self.activity.begin(.shutdown, on: device)
     else { return }
     defer { self.activity.end(on: id) }
-    let label = LauncherNotice.Device(device)
-    do throws(SimulatorError) {
-      try await self.simulator.shutdown(id)
-    } catch {
-      self.enqueue(.shutdownFailed(label, error))
-    }
-    await self.reload()
+    await self.commandFlow.shutdown(device, host: self.installHost)
   }
 
   // MARK: - 만들기
@@ -171,16 +168,10 @@ public final class LauncherModel {
           let runtime = draft.runtime
     else { return }
     let name = DeviceName.normalized(draft.name)
-    let label = LauncherNotice.Device(name: name, runtimeName: runtime.name)
     self.createDraft = nil
     self.isCreating = true
     defer { self.isCreating = false }
-    do throws(SimulatorError) {
-      _ = try await self.simulator.create(name: name, deviceType: draft.deviceTypeID, runtime: runtime.id)
-    } catch {
-      self.enqueue(.createFailed(label, error))
-    }
-    await self.reload()
+    await self.commandFlow.create(name: name, deviceType: draft.deviceTypeID, runtime: runtime, host: self.installHost)
   }
 
   // MARK: - 알림
@@ -274,15 +265,7 @@ public extension LauncherModel {
     // 남은 거절은 기다리는 동안 쓸 수 없게 된 경우뿐이다 (드묾). 행이 이유를 보인다.
     guard self.activity.begin(confirmation.action.task, on: device) else { return }
     defer { self.activity.end(on: device.id) }
-    do throws(SimulatorError) {
-      switch confirmation.action {
-      case .delete: try await self.simulator.delete(device.id)
-      case .erase: try await self.simulator.erase(device.id)
-      }
-    } catch {
-      self.enqueue(confirmation.failedNotice(error))
-    }
-    await self.reload()
+    await self.commandFlow.run(confirmation, on: device.id, host: self.installHost)
   }
 
   private func requestConfirmation(_ action: DeviceConfirmation.Action, for id: VirtualDevice.ID) {
@@ -320,13 +303,7 @@ public extension LauncherModel {
           self.activity.begin(.installApp, on: device)
     else { return }
     defer { self.activity.end(on: id) }
-    let label = LauncherNotice.Device(device)
-    guard let url = items.first else { return }
-    guard items.count == 1 else {
-      self.enqueue(.installFailed(label, .multipleItems))
-      return
-    }
-    await self.installFlow.install(url, on: id, label: label, host: self.installHost)
+    await self.installFlow.install(items, on: id, label: LauncherNotice.Device(device), host: self.installHost)
   }
 
   /// 설치 흐름이 Model 상태에 닿는 창구. 부를 때마다 만들어 넘기고 흐름 타입은 저장하지 않는다.
@@ -348,10 +325,7 @@ public extension LauncherModel {
     guard case let .loaded(list) = self.listState,
           let device = list.device(id: id),
           self.activity.canStart(.installApp, on: device),
-          self.installURLDraft == nil,
-          self.openURLDraft == nil,
-          self.createDraft == nil,
-          self.pendingConfirmation == nil
+          !self.isSheetOrDialogOpen
     else { return }
     self.installURLDraft = InstallURLDraft(deviceID: id, device: LauncherNotice.Device(device))
   }
@@ -415,8 +389,6 @@ public extension LauncherModel {
   }
 
   /// Model 이 소유한 Task 로 받는다 (취소 버튼이 이 Task 만 멈추고, View 의 Task 취소는 전해지지 않는다).
-  /// 취소를 눌렀으면 결과와 관계없이 알림 없이 nil (성공했으면 받은 파일을 지운다). 실패는 알림을 쌓고 nil
-  /// (Client 가 폴더를 지웠다).
   private func runDownload(
     _ url: DownloadURL,
     on id: VirtualDevice.ID,
@@ -433,20 +405,13 @@ public extension LauncherModel {
     self.downloadTasks[id] = task
     let result = await task.value
     self.downloadTasks[id] = nil
-    if self.activity.isDownloadCancelRequested(on: id) {
-      if case let .success(file) = result {
-        await self.download.removeDownloaded(file)
-      }
-      return nil
-    }
-    switch result {
-    case let .success(file):
-      return file
-    case let .failure(error):
-      // 취소를 누르지 않았는데 온 `.cancelled` 도 이유 없이 행만 돌아가지 않게 알린다 (코드상 나오지 않는다).
-      self.enqueue(.installFailed(label, .download(error, from: origin)))
-      return nil
-    }
+    return await self.installFlow.downloadedFile(
+      from: result,
+      cancelRequested: self.activity.isDownloadCancelRequested(on: id),
+      label: label,
+      origin: origin,
+      host: self.installHost
+    )
   }
 
   private func downloadProgressed(_ progress: DownloadProgress, on id: VirtualDevice.ID) {
@@ -463,10 +428,7 @@ public extension LauncherModel {
     guard case let .loaded(list) = self.listState,
           let device = list.device(id: id),
           self.activity.canStart(.openURL, on: device),
-          self.openURLDraft == nil,
-          self.installURLDraft == nil,
-          self.createDraft == nil,
-          self.pendingConfirmation == nil
+          !self.isSheetOrDialogOpen
     else { return }
     self.openURLDraft = OpenURLDraft(deviceID: id, device: LauncherNotice.Device(device))
   }
@@ -491,26 +453,12 @@ public extension LauncherModel {
     // 첫 await 전에 닫아, 연타해도 두 번째 호출은 위에서 끝난다.
     self.openURLDraft = nil
     let label = draft.device
-    let target = AppInstallTarget.current(draft.deviceID, in: self.listState)
-    guard case let .ready(device) = target else {
-      if let failure = target.openURLFailure {
-        self.enqueue(.openURLFailed(label, failure))
-      }
-      return
-    }
+    guard let device = self.installFlow.openLinkTarget(draft, host: self.installHost) else { return }
     // 남은 거절은 같은 기기의 다른 작업뿐이다. 시트가 창을 막아 시트를 연 뒤 그 기기 작업을 시작할 수 없어 드물고,
     // 행의 진행 표시가 이유를 보인다.
     guard self.activity.begin(.openURL, on: device) else { return }
     defer { self.activity.end(on: device.id) }
-    // 막 켠 기기는 준비가 끝날 때까지 돌아오지 않는다 (콜드 부팅 직후 수십 초). 그동안 행이 진행 중을 보인다.
-    guard await self.installFlow.bootIfNeededAndShowSimulator(device, label: label, host: self.installHost)
-    else { return }
-    do throws(SimulatorError) {
-      try await self.simulator.openURL(link, on: device.id)
-    } catch {
-      self.enqueue(.openURLFailed(label, .simulator(error)))
-    }
-    await self.reload()
+    await self.installFlow.openLink(link, on: device, label: label, host: self.installHost)
   }
 }
 
