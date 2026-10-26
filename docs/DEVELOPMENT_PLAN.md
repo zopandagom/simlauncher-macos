@@ -7,7 +7,7 @@
 - 범위: iOS 시뮬레이터 먼저. Android 에뮬레이터는 후속
 - 화면 언어: 한국어 먼저. 문자열은 처음부터 String Catalog(`Localizable.xcstrings`)에 둬서 영어를 나중에 추가한다
 - 라이선스: MIT
-- 출시 목표: 미정
+- 출시 목표: 1.0.0 — Developer ID 서명·공증 dmg 를 GitHub Releases 에 올린다 (로드맵 6단계)
 
 ## 핵심 기능 (MVP)
 | 영역 | 기능 | 기술 메모 |
@@ -40,12 +40,12 @@
 | 3 | 환경 확인과 런타임 설치 (`DevEnvironment` Client 는 Xcode 확인·선택·런타임 설치이고, `DevEnvironment` Client 가 고른 Xcode 경로를 App 이 `Simulator` Client 의 provider 로 연결한다. 런타임 목록은 `Simulator` Client 가 제공. `Setup` Feature) | Xcode·런타임이 없는 Mac 에서 할 일이 화면에 나오고, 런타임은 앱에서 설치된다 |
 | 4 | 직접 URL 설치, 카탈로그 URL 설정·목록 (`Download` Client), 카탈로그 규격 문서와 예시 GitHub Actions | URL 이나 카탈로그 항목을 고르면 다운로드 → 압축 해제 → 설치 → 실행까지 이어진다. 네트워크 오류·잘못된 파일 처리 |
 | 5 | 스크린샷·녹화, 여러 기기 동시 실행 | `simctl io screenshot`/`recordVideo` 결과가 저장되고 Finder 에서 열린다. 한 빌드를 여러 기기에 설치한다 |
-| 6 | Developer ID 서명·공증 배포, 업데이트 알림 | 다른 Mac 에서 내려받아 Gatekeeper 경고 없이 실행된다. 새 버전이 있으면 알리고 다운로드 페이지를 연다 |
-| 이후 | 비공개 저장소 인증, 업데이트 자동 교체(서명·팀 ID 검증 필수), 설치된 앱 관리(`listapps`·`uninstall`), 테스트 조건 바꾸기(외관·언어·위치·푸시·권한), 앱 로그 보기, 영어 지원, **Android 에뮬레이터** | — |
+| 6 | Developer ID 서명·공증 dmg 배포(`make release`, [RELEASING.md](RELEASING.md)), README 보강, 1.0.0 릴리스 | 다른 Mac 에서 브라우저로 내려받은 dmg 의 앱이 Gatekeeper 차단 없이 실행된다 |
+| 이후 | 업데이트 알림(새 버전 알리고 다운로드 페이지 열기), 비공개 저장소 인증, 업데이트 자동 교체(서명·팀 ID 검증 필수), 설치된 앱 관리(`listapps`·`uninstall`), 테스트 조건 바꾸기(외관·언어·위치·푸시·권한), 앱 로그 보기, 영어 지원, **Android 에뮬레이터** | — |
 
 `simctl` 하위 명령은 모두 `Simulator` Client Impl 이 `Command` Client 로 실행한다 (ARCHITECTURE §4). "단계 목표 확인" 열은 단계가 이룰 결과이고, 각 단계 작업을 시작할 때 명령으로 판정할 수용 확인(CONVENTIONS §6)과 사용자의 수동 확인(CONVENTIONS §5 "수동 확인" 행)으로 나눠 작업 범위에 적는다.
 
-업데이트는 외부 의존성(Sparkle 등) 없이 구현한다 (ARCHITECTURE §4). 사용자는 Homebrew Cask 로도 업데이트할 수 있다.
+업데이트 알림(이후)은 외부 의존성(Sparkle 등) 없이 구현한다 (ARCHITECTURE §4).
 
 ## 작업 진행 방식
 1. 로드맵의 단계 목표와 "단계 목표 확인" 열을 확인 → 작업 단위로 쪼갠다.
@@ -65,11 +65,11 @@
 | 항목 | 필요 시점 | 상태 |
 |---|---|---|
 | Apple Developer Program 가입 | 배포 전 | ☑ |
-| 팀 ID 를 `Env.developmentTeam` 에 입력 (팀 ID 는 공개 정보라 커밋해도 된다) | 배포 전 | ☐ |
-| Developer ID Application 인증서 발급, `notarytool` 자격 증명 준비. 커밋하지 않고, CI 에서 쓰면 GitHub Secrets + 승인이 필요한 Environment 에 둔다 | 배포 전 | ☐ |
+| 팀 ID 를 `Env.developmentTeam` 에 입력 (팀 ID 는 공개 정보라 커밋해도 된다) | 배포 전 | ☑ |
+| Developer ID 인증서: 앱은 Xcode 자동 서명(클라우드 관리 인증서), dmg 서명용 로컬 Developer ID Application 인증서 하나. `notarytool` 자격 증명은 키체인 프로필 `simlauncher-notary`. 커밋하지 않는다 ([RELEASING.md](RELEASING.md)). CI 서명은 하지 않는다(이후) | 배포 전 | ☐ |
 | `LICENSE`(MIT) | 공개 전 | ☑ |
 | GitHub 설정: 공개 전환, 외부 기여자 워크플로 승인, Secret scanning·push protection, main 룰셋(필수 체크 `ci-result`) | 공개 시 | ☑ |
-| 배포 경로: GitHub Releases 에 공증된 zip/dmg, Homebrew Cask (선택) | 6단계 | ☐ |
+| 배포 경로: GitHub Releases 에 공증된 dmg (`make release`). Homebrew Cask 는 하지 않는다 | 6단계 | ☐ |
 
 ## 위험과 대응
 | 위험 | 대응 |
