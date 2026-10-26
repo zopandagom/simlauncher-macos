@@ -99,7 +99,7 @@ extension LauncherText {
     case .developerToolsUnavailable, .deviceNotFound, .deviceNotShutdown, .creationOptionUnavailable,
          .invalidDeviceName, .simulatorAppNotFound, .unexpectedOutput, .creationResultUnknown, .commandFailed,
          .deviceNotBooted, .appNotFound, .appInvalid, .appIncompatible, .appRequiresNewerOS, .appNotInstalled,
-         .appLaunchFailed:
+         .appLaunchFailed, .recordingInProgress, .recordingEmpty, .recordingUnfinished:
       nil
     }
   }

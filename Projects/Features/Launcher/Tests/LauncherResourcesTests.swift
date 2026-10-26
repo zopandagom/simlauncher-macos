@@ -118,6 +118,7 @@ struct LauncherTextTests {
     let messages = [
       LauncherText.setupMessage(for: error), LauncherText.deviceMessage(for: error),
       LauncherText.appCommandMessage(for: error), LauncherText.linkMessage(for: error),
+      LauncherText.recordingMessage(for: error),
     ].compactMap(\.self)
     #expect(messages.count == 1)
     #expect(messages.first == LauncherText.message(for: error))
@@ -229,7 +230,7 @@ enum LauncherTextCatalog {
     .developerToolsUnavailable, .deviceNotFound, .deviceNotShutdown, .creationOptionUnavailable, .invalidDeviceName,
     .creationResultUnknown, .simulatorAppNotFound, .unexpectedOutput, .commandFailed, .deviceNotBooted, .appNotFound,
     .appInvalid, .appIncompatible, .appRequiresNewerOS, .appNotInstalled, .appLaunchFailed, .urlNotHandled,
-    .invalidURL,
+    .invalidURL, .recordingInProgress, .recordingEmpty, .recordingUnfinished,
   ]
 
   static let sampleDevice = LauncherNotice.Device(name: "iPhone 17", runtimeName: "iOS 26.0")
@@ -244,6 +245,10 @@ enum LauncherTextCatalog {
     .openURLFailed(sampleDevice, .simulator(.urlNotHandled)),
     .screenshotFailed(sampleDevice, .workspace(.folderUnavailable)),
     .screenshotRevealFailed(sampleDevice, .fileNotFound),
+    .recordingFailed(sampleDevice, .workspace(.folderUnavailable)),
+    .recordingFailed(sampleDevice, .simulator(.recordingUnfinished)),
+    .recordingInterrupted(sampleDevice), .recordingStoppedByDevice(sampleDevice),
+    .recordingRevealFailed(sampleDevice, .fileNotFound),
   ]
 
   /// 기기 이름이 들어가는 제목의 카탈로그 키. 순서는 `notices.dropFirst()` 뒤에 링크 시트 제목이다 (`formattedTitles`).
@@ -260,6 +265,11 @@ enum LauncherTextCatalog {
     "“%@” (%@) 기기에서 링크를 열지 못했습니다",
     "“%@” (%@) 기기의 스크린샷을 저장하지 못했습니다",
     "“%@” (%@) 기기의 스크린샷을 저장했지만 Finder 에서 보여 주지 못했습니다",
+    "“%@” (%@) 기기의 화면을 녹화하지 못했습니다",
+    "“%@” (%@) 기기의 녹화 저장을 마치지 못했습니다",
+    "“%@” (%@) 기기의 녹화가 중간에 끝났습니다",
+    "“%@” (%@) 기기가 꺼져 녹화를 멈추고 저장했습니다",
+    "“%@” (%@) 기기의 녹화를 저장했지만 Finder 에서 보여 주지 못했습니다",
     "“%@” (%@) 기기에서 링크 열기",
     "“%@” (%@) 기기에 URL 에서 앱 설치",
   ]
@@ -364,6 +374,21 @@ enum LauncherTextCatalog {
     LauncherText.message(for: .requiresNewerOS(OSVersion(major: 27, minor: 1)))
   }
 
+  /// 녹화 문구 (알림 본문은 `notices`·`errors` 가 덮고, 여기는 그 밖의 것).
+  static var recordingTexts: [String] {
+    var texts = self.screenshotBlockReasons.map { LauncherText.recordBlockReason($0) }
+    texts += self.workspaceErrors.map { LauncherText.recordingMessage(for: $0) }
+    let failures: [RecordingFailure] = [.simulator(.deviceNotBooted), .simulator(.commandFailed)]
+    texts += failures.map { LauncherText.message(for: $0) }
+    texts += [
+      LauncherText.recordButton, LauncherText.recordHelp, LauncherText.stopRecordingButton,
+      LauncherText.startingRecordingLabel, LauncherText.recordingLabel, LauncherText.stoppingRecordingLabel,
+      LauncherText.stopRecordingFirstHelp, LauncherText.recordingBlocksDeviceActions,
+      LauncherText.recordingTerminationTitle, LauncherText.recordingTerminationMessage, LauncherText.saveAndQuitButton,
+    ]
+    return texts
+  }
+
   static var all: [String] {
     // 긴 `+` 연결식은 타입 추론이 느려 CI 의 Xcode 에서 시간 초과가 나므로 줄마다 `+=` 로 붙인다.
     var texts: [String] = self.errors.map { LauncherText.message(for: $0) }
@@ -404,6 +429,7 @@ enum LauncherTextCatalog {
     texts += self.workspaceErrors.map { LauncherText.message(for: $0) }
     texts += [LauncherText.message(for: ScreenshotFailure.simulator(.deviceNotBooted))]
     texts += [LauncherText.screenshotButton, LauncherText.screenshotHelp, LauncherText.takingScreenshotLabel]
+    texts += self.recordingTexts
     texts += [
       LauncherText.okButton, LauncherText.unavailableLabel, LauncherText.bootButton, LauncherText.shutdownButton,
       LauncherText.loading, LauncherText.loadFailedTitle, LauncherText.refreshButton, LauncherText.retryButton,

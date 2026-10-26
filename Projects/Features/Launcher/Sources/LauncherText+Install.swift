@@ -38,7 +38,7 @@ extension LauncherText {
 
   // MARK: - 알림
 
-  /// 기기 행 작업(설치·실행·링크 열기·스크린샷) 실패 알림의 제목. `title(for:)` 가 다섯 케이스를 한 줄로 넘긴다 (복잡도를 나눈다).
+  /// 기기 행 작업(설치·실행·링크 열기·스크린샷·녹화) 알림의 제목. `title(for:)` 가 아홉 케이스를 한 줄로 넘긴다 (복잡도를 나눈다).
   static func rowTaskNoticeTitle(for notice: LauncherNotice?, device: LauncherNotice.Device) -> String {
     switch notice {
     case .launchFailed:
@@ -50,6 +50,8 @@ extension LauncherText {
       self.openURLNoticeTitle(for: device)
     case .screenshotFailed, .screenshotRevealFailed:
       self.screenshotNoticeTitle(for: notice, device: device)
+    case .recordingFailed, .recordingInterrupted, .recordingStoppedByDevice, .recordingRevealFailed:
+      self.recordingNoticeTitle(for: notice, device: device)
     default:
       String(localized: "“\(device.name)” (\(device.runtimeName)) 기기에 앱을 설치하지 못했습니다", bundle: .module)
     }
@@ -203,7 +205,8 @@ extension LauncherText {
       )
     case .developerToolsUnavailable, .deviceNotFound, .deviceNotShutdown, .creationOptionUnavailable,
          .invalidDeviceName,
-         .simulatorAppNotFound, .unexpectedOutput, .creationResultUnknown, .commandFailed, .urlNotHandled, .invalidURL:
+         .simulatorAppNotFound, .unexpectedOutput, .creationResultUnknown, .commandFailed, .urlNotHandled, .invalidURL,
+         .recordingInProgress, .recordingEmpty, .recordingUnfinished:
       nil
     }
   }

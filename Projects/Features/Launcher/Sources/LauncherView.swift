@@ -307,9 +307,10 @@ extension LauncherView {
   }
 
   private func deviceRow(_ device: VirtualDevice) -> some View {
-    DeviceRow(
+    let task = self.model.activity.task(on: device.id)
+    return DeviceRow(
       device: device,
-      task: self.model.activity.task(on: device.id),
+      task: task,
       downloadStage: self.model.activity.downloadStage(on: device.id),
       installFromFileTapped: {
         self.importDeviceID = device.id
@@ -330,13 +331,18 @@ extension LauncherView {
       openURLTapped: {
         self.model.openURLButtonTapped(device.id)
       },
-      canTakeScreenshot: self.model.screenshots.canStart(
-        on: device,
-        during: self.model.activity.task(on: device.id)
-      ),
+      canTakeScreenshot: self.model.screenshots.canStart(on: device, during: task),
       isTakingScreenshot: self.model.screenshots.isTaking(on: device.id),
       screenshotTapped: {
         Task { await self.model.screenshotButtonTapped(device.id) }
+      },
+      recordingPhase: self.model.recordings.phase(on: device.id),
+      canStartRecording: self.model.recordings.canStart(on: device, during: task),
+      recordTapped: {
+        Task { await self.model.recordButtonTapped(device.id) }
+      },
+      stopRecordingTapped: {
+        self.model.recordingStopTapped(device.id)
       },
       bootTapped: {
         Task { await self.model.bootButtonTapped(device.id) }

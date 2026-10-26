@@ -2,7 +2,7 @@ import Foundation
 import SimulatorInterface
 
 /// `SimulatorError` 본문의 분류별 문구 (`message(for:)` 가 고른다). 앱 설치·실행 분류는 `LauncherText+Install.swift`,
-/// 링크 열기 분류는 `LauncherText+OpenURL.swift`.
+/// 링크 열기 분류는 `LauncherText+OpenURL.swift`, 녹화 분류는 `LauncherText+Recording.swift`.
 extension LauncherText {
   /// Xcode·개발 도구 준비 문제. 다른 분류면 nil.
   static func setupMessage(for error: SimulatorError) -> String? {
@@ -26,7 +26,7 @@ extension LauncherText {
       self.commandFailedMessage
     case .deviceNotFound, .deviceNotShutdown, .creationOptionUnavailable, .invalidDeviceName, .creationResultUnknown,
          .deviceNotBooted, .appNotFound, .appInvalid, .appIncompatible, .appRequiresNewerOS, .appNotInstalled,
-         .appLaunchFailed, .urlNotHandled, .invalidURL:
+         .appLaunchFailed, .urlNotHandled, .invalidURL, .recordingInProgress, .recordingEmpty, .recordingUnfinished:
       nil
     }
   }
@@ -60,7 +60,7 @@ extension LauncherText {
       )
     case .developerToolsUnavailable, .simulatorAppNotFound, .unexpectedOutput, .commandFailed, .deviceNotBooted,
          .appNotFound, .appInvalid, .appIncompatible, .appRequiresNewerOS, .appNotInstalled, .appLaunchFailed,
-         .urlNotHandled, .invalidURL:
+         .urlNotHandled, .invalidURL, .recordingInProgress, .recordingEmpty, .recordingUnfinished:
       nil
     }
   }
