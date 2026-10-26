@@ -19,6 +19,7 @@ iPhone·iPad 가 없는 인원이 Mac 만으로 개발 중인 iOS 앱을 테스�
 | `make sample` | 카탈로그 예시 워크플로가 올리는 샘플 iOS 앱을 시뮬레이터용으로 빌드해 `build/SampleApp.zip` 으로 묶기 (빌드 번호: `SAMPLE_BUILD_NUMBER=42 make sample`) |
 | `make catalog-check CATALOG=<파일>` | `catalog.json` 하나를 앱과 같은 규칙(Core `BuildCatalog`·5 MiB)으로 검사 |
 | `make catalog-test` | 샘플 카탈로그 생성기·검증기 회귀 테스트 (`.github/scripts/Fixtures`) |
+| `make release` | 배포 dmg 만들기: archive → Developer ID 내보내기 → 확인 뒤 앱·dmg 공증·staple → 검사 (`build/release/SimLauncher-<버전>.dmg`, 준비: docs/RELEASING.md). 공증 제출 전에 묻는다 |
 
 ## 작업 흐름 (`/verify`·`/arch-review`·`/micro-commit` 은 서브에이전트로 실행되어 요약만 돌려주고, `/pr` 은 현재 대화에서 실행된다)
 | 순서 | 스킬 | 하는 일 |
@@ -38,6 +39,7 @@ Projects/
   Shared/<Name>/            Sources · Tests. Core(도메인 값 타입·규칙)
 Tuist/ProjectDescriptionHelpers/   모듈 이름(Module.swift)과 타깃 템플릿
 Examples/SampleApp/                카탈로그 예시 워크플로가 빌드하는 샘플 iOS 앱 (워크스페이스·make test 밖, 템플릿 밖 독립 매니페스트)
+scripts/                           배포 스크립트 (make release → release.sh, docs/RELEASING.md)
 ```
 의존 방향: `App → Feature → Client Interface`, `App → Client Impl → Client Interface`. 모두 Shared 를 쓸 수 있고, Shared 는 아무것도 의존하지 않는다.
 
