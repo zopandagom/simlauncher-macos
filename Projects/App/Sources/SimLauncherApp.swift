@@ -8,6 +8,7 @@ import SettingsFeature
 import SetupFeature
 import SimulatorImpl
 import SwiftUI
+import WorkspaceImpl
 
 /// 조립 지점. Client Impl 을 만들어 Feature Model 에 주입하는 곳은 여기뿐이다.
 /// 화면 간 흐름도 여기서 잇는다: Setup 이 끝나면(`SetupModel.isFinished`) 기기 목록, 기기 목록의 Setup 진입 버튼
@@ -43,10 +44,12 @@ struct SimLauncherApp: App {
     let preferences = PreferencesClientImpl()
     let setup = SetupModel(devEnvironment: devEnvironment, simulator: simulator)
     self._setupModel = State(initialValue: setup)
+    // 스크린샷 저장 폴더는 "스크린샷" 을 누를 때 만든다 (Workspace Client 생성자는 파일을 건드리지 않는다).
     let launcher = LauncherModel(
       simulator: simulator,
       appBundle: AppBundleClientImpl(command: command),
       download: download,
+      workspace: WorkspaceClientImpl(),
       setupRequested: { setup.reopened() }
     )
     self._launcherModel = State(initialValue: launcher)

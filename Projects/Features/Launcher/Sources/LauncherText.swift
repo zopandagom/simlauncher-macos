@@ -43,8 +43,9 @@ enum LauncherText {
       String(localized: "“\(device.name)” (\(device.runtimeName)) 기기를 삭제하지 못했습니다", bundle: .module)
     case let .eraseFailed(device, _):
       String(localized: "“\(device.name)” (\(device.runtimeName)) 기기를 초기화하지 못했습니다", bundle: .module)
-    case let .installFailed(device, _), let .launchFailed(device, _), let .openURLFailed(device, _):
-      self.appNoticeTitle(for: notice, device: device)
+    case let .installFailed(device, _), let .launchFailed(device, _), let .openURLFailed(device, _),
+         let .screenshotFailed(device, _), let .screenshotRevealFailed(device, _):
+      self.rowTaskNoticeTitle(for: notice, device: device)
     }
   }
 
@@ -64,6 +65,10 @@ enum LauncherText {
       self.message(for: failure)
     case let .openURLFailed(_, failure):
       self.message(for: failure)
+    case let .screenshotFailed(_, failure):
+      self.message(for: failure)
+    case let .screenshotRevealFailed(_, error):
+      self.message(for: error)
     }
   }
 

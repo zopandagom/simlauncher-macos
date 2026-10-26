@@ -4,6 +4,7 @@ import DownloadTesting
 import SimulatorInterface
 import SimulatorTesting
 import Testing
+import WorkspaceTesting
 @testable import LauncherFeature
 
 @MainActor
@@ -32,7 +33,8 @@ struct LauncherCreateTests: LauncherModelTesting {
     let before = LauncherModel(
       simulator: SimulatorClientFake(inventory: .sample),
       appBundle: AppBundleClientFake(),
-      download: DownloadClientFake()
+      download: DownloadClientFake(),
+      workspace: WorkspaceClientFake()
     )
     #expect(before.canCreateDevice == false)
     before.createButtonTapped()
@@ -41,7 +43,8 @@ struct LauncherCreateTests: LauncherModelTesting {
     let noRuntime = LauncherModel(
       simulator: SimulatorClientFake(inventory: .noRuntime),
       appBundle: AppBundleClientFake(),
-      download: DownloadClientFake()
+      download: DownloadClientFake(),
+      workspace: WorkspaceClientFake()
     )
     await noRuntime.onAppear()
     #expect(noRuntime.canCreateDevice == false)
@@ -54,7 +57,8 @@ struct LauncherCreateTests: LauncherModelTesting {
     let model = LauncherModel(
       simulator: SimulatorClientFake(inventory: .noDevices),
       appBundle: AppBundleClientFake(),
-      download: DownloadClientFake()
+      download: DownloadClientFake(),
+      workspace: WorkspaceClientFake()
     )
     await model.onAppear()
 
@@ -290,7 +294,8 @@ extension LauncherCreateTests {
     let model = LauncherModel(
       simulator: SimulatorClientFake(inventory: .noCreatableDeviceType),
       appBundle: AppBundleClientFake(),
-      download: DownloadClientFake()
+      download: DownloadClientFake(),
+      workspace: WorkspaceClientFake()
     )
     await model.onAppear()
 
@@ -312,7 +317,8 @@ extension LauncherCreateTests {
     let model = LauncherModel(
       simulator: SimulatorClientFake(inventory: inventory),
       appBundle: AppBundleClientFake(),
-      download: DownloadClientFake()
+      download: DownloadClientFake(),
+      workspace: WorkspaceClientFake()
     )
     await model.onAppear()
 
@@ -337,7 +343,8 @@ extension LauncherCreateTests {
     let model = LauncherModel(
       simulator: SimulatorClientFake(inventory: .noCreatableDeviceType),
       appBundle: AppBundleClientFake(),
-      download: DownloadClientFake()
+      download: DownloadClientFake(),
+      workspace: WorkspaceClientFake()
     )
 
     #expect(model.canCreateDevice == false)

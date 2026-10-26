@@ -38,8 +38,8 @@ extension LauncherText {
 
   // MARK: - 알림
 
-  /// 설치·실행·링크 열기 실패 알림의 제목. `title(for:)` 가 세 케이스를 한 줄로 넘긴다 (복잡도를 나눈다).
-  static func appNoticeTitle(for notice: LauncherNotice?, device: LauncherNotice.Device) -> String {
+  /// 기기 행 작업(설치·실행·링크 열기·스크린샷) 실패 알림의 제목. `title(for:)` 가 다섯 케이스를 한 줄로 넘긴다 (복잡도를 나눈다).
+  static func rowTaskNoticeTitle(for notice: LauncherNotice?, device: LauncherNotice.Device) -> String {
     switch notice {
     case .launchFailed:
       String(
@@ -48,6 +48,8 @@ extension LauncherText {
       )
     case .openURLFailed:
       self.openURLNoticeTitle(for: device)
+    case .screenshotFailed, .screenshotRevealFailed:
+      self.screenshotNoticeTitle(for: notice, device: device)
     default:
       String(localized: "“\(device.name)” (\(device.runtimeName)) 기기에 앱을 설치하지 못했습니다", bundle: .module)
     }
