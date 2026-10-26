@@ -74,7 +74,7 @@ step 0 "이전 산출물 정리"
 if [[ -d $MOUNT_POINT ]]; then
   hdiutil detach "$MOUNT_POINT" >/dev/null 2>&1 || true
 fi
-rm -rf "$OUT" 2>/dev/null || fail 2 "build/release 를 지우지 못했습니다." \
+rm -rf "$OUT" 2>/dev/null || fail 1 "build/release 를 지우지 못했습니다." \
   "마운트된 디스크 이미지를 분리(hdiutil detach $MOUNT_POINT)한 뒤 다시 실행하세요."
 mkdir -p "$OUT" "$NOTARY_DIR"
 
