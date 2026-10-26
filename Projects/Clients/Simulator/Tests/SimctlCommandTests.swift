@@ -37,6 +37,13 @@ struct SimctlCommandTests {
     #expect(SimctlCommand.openURL(udid: "A", url: "myapp://item/1") == ["simctl", "openurl", "A", "myapp://item/1"])
   }
 
+  @Test("screenshot 은 기기 뒤에 io screenshot 과 옵션, 마지막에 경로를 넘긴다")
+  func screenshotArguments() {
+    #expect(SimctlCommand.screenshot(udid: "A", path: "/P/한글 (1).png") == [
+      "simctl", "io", "A", "screenshot", "--type=png", "--mask=ignored", "/P/한글 (1).png",
+    ])
+  }
+
   @Test("create stdout 의 UDID 를 읽고 대문자로 맞춘다")
   func createdUDID() {
     #expect(

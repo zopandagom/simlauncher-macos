@@ -8,7 +8,7 @@ import Synchronization
 /// create 가 성공하면 꺼진 새 기기를 목록 끝에 더하고, delete 가 성공하면 그 기기를 뺀다. 꺼짐 여부는 검사하지 않는다.
 /// 목록을 다시 만들 때 런타임·기기 종류는 그대로 둔다.
 /// install·openURL 은 실제처럼 목록의 기기 상태를 본다(없으면 `.deviceNotFound`, 켜져 있지 않으면 `.deviceNotBooted`),
-/// 성공해도 목록은 바꾸지 않는다. launch 는 설치 여부를 보지 않고 설정한 에러가 없으면 성공한다.
+/// 성공해도 목록은 바꾸지 않는다. screenshot 도 install 과 같은 순서로 기기 상태를 보고, 파일은 만들지 않는다. launch 는 설치 여부를 보지 않고 설정한 에러가 없으면 성공한다.
 /// 런타임 이미지 목록은 기기 목록과 따로 저장하고(기본값 `RuntimeImage.samples`), 어떤 호출도 그 목록을 바꾸지 않는다.
 public final class SimulatorClientFake: SimulatorClient {
   public enum Call: Hashable, Sendable {
@@ -23,10 +23,11 @@ public final class SimulatorClientFake: SimulatorClient {
     case install(URL, VirtualDevice.ID)
     case launch(AppBundleID, VirtualDevice.ID)
     case openURL(DeepLink, VirtualDevice.ID)
+    case screenshot(VirtualDevice.ID, URL)
   }
 
   private enum SuspendableCall: Hashable {
-    case fetch, boot, create, delete, erase, install, openURL
+    case fetch, boot, create, delete, erase, install, openURL, screenshot
   }
 
   private struct State {
@@ -44,6 +45,7 @@ public final class SimulatorClientFake: SimulatorClient {
     var installError: SimulatorError?
     var launchError: SimulatorError?
     var openURLError: SimulatorError?
+    var screenshotError: SimulatorError?
     var delay: Duration?
     var createdCount = 0
     var suspended: Set<SuspendableCall> = []
@@ -325,7 +327,7 @@ private extension SimulatorClientFake {
   }
 }
 
-// MARK: - 앱 설치·실행·링크 열기
+// MARK: - 앱 설치·실행·링크 열기·스크린샷
 
 public extension SimulatorClientFake {
   func setInstallError(_ error: SimulatorError?) {
@@ -386,6 +388,30 @@ public extension SimulatorClientFake {
     await self.waitIfSuspended(.openURL)
     await self.sleepIfNeeded()
     if let error = self.bootedDeviceError(id, configured: \.openURLError) {
+      throw error
+    }
+  }
+
+  func setScreenshotError(_ error: SimulatorError?) {
+    self.state.withLock { $0.screenshotError = error }
+  }
+
+  /// 이후 `screenshot(on:to:)` 가 기록만 하고 `resumeScreenshots()` 까지 기다린다.
+  func suspendScreenshots() {
+    self.suspend(.screenshot)
+  }
+
+  /// 기다리는 `screenshot(on:to:)` 를 모두 깨우고, 이후 호출은 기다리지 않는다.
+  func resumeScreenshots() {
+    self.resume(.screenshot)
+  }
+
+  /// `install(_:on:)` 과 같은 순서로 기록·멈춤·지연·에러·기기 상태를 본다. 파일은 만들지 않고 성공해도 목록은 바꾸지 않는다.
+  func screenshot(on id: VirtualDevice.ID, to file: URL) async throws(SimulatorError) {
+    self.record(.screenshot(id, file))
+    await self.waitIfSuspended(.screenshot)
+    await self.sleepIfNeeded()
+    if let error = self.bootedDeviceError(id, configured: \.screenshotError) {
       throw error
     }
   }

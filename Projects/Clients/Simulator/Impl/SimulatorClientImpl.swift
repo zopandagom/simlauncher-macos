@@ -292,6 +292,38 @@ public struct SimulatorClientImpl: SimulatorClient {
   }
 }
 
+// MARK: - 스크린샷
+
+public extension SimulatorClientImpl {
+  /// 같은 디렉터리로 목록을 다시 읽어 켜진 기기일 때만 실행한다 (꺼진 기기에서는 simctl 이 약 60초 기다린다).
+  /// 확인과 실행 사이에 꺼지는 드문 경우는 막지 못하고, 실패 뒤 재조회는 하지 않는다.
+  func screenshot(on id: VirtualDevice.ID, to file: URL) async throws(SimulatorError) {
+    guard let udid = SimctlCommand.validatedUDID(id.rawValue) else {
+      throw .deviceNotFound
+    }
+    guard file.isFileURL else {
+      throw .commandFailed
+    }
+    let directory = try await self.resolveDeveloperDirectory()
+    let inventory = try await self.inventory(developerDirectory: directory)
+    guard let device = inventory.devices.first(where: { SimctlCommand.validatedUDID($0.id.rawValue) == udid }) else {
+      throw .deviceNotFound
+    }
+    guard device.state == .booted else {
+      throw .deviceNotBooted
+    }
+    let result = try await self.run(
+      SimctlCommand.xcrun,
+      SimctlCommand.screenshot(udid: udid, path: file.standardizedFileURL.path(percentEncoded: false)),
+      developerDirectory: directory,
+      launchFailure: .developerToolsUnavailable
+    )
+    guard result.exitCode == 0 else {
+      throw SimctlErrorClassifier.screenshotError(exitCode: result.exitCode, stderr: Self.stderr(result))
+    }
+  }
+}
+
 // MARK: - 런타임 이미지
 
 public extension SimulatorClientImpl {
