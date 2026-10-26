@@ -66,7 +66,7 @@
 |---|---|---|
 | Apple Developer Program 가입 | 배포 전 | ☑ |
 | 팀 ID 를 `Env.developmentTeam` 에 입력 (팀 ID 는 공개 정보라 커밋해도 된다) | 배포 전 | ☑ |
-| Developer ID 인증서: 앱은 Xcode 자동 서명(클라우드 관리 인증서), dmg 서명용 로컬 Developer ID Application 인증서 하나. `notarytool` 자격 증명은 키체인 프로필 `simlauncher-notary`. 커밋하지 않는다 ([RELEASING.md](RELEASING.md)). CI 서명은 하지 않는다(이후) | 배포 전 | ☐ |
+| Developer ID 인증서: 앱은 Xcode 자동 서명(클라우드 관리 인증서), dmg 서명용 로컬 Developer ID Application 인증서 하나. `notarytool` 자격 증명은 키체인 프로필 `simlauncher-notary`. 커밋하지 않는다 ([RELEASING.md](RELEASING.md)). CI 서명은 하지 않는다(이후) | 배포 전 | ☑ |
 | `LICENSE`(MIT) | 공개 전 | ☑ |
 | GitHub 설정: 공개 전환, 외부 기여자 워크플로 승인, Secret scanning·push protection, main 룰셋(필수 체크 `ci-result`) | 공개 시 | ☑ |
 | 배포 경로: GitHub Releases 에 공증된 dmg (`make release`). Homebrew Cask 는 하지 않는다 | 6단계 | ☐ |
