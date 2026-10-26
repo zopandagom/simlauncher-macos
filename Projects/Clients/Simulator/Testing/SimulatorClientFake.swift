@@ -30,6 +30,7 @@ public final class SimulatorClientFake: SimulatorClient {
 
   private enum SuspendableCall: Hashable {
     case fetch, boot, create, delete, erase, install, openURL, screenshot, recordVideo
+    case bootOf(VirtualDevice.ID)
   }
 
   private struct State {
@@ -125,6 +126,16 @@ public final class SimulatorClientFake: SimulatorClient {
     self.resume(.boot)
   }
 
+  /// 이후 이 기기의 `boot(_:)` 만 기록하고 `resumeBoot(of:)` 까지 기다린다 (다른 기기는 기다리지 않는다).
+  public func suspendBoot(of id: VirtualDevice.ID) {
+    self.suspend(.bootOf(id))
+  }
+
+  /// 기다리는 이 기기의 `boot(_:)` 를 깨우고, 이후 호출은 기다리지 않는다.
+  public func resumeBoot(of id: VirtualDevice.ID) {
+    self.resume(.bootOf(id))
+  }
+
   /// 이후 `create(name:deviceType:runtime:)` 가 기록만 하고 `resumeCreates()` 까지 기다린다.
   public func suspendCreates() {
     self.suspend(.create)
@@ -171,6 +182,7 @@ public final class SimulatorClientFake: SimulatorClient {
   public func boot(_ id: VirtualDevice.ID) async throws(SimulatorError) {
     self.record(.boot(id))
     await self.waitIfSuspended(.boot)
+    await self.waitIfSuspended(.bootOf(id))
     await self.sleepIfNeeded()
     let result: Result<Void, SimulatorError> = self.state.withLock { state in
       if let error = state.bootError {

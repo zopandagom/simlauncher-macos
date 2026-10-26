@@ -47,8 +47,7 @@ struct LauncherURLInstallTests: LauncherModelTesting {
 
     model.installFromURLMenuTapped(id)
 
-    #expect(model.installURLDraft?.deviceID == id)
-    #expect(model.installURLDraft?.device == Self.label(id))
+    #expect(model.installURLDraft?.targets == [TargetDevice(id: id, label: Self.label(id))])
     #expect(model.installURLDraft?.text.isEmpty == true)
     #expect(model.installURLDraft?.problem == .empty)
     #expect(model.installURLDraft?.canSubmit == false)
@@ -105,7 +104,7 @@ struct LauncherURLInstallTests: LauncherModelTesting {
 
     model.installFromURLMenuTapped(SampleID.iPhoneOff)
     model.installFromURLMenuTapped(SampleID.iPhoneOn)
-    #expect(model.installURLDraft?.deviceID == SampleID.iPhoneOff)
+    #expect(model.installURLDraft?.targets.map(\.id) == [SampleID.iPhoneOff])
   }
 
   @Test("URL 설치 시트가 열려 있으면 + 버튼·삭제·초기화 확인·링크 시트가 열리지 않는다")

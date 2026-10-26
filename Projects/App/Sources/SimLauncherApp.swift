@@ -14,7 +14,7 @@ import WorkspaceImpl
 /// 화면 간 흐름도 여기서 잇는다: Setup 이 끝나면(`SetupModel.isFinished`) 기기 목록, 기기 목록의 Setup 진입 버튼
 /// ("개발 환경", 빈 화면의 iOS 설치 등)이면 다시 Setup. 앱 종료 요청은 `AppDelegate` 가 받아 녹화 중이면 기기 목록(`LauncherModel`)에
 /// 녹화를 멈추고 저장하게 하고, 런타임 설치 중이면 Setup 에 맡긴다.
-/// 기기 행의 "카탈로그에서…" 시트(`CatalogInstallModel`)가 고른 버전은 `installRequested` 로 기기 목록(`LauncherModel`)이 설치한다.
+/// 기기 행·툴바의 "카탈로그에서…" 시트(`CatalogInstallModel`)가 고른 버전은 `installRequested` 로 기기 목록(`LauncherModel`)이 설치한다.
 /// 설정 창(`Settings` 씬, ⌘,)은 메인 창의 화면(Setup·기기 목록)과 관계없이 열린다.
 @main
 struct SimLauncherApp: App {

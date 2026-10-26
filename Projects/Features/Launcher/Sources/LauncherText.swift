@@ -27,27 +27,15 @@ enum LauncherText {
       String(localized: "기기 목록을 새로 고치지 못했습니다", bundle: .module)
     case let .bootFailed(device, _):
       String(localized: "“\(device.name)” (\(device.runtimeName)) 기기를 켜지 못했습니다", bundle: .module)
-    case let .shutdownFailed(device, _):
-      String(localized: "“\(device.name)” (\(device.runtimeName)) 기기를 끄지 못했습니다", bundle: .module)
-    case let .openAppFailed(device, _):
-      String(
-        localized: "“\(device.name)” (\(device.runtimeName)) 기기는 켜졌지만 Simulator 앱을 열지 못했습니다",
-        bundle: .module
-      )
-    case let .createFailed(device, .creationResultUnknown):
-      // 만들기는 성공했지만 결과를 읽지 못한 경우라 실패로 단정하지 않는다 (본문이 목록 확인을 안내한다).
-      String(localized: "“\(device.name)” (\(device.runtimeName)) 기기를 만들었는지 확인하지 못했습니다", bundle: .module)
-    case let .createFailed(device, _):
-      String(localized: "“\(device.name)” (\(device.runtimeName)) 기기를 만들지 못했습니다", bundle: .module)
-    case let .deleteFailed(device, _):
-      String(localized: "“\(device.name)” (\(device.runtimeName)) 기기를 삭제하지 못했습니다", bundle: .module)
-    case let .eraseFailed(device, _):
-      String(localized: "“\(device.name)” (\(device.runtimeName)) 기기를 초기화하지 못했습니다", bundle: .module)
+    case .shutdownFailed, .openAppFailed, .createFailed, .deleteFailed, .eraseFailed:
+      self.deviceCommandNoticeTitle(for: notice)
     case let .installFailed(device, _), let .launchFailed(device, _), let .openURLFailed(device, _),
          let .screenshotFailed(device, _), let .screenshotRevealFailed(device, _),
          let .recordingFailed(device, _), let .recordingInterrupted(device),
          let .recordingStoppedByDevice(device), let .recordingRevealFailed(device, _):
       self.rowTaskNoticeTitle(for: notice, device: device)
+    case .batchInstallFailed, .batchFinished:
+      self.batchNoticeTitle(for: notice)
     }
   }
 
@@ -73,6 +61,8 @@ enum LauncherText {
       self.message(for: error)
     case .recordingFailed, .recordingInterrupted, .recordingStoppedByDevice, .recordingRevealFailed:
       self.recordingNoticeMessage(for: notice)
+    case .batchInstallFailed, .batchFinished:
+      self.batchNoticeMessage(for: notice)
     }
   }
 

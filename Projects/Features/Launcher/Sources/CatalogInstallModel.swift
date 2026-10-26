@@ -6,6 +6,7 @@ import PreferencesInterface
 
 /// 카탈로그에서 설치 시트의 상태와 로직. 시트를 열 때와 새로 고칠 때만 등록 카탈로그를 동시에 받아 메인 밖에서 해석하고,
 /// 카탈로그마다 결과가 오는 대로 보인다. 설치는 App 이 주입한 `installRequested` 로 기기 목록 화면(LauncherModel)에 넘긴다.
+/// 대상은 행 메뉴면 그 기기 한 대, 툴바면 목록에서 고른 기기 전부다.
 /// 기기 목록·진행 작업·알림 상태를 함께 쓰지 않아 LauncherModel 과 나눴다 (ARCHITECTURE §1).
 @MainActor
 @Observable
@@ -34,7 +35,16 @@ public final class CatalogInstallModel {
   /// 같은 기기의 진행 중 작업은 행이 메뉴를 비활성으로 막는다 (이 Model 은 기기 작업을 모른다). 받기가 끝날 때까지 기다린다.
   public func menuTapped(_ device: VirtualDevice) async {
     guard self.draft == nil, device.appInstallAvailability == .allowed else { return }
-    self.draft = CatalogInstallDraft(deviceID: device.id, device: LauncherNotice.Device(device))
+    self.draft = CatalogInstallDraft(targets: [TargetDevice(device)])
+    await self.load()
+  }
+
+  /// 툴바 "선택한 기기에 앱 설치" > "카탈로그에서…": 시트가 닫혀 있고 고른 기기(지금 목록 순서) 중 하나라도 설치할 수 있는
+  /// 기기면 고른 기기 모두를 대상으로 열고 받는다. 한 대면 `menuTapped(_:)` 와 같다. 다른 작업 중인 기기는 LauncherModel 이
+  /// 설치를 시작할 때 이유와 함께 건너뛴다. 받기가 끝날 때까지 기다린다.
+  public func selectionMenuTapped(_ devices: [VirtualDevice]) async {
+    guard self.draft == nil, devices.contains(where: { $0.appInstallAvailability == .allowed }) else { return }
+    self.draft = CatalogInstallDraft(targets: devices.map(TargetDevice.init))
     await self.load()
   }
 
@@ -65,9 +75,7 @@ public final class CatalogInstallModel {
     guard let draft = self.draft, let version = draft.selectedVersion else { return }
     // 첫 await 전에 닫아, 연타해도 두 번째 호출은 위에서 끝난다.
     self.close()
-    await self.installRequested(
-      CatalogInstallRequest(deviceID: draft.deviceID, device: draft.device, buildURL: version.buildURL)
-    )
+    await self.installRequested(CatalogInstallRequest(targets: draft.targets, buildURL: version.buildURL))
   }
 
   /// 설정을 읽어 구역을 다시 만들고, 쓸 수 있는 카탈로그를 모두 동시에 받는다. 결과는 오는 대로(끝난 순서) 받기 식별자를

@@ -7,6 +7,8 @@ import SwiftUI
 /// 스크린샷 버튼(켜진 기기만, 찍는 중이면 작은 진행 표시), 녹화 표시(켜진 기기만: "녹화" 버튼, 녹화 중이면 경과 시간과 "중지",
 /// 저장 중이면 작은 진행 표시), 켜기·끄기 버튼(받는 중이면 진행 막대와 받기 취소 버튼, 녹화 중이면 끄기 비활성),
 /// 기기 작업 메뉴(… 버튼과 컨텍스트 메뉴: 초기화·삭제).
+/// 여러 기기가 함께 받는 중(받기 묶음)이면 대상 행 모두에 같은 진행이 보이고, 취소 툴팁이 함께 멈추는 기기 수를 알린다.
+/// 행의 버튼·메뉴·드롭·컨텍스트 메뉴는 목록 선택과 관계없이 이 기기 하나에만 동작한다.
 /// 쓸 수 없는 기기는 흐리게 그리고 이유를 보인다. 막힌 메뉴 항목은 비활성으로 두고 이유를 메뉴 맨 위에 보인다 (녹화 중이면 녹화 이유를 먼저).
 struct DeviceRow: View {
   let device: VirtualDevice
@@ -14,6 +16,8 @@ struct DeviceRow: View {
   let task: DeviceTask?
   /// URL 설치의 받기 단계. 있으면 상태 글자와 오른쪽 진행 표시가 `task` 보다 먼저 이것을 보인다.
   let downloadStage: DownloadStage?
+  /// 이 기기와 같은 받기 묶음에서 받는 중인 기기 수 (`DeviceActivity.downloadGroupSize`). 2 이상이면 취소가 모두를 멈춘다.
+  let downloadGroupSize: Int
   let installFromFileTapped: () -> Void
   let installFromURLTapped: () -> Void
   let installFromCatalogTapped: () -> Void
@@ -182,7 +186,10 @@ struct DeviceRow: View {
       }
       Button(LauncherText.cancelButton, action: self.cancelDownloadTapped)
         .accessibilityLabel(LauncherText.cancelDownloadAccessibilityLabel)
-        .help(LauncherText.cancelDownloadHelp)
+        .help(
+          self.downloadGroupSize > 1
+            ? LauncherText.batchCancelDownloadHelp(count: self.downloadGroupSize) : LauncherText.cancelDownloadHelp
+        )
     case .cancelling:
       ProgressView()
         .controlSize(.small)

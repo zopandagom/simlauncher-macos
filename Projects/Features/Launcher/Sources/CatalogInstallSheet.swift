@@ -5,6 +5,7 @@ import SwiftUI
 /// 아래는 새로 고침·취소·받아서 설치. 등록한 카탈로그가 없으면 두 열 대신 안내를 보인다. 입력은 모두 Model 의 이벤트 메서드로
 /// 넘기고, 받기는 Model 이벤트(`menuTapped`·`refreshButtonTapped`)가 시작한다 (이 View 의 `.task`·`onAppear` 로 받지 않는다).
 /// 카탈로그 값(주소·앱·버전 이름·브랜치·태그·빌드 번호)은 번역 키로 쓰지 않고 `Text(verbatim:)` 으로만 보인다.
+/// 대상이 여러 대(툴바 "선택한 기기에 앱 설치")면 제목에 대수를, 그 아래 줄에 대상 이름을 보인다.
 struct CatalogInstallSheet: View {
   let model: CatalogInstallModel
   /// 마지막으로 그린 상태. 닫히는 동안 Model 의 `draft` 는 이미 nil 이라, 내용이 비지 않도록 View 가 들고 있는다.
@@ -27,9 +28,14 @@ struct CatalogInstallSheet: View {
   /// 시트 크기는 내용의 min 프레임으로 정해지고 크기 조절이 안 된다. 빈 목록도 같은 프레임이라 크기가 바뀌지 않는다.
   private func content(_ draft: CatalogInstallDraft) -> some View {
     VStack(alignment: .leading, spacing: 12) {
-      Text(LauncherText.catalogSheetTitle(for: draft.device))
-        .font(.headline)
-        .accessibilityAddTraits(.isHeader)
+      VStack(alignment: .leading, spacing: 4) {
+        Text(LauncherText.catalogSheetTitle(for: draft.targets))
+          .font(.headline)
+          .accessibilityAddTraits(.isHeader)
+        if let line = LauncherText.batchTargetsLine(draft.targets) {
+          BatchTargetsLine(text: line)
+        }
+      }
       if draft.isEmpty {
         self.emptyView(draft)
       } else {

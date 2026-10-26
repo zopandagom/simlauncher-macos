@@ -65,6 +65,7 @@ struct LauncherResourcesTests {
     keys.formUnion([osKey, bothKey, receivedKey])
     keys.formUnion(httpKeys.map(\.key))
     keys.formUnion(Self.checkCatalogTexts(in: table))
+    keys.formUnion(BatchTextCatalog.checkedKeys(in: table))
     #expect(keys == Set(table.keys))
   }
 

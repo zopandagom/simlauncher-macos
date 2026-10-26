@@ -2,6 +2,7 @@ import Core
 import SwiftUI
 
 /// URL 에서 설치 시트: 주소 입력란과 그 아래 안내. 입력은 모두 Model 의 이벤트 메서드로 넘긴다.
+/// 대상이 여러 대(툴바 "선택한 기기에 앱 설치")면 제목에 대수를, 그 아래 줄에 대상 이름을 보인다.
 struct InstallURLSheet: View {
   let model: LauncherModel
   /// 마지막으로 그린 초안. 닫히는 동안 Model 의 `installURLDraft` 는 이미 nil 이라, 글자가 비지 않도록 View 가 들고 있는다.
@@ -24,9 +25,14 @@ struct InstallURLSheet: View {
 
   private func form(_ draft: InstallURLDraft) -> some View {
     VStack(alignment: .leading, spacing: 16) {
-      Text(LauncherText.installURLSheetTitle(for: draft.device))
-        .font(.headline)
-        .accessibilityAddTraits(.isHeader)
+      VStack(alignment: .leading, spacing: 4) {
+        Text(LauncherText.installURLSheetTitle(for: draft.targets))
+          .font(.headline)
+          .accessibilityAddTraits(.isHeader)
+        if let line = LauncherText.batchTargetsLine(draft.targets) {
+          BatchTargetsLine(text: line)
+        }
+      }
       Form {
         TextField(
           LauncherText.downloadURLField,
@@ -62,5 +68,17 @@ struct InstallURLSheet: View {
     .padding(20)
     .frame(minWidth: 420)
     .onAppear { self.isURLFocused = true }
+  }
+}
+
+/// 대상이 여러 대인 시트의 제목 아래 대상 줄 (기기 이름이 든 문구라 `Text(verbatim:)`). URL·카탈로그 시트가 함께 쓴다.
+struct BatchTargetsLine: View {
+  let text: String
+
+  var body: some View {
+    Text(verbatim: self.text)
+      .font(.callout)
+      .foregroundStyle(.secondary)
+      .fixedSize(horizontal: false, vertical: true)
   }
 }
