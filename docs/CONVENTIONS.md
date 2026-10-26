@@ -6,7 +6,7 @@
 | ✅ 해야 할 것 | ❌ 하지 말아야 할 것 | 강제 |
 |---|---|---|
 | Model 상태는 `public private(set) var` | View 나 다른 타입이 Model 상태를 직접 대입 | 컴파일러 |
-| Model 파일이 lint `file_length` 경고 기준을 넘으면, Model 상태를 직접 바꾸지 않고(바꾸는 것은 창구로만) Client 호출을 잇는 부분을 흐름 타입(internal `@MainActor struct`, 예: `AppInstallFlow`)으로 뺀다. Model 이 `private` 으로 소유해 진행 기록을 시작한 Model 메서드(이벤트 메서드와 그것이 부르는 private 도우미) 안에서 부르고, 흐름 타입은 Model 상태에 부를 때 넘겨받는 창구(클로저)로만 닿는다 (ARCHITECTURE §1) | Model 파일을 나누려고 상태 변경 도우미·Client 프로퍼티를 internal 로 열어 다른 파일 extension 에서 쓰기. `file_length` 기준 올리기. View·다른 타입에서 흐름 타입을 만들거나 부르기. 창구를 흐름 타입에 저장하기 | 컴파일러 (Model 의 `private` 소유 프로퍼티·창구라 View 가 닿지 못한다). 흐름 타입을 만들거나 부르기·internal 로 열기·창구 저장은 리뷰 |
+| Model 파일이 lint `file_length` 경고 기준을 넘으면, Model 상태를 직접 바꾸지 않고(바꾸는 것은 창구로만) Client 호출을 잇는 부분을 흐름 타입(internal `@MainActor struct`, 예: `AppInstallFlow`·`ScreenCaptureFlow`)으로 뺀다. Model 이 `private` 으로 소유해 진행 기록을 시작한 Model 메서드(이벤트 메서드와 그것이 부르는 private 도우미, 그 메서드가 만들어 Model 이 소유한 Task 안 포함. 예: 녹화) 안에서 부르고, 흐름 타입은 Model 상태에 부를 때 넘겨받는 창구(클로저)로만 닿는다 (ARCHITECTURE §1) | Model 파일을 나누려고 상태 변경 도우미·Client 프로퍼티를 internal 로 열어 다른 파일 extension 에서 쓰기. `file_length` 기준 올리기. View·다른 타입에서 흐름 타입을 만들거나 부르기. 창구를 흐름 타입에 저장하기 | 컴파일러 (Model 의 `private` 소유 프로퍼티·창구라 View 가 닿지 못한다). 흐름 타입을 만들거나 부르기·internal 로 열기·창구 저장은 리뷰 |
 | View 는 이벤트 메서드(`onAppear()`, `xxxTapped()`, `xxxChanged(_:)`)만 호출. View 의 Model 프로퍼티 이름은 `model` 또는 `…Model` (ARCHITECTURE §1 규칙 7) | `$model.x`·`$catalogModel.x` 처럼 Model 프로퍼티의 양방향 바인딩 | `no_two_way_model_binding` (`$model.`·`$…Model.` 을 잡는다) |
 | 외부 시스템은 Client 로 감싸고 Interface / Impl / Testing 으로 나눈다 | Feature 에서 `import SwiftData`, `import StoreKit`, `import UserNotifications` 등 | `system_framework_only_in_impl` |
 | Impl 은 App 에서만 만들어 주입 | Feature·Interface·Testing 이나 다른 Client 의 Impl 에서 `import …Impl` (Impl 이 다른 Client 를 조합할 때는 그 Interface 만) | `impl_import_only_in_app` |
@@ -17,7 +17,7 @@
 | 화면 코드는 Feature·DesignSystem 에 둔다 | Core 에서 `import SwiftUI`, `import UIKit`, `import AppKit` | `core_no_ui_framework` |
 | 부수효과 프레임워크(lint `system_framework_only_in_impl` 목록) 밖의 부수효과 없는 Apple 프레임워크(CoreGraphics·ImageIO 등)는 Core 를 포함한 모든 레이어에서 쓴다 | 의존 규칙을 지키려고 변환·재인코딩 같은 실행 비용을 들이기 | |
 | 사용자 설정 저장(읽기·쓰기)은 Preferences Client 로 한다. `@SceneStorage` 같은 View 일시 상태(ARCHITECTURE §1 규칙 8)는 저장이 아니라 그대로 쓴다 | Feature·App·다른 Client(Preferences 의 Interface·Testing·Tests 포함)에서 `UserDefaults`·`@AppStorage`·`CFPreferences*`·`NSUbiquitousKeyValueStore` 직접 사용 | `preferences_only_in_preferences_impl` (`UserDefaults`·`NSUserDefaults*`·`CFPreferences*`·`NSUbiquitousKeyValueStore`·`AppStorage` 식별자만 잡는다. `defaults` 명령 실행은 `process_only_in_command_impl`) |
-| Finder 에서 보이기와 스크린샷 저장 폴더 준비(사진 폴더의 `SimLauncher`)·파일 이름 예약·예약 파일 지우기는 Workspace Client 로 한다 (ARCHITECTURE §4) | Feature·App·다른 Client 에서 `NSWorkspace` 사용이나 사용자 폴더(사진 폴더 등)에 직접 쓰기 (Workspace 가 예약해 넘긴 파일에 Simulator Client 의 촬영 `simctl io screenshot` 이 쓰는 것은 예외, ARCHITECTURE §4) | |
+| Finder 에서 보이기와 스크린샷·녹화 저장 폴더 준비(사진·동영상 폴더의 `SimLauncher`)·파일 이름 예약·빈 예약 파일 지우기는 Workspace Client 로 한다 (ARCHITECTURE §4) | Feature·App·다른 Client 에서 `NSWorkspace` 사용이나 사용자 폴더(사진·동영상 폴더 등)에 직접 쓰기 (Workspace 가 예약해 넘긴 파일에 Simulator Client 의 촬영 `simctl io screenshot`·녹화 `simctl io recordVideo` 가 쓰는 것은 예외, ARCHITECTURE §4). 내용이 있는 파일 지우기 | |
 | 새 모듈은 `Module.swift` 의 enum 과 `Project.client/feature/shared` 템플릿으로. `Examples/` 의 샘플 앱(카탈로그 예시 워크플로가 빌드하는 iOS 앱)은 앱 모듈이 아니라 템플릿 밖의 독립 매니페스트로 둔다 (ARCHITECTURE §2 "빌드 설정") | `Projects/` 매니페스트에서 `Target` 을 직접 만들거나 빌드 설정을 덮어쓰기 | |
 
 ## 2. Swift / 동시성
