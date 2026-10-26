@@ -99,6 +99,8 @@ extension LauncherText {
       self.message(for: problem)
     case let .deviceNotReady(reason):
       self.installBlockReason(reason)
+    case .deviceBusy:
+      String(localized: "이 기기에서 다른 작업이 진행 중이라 설치하지 않았습니다. 끝난 뒤 이 기기에만 다시 설치하세요.", bundle: .module)
     case let .simulator(error):
       self.message(for: error)
     }

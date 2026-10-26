@@ -4,6 +4,8 @@ import UniformTypeIdentifiers
 
 /// 상태를 읽어 그리기만 하고, 사용자 동작은 Model 의 이벤트 메서드로 넘긴다.
 /// 화면 문자열은 `LauncherText` 가 이 모듈의 `Localizable.xcstrings` 에서 찾는다.
+/// 목록은 ⌘·⇧ 클릭으로 여러 기기를 고를 수 있고(선택은 Model 상태), 툴바의 "선택한 기기에 앱 설치" 메뉴와
+/// "선택한 기기 켜기" 버튼이 고른 기기에 동작한다. 행의 버튼·메뉴·드롭은 그 행 한 대에만 동작한다.
 public struct LauncherView: View {
   let model: LauncherModel
   /// 카탈로그에서 설치 시트. 기기 목록 상태를 함께 쓰지 않아 따로 둔 Model 이다 (App 이 소유한다).
@@ -14,8 +16,9 @@ public struct LauncherView: View {
   @State private var isNoticePresented = false
   /// 마지막으로 띄운 삭제·초기화 확인. 닫히는 동안 Model 값이 nil 이어도 제목이 비지 않도록 View 가 들고 있는다.
   @State private var presentedConfirmation: DeviceConfirmation?
-  /// 앱 설치 메뉴에서 "파일에서 고르기…" 를 고른 기기. 파일 패널이 닫힌 뒤 완료 처리에서 읽으므로 패널 표시 여부와 따로 둔다.
-  @State private var importDeviceID: VirtualDevice.ID?
+  /// "파일에서 고르기…" 를 고른 곳 (행의 기기 하나 또는 툴바의 고른 기기). 파일 패널이 닫힌 뒤 완료 처리에서 읽으므로
+  /// 패널 표시 여부와 따로 둔다.
+  @State private var importTarget: ImportTarget?
   @State private var isImporterPresented = false
 
   public init(model: LauncherModel, catalogModel: CatalogInstallModel) {
@@ -36,6 +39,12 @@ public struct LauncherView: View {
               }
             }
           }
+        }
+        ToolbarItem {
+          self.installOnSelectionMenu
+        }
+        ToolbarItem {
+          self.bootSelectionButton
         }
         ToolbarItem {
           Button {
@@ -104,7 +113,8 @@ public struct LauncherView: View {
         DeviceCreationSheet(model: self.model)
       }
       // 생성·링크·URL 설치·카탈로그 시트는 같은 체인에 둔다. 앞의 셋은 Model 이 둘 이상 함께 열리지 않게 막고, 카탈로그 시트는
-      // 다른 Model 이라 시트가 창을 막는 모달과 행 메뉴의 비활성에 기댄다.
+      // 다른 Model 이라 시트가 창을 막는 모달과 행 메뉴의 비활성에 기댄다. 툴바 "카탈로그에서…" 는 작업 중인 기기도 대상에
+      // 넣으므로, 그 기기는 설치를 시작할 때 LauncherModel 의 시작 판정이 이유(다른 작업 중)와 함께 건너뛴다.
       .sheet(
         isPresented: Binding(
           get: { self.model.openURLDraft != nil },
@@ -177,8 +187,14 @@ public struct LauncherView: View {
         allowedContentTypes: [.applicationBundle, .zip] + [UTType("com.apple.itunes.ipa")].compactMap(\.self)
       ) { result in
         // 취소·실패는 무시한다.
-        if case let .success(url) = result, let id = self.importDeviceID {
+        guard case let .success(url) = result else { return }
+        switch self.importTarget {
+        case let .device(id):
           Task { await self.model.appFileSelected(url, for: id) }
+        case .selection:
+          Task { await self.model.selectedAppFileChosen(url) }
+        case .none:
+          break
         }
       }
       .task { await self.model.onAppear() }
@@ -292,8 +308,10 @@ extension LauncherView {
     .background(.bar)
   }
 
+  /// 선택은 `Binding(get:set:)` 으로 Model 의 이벤트에 잇는다 (클릭·⌘·⇧ 클릭·⌘A·빈 곳 클릭). 행 태그는 `ForEach` 의
+  /// `VirtualDevice.ID` 다.
   private func deviceRows(_ list: DeviceList) -> some View {
-    List {
+    List(selection: Binding(get: { self.model.selection }, set: { self.model.selectionChanged($0) })) {
       ForEach(list.sections) { section in
         Section {
           ForEach(section.devices) { device in
@@ -306,16 +324,19 @@ extension LauncherView {
     }
   }
 
+  private func importerRequested(for target: ImportTarget) {
+    self.importTarget = target
+    self.isImporterPresented = true
+  }
+
   private func deviceRow(_ device: VirtualDevice) -> some View {
     let task = self.model.activity.task(on: device.id)
     return DeviceRow(
       device: device,
       task: task,
       downloadStage: self.model.activity.downloadStage(on: device.id),
-      installFromFileTapped: {
-        self.importDeviceID = device.id
-        self.isImporterPresented = true
-      },
+      downloadGroupSize: self.model.activity.downloadGroupSize(on: device.id),
+      installFromFileTapped: { self.importerRequested(for: .device(device.id)) },
       installFromURLTapped: {
         self.model.installFromURLMenuTapped(device.id)
       },
@@ -357,5 +378,70 @@ extension LauncherView {
         self.model.deleteButtonTapped(device.id)
       }
     )
+  }
+}
+
+// MARK: - 고른 기기 (툴바)
+
+extension LauncherView {
+  /// "파일에서 고르기…" 를 고른 곳.
+  enum ImportTarget: Hashable {
+    /// 행의 앱 설치 메뉴: 그 기기 하나.
+    case device(VirtualDevice.ID)
+    /// 툴바 "선택한 기기에 앱 설치": 파일을 고른 시점의 선택.
+    case selection
+  }
+
+  /// 늘 열리는 메뉴. 맨 위 글자가 상황(고른 기기 없음 → ⌘·⇧ 안내, 설치할 수 있음 → 대수, 없음 → 이유)을 보이고,
+  /// 설치할 수 있는 기기가 없으면 세 항목이 비활성이다 (행 "…" 메뉴가 막힌 이유를 맨 위에 보이는 것과 같다).
+  private var installOnSelectionMenu: some View {
+    let guide = self.installOnSelectionGuide
+    let isDisabled = !self.model.canInstallOnSelection
+    return Menu {
+      Text(guide)
+      Divider()
+      Button(LauncherText.installFromFileMenuItem) {
+        self.importerRequested(for: .selection)
+      }
+      .disabled(isDisabled)
+      Button(LauncherText.installFromURLMenuItem) {
+        self.model.installSelectedFromURLMenuTapped()
+      }
+      .disabled(isDisabled)
+      Button(LauncherText.installFromCatalogMenuItem) {
+        Task { await self.catalogModel.selectionMenuTapped(self.model.selectedDevices) }
+      }
+      .disabled(isDisabled)
+    } label: {
+      Label(LauncherText.installOnSelectionMenu, systemImage: "square.and.arrow.down.on.square")
+    }
+    // 비개발자가 찾을 수 있게 글자를 함께 보인다. 대수는 툴바 폭이 바뀌지 않게 이름에 넣지 않고 메뉴 글자·툴팁에 보인다.
+    .labelStyle(.titleAndIcon)
+    .help(guide)
+  }
+
+  /// 켤 수 있는 기기가 없으면 비활성이다. 비활성 툴바 버튼에는 툴팁이 잘 뜨지 않아 툴팁은 보조다.
+  private var bootSelectionButton: some View {
+    Button {
+      Task { await self.model.bootSelectedTapped() }
+    } label: {
+      Label(LauncherText.bootSelectionButton, systemImage: "power")
+    }
+    .labelStyle(.titleAndIcon)
+    .disabled(!self.model.canBootSelection)
+    .help(
+      self.model.selectedDevices.isEmpty
+        ? LauncherText.selectionGuide
+        : self.model.canBootSelection ? LauncherText.bootSelectionHelp : LauncherText.bootSelectionUnavailable
+    )
+  }
+
+  private var installOnSelectionGuide: String {
+    let devices = self.model.selectedDevices
+    if devices.isEmpty {
+      return LauncherText.selectionGuide
+    }
+    return self.model.canInstallOnSelection
+      ? LauncherText.installOnSelectionHelp(count: devices.count) : LauncherText.installOnSelectionUnavailable
   }
 }

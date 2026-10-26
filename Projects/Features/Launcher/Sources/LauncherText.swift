@@ -34,6 +34,8 @@ enum LauncherText {
          let .recordingFailed(device, _), let .recordingInterrupted(device),
          let .recordingStoppedByDevice(device), let .recordingRevealFailed(device, _):
       self.rowTaskNoticeTitle(for: notice, device: device)
+    case .batchInstallFailed, .batchFinished:
+      self.batchNoticeTitle(for: notice)
     }
   }
 
@@ -59,6 +61,8 @@ enum LauncherText {
       self.message(for: error)
     case .recordingFailed, .recordingInterrupted, .recordingStoppedByDevice, .recordingRevealFailed:
       self.recordingNoticeMessage(for: notice)
+    case .batchInstallFailed, .batchFinished:
+      self.batchNoticeMessage(for: notice)
     }
   }
 

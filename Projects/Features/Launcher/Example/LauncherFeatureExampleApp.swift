@@ -21,6 +21,8 @@ import WorkspaceTesting
 /// "스크린샷"·"녹화" 는 `WorkspaceClientFake`(파일을 만들지 않고 가짜 폴더 이름만 예약한다)와 `SimulatorClientFake`(켜진 기기면
 /// 1초 뒤 찍은 것으로 끝난다. 녹화는 1초 뒤 시작 신호를 보내고 "중지" 를 누를 때까지 녹화 중이다)로 돌아, 사진·동영상 폴더에
 /// 파일이 생기지 않고 Finder 도 열리지 않는다.
+/// 목록은 ⌘·⇧ 클릭으로 여러 기기를 고를 수 있고, 툴바 "선택한 기기에 앱 설치"(파일·URL·카탈로그)와 "선택한 기기 켜기" 가
+/// 고른 기기에 같은 Fake 로 동작한다 (받기·풀기·검사는 한 번, 기기별 켜기·설치·실행은 동시).
 /// Example 에는 Settings 씬이 없다(설정 창은 App 에서 확인한다).
 @main
 struct LauncherFeatureExampleApp: App {
@@ -373,6 +375,27 @@ extension DownloadedFile {
 
 #Preview("카탈로그 버전의 zip 에 .app 없음 (카탈로그에서… → 받아서 설치)") {
   previewLauncher(appBundle: { $0.setExtractError(.zipWithoutApp) }, catalogs: .exampleCatalogs)
+}
+
+/// iOS 26.0 기기(iPhone 16)는 iOS 27.0 이상이 필요한 앱을 거절하고, iOS 27.0 기기에는 설치된다.
+/// 결과 알림 하나에 기기별 줄(설치하고 실행함·높은 iOS 필요)이 보인다.
+#Preview("여러 기기 — 일부 거절 (⌘클릭으로 iOS 버전이 다른 두 기기 → 선택한 기기에 앱 설치 → 파일에서 고르기…)") {
+  previewLauncher(appBundle: { $0.setInfo(.requiring(OSVersion(major: 27))) })
+}
+
+/// 48 MB 중 19.2 MB 까지 진행을 알린 뒤 멈춰, 대상 행 모두에 같은 진행 막대와 취소가 남는다. 취소 툴팁은 함께 멈추는 기기 수를
+/// 알리고, 어느 행에서 취소하든 모든 대상 행이 "취소하는 중" 이 된 뒤 알림 없이 풀린다.
+#Preview("여러 기기 받는 중 (⌘클릭 두 기기 → URL 에서… → 받아서 설치, 끝나지 않음)") {
+  previewLauncher(download: {
+    $0.setDownloadScript(progress: Array(DownloadProgress.example.prefix(5)), result: nil)
+    $0.suspendDownloads()
+  })
+}
+
+/// 고른 꺼진 기기가 모두 켜기에 실패해, 결과 알림 하나에 같은 이유가 한 줄로 묶여 보인다 (기기별 켜기 실패 알림은 없다).
+/// 켜진·쓸 수 없는 기기를 함께 골라도 알리지 않고 건너뛴다.
+#Preview("여러 기기 켜기 실패 (⌘클릭 꺼진 두 기기 → 선택한 기기 켜기)") {
+  previewLauncher { $0.setBootError(.commandFailed) }
 }
 
 extension CatalogURLSetting {
