@@ -10,9 +10,11 @@ public typealias DeveloperDirectoryProvider = @Sendable () async -> URL?
 /// provider 는 공개 메서드 한 번에 한 번만 부르고, 그 호출 안의 사전 확인·재조회·앱 열기도 같은 디렉터리를 쓴다.
 public struct SimulatorClientImpl: SimulatorClient {
   private let developerDirectory: DeveloperDirectoryProvider?
-  private let command: any CommandClient
+  let command: any CommandClient
   private let fileExists: @Sendable (URL) -> Bool
-  private let baseEnvironment: [String: String]
+  /// 녹화가 끝난 뒤 파일 크기. 없으면 nil (`SimulatorClientImpl+Recording.swift`).
+  let fileSize: @Sendable (URL) -> Int?
+  let baseEnvironment: [String: String]
 
   /// - Parameters:
   ///   - developerDirectory: 쓸 개발자 디렉터리. provider 가 nil 을 돌려주면 어떤 명령도 실행하지 않고
@@ -28,17 +30,25 @@ public struct SimulatorClientImpl: SimulatorClient {
     )
   }
 
-  /// 테스트용: 파일 확인·기본 환경도 바꾼다.
+  /// 테스트용: 파일 확인·파일 크기·기본 환경도 바꾼다.
   init(
     developerDirectory: DeveloperDirectoryProvider?,
     command: any CommandClient,
     fileExists: @escaping @Sendable (URL) -> Bool,
+    fileSize: @escaping @Sendable (URL) -> Int? = { SimulatorClientImpl.regularFileSize($0) },
     baseEnvironment: [String: String]
   ) {
     self.developerDirectory = developerDirectory
     self.command = command
     self.fileExists = fileExists
+    self.fileSize = fileSize
     self.baseEnvironment = baseEnvironment
+  }
+
+  /// 파일 크기 (마지막 링크는 따라가지 않는다). 없거나 읽지 못하면 nil.
+  static func regularFileSize(_ url: URL) -> Int? {
+    let attributes = try? FileManager.default.attributesOfItem(atPath: url.path(percentEncoded: false))
+    return (attributes?[.size] as? NSNumber)?.intValue
   }
 
   public func fetchInventory() async throws(SimulatorError) -> DeviceInventory {
@@ -189,7 +199,7 @@ public struct SimulatorClientImpl: SimulatorClient {
   }
 
   /// provider 가 없으면 nil (`xcode-select` 기본값). provider 가 nil 을 돌려주면 명령을 실행하지 않도록 던진다.
-  private func resolveDeveloperDirectory() async throws(SimulatorError) -> URL? {
+  func resolveDeveloperDirectory() async throws(SimulatorError) -> URL? {
     guard let developerDirectory = self.developerDirectory else { return nil }
     guard let directory = await developerDirectory() else {
       throw .developerToolsUnavailable
@@ -254,7 +264,7 @@ public struct SimulatorClientImpl: SimulatorClient {
     }
   }
 
-  private func run(
+  func run(
     _ executable: URL,
     _ arguments: [String],
     developerDirectory: URL?,
@@ -274,7 +284,7 @@ public struct SimulatorClientImpl: SimulatorClient {
 
   /// install·launch·openurl 의 stderr 에는 앱이 정한 글자나 사용자가 넣은 URL 이 섞인다. 잘못된 UTF-8 이면 Latin-1 로 읽는다
   /// (실패하지 않고, 분류가 보는 domain 줄·"reason: NotFound" 는 ASCII 라 그대로 남는다).
-  private static func stderr(_ result: CommandResult) -> String {
+  static func stderr(_ result: CommandResult) -> String {
     String(bytes: result.stderr, encoding: .utf8) ?? String(bytes: result.stderr, encoding: .isoLatin1) ?? ""
   }
 }
