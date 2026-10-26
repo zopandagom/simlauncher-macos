@@ -9,6 +9,7 @@
 #   - 카탈로그 생성기·검증기·픽스처(.github/scripts)와 검증기가 컴파일하는 Core 소스, Makefile: make catalog-test
 #   - 같은 검사는 한 번만, 순서는 lint → test → sample → catalog-test
 #   - .githooks/: make test-hooks
+#   - scripts/ 의 셸 스크립트: scripts/*.sh 를 파일마다 bash -n (bash -n a.sh b.sh 는 a.sh 만 검사하므로 하나씩)
 #   - .claude/settings.json: JSON 문법
 #   - .github 의 YAML 파일(워크플로·dependabot): YAML 문법
 #   - 그 외(문서 등)만 바뀌었으면: SKIP
@@ -33,6 +34,9 @@ grep -Eq "$build_paths" <<<"$files" && checks+=("make test")
 grep -Eq "$sample_paths" <<<"$files" && checks+=("make sample")
 grep -Eq "$catalog_paths" <<<"$files" && checks+=("make catalog-test")
 grep -q '^\.githooks/' <<<"$files" && checks+=("make test-hooks")
+# 스크립트를 지워 남은 파일이 없으면 글롭이 그대로 남으므로 건너뛴다.
+grep -Eq '^scripts/[^/]+\.sh$' <<<"$files" &&
+  checks+=('for f in scripts/*.sh; do [[ ! -e $f ]] || bash -n "$f" || exit 1; done')
 grep -q '^\.claude/settings\.json$' <<<"$files" && checks+=("jq empty .claude/settings.json")
 grep -Eq '^\.github/.*\.ya?ml$' <<<"$files" &&
   checks+=("ruby -ryaml -e 'Dir[\".github/**/*.y*ml\"].each { |f| YAML.load_file(f) }'")
