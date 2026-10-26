@@ -1,7 +1,8 @@
 import Core
 
 // 상태를 바꾸지 않는 읽기 API. `private(set)` 은 쓰기만 막으므로 다른 파일의 extension 에 둘 수 있다
-// (상태를 바꾸는 흐름은 `LauncherModel.swift` 에 둔다).
+// (Model 상태를 직접 바꾸는 흐름은 `LauncherModel.swift` 에, Model 상태를 직접 바꾸지 않고(바꾸는 것은 창구로만)
+// Client 를 잇는 앱 설치 흐름은 Model 이 소유한 `AppInstallFlow.swift` 에 둔다).
 public extension LauncherModel {
   /// + 버튼을 누를 수 있는지: 목록을 읽었고, 선택지가 있고, 만드는 중이 아니고, 생성·링크·URL 설치 시트가 닫혀 있다.
   var canCreateDevice: Bool {

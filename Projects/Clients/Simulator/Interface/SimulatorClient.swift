@@ -1,7 +1,7 @@
 import Core
 import Foundation
 
-/// iOS 시뮬레이터 기기·런타임·기기 종류와 런타임 디스크 이미지 목록을 읽고, 켜고 끄고, 만들고 지우고 초기화하고, 앱을 설치·실행하고 링크를 여는 Client.
+/// iOS 시뮬레이터 기기·런타임·기기 종류와 런타임 디스크 이미지 목록을 읽고, 켜고 끄고, 만들고 지우고 초기화하고, 앱을 설치·실행하고 링크를 열고 화면을 찍는 Client.
 /// Impl 은 `xcrun simctl` 과 같은 개발자 디렉터리를 쓴다. 쓸 Xcode 가 없으면(App 이 넘긴 provider 가 nil 을 돌려줌)
 /// 어떤 명령도 실행하지 않고 `.developerToolsUnavailable` 를 던진다.
 public protocol SimulatorClient: Sendable {
@@ -52,4 +52,10 @@ public protocol SimulatorClient: Sendable {
   /// 성공은 기기에 열기 요청이 전달됐다는 뜻이고, 앱이 링크를 어떻게 처리했는지는 알 수 없다.
   /// 막 켠(콜드 부팅) 기기에서는 기기 준비가 끝날 때까지 돌아오지 않는다 (Xcode 27.1 에서 약 40초).
   func openURL(_ link: DeepLink, on id: VirtualDevice.ID) async throws(SimulatorError)
+
+  /// 켜진 기기 화면을 PNG 로 `file` 에 저장한다 (`simctl io <기기> screenshot --type=png --mask=ignored <경로>`, 사각 전체 화면).
+  /// 있는 파일은 덮어쓴다 (호출한 쪽이 예약한 빈 파일). 실행 직전에 같은 개발자 디렉터리로 목록을 다시 읽어 없으면 `.deviceNotFound`,
+  /// `.booted` 가 아니면 실행하지 않고 `.deviceNotBooted` (꺼진 기기에서는 simctl 이 약 60초 기다린 뒤 실패한다).
+  /// 파일 URL 이 아니면 실행하지 않고 `.commandFailed`. 확인과 실행 사이에 꺼지는 드문 경우는 약 60초 뒤 `.deviceNotBooted`.
+  func screenshot(on id: VirtualDevice.ID, to file: URL) async throws(SimulatorError)
 }

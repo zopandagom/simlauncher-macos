@@ -60,6 +60,12 @@ enum SimctlCommand {
     ["simctl", "openurl", udid, url]
   }
 
+  /// `udid` 는 `validatedUDID(_:)` 를 거친 값, `path` 는 파일 URL 의 표준화한 절대 경로만 넘긴다 (`/` 로 시작해 옵션으로
+  /// 읽히지 않는다). `--mask=ignored` 는 기본값과 같지만 simctl 기본이 바뀌어도 사각 전체 화면이 되게 명시한다.
+  static func screenshot(udid: String, path: String) -> [String] {
+    ["simctl", "io", udid, "screenshot", "--type=png", "--mask=ignored", path]
+  }
+
   /// create 성공 stdout("UUID\n")에서 UDID. 앞뒤 공백·개행을 자르고 UUID 형식이어야 한다. 아니면 nil.
   static func createdUDID(fromStdout data: Data) -> String? {
     guard let text = String(bytes: data, encoding: .utf8) else { return nil }

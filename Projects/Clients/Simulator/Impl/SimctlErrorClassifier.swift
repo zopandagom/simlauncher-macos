@@ -1,8 +1,8 @@
 import SimulatorInterface
 
 /// 실패한 명령의 종료 코드·stderr 를 `SimulatorError` 로 바꾼다 (순수). 원문은 담지 않는다.
-/// install·launch·openurl 은 stderr 에 앱이 정한 글자(표시 이름)나 사용자가 넣은 URL 이 섞이므로
-/// "(domain=…, code=…)" 줄의 domain·code 로만 분류한다.
+/// install·launch·openurl·screenshot 은 stderr 에 앱이 정한 글자(표시 이름)나 사용자가 넣은 URL 이 섞이므로
+/// "(domain=…, code=…)" 줄의 domain·code 로만 분류한다 (screenshot 은 경로의 기기 이름도 섞인다).
 enum SimctlErrorClassifier {
   private static let domainLinePrefix = "An error was encountered processing the command (domain="
   private static let denialLinePrefix = "The request was denied by service delegate ("
@@ -113,6 +113,28 @@ enum SimctlErrorClassifier {
     case ("LSApplicationWorkspaceErrorDomain", 115): return .urlNotHandled
     // 호스트·앞뒤 공백 "Invalid URL."(22), 스킴 없음 OSStatus -50(206).
     case ("NSPOSIXErrorDomain", 22), ("NSOSStatusErrorDomain", -50): return .invalidURL
+    default: return .commandFailed
+    }
+  }
+
+  /// screenshot 실패. stderr 의 "Wrote screenshot to:"·오류 설명 줄에 경로(기기 이름이 든 파일 이름)가 나오므로
+  /// 줄 머리의 domain 줄로만 분류한다 (파일 이름에는 Core 규칙으로 개행이 없다). domain 줄이 없을 때도
+  /// `error(exitCode:stderr:)` 를 쓰지 않는다: 그 함수는 "Invalid device" 를 줄 어디서든 찾아 경로의 글자에 걸린다.
+  static func screenshotError(exitCode: Int32, stderr: String) -> SimulatorError {
+    guard let (domain, code) = domainAndCode(stderr) else {
+      if stderr.drop(while: \.isWhitespace).hasPrefix("xcrun: error:") {
+        return .developerToolsUnavailable
+      }
+      // 없는 기기: "Invalid device: <UDID>" (148).
+      if stderr.split(whereSeparator: \.isNewline).contains(where: { $0.hasPrefix("Invalid device:") }) {
+        return .deviceNotFound
+      }
+      return .commandFailed
+    }
+    switch (domain, code) {
+    // 꺼진 기기: 약 60초 뒤 "Timeout waiting for screen surfaces" (60).
+    case ("NSPOSIXErrorDomain", 60): return .deviceNotBooted
+    // 저장 실패(NSCocoaErrorDomain 4·513)는 Workspace 가 방금 만든 폴더·파일이라 드물어 따로 나누지 않는다.
     default: return .commandFailed
     }
   }

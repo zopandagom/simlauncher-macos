@@ -2,6 +2,7 @@ import AppBundleInterface
 import Core
 import DownloadInterface
 import SimulatorInterface
+import WorkspaceInterface
 
 /// 기기 목록 화면의 상태.
 public enum LauncherListState: Hashable, Sendable {
@@ -13,7 +14,7 @@ public enum LauncherListState: Hashable, Sendable {
   case failed(SimulatorError)
 }
 
-/// 목록 위에 띄우는 알림. 기기 작업(켜기·끄기·만들기·삭제·초기화·앱 설치(URL·카탈로그 버전의 받기 포함)·실행·링크 열기) 실패와,
+/// 목록 위에 띄우는 알림. 기기 작업(켜기·끄기·만들기·삭제·초기화·앱 설치(URL·카탈로그 버전의 받기 포함)·실행·링크 열기·스크린샷) 실패와,
 /// 목록이 있을 때의 새로 고침 실패.
 public enum LauncherNotice: Hashable, Sendable {
   /// 알림에 보일 기기. 누른 시점의 값이라, 실패 뒤 목록에서 사라져도 그대로 보인다.
@@ -49,6 +50,10 @@ public enum LauncherNotice: Hashable, Sendable {
   case launchFailed(Device, SimulatorError)
   /// 링크를 열지 못했다 (명령 전 거절 포함). Device 는 "링크 열기…" 를 누른 시점의 기기.
   case openURLFailed(Device, OpenURLFailure)
+  /// 스크린샷을 저장하지 못했다 (예약·촬영 실패). Device 는 누른 시점의 기기.
+  case screenshotFailed(Device, ScreenshotFailure)
+  /// 스크린샷을 저장했지만 Finder 에서 보이지 못했다.
+  case screenshotRevealFailed(Device, WorkspaceError)
 }
 
 /// 앱 설치 흐름의 실패 원인 (켜기·앱 열기 실패는 기존 bootFailed·openAppFailed 를 쓴다).
@@ -129,6 +134,14 @@ public enum OpenURLFailure: Hashable, Sendable {
   /// 시트를 연 사이 기기가 링크를 열 수 없는 상태가 됐다. 막힘 규칙은 설치와 같다 (`appInstallAvailability`).
   case deviceNotReady(AppInstallBlockReason)
   /// openurl 명령 실패, 또는 시트를 연 사이 기기가 목록에서 사라짐(`.deviceNotFound`).
+  case simulator(SimulatorError)
+}
+
+/// 스크린샷 흐름의 실패 원인.
+public enum ScreenshotFailure: Hashable, Sendable {
+  /// 저장 폴더 준비·이름 예약 실패 (촬영 명령 전).
+  case workspace(WorkspaceError)
+  /// 촬영 명령 실패, 또는 실행 전 확인에서 기기가 없거나 꺼짐.
   case simulator(SimulatorError)
 }
 

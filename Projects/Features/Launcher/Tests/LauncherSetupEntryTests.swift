@@ -4,6 +4,7 @@ import DownloadTesting
 import SimulatorInterface
 import SimulatorTesting
 import Testing
+import WorkspaceTesting
 @testable import LauncherFeature
 
 /// Setup 진입: 툴바 "개발 환경"·빈 화면과 안내 줄의 iOS 설치·목록 읽기 실패 화면의 "개발 환경 열기" 버튼이 모두 같은 이벤트
@@ -19,6 +20,7 @@ struct LauncherSetupEntryTests: LauncherModelTesting {
       simulator: fake,
       appBundle: AppBundleClientFake(),
       download: DownloadClientFake(),
+      workspace: WorkspaceClientFake(),
       setupRequested: { requestCount += 1 }
     )
     let appear = Task { await model.onAppear() }
@@ -45,6 +47,7 @@ struct LauncherSetupEntryTests: LauncherModelTesting {
       simulator: fake,
       appBundle: AppBundleClientFake(),
       download: DownloadClientFake(),
+      workspace: WorkspaceClientFake(),
       setupRequested: { requestCount += 1 }
     )
     await model.onAppear()

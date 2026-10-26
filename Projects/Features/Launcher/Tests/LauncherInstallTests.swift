@@ -6,6 +6,7 @@ import Foundation
 import SimulatorInterface
 import SimulatorTesting
 import Testing
+import WorkspaceTesting
 @testable import LauncherFeature
 
 @MainActor
@@ -162,7 +163,8 @@ struct LauncherInstallTests: LauncherModelTesting {
     let beforeLoad = LauncherModel(
       simulator: SimulatorClientFake(inventory: .sample),
       appBundle: before,
-      download: DownloadClientFake()
+      download: DownloadClientFake(),
+      workspace: WorkspaceClientFake()
     )
     await beforeLoad.appFileSelected(Self.picked, for: SampleID.iPhoneOff)
     #expect(before.calls.isEmpty)

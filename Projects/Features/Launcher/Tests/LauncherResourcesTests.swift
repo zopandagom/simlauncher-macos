@@ -4,6 +4,7 @@ import DownloadInterface
 import Foundation
 import SimulatorInterface
 import Testing
+import WorkspaceInterface
 @testable import LauncherFeature
 
 struct LauncherResourcesTests {
@@ -241,6 +242,8 @@ enum LauncherTextCatalog {
     .eraseFailed(sampleDevice, .commandFailed), .createFailed(sampleDevice, .creationResultUnknown),
     .installFailed(sampleDevice, .multipleItems), .launchFailed(sampleDevice, .appLaunchFailed),
     .openURLFailed(sampleDevice, .simulator(.urlNotHandled)),
+    .screenshotFailed(sampleDevice, .workspace(.folderUnavailable)),
+    .screenshotRevealFailed(sampleDevice, .fileNotFound),
   ]
 
   /// 기기 이름이 들어가는 제목의 카탈로그 키. 순서는 `notices.dropFirst()` 뒤에 링크 시트 제목이다 (`formattedTitles`).
@@ -255,6 +258,8 @@ enum LauncherTextCatalog {
     "“%@” (%@) 기기에 앱을 설치하지 못했습니다",
     "“%@” (%@) 기기에 앱을 설치했지만 실행하지 못했습니다",
     "“%@” (%@) 기기에서 링크를 열지 못했습니다",
+    "“%@” (%@) 기기의 스크린샷을 저장하지 못했습니다",
+    "“%@” (%@) 기기의 스크린샷을 저장했지만 Finder 에서 보여 주지 못했습니다",
     "“%@” (%@) 기기에서 링크 열기",
     "“%@” (%@) 기기에 URL 에서 앱 설치",
   ]
@@ -349,6 +354,10 @@ enum LauncherTextCatalog {
 
   static let installBlockReasons: [AppInstallBlockReason] = [.unavailable, .stateChanging]
 
+  static let screenshotBlockReasons: [ScreenshotBlockReason] = [.notBooted, .unavailable]
+
+  static let workspaceErrors: [WorkspaceError] = [.folderUnavailable, .fileNameUnavailable, .fileNotFound]
+
   static let requiresNewerOSKey = "이 앱은 iOS %@ 이상에서 실행됩니다. 더 높은 iOS 버전의 기기에 설치하세요."
 
   static var formattedRequiresNewerOS: String {
@@ -391,6 +400,10 @@ enum LauncherTextCatalog {
       LauncherText.openURLButton, LauncherText.openURLHelp, LauncherText.openingURLLabel, LauncherText.linkField,
       LauncherText.linkPrompt, LauncherText.openURLConfirmButton,
     ]
+    texts += self.screenshotBlockReasons.map { LauncherText.screenshotBlockReason($0) }
+    texts += self.workspaceErrors.map { LauncherText.message(for: $0) }
+    texts += [LauncherText.message(for: ScreenshotFailure.simulator(.deviceNotBooted))]
+    texts += [LauncherText.screenshotButton, LauncherText.screenshotHelp, LauncherText.takingScreenshotLabel]
     texts += [
       LauncherText.okButton, LauncherText.unavailableLabel, LauncherText.bootButton, LauncherText.shutdownButton,
       LauncherText.loading, LauncherText.loadFailedTitle, LauncherText.refreshButton, LauncherText.retryButton,

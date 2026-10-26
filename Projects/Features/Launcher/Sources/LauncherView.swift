@@ -297,47 +297,59 @@ extension LauncherView {
       ForEach(list.sections) { section in
         Section {
           ForEach(section.devices) { device in
-            DeviceRow(
-              device: device,
-              task: self.model.activity.task(on: device.id),
-              downloadStage: self.model.activity.downloadStage(on: device.id),
-              installFromFileTapped: {
-                self.importDeviceID = device.id
-                self.isImporterPresented = true
-              },
-              installFromURLTapped: {
-                self.model.installFromURLMenuTapped(device.id)
-              },
-              installFromCatalogTapped: {
-                Task { await self.catalogModel.menuTapped(device) }
-              },
-              cancelDownloadTapped: {
-                self.model.downloadCancelTapped(device.id)
-              },
-              appDropped: { urls in
-                Task { await self.model.appDropped(urls, on: device.id) }
-              },
-              openURLTapped: {
-                self.model.openURLButtonTapped(device.id)
-              },
-              bootTapped: {
-                Task { await self.model.bootButtonTapped(device.id) }
-              },
-              shutdownTapped: {
-                Task { await self.model.shutdownButtonTapped(device.id) }
-              },
-              eraseTapped: {
-                self.model.eraseButtonTapped(device.id)
-              },
-              deleteTapped: {
-                self.model.deleteButtonTapped(device.id)
-              }
-            )
+            self.deviceRow(device)
           }
         } header: {
           Text(verbatim: section.runtime.name)
         }
       }
     }
+  }
+
+  private func deviceRow(_ device: VirtualDevice) -> some View {
+    DeviceRow(
+      device: device,
+      task: self.model.activity.task(on: device.id),
+      downloadStage: self.model.activity.downloadStage(on: device.id),
+      installFromFileTapped: {
+        self.importDeviceID = device.id
+        self.isImporterPresented = true
+      },
+      installFromURLTapped: {
+        self.model.installFromURLMenuTapped(device.id)
+      },
+      installFromCatalogTapped: {
+        Task { await self.catalogModel.menuTapped(device) }
+      },
+      cancelDownloadTapped: {
+        self.model.downloadCancelTapped(device.id)
+      },
+      appDropped: { urls in
+        Task { await self.model.appDropped(urls, on: device.id) }
+      },
+      openURLTapped: {
+        self.model.openURLButtonTapped(device.id)
+      },
+      canTakeScreenshot: self.model.screenshots.canStart(
+        on: device,
+        during: self.model.activity.task(on: device.id)
+      ),
+      isTakingScreenshot: self.model.screenshots.isTaking(on: device.id),
+      screenshotTapped: {
+        Task { await self.model.screenshotButtonTapped(device.id) }
+      },
+      bootTapped: {
+        Task { await self.model.bootButtonTapped(device.id) }
+      },
+      shutdownTapped: {
+        Task { await self.model.shutdownButtonTapped(device.id) }
+      },
+      eraseTapped: {
+        self.model.eraseButtonTapped(device.id)
+      },
+      deleteTapped: {
+        self.model.deleteButtonTapped(device.id)
+      }
+    )
   }
 }

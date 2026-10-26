@@ -4,12 +4,15 @@ import DownloadInterface
 import Foundation
 import Observation
 import SimulatorInterface
+import WorkspaceInterface
 
 /// 기기 목록 화면의 상태와 로직. iOS 시뮬레이터 기기 목록을 읽고, 기기를 켜고 끄며(켠 뒤 Simulator 앱을 연다),
 /// 만들고 지우고 초기화한다. 고른 .app 이나 .app 을 담은 zip 을(풀어서), 또는 입력한 https 주소의 zip 을 받아 풀어서
 /// 기기에 설치하고 바로 실행하며, 입력한 링크(딥링크·웹 주소)를 기기에서 연다 (모두 꺼져 있으면 켠다).
+/// 켜진 기기 화면을 사진 폴더의 SimLauncher 폴더에 PNG 로 저장하고 Finder 에서 보인다 (꺼진 기기는 켜지 않는다).
 /// 카탈로그에서 설치 시트(`CatalogInstallModel`)가 고른 버전은 App 이 `catalogInstallRequested(_:)` 로 넘겨 같은 받기 경로로 설치한다.
 /// Xcode 준비와 iOS 시뮬레이터 설치는 여기서 하지 않고, Setup 진입 버튼으로 App 에 Setup 화면을 요청한다.
+/// 앱 설치의 풀기·검사·설치·실행은 Model 이 소유한 `AppInstallFlow` 가 한다 (Model 상태에는 창구로만 닿는다).
 /// 상태를 바꾸지 않는 읽기 API(`canCreateDevice` 등)는 `LauncherModel+Reading.swift` 에 있다.
 @MainActor
 @Observable
@@ -19,6 +22,8 @@ public final class LauncherModel {
   public private(set) var isRefreshing = false
   /// 기기별 진행 작업(켜기·끄기·삭제·초기화·앱 설치·링크 열기)과 URL 설치의 받기 단계. 같은 기기의 작업은 겹치지 않는다.
   public private(set) var activity = DeviceActivity()
+  /// 기기별로 찍고 있는 스크린샷. 기기 작업과 겹칠 수 있다 (앱 설치·링크 열기 중에도 찍는다).
+  public private(set) var screenshots = ScreenshotActivity()
   /// 닫지 않은 알림 줄.
   public private(set) var noticeQueue = LauncherNotices()
   /// 마지막으로 읽은 목록의 생성 선택지. 다시 읽기가 실패하면 이전 값을 유지한다.
@@ -39,9 +44,15 @@ public final class LauncherModel {
   @ObservationIgnored private let simulator: any SimulatorClient
   @ObservationIgnored private let appBundle: any AppBundleClient
   @ObservationIgnored private let download: any DownloadClient
+  /// 스크린샷 저장 폴더 준비·이름 예약과 Finder 에서 보이기.
+  @ObservationIgnored private let workspace: any WorkspaceClient
   /// Setup 진입 버튼(툴바 "개발 환경", 빈 화면의 "iOS 설치"·"다른 iOS 버전 설치", 목록 위 안내 줄의 "다른 iOS 버전 설치",
   /// 목록 읽기 실패 화면의 "개발 환경 열기")을 눌렀을 때 부른다. App 이 Setup 화면을 다시 연다 (화면 간 흐름은 App 이 잇는다).
   @ObservationIgnored private let setupRequested: @MainActor () -> Void
+  /// 앱 설치 흐름(풀기 → 검사·판정 → 켜기 → 설치 → 실행). Client 만 갖고 Model 상태에는 `installHost` 창구로만 닿는다.
+  @ObservationIgnored private let installFlow: AppInstallFlow
+  /// 스크린샷 파일 이름의 시각. 테스트가 고정한다.
+  @ObservationIgnored private let now: @Sendable () -> Date
   /// 진행 중인 목록 읽기. Model 이 소유해 View 의 `.task` 가 취소돼도 끝까지 돈다.
   @ObservationIgnored private var loadTask: Task<Void, Never>?
   /// 읽는 동안 들어온 요청. 진행 중인 읽기가 끝나면 한 번 더 읽는다.
@@ -56,12 +67,17 @@ public final class LauncherModel {
     simulator: any SimulatorClient,
     appBundle: any AppBundleClient,
     download: any DownloadClient,
-    setupRequested: @escaping @MainActor () -> Void = {}
+    workspace: any WorkspaceClient,
+    setupRequested: @escaping @MainActor () -> Void = {},
+    now: @escaping @Sendable () -> Date = { Date() }
   ) {
     self.simulator = simulator
     self.appBundle = appBundle
     self.download = download
+    self.workspace = workspace
+    self.installFlow = AppInstallFlow(simulator: simulator, appBundle: appBundle)
     self.setupRequested = setupRequested
+    self.now = now
   }
 
   /// 목록을 읽은 뒤(목록을 먼저 보인다) 남은 zip 풀기·받기 임시 폴더(앞선 실행이 남겼거나 지우지 못한 것)를 정리한다.
@@ -315,92 +331,17 @@ public extension LauncherModel {
       self.enqueue(.installFailed(label, .multipleItems))
       return
     }
-    guard AppInstallSource.isZip(url) else {
-      await self.installBundle(url, on: id, label: label)
-      return
-    }
-    guard let extracted = await self.extract(url, label: label, failure: AppInstallFailure.bundle) else { return }
-    await self.installExtracted(extracted, on: id, label: label)
+    await self.installFlow.install(url, on: id, label: label, host: self.installHost)
   }
 
-  /// zip 을 푼다. 실패하면 `failure` 로 만든 알림을 쌓고 nil (명령을 실행하기 전이라 다시 읽지 않는다.
-  /// 풀다 만 폴더는 Impl 이 지웠다).
-  private func extract(
-    _ zip: URL,
-    label: LauncherNotice.Device,
-    failure: (AppBundleError) -> AppInstallFailure
-  ) async -> ExtractedApp? {
-    do throws(AppBundleError) {
-      return try await self.appBundle.extractApp(fromZip: zip)
-    } catch {
-      self.enqueue(.installFailed(label, failure(error)))
-      return nil
-    }
-  }
-
-  /// 푼 .app 을 설치하고, 성공·실패와 관계없이 끝나면 임시 폴더를 지운다 (비동기 defer 를 쓰지 않으려고 실패가 모두
-  /// 안에서 끝나는 `installBundle` 뒤에 둔다). 설치 명령이 번들을 기기로 복사한 뒤라 지워도 된다.
-  /// 지우지 못하면 다음에 기기 목록 화면을 열 때 지운다.
-  private func installExtracted(
-    _ extracted: ExtractedApp,
-    on id: VirtualDevice.ID,
-    label: LauncherNotice.Device
-  ) async {
-    await self.installBundle(extracted.app, on: id, label: label)
-    await self.appBundle.removeExtracted(extracted)
-  }
-
-  /// 검사·판정을 통과하면 설치하고 실행한다. 모든 실패가 안에서 알림으로 끝나 던지지 않는다.
-  private func installBundle(_ url: URL, on id: VirtualDevice.ID, label: LauncherNotice.Device) async {
-    guard let prepared = await self.prepareInstall(url, on: id, label: label) else { return }
-    await self.runInstall(prepared.info, on: prepared.device, label: label)
-  }
-
-  /// 검사하고, 검사가 끝난 시점의 목록으로 기기와 앱을 판정한다. 실패하면 알림을 쌓고 nil
-  /// (명령을 실행하지 않았으므로 다시 읽지 않는다).
-  private func prepareInstall(
-    _ url: URL,
-    on id: VirtualDevice.ID,
-    label: LauncherNotice.Device
-  ) async -> (info: AppBundleInfo, device: VirtualDevice)? {
-    let info: AppBundleInfo
-    do throws(AppBundleError) {
-      info = try await self.appBundle.inspect(url)
-    } catch {
-      self.enqueue(.installFailed(label, .bundle(error)))
-      return nil
-    }
-    // 검사하는 동안 새로 고침으로 목록이 바뀌었을 수 있다. 이 기기의 작업은 지금 이 설치라 진행 중은 보지 않는다.
-    let target = AppInstallTarget.current(id, in: self.listState)
-    guard case let .ready(device) = target else {
-      if let failure = target.installFailure {
-        self.enqueue(.installFailed(label, failure))
-      }
-      return nil
-    }
-    if let problem = info.installProblem(on: device.runtime, hostArchitecture: self.appBundle.hostArchitecture) {
-      self.enqueue(.installFailed(label, .rejected(problem)))
-      return nil
-    }
-    return (info, device)
-  }
-
-  /// 꺼져 있으면 켜고, Simulator 앱을 열고, 검사한 경로를 설치하고, 검사한 번들 ID 로 실행한 뒤 다시 읽는다.
-  private func runInstall(_ info: AppBundleInfo, on device: VirtualDevice, label: LauncherNotice.Device) async {
-    guard await self.bootIfNeededAndShowSimulator(device, label: label) else { return }
-    do throws(SimulatorError) {
-      try await self.simulator.install(info.location, on: device.id)
-    } catch {
-      self.enqueue(.installFailed(label, .simulator(error)))
-      await self.reload()
-      return
-    }
-    do throws(SimulatorError) {
-      try await self.simulator.launch(info.bundleID, on: device.id)
-    } catch {
-      self.enqueue(.launchFailed(label, error))
-    }
-    await self.reload()
+  /// 설치 흐름이 Model 상태에 닿는 창구. 부를 때마다 만들어 넘기고 흐름 타입은 저장하지 않는다.
+  private var installHost: AppInstallFlow.Host {
+    AppInstallFlow.Host(
+      enqueue: { self.enqueue($0) },
+      reload: { await self.reload() },
+      listState: { self.listState },
+      bootIfNeededAndShowSimulator: { await self.bootIfNeededAndShowSimulator($0, label: $1) }
+    )
   }
 }
 
@@ -475,14 +416,15 @@ public extension LauncherModel {
       self.enqueue(.installFailed(label, .simulator(.deviceNotFound)))
       return
     }
+    let host = self.installHost
     let mimeType = file.mimeType
-    let extracted = await self.extract(file.file, label: label) { error in
+    let extracted = await self.installFlow.extract(file.file, label: label, host: host) { error in
       AppInstallFailure.downloaded(error, mimeType: mimeType, from: origin)
     }
     // 푼 뒤에는 받은 파일이 필요 없다. 설치 명령이 푼 .app 을 기기로 복사하기 전에 지워 디스크를 덜 쓴다.
     await self.download.removeDownloaded(file)
     guard let extracted else { return }
-    await self.installExtracted(extracted, on: device.id, label: label)
+    await self.installFlow.installExtracted(extracted, on: device.id, label: label, host: host)
   }
 
   /// 행의 받기 취소: 받는 중일 때만 받기를 멈춘다. 받기가 막 끝났어도(늦은 취소) 받은 파일을 지우고 알림 없이 끝난다.
@@ -588,5 +530,47 @@ public extension LauncherModel {
       self.enqueue(.openURLFailed(label, .simulator(error)))
     }
     await self.reload()
+  }
+}
+
+// MARK: - 스크린샷
+
+// `private(set)` 상태를 바꾸므로 같은 파일에 둔다.
+public extension LauncherModel {
+  /// 행의 "스크린샷": 켜진 기기 화면을 사진 폴더의 SimLauncher 폴더에 PNG 로 저장하고 Finder 에서 선택해 보인다.
+  /// 같은 기기는 한 번에 하나만 찍고, 같은 기기의 앱 설치·링크 열기 중에도 찍는다 (끄는 중에는 찍지 않는다).
+  /// 촬영 명령이 실패하면 예약한 빈 파일을 지우고 알림 뒤 다시 읽는다 (예약 실패는 명령 전이라 다시 읽지 않는다).
+  func screenshotButtonTapped(_ id: VirtualDevice.ID) async {
+    // `begin` 은 첫 await 전이라 연타해도 두 번째 호출은 여기서 끝난다.
+    guard case let .loaded(list) = self.listState,
+          let device = list.device(id: id),
+          self.screenshots.begin(on: device, during: self.activity.task(on: id))
+    else { return }
+    defer { self.screenshots.end(on: id) }
+    let label = LauncherNotice.Device(device)
+    let name = ScreenshotFileName(
+      deviceName: device.name, runtimeName: device.runtime.name, takenAt: self.now(), timeZone: .current
+    )
+    let file: URL
+    do throws(WorkspaceError) {
+      file = try await self.workspace.reserveScreenshotFile(name)
+    } catch {
+      self.enqueue(.screenshotFailed(label, .workspace(error)))
+      return
+    }
+    // 기기가 그사이 꺼졌거나 사라졌으면 Client 가 실행 직전 목록으로 확인해 `.deviceNotBooted`·`.deviceNotFound` 로 끝난다.
+    do throws(SimulatorError) {
+      try await self.simulator.screenshot(on: device.id, to: file)
+    } catch {
+      await self.workspace.removeReservedFile(file)
+      self.enqueue(.screenshotFailed(label, .simulator(error)))
+      await self.reload()
+      return
+    }
+    do throws(WorkspaceError) {
+      try await self.workspace.revealInFinder(file)
+    } catch {
+      self.enqueue(.screenshotRevealFailed(label, error))
+    }
   }
 }

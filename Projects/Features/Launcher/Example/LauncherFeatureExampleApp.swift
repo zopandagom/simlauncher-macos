@@ -8,6 +8,7 @@ import PreferencesInterface
 import PreferencesTesting
 import SimulatorTesting
 import SwiftUI
+import WorkspaceTesting
 
 /// App 없이 Launcher 화면만 띄우는 데모 앱. Preview 도 여기에 둔다.
 /// 실제 시뮬레이터 대신 Testing 모듈의 `SimulatorClientFake`(샘플 목록, 호출마다 1초 지연, 링크는 켜진 기기면
@@ -17,6 +18,8 @@ import SwiftUI
 /// "개발 환경 열기")은 눌러도 아무 일도 하지 않는다.
 /// "카탈로그에서…" 시트는 `PreferencesClientFake`(카탈로그 2개 + http 주소 + 앞 항목과 같은 카탈로그)와 카탈로그 전용
 /// `DownloadClientFake`(주소별 카탈로그 내용, 1초 지연)로 읽고, 고른 버전은 같은 `LauncherModel` 이 받아 설치한다.
+/// "스크린샷" 은 `WorkspaceClientFake`(파일을 만들지 않고 가짜 폴더 이름만 예약한다)와 `SimulatorClientFake`(켜진 기기면 1초 뒤
+/// 찍은 것으로 끝난다)로 돌아, 사진 폴더에 파일이 생기지 않고 Finder 도 열리지 않는다.
 /// Example 에는 Settings 씬이 없다(설정 창은 App 에서 확인한다).
 @main
 struct LauncherFeatureExampleApp: App {
@@ -43,7 +46,7 @@ struct LauncherFeatureExampleApp: App {
     let download = DownloadClientFake()
     download.setDownloadScript(progress: DownloadProgress.example, result: nil)
     download.setDelay(.milliseconds(300))
-    return LauncherModel(simulator: fake, appBundle: appBundle, download: download)
+    return LauncherModel(simulator: fake, appBundle: appBundle, download: download, workspace: WorkspaceClientFake())
   }
 }
 
@@ -77,12 +80,14 @@ private func makeCatalogModel(
 }
 
 /// Fake 를 만들어 설정한 뒤 화면을 만든다. 카탈로그 시트는 기본이 빈 목록이고, `catalogs`·`catalogDownload` 로 바꾼다.
+/// 스크린샷 저장은 `workspace` 로 바꾼다 (기본: 늘 예약·보이기에 성공하는 Fake).
 @MainActor
 private func previewLauncher(
   _ inventory: DeviceInventory = .sample,
   configure: (SimulatorClientFake) -> Void = { _ in },
   appBundle configureAppBundle: (AppBundleClientFake) -> Void = { _ in },
   download configureDownload: (DownloadClientFake) -> Void = { _ in },
+  workspace configureWorkspace: (WorkspaceClientFake) -> Void = { _ in },
   catalogs: CatalogURLSetting = CatalogURLSetting(urls: [], isLocked: false),
   catalogDownload configureCatalogDownload: (DownloadClientFake) -> Void = { _ in }
 ) -> LauncherView {
@@ -94,7 +99,9 @@ private func previewLauncher(
   download.setDownloadScript(progress: DownloadProgress.example, result: nil)
   download.setDelay(.milliseconds(300))
   configureDownload(download)
-  let launcher = LauncherModel(simulator: fake, appBundle: appBundle, download: download)
+  let workspace = WorkspaceClientFake()
+  configureWorkspace(workspace)
+  let launcher = LauncherModel(simulator: fake, appBundle: appBundle, download: download, workspace: workspace)
   let catalogModel = makeCatalogModel(catalogs, installingWith: launcher, catalogDownload: configureCatalogDownload)
   return LauncherView(model: launcher, catalogModel: catalogModel)
 }
@@ -211,6 +218,27 @@ private func previewLauncher(
     $0.setDelay(.seconds(3))
     $0.setInstallError(.appIncompatible)
   }
+}
+
+/// 켜진 기기만 버튼이 활성이고, 꺼진·쓸 수 없는 기기는 비활성이며 툴팁이 이유를 보인다.
+#Preview("스크린샷 (켜진 기기의 스크린샷)") {
+  previewLauncher { $0.setDelay(.seconds(1)) }
+}
+
+#Preview("스크린샷 찍는 중 (켜진 기기의 스크린샷, 끝나지 않음)") {
+  previewLauncher { $0.suspendScreenshots() }
+}
+
+#Preview("스크린샷 실패: 저장 폴더 (켜진 기기의 스크린샷)") {
+  previewLauncher(workspace: { $0.setReserveError(.folderUnavailable) })
+}
+
+#Preview("스크린샷 실패: 기기 꺼짐 (켜진 기기의 스크린샷)") {
+  previewLauncher { $0.setScreenshotError(.deviceNotBooted) }
+}
+
+#Preview("스크린샷 저장 뒤 Finder 실패 (켜진 기기의 스크린샷)") {
+  previewLauncher(workspace: { $0.setRevealError(.fileNotFound) })
 }
 
 #Preview("URL 에서 설치 (앱 설치 → URL 에서… → 받아서 설치)") {

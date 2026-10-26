@@ -4,7 +4,7 @@ import Foundation
 import SwiftUI
 
 /// 기기 한 줄: 종류 아이콘, 이름, 상태, 앱 설치 메뉴(파일에서 고르기… / URL 에서… / 카탈로그에서…)와 드롭, 링크 열기 버튼(시트),
-/// 켜기·끄기 버튼(받는 중이면 진행 막대와 받기 취소 버튼), 기기 작업 메뉴(… 버튼과 컨텍스트 메뉴: 초기화·삭제).
+/// 스크린샷 버튼(켜진 기기만, 찍는 중이면 작은 진행 표시), 켜기·끄기 버튼(받는 중이면 진행 막대와 받기 취소 버튼), 기기 작업 메뉴(… 버튼과 컨텍스트 메뉴: 초기화·삭제).
 /// 쓸 수 없는 기기는 흐리게 그리고 이유를 보인다. 막힌 메뉴 항목은 비활성으로 두고 이유를 메뉴 맨 위에 보인다.
 struct DeviceRow: View {
   let device: VirtualDevice
@@ -18,6 +18,11 @@ struct DeviceRow: View {
   let cancelDownloadTapped: () -> Void
   let appDropped: ([URL]) -> Void
   let openURLTapped: () -> Void
+  /// 스크린샷 버튼을 누를 수 있다 (`ScreenshotActivity.canStart`: 켜진 기기, 찍는 중이 아님, 기기 작업이 없거나 앱 설치·링크 열기).
+  let canTakeScreenshot: Bool
+  /// 이 기기의 스크린샷을 찍는 중이다 (버튼 자리에 진행 표시).
+  let isTakingScreenshot: Bool
+  let screenshotTapped: () -> Void
   let bootTapped: () -> Void
   let shutdownTapped: () -> Void
   let eraseTapped: () -> Void
@@ -56,6 +61,7 @@ struct DeviceRow: View {
       Button(LauncherText.openURLButton, action: self.openURLTapped)
         .disabled(!self.canInstall)
         .help(self.openURLBlockReason ?? LauncherText.openURLHelp)
+      self.screenshot
       self.action
       Menu {
         self.menuItems
@@ -107,6 +113,21 @@ struct DeviceRow: View {
       return LauncherText.blockReason(.unavailable)
     }
     return nil
+  }
+
+  /// 찍는 중이면 작은 진행 표시, 아니면 스크린샷 버튼.
+  @ViewBuilder
+  private var screenshot: some View {
+    if self.isTakingScreenshot {
+      ProgressView()
+        .controlSize(.small)
+        .help(LauncherText.takingScreenshotLabel)
+        .accessibilityLabel(LauncherText.takingScreenshotLabel)
+    } else {
+      Button(LauncherText.screenshotButton, action: self.screenshotTapped)
+        .disabled(!self.canTakeScreenshot)
+        .help(self.screenshotBlockReason ?? LauncherText.screenshotHelp)
+    }
   }
 
   @ViewBuilder
@@ -163,6 +184,12 @@ struct DeviceRow: View {
   private var openURLBlockReason: String? {
     guard case let .blocked(reason) = self.device.appInstallAvailability else { return nil }
     return LauncherText.openURLBlockReason(reason)
+  }
+
+  /// 스크린샷 버튼 툴팁에 보일 막힌 이유. 진행 중이면 행의 진행 표시가 이유라 따로 보이지 않는다.
+  private var screenshotBlockReason: String? {
+    guard case let .blocked(reason) = self.device.screenshotAvailability else { return nil }
+    return LauncherText.screenshotBlockReason(reason)
   }
 
   private var isAvailable: Bool {

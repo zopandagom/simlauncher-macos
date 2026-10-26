@@ -7,6 +7,7 @@ import Foundation
 import SimulatorInterface
 import SimulatorTesting
 import Testing
+import WorkspaceTesting
 @testable import LauncherFeature
 
 @MainActor
@@ -76,7 +77,8 @@ struct LauncherURLInstallTests: LauncherModelTesting {
     let beforeLoad = LauncherModel(
       simulator: SimulatorClientFake(inventory: .sample),
       appBundle: AppBundleClientFake(),
-      download: DownloadClientFake()
+      download: DownloadClientFake(),
+      workspace: WorkspaceClientFake()
     )
     beforeLoad.installFromURLMenuTapped(SampleID.iPhoneOn)
     #expect(beforeLoad.installURLDraft == nil)

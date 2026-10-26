@@ -7,6 +7,7 @@ import PreferencesTesting
 import SimulatorInterface
 import SimulatorTesting
 import Testing
+import WorkspaceTesting
 @testable import LauncherFeature
 
 /// Launcher Model 테스트가 함께 쓰는 도움 함수. 테스트 타입이 채택하면 `Self.loadedModel()` 처럼 부른다.
@@ -15,15 +16,25 @@ protocol LauncherModelTesting {}
 
 @MainActor
 extension LauncherModelTesting {
-  /// 샘플 목록 Fake 를 설정하고 첫 목록까지 읽은 Model. 앱 번들·받기 Client 는 넘긴 것(기본: 샘플 앱·샘플 받기 Fake)을 쓴다.
+  /// 샘플 목록 Fake 를 설정하고 첫 목록까지 읽은 Model. 앱 번들·받기·Workspace Client 는 넘긴 것(기본: 샘플 앱·샘플 받기
+  /// Fake·빈 Workspace Fake)을 쓰고, Model 의 지금 시각(스크린샷 파일 이름)은 `now` 로 고정한다.
+  /// `now` 는 클로저가 아닌 값이다 (뒤따르는 클로저가 `configure` 로 가게).
   static func loadedModel(
     appBundle: AppBundleClientFake = AppBundleClientFake(),
     download: any DownloadClient = DownloadClientFake(),
+    workspace: WorkspaceClientFake = WorkspaceClientFake(),
+    now: Date = Date(),
     _ configure: (SimulatorClientFake) -> Void = { _ in }
   ) async -> (LauncherModel, SimulatorClientFake) {
     let fake = SimulatorClientFake(inventory: .sample)
     configure(fake)
-    let model = LauncherModel(simulator: fake, appBundle: appBundle, download: download)
+    let model = LauncherModel(
+      simulator: fake,
+      appBundle: appBundle,
+      download: download,
+      workspace: workspace,
+      now: { now }
+    )
     await model.onAppear()
     return (model, fake)
   }

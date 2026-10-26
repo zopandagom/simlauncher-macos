@@ -15,6 +15,7 @@ let project = Project.app(
     .client(impl: .appBundle),
     .client(impl: .download),
     .client(impl: .preferences),
+    .client(impl: .workspace),
     .shared(.core),
   ]
 )

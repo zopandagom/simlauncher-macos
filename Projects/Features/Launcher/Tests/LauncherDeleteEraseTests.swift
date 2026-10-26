@@ -4,6 +4,7 @@ import DownloadTesting
 import SimulatorInterface
 import SimulatorTesting
 import Testing
+import WorkspaceTesting
 @testable import LauncherFeature
 
 @MainActor
@@ -59,7 +60,8 @@ struct LauncherDeleteEraseTests: LauncherModelTesting {
     let before = LauncherModel(
       simulator: SimulatorClientFake(inventory: .sample),
       appBundle: AppBundleClientFake(),
-      download: DownloadClientFake()
+      download: DownloadClientFake(),
+      workspace: WorkspaceClientFake()
     )
     before.deleteButtonTapped(SampleID.iPhoneOff)
     #expect(before.pendingConfirmation == nil)

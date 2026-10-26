@@ -19,8 +19,9 @@ public enum SimulatorError: Error, Hashable, Sendable {
   case unexpectedOutput
   /// `simctl create` 는 성공(exit 0)했지만 출력에서 새 기기 UDID 를 읽지 못했다. 기기가 만들어졌을 수 있다. `create` 만 던진다.
   case creationResultUnknown
-  /// 기기가 켜져 있지 않아 앱 설치·실행이나 링크 열기를 하지 못했다: SimError 405 "Unable to lookup in current state"
-  /// (install·launch·openurl).
+  /// 기기가 켜져 있지 않아 앱 설치·실행, 링크 열기, 화면 찍기를 하지 못했다: install·launch·openurl 의 SimError 405
+  /// "Unable to lookup in current state", screenshot 의 실행 전 확인과 NSPOSIXErrorDomain 60 "Timeout waiting for screen
+  /// surfaces".
   case deviceNotBooted
   /// 설치할 .app 이 그 경로에 없다: 파일 URL 이 아니어서 실행하지 않았거나 NSPOSIXErrorDomain 2 (install).
   case appNotFound
