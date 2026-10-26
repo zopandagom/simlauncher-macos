@@ -3,26 +3,32 @@ import Core
 import Foundation
 import WorkspaceInterface
 
-/// 사진 폴더의 `SimLauncher` 폴더에 스크린샷 파일을 예약하고, Finder 에서 파일을 선택해 보인다.
-/// 사진 폴더는 TCC 보호 폴더가 아니라 권한 팝업이 없다 (측정). 저장 폴더는 누를 때 만들고, 생성자는 파일을 건드리지 않는다.
+/// 사진 폴더의 `SimLauncher` 폴더에 스크린샷 파일을, 동영상 폴더의 `SimLauncher` 폴더에 녹화 파일을 예약하고,
+/// Finder 에서 파일을 선택해 보인다.
+/// 사진 폴더는 TCC 보호 폴더가 아니라 권한 팝업이 없다 (측정). 동영상 폴더도 TCC 보호 폴더 범주에 없지만 터미널에서만 측정했다.
+/// 저장 폴더는 누를 때 만들고, 생성자는 파일을 건드리지 않는다.
 /// 이름 경쟁은 독점 생성(`Data.write(options: .withoutOverwriting)`)으로 푼다: 목록을 보고 고른 뒤 쓰는 사이의 틈이 없다.
 /// `SimLauncher` 가 디렉터리를 가리키는 심볼릭 링크면 따라간다 (사용자의 의도적 설정, 막지 않는다).
 public struct WorkspaceClientImpl: WorkspaceClient {
   static let folderName = "SimLauncher"
 
   private let picturesDirectory: URL?
+  private let moviesDirectory: URL?
   private let reveal: @MainActor @Sendable ([URL]) -> Void
 
   public init() {
+    let fileManager = FileManager.default
     self.init(
-      picturesDirectory: FileManager.default.urls(for: .picturesDirectory, in: .userDomainMask).first,
+      picturesDirectory: fileManager.urls(for: .picturesDirectory, in: .userDomainMask).first,
+      moviesDirectory: fileManager.urls(for: .moviesDirectory, in: .userDomainMask).first,
       reveal: { NSWorkspace.shared.activateFileViewerSelecting($0) }
     )
   }
 
-  /// 테스트용: 사진 폴더(임시 폴더)와 Finder 열기를 바꾼다.
-  init(picturesDirectory: URL?, reveal: @escaping @MainActor @Sendable ([URL]) -> Void) {
+  /// 테스트용: 사진·동영상 폴더(임시 폴더)와 Finder 열기를 바꾼다.
+  init(picturesDirectory: URL?, moviesDirectory: URL?, reveal: @escaping @MainActor @Sendable ([URL]) -> Void) {
     self.picturesDirectory = picturesDirectory
+    self.moviesDirectory = moviesDirectory
     self.reveal = reveal
   }
 
@@ -32,12 +38,24 @@ public struct WorkspaceClientImpl: WorkspaceClient {
     }
   }
 
+  public func reserveRecordingFile(_ name: RecordingFileName) async throws(WorkspaceError) -> URL {
+    try Self.reserve(in: Self.folder(in: self.moviesDirectory), maxAttempts: RecordingFileName.maxAttempts) {
+      name.fileName(attempt: $0)
+    }
+  }
+
   public func removeReservedFile(_ file: URL) async {
-    guard let folder = Self.folder(in: self.picturesDirectory), Self.isDirectChild(file, of: folder) else {
+    let folders = [self.picturesDirectory, self.moviesDirectory].compactMap { Self.folder(in: $0) }
+    guard folders.contains(where: { Self.isDirectChild(file, of: $0) }) else {
       return
     }
-    // 예약한 것은 빈 파일이다. 같은 자리의 폴더는 지우지 않는다 (링크는 링크 자체를 본다).
-    if (try? file.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true {
+    // 예약한 것은 빈 일반 파일이다. 내용이 있는 파일(실패로 끝난 녹화가 남긴 화면 등)·폴더·심볼릭 링크는 지우지 않는다.
+    // `lstat` 은 마지막 이름의 링크를 따라가지 않아 링크 자체를 본다 (저장 폴더 링크는 커널이 따라간다).
+    var info = stat()
+    guard lstat(file.path(percentEncoded: false), &info) == 0,
+          info.st_mode & S_IFMT == S_IFREG,
+          info.st_size == 0
+    else {
       return
     }
     try? FileManager.default.removeItem(at: file)
@@ -51,12 +69,12 @@ public struct WorkspaceClientImpl: WorkspaceClient {
     await MainActor.run { reveal([file]) }
   }
 
-  /// 저장 폴더 (링크를 풀지 않은 경로). 사진 폴더를 찾지 못하면 nil.
+  /// 저장 폴더 (링크를 풀지 않은 경로). 사진·동영상 폴더를 찾지 못하면 nil.
   private static func folder(in directory: URL?) -> URL? {
     directory?.appending(path: self.folderName, directoryHint: .isDirectory)
   }
 
-  /// `folder` 를 준비하고 `fileName(1...maxAttempts)` 중 처음 독점 생성에 성공한 빈 파일을 돌려준다.
+  /// `folder` 를 준비하고 `fileName(1...maxAttempts)` 중 처음 독점 생성에 성공한 빈 파일을 돌려준다. 스크린샷·녹화가 함께 쓴다.
   private static func reserve(
     in folder: URL?,
     maxAttempts: Int,

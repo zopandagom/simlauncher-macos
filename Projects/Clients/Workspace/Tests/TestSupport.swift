@@ -2,7 +2,7 @@ import Core
 import Foundation
 import Synchronization
 
-/// 테스트마다 만드는 임시 폴더. 사진 폴더 자리에 주입하고, 끝나면 `remove()` 로 지운다.
+/// 테스트마다 만드는 임시 폴더. 사진 폴더 자리에 이 폴더를, 동영상 폴더 자리에 `movies` 를 주입하고, 끝나면 `remove()` 로 지운다.
 struct TemporaryDirectory {
   /// 심볼릭 링크를 푼 경로 (`/var` → `/private/var`).
   let url: URL
@@ -16,6 +16,16 @@ struct TemporaryDirectory {
   /// 저장 폴더 `<임시 폴더>/SimLauncher` (링크를 풀지 않은 경로).
   var folder: URL {
     self.url.appending(path: "SimLauncher", directoryHint: .isDirectory)
+  }
+
+  /// 동영상 폴더 `<임시 폴더>/Movies` (처음에는 없다).
+  var movies: URL {
+    self.url.appending(path: "Movies", directoryHint: .isDirectory)
+  }
+
+  /// 녹화 저장 폴더 `<임시 폴더>/Movies/SimLauncher` (링크를 풀지 않은 경로).
+  var moviesFolder: URL {
+    self.movies.appending(path: "SimLauncher", directoryHint: .isDirectory)
   }
 
   /// 권한을 뺀 폴더가 있어도 지우도록 폴더마다 소유자 권한을 되돌린 뒤 지운다.
@@ -58,6 +68,12 @@ enum Screenshot {
 
   static func name(_ device: String = "iPhone 17") -> ScreenshotFileName {
     ScreenshotFileName(deviceName: device, runtimeName: "iOS 26.5", takenAt: self.takenAt, timeZone: .gmt)
+  }
+}
+
+enum Recording {
+  static func name(_ device: String = "iPhone 17") -> RecordingFileName {
+    RecordingFileName(deviceName: device, runtimeName: "iOS 26.5", startedAt: Screenshot.takenAt, timeZone: .gmt)
   }
 }
 
