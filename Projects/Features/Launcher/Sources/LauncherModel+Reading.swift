@@ -41,4 +41,20 @@ public extension LauncherModel {
   var isRecording: Bool {
     self.recordings.isActive
   }
+
+  /// 고른 기기 (지금 목록 순서: 섹션 → 행). 목록이 없으면 빈 배열.
+  var selectedDevices: [VirtualDevice] {
+    guard case let .loaded(list) = self.listState else { return [] }
+    return list.sections.flatMap(\.devices).filter { self.selection.contains($0.id) }
+  }
+
+  /// 고른 기기 중 하나라도 앱 설치를 시작할 수 있다 (툴바 설치 메뉴 항목).
+  var canInstallOnSelection: Bool {
+    self.selectedDevices.contains { self.activity.canStart(.installApp, on: $0) }
+  }
+
+  /// 고른 기기 중 하나라도 켤 수 있다 (툴바 "선택한 기기 켜기").
+  var canBootSelection: Bool {
+    self.selectedDevices.contains { self.activity.canStart(.boot, on: $0) }
+  }
 }

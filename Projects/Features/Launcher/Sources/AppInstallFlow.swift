@@ -7,6 +7,8 @@ import SimulatorInterface
 /// 앱 설치 흐름: (zip 이면) 풀기 → 검사 → 지금 목록으로 판정 → 켜기·Simulator 앱 열기 → 설치 → 실행 → 다시 읽기.
 /// 첫 단계인 켜기·Simulator 앱 열기(`bootIfNeededAndShowSimulator`)는 켜기 버튼·링크 열기도 함께 쓴다.
 /// 링크 열기와 받기 결과 해석도 같은 창구를 쓰므로 여기에 둔다.
+/// 여러 기기 설치는 받기·풀기·검사를 한 번만 하고, 기기별 판정 → 켜기 → 설치 → 실행을 동시에 돌려 끝나는 대로 그 기기를
+/// `finished` 로 풀고, 결과를 알림 하나(`.batchFinished`)에 모은다. 여러 기기 켜기도 같은 방식이다.
 /// `LauncherModel` 이 `private` 으로 소유하고, 진행 기록(`activity`)을 시작한 Model 메서드(이벤트 메서드와 그것이 부르는
 /// private 도우미, 예: `installApp`·`installDownload`) 안에서만 부른다. Model 상태를 직접 바꾸지 않는다 (바꾸는 것은 창구로만).
 /// Client 는 직접 부르고, Model 상태에는 부를 때 넘겨받는 `Host` 창구로만 닿는다 (Model 상태는 `private(set)` 그대로).
@@ -14,13 +16,17 @@ import SimulatorInterface
 @MainActor
 struct AppInstallFlow {
   /// Model 이 부를 때마다 만들어 넘기는 창구. Model 을 잡으므로 저장하지 않는다.
-  struct Host {
+  /// 여러 기기 흐름이 기기별 자식 작업에 넘기므로 Sendable 이다 (Model 은 `@MainActor` 클래스라 잡아도 Sendable).
+  struct Host: Sendable {
     /// 알림을 쌓는다.
-    let enqueue: @MainActor (LauncherNotice) -> Void
+    let enqueue: @MainActor @Sendable (LauncherNotice) -> Void
     /// 목록을 다시 읽는다 (읽는 중이면 그 읽기에 합쳐진다).
-    let reload: @MainActor () async -> Void
+    let reload: @MainActor @Sendable () async -> Void
     /// 지금 목록 상태. 부르는 순간의 값을 돌려준다 (미리 잡아 두지 않는다).
-    let listState: @MainActor () -> LauncherListState
+    let listState: @MainActor @Sendable () -> LauncherListState
+    /// 여러 기기 묶음에서 그 기기가 끝났다 (기기, 묶음 소유자 번호). 그 번호의 진행 기록만 지워 행을 바로 푼다.
+    /// 한 기기 흐름은 부르지 않는다 (Model 의 defer 가 끝낸다).
+    let finished: @MainActor @Sendable (VirtualDevice.ID, Int) -> Void
   }
 
   let simulator: any SimulatorClient
@@ -69,10 +75,11 @@ struct AppInstallFlow {
 
   /// 받기 결과를 해석한다. 취소를 눌렀으면 결과와 관계없이 알림 없이 nil (성공했으면 받은 파일을 지운다).
   /// 실패는 알림을 쌓고 nil (Client 가 폴더를 지웠다).
+  /// 1대 요청이면 한 기기 흐름과 같은 알림, 여러 대면 `.batchInstallFailed` 다.
   func downloadedFile(
     from result: Result<DownloadedFile, DownloadError>,
     cancelRequested: Bool,
-    label: LauncherNotice.Device,
+    start: InstallStart,
     origin: DownloadOrigin,
     host: Host
   ) async -> DownloadedFile? {
@@ -87,7 +94,7 @@ struct AppInstallFlow {
       return file
     case let .failure(error):
       // 취소를 누르지 않았는데 온 `.cancelled` 도 이유 없이 행만 돌아가지 않게 알린다 (코드상 나오지 않는다).
-      host.enqueue(.installFailed(label, .download(error, from: origin)))
+      host.enqueue(start.failedNotice(.download(error, from: origin)))
       return nil
     }
   }
@@ -231,5 +238,176 @@ struct AppInstallFlow {
       host.enqueue(.launchFailed(label, error))
     }
     await host.reload()
+  }
+}
+
+// MARK: - 여러 기기
+
+// 단계 메서드(`extract`·`inspect`·`judge`·`runInstall`)를 `private` 그대로 쓰려고 같은 파일에 둔다.
+extension AppInstallFlow {
+  /// 툴바 "파일에서 고르기…" 의 항목: (zip 이면 한 번 풀기 →) 한 번 검사 → 기기별 동시 판정·켜기·설치·실행 → 푼 폴더 지우기
+  /// → 결과 알림. 시작한 기기가 없으면 건너뛴 이유를 알린다. 1대 요청은 Model 이 한 기기 흐름(`installApp`)으로 보내 여기 오지
+  /// 않는다.
+  func install(_ item: URL, start: InstallStart, host: Host) async {
+    guard !start.begun.isEmpty else { return self.reportNotStarted(start, host: host) }
+    guard AppInstallSource.isZip(item) else {
+      return await self.notify(self.installEach(item, start: start, host: host), host: host)
+    }
+    guard let extracted = await self.extract(item, host: host, failed: { start.failedNotice(.bundle($0)) })
+    else { return }
+    let report = await self.installEach(extracted.app, start: start, host: host)
+    await self.appBundle.removeExtracted(extracted)
+    self.notify(report, host: host)
+  }
+
+  /// 받은 zip: 시작한 기기가 모두 목록에서 사라졌으면 풀지 않는다 → 한 번 풀기 → 받은 파일 지우기 → 위와 같다.
+  /// 1대 요청이면 한 기기 흐름과 같다.
+  func installDownloaded(_ file: DownloadedFile, start: InstallStart, origin: DownloadOrigin, host: Host) async {
+    guard let first = start.begun.first else { return self.reportNotStarted(start, host: host) }
+    guard !start.isSingle else {
+      let label = start.requested[0].label
+      return await self.installDownloaded(file, on: first.id, label: label, origin: origin, host: host)
+    }
+    let state = host.listState()
+    if start.begun.allSatisfy({ AppInstallTarget.current($0.id, in: state) == .notFound }) {
+      await self.download.removeDownloaded(file)
+      let notFound = Dictionary(uniqueKeysWithValues: start.begun.map {
+        ($0.id, BatchDeviceResult.installFailed(.simulator(.deviceNotFound)))
+      })
+      return self.notify(start.report(.install, results: notFound, simulatorAppError: nil), host: host)
+    }
+    let mimeType = file.mimeType
+    let extracted = await self.extract(file.file, host: host) { error in
+      start.failedNotice(.downloaded(error, mimeType: mimeType, from: origin))
+    }
+    await self.download.removeDownloaded(file)
+    guard let extracted else { return }
+    let report = await self.installEach(extracted.app, start: start, host: host)
+    await self.appBundle.removeExtracted(extracted)
+    self.notify(report, host: host)
+  }
+
+  /// 시작한 기기가 없을 때. 1대 요청이면 한 기기 흐름과 같다 (없음·상태 = 알림, 다른 작업 중 = 알림 없음).
+  /// 여러 대면 결과 알림(모두 실패) 하나.
+  func reportNotStarted(_ start: InstallStart, host: Host) {
+    guard !start.isSingle else {
+      guard let skip = start.skipped.first, skip.failure != .deviceBusy else { return }
+      return host.enqueue(.installFailed(skip.target.label, skip.failure))
+    }
+    self.notify(start.report(.install, results: [:], simulatorAppError: nil), host: host)
+  }
+
+  /// 툴바 "선택한 기기 켜기": 시작한 기기가 1대면 행 "켜기" 와 같다 (실패 알림·성공이면 다시 읽기). 여러 대면 기기마다 동시에
+  /// 켜고 Simulator 앱을 열어, 기기마다 다시 읽은 뒤 끝나는 대로 풀고 (먼저 켜진 행이 꺼짐으로 남지 않게), 실패가 있으면
+  /// 결과 알림 하나.
+  func boot(_ start: InstallStart, host: Host) async {
+    guard start.begun.count > 1 else {
+      guard let device = start.begun.first,
+            await self.bootIfNeededAndShowSimulator(device, label: LauncherNotice.Device(device), host: host)
+      else { return }
+      return await host.reload()
+    }
+    let outcome = await self.eachDevice(start, host: host) { device, deviceHost in
+      // 켜기 실패는 `bootIfNeededAndShowSimulator` 가 다시 읽는다.
+      guard await self.bootIfNeededAndShowSimulator(device, label: LauncherNotice.Device(device), host: deviceHost)
+      else { return }
+      await deviceHost.reload()
+    }
+    self.notify(start.report(.boot, results: outcome.results, simulatorAppError: outcome.appError), host: host)
+  }
+
+  /// 한 번 검사하고 기기별로 동시에 판정 → 켜기 → 설치 → 실행한다. 검사가 실패하면 공통 실패 알림을 쌓고 nil.
+  private func installEach(_ url: URL, start: InstallStart, host: Host) async -> BatchReport? {
+    guard let info = await self.inspect(url, host: host, failed: start.failedNotice) else { return nil }
+    let outcome = await self.eachDevice(start, host: host) { device, deviceHost in
+      let label = LauncherNotice.Device(device)
+      guard let current = self.judge(info, on: device.id, label: label, host: deviceHost) else { return }
+      await self.runInstall(info, on: current, label: label, host: deviceHost)
+    }
+    return start.report(.install, results: outcome.results, simulatorAppError: outcome.appError)
+  }
+
+  /// 시작한 기기마다 동시에 `body` 를 돌리고, 끝나는 대로 `finished` 로 그 기기를 푼다. 기기별 알림은 쌓지 않고 결과로 모은다
+  /// (Simulator 앱 열기 실패는 요청 순서로 처음 것 하나).
+  private func eachDevice(
+    _ start: InstallStart,
+    host: Host,
+    body: @escaping @MainActor @Sendable (VirtualDevice, Host) async -> Void
+  ) async -> (results: [VirtualDevice.ID: BatchDeviceResult], appError: SimulatorError?) {
+    await withTaskGroup(of: DeviceOutcome.self) { group in
+      let owner = start.owner
+      for device in start.begun {
+        group.addTask { await Self.run(body, on: device, owner: owner, host: host) }
+      }
+      var results: [VirtualDevice.ID: BatchDeviceResult] = [:]
+      var appErrors: [VirtualDevice.ID: SimulatorError] = [:]
+      for await outcome in group {
+        results[outcome.id] = outcome.result
+        appErrors[outcome.id] = outcome.appError
+      }
+      return (results, start.begun.lazy.compactMap { appErrors[$0.id] }.first)
+    }
+  }
+
+  /// 기기 한 대의 자식 작업: 알림을 결과로 모으는 창구로 `body` 를 돌리고, 끝나면 그 기기를 푼다.
+  private static func run(
+    _ body: @MainActor @Sendable (VirtualDevice, Host) async -> Void,
+    on device: VirtualDevice,
+    owner: Int,
+    host: Host
+  ) async -> DeviceOutcome {
+    let collector = BatchResultCollector()
+    await body(device, host.collecting(into: collector))
+    host.finished(device.id, owner)
+    return DeviceOutcome(id: device.id, result: collector.result, appError: collector.appError)
+  }
+
+  /// 결과가 있고 실패·건너뜀이 있으면 결과 알림을 쌓는다 (모두 성공이면 알림이 없다).
+  private func notify(_ report: BatchReport?, host: Host) {
+    guard let report, report.needsNotice else { return }
+    host.enqueue(.batchFinished(report))
+  }
+}
+
+private extension AppInstallFlow.Host {
+  /// 알림을 기기 결과로 모으는 창구 (다시 읽기·목록·끝내기는 그대로).
+  func collecting(into collector: BatchResultCollector) -> Self {
+    Self(
+      enqueue: { [enqueue] notice in
+        if !collector.collect(notice) {
+          enqueue(notice)
+        }
+      },
+      reload: self.reload,
+      listState: self.listState,
+      finished: self.finished
+    )
+  }
+}
+
+/// 여러 기기 흐름에서 기기 한 대의 자식 작업이 돌려주는 값: 기기, 결과, Simulator 앱 열기 실패.
+private struct DeviceOutcome: Sendable {
+  let id: VirtualDevice.ID
+  let result: BatchDeviceResult
+  let appError: SimulatorError?
+}
+
+/// 여러 기기 흐름에서 기기 한 대의 알림을 결과로 바꿔 모은다. 기기별 자식 작업 안에서만 만든다.
+@MainActor
+private final class BatchResultCollector {
+  private(set) var result: BatchDeviceResult = .succeeded
+  /// Simulator 앱 열기 실패 (기기별 결과가 아니라 결과 알림 끝 줄).
+  private(set) var appError: SimulatorError?
+
+  /// 기기별 결과로 바꿀 수 있는 알림이면 모으고 true. 아니면 false (그대로 쌓는다).
+  func collect(_ notice: LauncherNotice) -> Bool {
+    switch notice {
+    case let .installFailed(_, failure): self.result = .installFailed(failure)
+    case let .launchFailed(_, error): self.result = .launchFailed(error)
+    case let .bootFailed(_, error): self.result = .bootFailed(error)
+    case let .openAppFailed(_, error): self.appError = self.appError ?? error
+    default: return false
+    }
+    return true
   }
 }

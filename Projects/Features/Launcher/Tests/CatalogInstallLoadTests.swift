@@ -108,7 +108,7 @@ struct CatalogInstallLoadTests: CatalogInstallModelTesting {
     let reopen = Self.start { await model.menuTapped(Self.sampleDevice(SampleID.iPhoneOff)) }
     await Self.waitUntil { reopen.isFinished }
     let fresh = try CatalogData.catalog(CatalogData.twoApps)
-    #expect(model.draft?.deviceID == SampleID.iPhoneOff)
+    #expect(model.draft?.targets.map(\.id) == [SampleID.iPhoneOff])
     #expect(Self.sourceStates(model) == [.loaded(fresh)])
 
     download.openGate()

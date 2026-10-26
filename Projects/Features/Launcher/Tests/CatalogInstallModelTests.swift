@@ -24,8 +24,7 @@ struct CatalogInstallModelTests: CatalogInstallModelTesting {
 
     await model.menuTapped(Self.sampleDevice(id))
 
-    #expect(model.draft?.deviceID == id)
-    #expect(model.draft?.device == Self.label(id))
+    #expect(model.draft?.targets == [TargetDevice(id: id, label: Self.label(id))])
     #expect(preferences.calls == [.catalogURLs])
     let maxBytes = BuildCatalog.maxByteCount
     #expect(Set(download.calls) == [
@@ -51,7 +50,7 @@ struct CatalogInstallModelTests: CatalogInstallModelTesting {
 
     await model.menuTapped(Self.sampleDevice(SampleID.iPhoneOn))
     await model.menuTapped(Self.sampleDevice(SampleID.iPadOff))
-    #expect(model.draft?.deviceID == SampleID.iPhoneOn)
+    #expect(model.draft?.targets.map(\.id) == [SampleID.iPhoneOn])
     #expect(preferences.calls == [.catalogURLs])
     #expect(download.calls.count == 1)
   }
@@ -157,7 +156,7 @@ struct CatalogInstallModelTests: CatalogInstallModelTesting {
     #expect(model.draft == nil)
 
     await model.menuTapped(Self.sampleDevice(SampleID.iPhoneOff))
-    #expect(model.draft?.deviceID == SampleID.iPhoneOff)
+    #expect(model.draft?.targets.map(\.id) == [SampleID.iPhoneOff])
     model.sheetDismissed()
     model.sheetDismissed()
     #expect(model.draft == nil)
@@ -245,5 +244,56 @@ struct CatalogInstallModelTests: CatalogInstallModelTesting {
 
     #expect(Self.sourceStates(model) == [.failed(.download(.cancelled))])
     #expect(model.draft?.isLoading == false)
+  }
+}
+
+// MARK: - 툴바 "카탈로그에서…"
+
+extension CatalogInstallModelTests {
+  @Test("고른 기기 중 하나라도 설치할 수 있으면 고른 기기 모두(목록 순서)를 대상으로 열고 받는다")
+  func selectionMenuOpensWithTargets() async {
+    let download = CatalogData.fake()
+    let (model, _) = Self.catalogModel(download: download)
+    let devices = [
+      Self.sampleDevice(SampleID.iPhoneOff), Self.sampleDevice(SampleID.iPadOff),
+      Self.sampleDevice(SampleID.unavailableIPhone),
+    ]
+
+    await model.selectionMenuTapped(devices)
+
+    #expect(model.draft?.targets == devices.map(TargetDevice.init))
+    #expect(Set(Self.fetchedURLs(download)) == [CatalogData.first.url, CatalogData.second.url])
+  }
+
+  @Test("고른 기기가 없거나 모두 설치할 수 없으면 열지 않고, 이미 열려 있으면 대상을 바꾸지 않는다")
+  func selectionMenuIgnoredWithoutInstallableDevice() async {
+    let download = CatalogData.fake()
+    let (model, _) = Self.catalogModel(download: download)
+
+    await model.selectionMenuTapped([])
+    await model.selectionMenuTapped([
+      Self.sampleDevice(SampleID.unavailableIPhone), Self.sampleDevice(SampleID.iPhoneOff, state: .booting),
+    ])
+    #expect(model.draft == nil)
+    #expect(download.calls.isEmpty)
+
+    await model.menuTapped(Self.sampleDevice(SampleID.iPhoneOn))
+    await model.selectionMenuTapped([Self.sampleDevice(SampleID.iPhoneOff), Self.sampleDevice(SampleID.iPadOff)])
+    #expect(model.draft?.targets.map(\.id) == [SampleID.iPhoneOn])
+  }
+
+  @Test("툴바로 연 시트의 설치 요청은 대상 기기 모두를 담는다")
+  func selectionInstallRequestsAllTargets() async {
+    let (model, requests) = Self.catalogModel()
+    let devices = [Self.sampleDevice(SampleID.iPhoneOff), Self.sampleDevice(SampleID.iPhoneOn)]
+    await model.selectionMenuTapped(devices)
+    model.appSelected(Self.alphaKey)
+
+    await model.installButtonTapped()
+
+    #expect(model.draft == nil)
+    #expect(requests.values == [
+      CatalogInstallRequest(targets: devices.map(TargetDevice.init), buildURL: CatalogData.alphaV2URL),
+    ])
   }
 }

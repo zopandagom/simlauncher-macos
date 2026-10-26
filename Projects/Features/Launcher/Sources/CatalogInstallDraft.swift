@@ -3,12 +3,11 @@ import DownloadInterface
 import Foundation
 import PreferencesInterface
 
-/// 카탈로그에서 설치 시트의 상태. 기기는 "카탈로그에서…" 를 누른 시점의 값이다.
+/// 카탈로그에서 설치 시트의 상태. 대상 기기는 "카탈로그에서…" 를 누른 시점의 값이다 (행 메뉴면 1대, 툴바면 고른 기기 전부).
 /// 바꾸는 메서드는 Model 만 부른다 (View 는 `CatalogInstallModel.draft` 를 읽기만 한다).
 public struct CatalogInstallDraft: Hashable, Sendable {
-  public let deviceID: VirtualDevice.ID
-  /// 시트 제목과 설치 요청에 쓸 기기 (누른 시점의 이름·런타임 이름).
-  public let device: LauncherNotice.Device
+  /// 시트 제목과 설치 요청에 쓸 대상 기기 (1대 이상, 누른 시점의 목록 순서·이름·런타임 이름).
+  public let targets: [TargetDevice]
   /// 마지막으로 읽은 설정의 잠금. 잠기면 사용자가 주소를 바꿀 수 없어, 빈 목록·쓸 수 없는 주소·카탈로그 읽기 실패의 다음 할 일이
   /// 담당자 안내로 바뀌고 "설정 열기" 를 숨긴다.
   public private(set) var isLocked = false
@@ -19,9 +18,13 @@ public struct CatalogInstallDraft: Hashable, Sendable {
   /// 지금 받기의 식별자. 늦게 온 결과(새로 고침 전·시트를 닫았다 다시 연 뒤)를 버린다.
   private var loadID: UUID?
 
+  init(targets: [TargetDevice]) {
+    self.targets = targets
+  }
+
+  /// 기기 한 대짜리 초안.
   init(deviceID: VirtualDevice.ID, device: LauncherNotice.Device) {
-    self.deviceID = deviceID
-    self.device = device
+    self.init(targets: [TargetDevice(id: deviceID, label: device)])
   }
 
   /// 설정을 다시 읽은 값으로 구역을 새로 만들고(쓸 수 있는 주소는 `.loading`, 쓸 수 없으면 `.invalid`, 중복은 뺌) 받기 식별자를

@@ -12,6 +12,7 @@ import WorkspaceInterface
 /// 켜진 기기 화면을 사진 폴더의 SimLauncher 폴더에 PNG 로 저장하고 Finder 에서 보인다 (꺼진 기기는 켜지 않는다).
 /// 켜진 기기 화면을 동영상 폴더의 SimLauncher 폴더에 녹화하고, 멈추거나(중지·기기 꺼짐·앱 종료) 스스로 끝나면 저장해 Finder 에서 보인다.
 /// 카탈로그에서 설치 시트(`CatalogInstallModel`)가 고른 버전은 App 이 `catalogInstallRequested(_:)` 로 넘겨 같은 받기 경로로 설치한다.
+/// 목록에서 고른 기기(`selection`)에 앱을 한 번 받고 풀어 기기별로 동시에 설치·실행하거나 함께 켜고, 결과를 알림 하나에 모은다.
 /// Xcode 준비와 iOS 시뮬레이터 설치는 여기서 하지 않고, Setup 진입 버튼으로 App 에 Setup 화면을 요청한다.
 /// 앱 설치의 켜기·풀기·검사·설치·실행은 Model 이 소유한 `AppInstallFlow` 가, 끄기·만들기·삭제·초기화 명령은
 /// `DeviceCommandFlow` 가, 스크린샷·녹화의 예약·찍기·녹화·보이기는 `ScreenCaptureFlow` 가 한다 (Model 상태에는 창구로만 닿는다).
@@ -44,6 +45,8 @@ public final class LauncherModel {
   public private(set) var openURLDraft: OpenURLDraft?
   /// URL 에서 설치 시트 초안. nil 이면 시트가 닫혀 있다.
   public private(set) var installURLDraft: InstallURLDraft?
+  /// 목록에서 고른 기기 (⌘·⇧ 클릭). 툴바 "선택한 기기…" 의 대상이고, 다시 읽은 목록에 없는 기기는 빠진다.
+  public private(set) var selection: Set<VirtualDevice.ID> = []
 
   @ObservationIgnored private let simulator: any SimulatorClient
   @ObservationIgnored private let appBundle: any AppBundleClient
@@ -61,7 +64,7 @@ public final class LauncherModel {
   @ObservationIgnored private var loadTask: Task<Void, Never>?
   /// 읽는 동안 들어온 요청. 진행 중인 읽기가 끝나면 한 번 더 읽는다.
   @ObservationIgnored private var reloadRequested = false
-  /// 기기별 받기 작업. Model 이 소유해 받기 취소(`downloadCancelTapped(_:)`)가 이것만 멈춘다.
+  /// 기기별 받기 작업 (받기 묶음은 같은 Task 를 대상 기기 모두에). Model 이 소유해 받기 취소(`downloadCancelTapped(_:)`)가 이것만 멈춘다.
   @ObservationIgnored private var downloadTasks: [
     VirtualDevice.ID: Task<Result<DownloadedFile, DownloadError>, Never>
   ] =
@@ -205,6 +208,7 @@ public final class LauncherModel {
           let inventory = try await self.simulator.fetchInventory()
           let list = DeviceList(inventory: inventory)
           self.listState = .loaded(list)
+          self.selection.formIntersection(list.deviceIDs)
           // 녹화 중인 기기가 켜져 있지 않거나 없으면 멈춘다 (simctl 은 기기가 꺼져도 끝나지 않는다, 측정).
           for id in self.recordings.requestStops(notBootedIn: list) {
             self.recordingTasks[id]?.cancel()
@@ -311,8 +315,44 @@ public extension LauncherModel {
     AppInstallFlow.Host(
       enqueue: { self.enqueue($0) },
       reload: { await self.reload() },
-      listState: { self.listState }
+      listState: { self.listState },
+      finished: { self.activity.end(on: [$0], owner: $1) }
     )
+  }
+}
+
+// MARK: - 여러 기기
+
+// `private(set)` 상태를 바꾸므로 같은 파일에 둔다. 진행 기록은 묶음 소유자 번호로 끝낸다.
+public extension LauncherModel {
+  /// 목록의 선택이 바뀌었다 (클릭·⌘·⇧ 클릭·⌘A·빈 곳 클릭).
+  func selectionChanged(_ ids: Set<VirtualDevice.ID>) {
+    self.selection = ids
+  }
+
+  /// 툴바 "선택한 기기 켜기": 켤 수 있는 기기를 함께 켠다. 한 대면 행의 "켜기" 와 같다.
+  func bootSelectedTapped() async {
+    let start = self.activity.beginAll(.boot, on: self.selectedDevices)
+    defer { self.activity.end(on: start.begun.map(\.id), owner: start.owner) }
+    await self.installFlow.boot(start, host: self.installHost)
+  }
+
+  /// 툴바 "선택한 기기에 앱 설치" > "파일에서 고르기…". 한 대면 행 메뉴와 같은 경로다.
+  func selectedAppFileChosen(_ url: URL) async {
+    let devices = self.selectedDevices
+    if devices.count == 1 {
+      return await self.installApp([url], on: devices[0].id)
+    }
+    guard self.canInstallOnSelection else { return }
+    let start = self.activity.beginInstall(on: devices.map(TargetDevice.init), in: self.listState, downloading: false)
+    defer { self.activity.end(on: start.begun.map(\.id), owner: start.owner) }
+    await self.installFlow.install(url, start: start, host: self.installHost)
+  }
+
+  /// 툴바 "선택한 기기에 앱 설치" > "URL 에서…": 설치할 수 있는 기기가 있고 다른 시트·대화상자가 없으면 연다.
+  func installSelectedFromURLMenuTapped() {
+    guard self.canInstallOnSelection, !self.isSheetOrDialogOpen else { return }
+    self.installURLDraft = InstallURLDraft(targets: self.selectedDevices.map(TargetDevice.init))
   }
 }
 
@@ -327,7 +367,7 @@ public extension LauncherModel {
           self.activity.canStart(.installApp, on: device),
           !self.isSheetOrDialogOpen
     else { return }
-    self.installURLDraft = InstallURLDraft(deviceID: id, device: LauncherNotice.Device(device))
+    self.installURLDraft = InstallURLDraft(targets: [TargetDevice(device)])
   }
 
   func installURLTextChanged(_ text: String) {
@@ -348,37 +388,27 @@ public extension LauncherModel {
     guard let draft = self.installURLDraft, let url = draft.url else { return }
     // 첫 await 전에 닫아, 연타해도 두 번째 호출은 위에서 끝난다.
     self.installURLDraft = nil
-    await self.installDownload(url, on: draft.deviceID, label: draft.device, origin: .enteredURL)
+    await self.installDownload(url, on: draft.targets, origin: .enteredURL)
   }
 
   /// 카탈로그에서 설치 시트가 고른 버전 (App 이 `CatalogInstallModel` 의 설치 요청을 넘긴다). 시트를 연 사이 바뀌었을 수 있어
   /// 지금 목록으로 기기를 다시 확인하고, URL 에서 설치와 같은 경로로 받아 설치한다. 받기·받은 파일 실패 알림은 출처 `.catalog` 로
   /// 만든다 (어느 원인이 카탈로그 문맥 문구인지는 `LauncherText+CatalogInstall.swift`).
   func catalogInstallRequested(_ request: CatalogInstallRequest) async {
-    await self.installDownload(request.buildURL, on: request.deviceID, label: request.device, origin: .catalog)
+    await self.installDownload(request.buildURL, on: request.targets, origin: .catalog)
   }
 
-  /// 대상 기기를 지금 목록으로 확인 → 받기 → 풀기 → 받은 파일 지우기 → 검사·설치·실행. `origin` 은 받기·받은 파일 실패 문구만 고른다.
-  private func installDownload(
-    _ url: DownloadURL,
-    on id: VirtualDevice.ID,
-    label: LauncherNotice.Device,
-    origin: DownloadOrigin
-  ) async {
-    let target = AppInstallTarget.current(id, in: self.listState)
-    guard case let .ready(device) = target else {
-      if let failure = target.installFailure {
-        self.enqueue(.installFailed(label, failure))
-      }
-      return
-    }
-    // 남은 거절은 같은 기기의 다른 작업뿐이다 (시트가 창을 막아 드물고, 행의 진행 표시가 이유를 보인다).
-    // 시작과 받기 Task 저장 사이에 await 를 두지 않는다 (취소가 Task 를 놓치지 않게).
-    guard self.activity.beginDownload(on: device) else { return }
-    defer { self.activity.end(on: device.id) }
-    guard let file = await self.runDownload(url, on: device.id, label: label, origin: origin) else { return }
-    self.activity.downloadEnded(on: device.id)
-    await self.installFlow.installDownloaded(file, on: device.id, label: label, origin: origin, host: self.installHost)
+  /// 대상 기기를 지금 목록으로 판정(받기 묶음 시작) → 한 번 받기 → 풀기 → 받은 파일 지우기 → 검사 → 기기별 설치·실행.
+  /// 1대 요청은 한 기기 흐름과 같은 알림이다 (다른 작업 중이면 알림 없음). `origin` 은 받기·받은 파일 실패 문구만 고른다.
+  /// 시작과 받기 Task 저장 사이에 await 를 두지 않는다 (취소가 Task 를 놓치지 않게).
+  private func installDownload(_ url: DownloadURL, on targets: [TargetDevice], origin: DownloadOrigin) async {
+    let start = self.activity.beginInstall(on: targets, in: self.listState, downloading: true)
+    let ids = start.begun.map(\.id)
+    defer { self.activity.end(on: ids, owner: start.owner) }
+    guard !ids.isEmpty else { return self.installFlow.reportNotStarted(start, host: self.installHost) }
+    guard let file = await self.runDownload(url, start: start, origin: origin) else { return }
+    self.activity.downloadEnded(on: ids)
+    await self.installFlow.installDownloaded(file, start: start, origin: origin, host: self.installHost)
   }
 
   /// 행의 받기 취소: 받는 중일 때만 받기를 멈춘다. 받기가 막 끝났어도(늦은 취소) 받은 파일을 지우고 알림 없이 끝난다.
@@ -388,34 +418,35 @@ public extension LauncherModel {
     self.downloadTasks[id]?.cancel()
   }
 
-  /// Model 이 소유한 Task 로 받는다 (취소 버튼이 이 Task 만 멈추고, View 의 Task 취소는 전해지지 않는다).
-  private func runDownload(
-    _ url: DownloadURL,
-    on id: VirtualDevice.ID,
-    label: LauncherNotice.Device,
-    origin: DownloadOrigin
-  ) async -> DownloadedFile? {
+  /// Model 이 소유한 Task 하나로 받아 묶음의 모든 기기에 저장한다 (어느 행의 취소든 이 Task 만 멈추고, View 의 Task 취소는
+  /// 전해지지 않는다).
+  private func runDownload(_ url: DownloadURL, start: InstallStart, origin: DownloadOrigin) async -> DownloadedFile? {
     let download = self.download
+    let ids = start.begun.map(\.id)
     let onProgress: @Sendable (DownloadProgress) async -> Void = { progress in
-      await self.downloadProgressed(progress, on: id)
+      await self.downloadProgressed(progress, on: ids)
     }
     let task: Task<Result<DownloadedFile, DownloadError>, Never> = Task {
       await download.downloadResult(url, onProgress: onProgress)
     }
-    self.downloadTasks[id] = task
+    for id in ids {
+      self.downloadTasks[id] = task
+    }
     let result = await task.value
-    self.downloadTasks[id] = nil
+    for id in ids {
+      self.downloadTasks[id] = nil
+    }
     return await self.installFlow.downloadedFile(
       from: result,
-      cancelRequested: self.activity.isDownloadCancelRequested(on: id),
-      label: label,
+      cancelRequested: self.activity.isDownloadCancelRequested(on: ids[0]),
+      start: start,
       origin: origin,
       host: self.installHost
     )
   }
 
-  private func downloadProgressed(_ progress: DownloadProgress, on id: VirtualDevice.ID) {
-    self.activity.downloadProgressed(progress, on: id)
+  private func downloadProgressed(_ progress: DownloadProgress, on ids: [VirtualDevice.ID]) {
+    self.activity.downloadProgressed(progress, on: ids)
   }
 }
 

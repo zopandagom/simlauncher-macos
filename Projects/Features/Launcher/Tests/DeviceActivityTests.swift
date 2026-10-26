@@ -211,3 +211,156 @@ struct DeviceActivityTests {
     )
   }
 }
+
+// MARK: - 여러 기기 묶음
+
+extension DeviceActivityTests {
+  private static let list = DeviceList(inventory: .sample)
+
+  private static func sample(_ id: VirtualDevice.ID) -> VirtualDevice {
+    self.list.device(id: id)!
+  }
+
+  private static func target(_ id: VirtualDevice.ID) -> TargetDevice {
+    TargetDevice(self.sample(id))
+  }
+
+  @Test("beginInstall 은 대상마다 판정해 준비된 기기만 시작하고, 건너뛴 이유(없음·상태·작업 중)를 요청 순서로 돌려준다")
+  func beginInstallJudgesEachTarget() {
+    var activity = DeviceActivity()
+    _ = activity.begin(.boot, on: Self.sample(SampleID.iPhoneOff))
+    let missing = TargetDevice(
+      id: VirtualDevice.ID("00000000-0000-0000-0000-0000000000FF"),
+      label: LauncherNotice.Device(name: "지운 기기", runtimeName: "iOS 27.0")
+    )
+    guard case let .blocked(reason) = Self.sample(SampleID.unavailableIPhone).appInstallAvailability else {
+      Issue.record("샘플의 쓸 수 없는 기기가 설치를 막지 않는다")
+      return
+    }
+    let targets = [
+      Self.target(SampleID.iPhoneOff), Self.target(SampleID.iPhoneOn),
+      Self.target(SampleID.unavailableIPhone), missing,
+    ]
+
+    let start = activity.beginInstall(on: targets, in: .loaded(Self.list), downloading: false)
+
+    #expect(start.requested == targets)
+    #expect(start.begun == [Self.sample(SampleID.iPhoneOn)])
+    #expect(start.skipped == [
+      InstallStart.Skip(target: Self.target(SampleID.iPhoneOff), failure: .deviceBusy),
+      InstallStart.Skip(target: Self.target(SampleID.unavailableIPhone), failure: .deviceNotReady(reason)),
+      InstallStart.Skip(target: missing, failure: .simulator(.deviceNotFound)),
+    ])
+    #expect(!start.isSingle)
+    #expect(activity.task(on: SampleID.iPhoneOn) == .installApp)
+    #expect(activity.task(on: SampleID.iPhoneOff) == .boot)
+    #expect(activity.downloadStage(on: SampleID.iPhoneOn) == nil)
+
+    var unloaded = DeviceActivity()
+    let none = unloaded.beginInstall(on: [Self.target(SampleID.iPhoneOn)], in: .loading, downloading: true)
+    #expect(none.begun.isEmpty)
+    #expect(none.skipped == [
+      InstallStart.Skip(target: Self.target(SampleID.iPhoneOn), failure: .simulator(.deviceNotFound)),
+    ])
+    #expect(none.isSingle)
+    #expect(unloaded == DeviceActivity())
+  }
+
+  @Test("받기 묶음은 시작한 기기 모두가 같은 진행을 보이고, 한 기기의 취소가 그 묶음만 함께 멈춘다")
+  func downloadGroupSharesProgressAndCancel() {
+    var activity = DeviceActivity()
+    let group = activity.beginInstall(
+      on: [Self.target(SampleID.iPhoneOff), Self.target(SampleID.iPhoneOn)],
+      in: .loaded(Self.list),
+      downloading: true
+    )
+    let otherBegan = activity.beginDownload(on: Self.sample(SampleID.iPadOff))
+    let ids = group.begun.map(\.id)
+    let progress = DownloadProgress(receivedBytes: 512, expectedBytes: 1024)
+    #expect(otherBegan)
+    #expect(ids == [SampleID.iPhoneOff, SampleID.iPhoneOn])
+    #expect(activity.downloadGroupSize(on: SampleID.iPhoneOff) == 2)
+    #expect(activity.downloadGroupSize(on: SampleID.iPadOff) == 1)
+    #expect(activity.downloadGroupSize(on: SampleID.iPhoneIOS26) == 0)
+
+    activity.downloadProgressed(progress, on: ids)
+    #expect(activity.downloadStage(on: SampleID.iPhoneOff) == .receiving(progress))
+    #expect(activity.downloadStage(on: SampleID.iPhoneOn) == .receiving(progress))
+    #expect(activity.downloadStage(on: SampleID.iPadOff) == .receiving(nil))
+
+    let cancelled = activity.requestDownloadCancel(on: SampleID.iPhoneOn)
+    #expect(cancelled)
+    #expect(activity.isDownloadCancelRequested(on: SampleID.iPhoneOff))
+    #expect(activity.downloadStage(on: SampleID.iPhoneOn) == .cancelling)
+    #expect(activity.downloadStage(on: SampleID.iPadOff) == .receiving(nil))
+    #expect(activity.downloadGroupSize(on: SampleID.iPhoneOff) == 0)
+  }
+
+  @Test("end(on:) 는 묶음 번호도 지워 남은 기기의 묶음 크기가 줄고, 묶음을 모두 끝내면 처음과 같다")
+  func endClearsDownloadGroup() {
+    var activity = DeviceActivity()
+    let start = activity.beginInstall(
+      on: [Self.target(SampleID.iPhoneOff), Self.target(SampleID.iPhoneOn)],
+      in: .loaded(Self.list),
+      downloading: true
+    )
+
+    activity.end(on: SampleID.iPhoneOff)
+    #expect(activity.downloadGroupSize(on: SampleID.iPhoneOn) == 1)
+    let cancelled = activity.requestDownloadCancel(on: SampleID.iPhoneOn)
+    #expect(cancelled)
+    #expect(activity.downloadStage(on: SampleID.iPhoneOff) == nil)
+
+    activity.end(on: start.begun.map(\.id), owner: start.owner)
+    #expect(activity == DeviceActivity())
+
+    var ended = DeviceActivity()
+    let other = ended.beginInstall(
+      on: [Self.target(SampleID.iPhoneOff), Self.target(SampleID.iPhoneOn)],
+      in: .loaded(Self.list),
+      downloading: true
+    )
+    ended.downloadEnded(on: other.begun.map(\.id))
+    #expect(ended.downloads.isEmpty)
+    #expect(ended.task(on: SampleID.iPhoneOn) == .installApp)
+    #expect(ended.downloadGroupSize(on: SampleID.iPhoneOn) == 0)
+  }
+
+  @Test("beginAll 은 시작할 수 있는 기기만 시작하고 건너뛴 기기를 알리지 않는다")
+  func beginAllStartsOnlyAllowed() {
+    var activity = DeviceActivity()
+    let devices = [
+      Self.sample(SampleID.iPhoneOff), Self.sample(SampleID.iPhoneOn), Self.sample(SampleID.unavailableIPhone),
+    ]
+
+    let start = activity.beginAll(.boot, on: devices)
+
+    #expect(start.requested == devices.map(TargetDevice.init))
+    #expect(start.begun == [Self.sample(SampleID.iPhoneOff)])
+    #expect(start.skipped.isEmpty)
+    #expect(activity.tasks == [SampleID.iPhoneOff: .boot])
+  }
+
+  @Test("소유자 번호: 묶음의 끝은 먼저 풀린 기기에 새로 시작한 작업을 지우지 않고, 다른 번호로는 아무것도 지우지 않는다")
+  func endWithOwnerKeepsNewerTask() {
+    var activity = DeviceActivity()
+    let first = Self.device(id: SampleID.iPhoneOff, state: .shutdown)
+    let second = Self.device(id: SampleID.iPadOff, state: .shutdown)
+    let start = activity.beginAll(.boot, on: [first, second])
+
+    // 먼저 끝난 기기가 풀린 뒤 그 기기에서 새 작업을 시작한다.
+    activity.end(on: [first.id], owner: start.owner)
+    #expect(activity.task(on: first.id) == nil)
+    let shutdownBegan = activity.begin(.shutdown, on: Self.device(id: first.id, state: .booted))
+    #expect(shutdownBegan)
+
+    activity.end(on: [second.id], owner: start.owner + 1)
+    #expect(activity.task(on: second.id) == .boot)
+
+    activity.end(on: [first.id, second.id], owner: start.owner)
+    #expect(activity.tasks == [first.id: .shutdown])
+
+    activity.end(on: first.id)
+    #expect(activity == DeviceActivity())
+  }
+}
