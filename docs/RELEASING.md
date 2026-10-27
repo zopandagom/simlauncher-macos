@@ -41,7 +41,7 @@ SimLauncher 배포본을 만드는 방법이다. `make release` 가 [`scripts/re
    ```
    README 설치 링크(`releases/latest`)는 Pre-release 가 아닌 가장 최근 Release 를 가리킨다. 샘플 카탈로그 워크플로의 Release(`sample-catalog`·`sample-build-…`)는 Pre-release 라 겹치지 않는다. `--latest` 로 이 Release 를 최신으로 지정한다.
 8. **게시 확인**: `gh api repos/<소유자>/<레포>/releases/latest -q .tag_name` 이 `<버전>` 이고, 첨부 파일의 `digest`(`… -q '.assets[].digest'`)가 5번의 SHA-256 과 같은지 본다.
-9. **내려받은 게시본 확인**: README 설치 링크에서 브라우저로 dmg 를 받는다(quarantine 이 붙는다). `xattr -p com.apple.quarantine`·`shasum -a 256`·5절의 dmg `spctl` 을 확인하고, 앱을 응용 프로그램 폴더로 옮겨(이미 있으면 대치) 실행해 Gatekeeper 차단 없이 열리고 "SimLauncher에 관하여" 버전이 맞는지 본다. 이 Mac 에서 만든 앱이 응용 프로그램 폴더에 이미 있으면 quarantine 이 없으므로 받은 앱으로 대치해야 확인이 된다. 다른 Mac·새 사용자 계정에서 보는 것은 6절과 같다.
+9. **내려받은 게시본 확인**: README 설치 링크에서 브라우저로 dmg 를 받는다(quarantine 이 붙는다). `xattr -p com.apple.quarantine`·`shasum -a 256`·5절의 dmg `spctl` 을 확인하고, 앱을 응용 프로그램 폴더로 옮겨(이미 있으면 대치) 실행해 Gatekeeper 차단 없이 열리고 "SimLauncher에 관하여" 버전이 맞는지 본다. 이 Mac 에서 만든 앱이 응용 프로그램 폴더에 이미 있으면 quarantine 이 없으므로 받은 앱으로 대치해야 확인이 된다. 이 확인은 받은 파일의 Gatekeeper 판정과 실행 허용을 본다. 로드맵 단계 목표의 "다른 Mac" 확인(이 Mac 의 인증서·이전 실행 허용이 없는 환경)은 6절대로 다른 Mac 이나 새 사용자 계정에서 같은 방법으로 한다.
 
 ## 4. 단계와 실패 시 할 일
 진행 중에는 `==> [n/12] <단계>` 가, 실패하면 `실패 [n/12] <단계>: <이유>` 와 다음 할 일이 보인다. 실패해도 산출물·로그는 지우지 않는다(다음 실행이 처음에 `build/release` 를 지운다). 배포 이름 dmg 는 12단계를 통과해야만 생긴다.
@@ -83,7 +83,7 @@ CONVENTIONS §5 "수동 확인" 행의 배포 서명 빌드는 `make release` �
 1. Terminal 에서 `make release` 를 실행하고 확인 질문에 `n` 을 입력한다 (종료 3, 제출 없음).
 2. `build/release/export/SimLauncher.app` 이 남는다: Developer ID·Hardened Runtime 으로 서명했고 공증 전이다. 이 Mac 에서 만든 파일이라 quarantine 표시가 없어 그대로 실행된다.
 
-Gatekeeper 동작(다운로드한 앱의 첫 실행)까지 보려면 공증된 dmg 를 브라우저로 내려받아(quarantine 이 붙도록) 다른 Mac 이나 이 Mac 의 새 사용자 계정에서 연다. "확인되지 않은 개발자"·"손상되었습니다" 차단 없이 열려야 하고, 인터넷에서 받은 앱마다 뜨는 첫 실행 확인은 정상이다.
+Gatekeeper 동작(다운로드한 앱의 첫 실행)까지 보려면 공증된 dmg 를 브라우저로 내려받아(quarantine 이 붙도록) 연다. 이 Mac 에서는 받은 앱을 응용 프로그램 폴더에 대치해 받은 파일의 판정을 보고(3절 9번), 이 Mac 의 인증서·이전 실행 허용이 없는 환경(로드맵 단계 목표의 "다른 Mac")은 다른 Mac 이나 이 Mac 의 새 사용자 계정에서 본다. "확인되지 않은 개발자"·"손상되었습니다" 차단 없이 열려야 하고, 인터넷에서 받은 앱마다 뜨는 첫 실행 확인은 정상이다.
 
 ## 7. 서명 설정
 설정은 모두 `Env`(`Tuist/ProjectDescriptionHelpers/Project+Templates.swift`)에 있다 (ARCHITECTURE §2 빌드 설정).
