@@ -29,8 +29,19 @@ SimLauncher 배포본을 만드는 방법이다. `make release` 가 [`scripts/re
 3. **Terminal 에서** `make release` 를 실행한다. 확인 질문은 터미널(`/dev/tty`)에서만 답을 받는다.
 4. 5단계 요약(앱·버전·서명·dmg 서명 인증서·커밋·공증 프로필·배포 dmg 경로·제출할 파일)을 확인하고 `y` 를 입력한다. 커밋되지 않은 변경이 있으면 그 목록이 다시 보이고 `dirty` 를 입력해야 계속한다.
 5. 공증은 보통 몇 분 걸린다(최대 1시간 기다린다). 끝에 최종 검사가 모두 통과하고 `완료: build/release/SimLauncher-<버전>.dmg` 와 SHA-256 이 보이면 끝이다.
-
-태그는 `<버전>`(예 `1.0.0`, `v` 없음)으로 붙인다. 태그·GitHub Release 게시 절차는 로드맵 6단계의 릴리스 작업에서 이 문서에 더한다.
+6. **태그**: dmg 를 만든 main 커밋에 주석 태그 `<버전>`(예 `1.0.0`, `v` 없음)을 붙여 push 한다. pre-push 훅과 GitHub 룰셋은 main 브랜치만 막으므로 태그 push 는 막히지 않고, 태그 push 로 도는 워크플로도 없다.
+   ```sh
+   git tag -a <버전> <커밋> -m "SimLauncher <버전>"
+   git push origin refs/tags/<버전>
+   ```
+7. **GitHub Release**: 태그로 Release 를 게시하고 dmg 를 첨부한다. 노트는 한국어(README 와 같은 해요체)로 할 수 있는 것·준비물·설치하기(README `#설치하기` 링크)·파일 SHA-256 을 적는다.
+   ```sh
+   gh release create <버전> build/release/SimLauncher-<버전>.dmg --verify-tag --latest \
+     --title "SimLauncher <버전>" --notes-file <노트 파일>
+   ```
+   README 설치 링크(`releases/latest`)는 Pre-release 가 아닌 가장 최근 Release 를 가리킨다. 샘플 카탈로그 워크플로의 Release(`sample-catalog`·`sample-build-…`)는 Pre-release 라 겹치지 않는다. `--latest` 로 이 Release 를 최신으로 지정한다.
+8. **게시 확인**: `gh api repos/<소유자>/<레포>/releases/latest -q .tag_name` 이 `<버전>` 이고, 첨부 파일의 `digest` 에서 `sha256:` 접두어를 뺀 값(`… -q '.assets[].digest | ltrimstr("sha256:")'`)이 5번의 SHA-256 과 같은지 본다.
+9. **내려받은 게시본 확인**: README 설치 링크에서 브라우저로 dmg 를 받는다(quarantine 이 붙는다). `xattr -p com.apple.quarantine`·`shasum -a 256`·5절의 dmg `spctl` 을 확인하고, 앱을 응용 프로그램 폴더로 옮겨(이미 있으면 대치) 실행해 Gatekeeper 차단 없이 열리고 "SimLauncher에 관하여" 버전이 맞는지 본다. 이 Mac 에서 만든 앱이 응용 프로그램 폴더에 이미 있으면 quarantine 이 없으므로 받은 앱으로 대치해야 확인이 된다. 이 확인은 받은 파일의 Gatekeeper 판정과 실행 허용을 본다. 로드맵 단계 목표의 "다른 Mac" 확인(이 Mac 의 인증서·이전 실행 허용이 없는 환경)은 6절대로 다른 Mac 이나 새 사용자 계정에서 같은 방법으로 한다.
 
 ## 4. 단계와 실패 시 할 일
 진행 중에는 `==> [n/12] <단계>` 가, 실패하면 `실패 [n/12] <단계>: <이유>` 와 다음 할 일이 보인다. 실패해도 산출물·로그는 지우지 않는다(다음 실행이 처음에 `build/release` 를 지운다). 배포 이름 dmg 는 12단계를 통과해야만 생긴다.
@@ -72,7 +83,7 @@ CONVENTIONS §5 "수동 확인" 행의 배포 서명 빌드는 `make release` �
 1. Terminal 에서 `make release` 를 실행하고 확인 질문에 `n` 을 입력한다 (종료 3, 제출 없음).
 2. `build/release/export/SimLauncher.app` 이 남는다: Developer ID·Hardened Runtime 으로 서명했고 공증 전이다. 이 Mac 에서 만든 파일이라 quarantine 표시가 없어 그대로 실행된다.
 
-Gatekeeper 동작(다운로드한 앱의 첫 실행)까지 보려면 공증된 dmg 를 브라우저로 내려받아(quarantine 이 붙도록) 다른 Mac 이나 이 Mac 의 새 사용자 계정에서 연다. "확인되지 않은 개발자"·"손상되었습니다" 차단 없이 열려야 하고, 인터넷에서 받은 앱마다 뜨는 첫 실행 확인은 정상이다.
+Gatekeeper 동작(다운로드한 앱의 첫 실행)까지 보려면 공증된 dmg 를 브라우저로 내려받아(quarantine 이 붙도록) 연다. 이 Mac 에서는 받은 앱을 응용 프로그램 폴더에 대치해 받은 파일의 판정을 보고(3절 9번), 이 Mac 의 인증서·이전 실행 허용이 없는 환경(로드맵 단계 목표의 "다른 Mac")은 다른 Mac 이나 이 Mac 의 새 사용자 계정에서 본다. "확인되지 않은 개발자"·"손상되었습니다" 차단 없이 열려야 하고, 인터넷에서 받은 앱마다 뜨는 첫 실행 확인은 정상이다.
 
 ## 7. 서명 설정
 설정은 모두 `Env`(`Tuist/ProjectDescriptionHelpers/Project+Templates.swift`)에 있다 (ARCHITECTURE §2 빌드 설정).
