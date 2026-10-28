@@ -1,7 +1,7 @@
 import Core
 import SwiftUI
 
-/// 설정 창(⌘,)의 내용: 빌드 카탈로그 목록, 주소 입력·등록, 등록 결과 줄. 입력은 모두 Model 의 이벤트 메서드로 넘긴다.
+/// 설정 창(⌘,)의 내용: 빌드 카탈로그 목록, 주소 입력·등록, 등록 결과 줄, Android SDK 위치. 입력은 모두 Model 의 이벤트 메서드로 넘긴다.
 /// Settings 씬의 View 는 앱 시작 때 한 번 만들어지고 창을 닫아도 남으므로, 열고 닫을 때마다 `onAppear`·`onDisappear` 로 알린다.
 public struct SettingsView: View {
   let model: SettingsModel
@@ -29,6 +29,7 @@ public struct SettingsView: View {
           self.resultLine(result)
         }
       }
+      AndroidSDKLocationSection(model: self.model)
     }
     .formStyle(.grouped)
     .frame(minWidth: 560, maxWidth: 560, minHeight: 320)
