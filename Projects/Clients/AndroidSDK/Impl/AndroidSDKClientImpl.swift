@@ -233,8 +233,9 @@ public struct AndroidSDKClientImpl: AndroidSDKClient {
     }
   }
 
-  /// 위치(없으면 기본 위치만 가장 가까운 있는 조상)와, 받을 패키지마다 최종 경로의 가장 가까운 있는 조상이 쓸 수 있는 디렉터리이고
-  /// 볼륨이 링크를 지원해야 한다. 고른 폴더가 없거나 파일·깨진 링크면 쓸 수 없다.
+  /// 위치(없으면 기본 위치만 가장 가까운 있는 조상)와, 받을 패키지마다 최종 경로의 가장 가까운 있는 조상이 쓸 수 있는 디렉터리여야 하고,
+  /// 위치(또는 그 조상)의 볼륨이 링크와 `RENAME_EXCL` 을 지원해야 한다 (`SDKVolume.supportsInstall`. 볼륨은 위치에서만 본다).
+  /// 고른 폴더가 없거나 파일·깨진 링크면 쓸 수 없다.
   private func checkWritable(_ root: AndroidSDKRoot, pending: [AndroidSelectedPackage]) throws(AndroidSDKInstallError) {
     let rootKind = SDKFiles.rootKind(root.url.path(percentEncoded: false))
     let rootFolder: URL
@@ -246,7 +247,7 @@ public struct AndroidSDKClientImpl: AndroidSDKClient {
     default:
       throw .sdkFolderUnavailable
     }
-    guard SDKFiles.isWritableDirectory(rootFolder), self.volume(rootFolder).supportsSymbolicLinks != false else {
+    guard SDKFiles.isWritableDirectory(rootFolder), self.volume(rootFolder).supportsInstall != false else {
       throw .sdkFolderUnavailable
     }
     guard rootKind == .directory else {

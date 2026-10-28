@@ -9,16 +9,29 @@ struct SDKVolume: Equatable, Sendable {
   let name: String?
   /// `volumeSupportsSymbolicLinksKey`. 읽지 못하면 nil (지원으로 본다).
   let supportsSymbolicLinks: Bool?
+  /// `volumeSupportsExclusiveRenamingKey` (`renamex_np(RENAME_EXCL)`). 읽지 못하면 nil (지원으로 본다).
+  var supportsExclusiveRenaming: Bool?
+
+  /// 설치에 필요한 링크와 `RENAME_EXCL` 을 모두 지원하는지. 하나라도 false 면 false, 둘 다 읽지 못하면 nil.
+  var supportsInstall: Bool? {
+    if self.supportsSymbolicLinks == false || self.supportsExclusiveRenaming == false {
+      return false
+    }
+    return self.supportsSymbolicLinks == nil && self.supportsExclusiveRenaming == nil ? nil : true
+  }
 
   /// 실제 볼륨 값.
   static func read(_ url: URL) -> SDKVolume {
     var info = stat()
     let device = stat(url.path(percentEncoded: false), &info) == 0 ? UInt64(info.st_dev) : nil
-    let values = try? url.resourceValues(forKeys: [.volumeNameKey, .volumeSupportsSymbolicLinksKey])
+    let values = try? url.resourceValues(forKeys: [
+      .volumeNameKey, .volumeSupportsSymbolicLinksKey, .volumeSupportsExclusiveRenamingKey,
+    ])
     return SDKVolume(
       device: device,
       name: values?.volumeName,
-      supportsSymbolicLinks: values?.volumeSupportsSymbolicLinks
+      supportsSymbolicLinks: values?.volumeSupportsSymbolicLinks,
+      supportsExclusiveRenaming: values?.volumeSupportsExclusiveRenaming
     )
   }
 }
@@ -184,7 +197,7 @@ enum SDKFileFacts {
     volume: (URL) -> SDKVolume
   ) -> AndroidSDKFileFacts {
     guard case let .root(root) = choice else {
-      return self.empty(choice, kind: .absent, writable: false, checked: nil, symlinks: nil)
+      return self.empty(choice, kind: .absent, writable: false, checked: nil, supportsInstall: nil)
     }
     let rootPath = root.url.path(percentEncoded: false)
     let kind = SDKFiles.rootKind(rootPath)
@@ -198,10 +211,10 @@ enum SDKFileFacts {
         kind: .absent,
         writable: SDKFiles.isWritableDirectory(ancestor),
         checked: ancestor,
-        symlinks: volume(ancestor).supportsSymbolicLinks
+        supportsInstall: volume(ancestor).supportsInstall
       )
     case .notDirectory, .brokenLink, .unreadable:
-      return self.empty(choice, kind: kind, writable: false, checked: nil, symlinks: nil)
+      return self.empty(choice, kind: kind, writable: false, checked: nil, supportsInstall: nil)
     }
     let systemImages = root.folder(for: .systemImage)
     let systemImagesKind = SDKFiles.kind(systemImages.path(percentEncoded: false))
@@ -211,7 +224,7 @@ enum SDKFileFacts {
       rootWritable: access(rootPath, W_OK) == 0,
       writeCheckedFolder: nil,
       systemImagesWritable: systemImagesKind != .directory || SDKFiles.isWritableDirectory(systemImages),
-      volumeSupportsSymbolicLinks: volume(root.url).supportsSymbolicLinks,
+      volumeSupportsInstall: volume(root.url).supportsInstall,
       platformTools: self.tool(root.folder(for: .platformTools), executable: "adb"),
       emulator: self.tool(root.folder(for: .emulator), executable: "emulator"),
       systemImagesFolder: systemImagesKind,
@@ -224,7 +237,7 @@ enum SDKFileFacts {
     let path = url.path(percentEncoded: false)
     let kind = SDKFiles.rootKind(path)
     guard kind == .directory else {
-      return (AndroidSDKFolderFacts(kind: kind, entries: nil, volumeSupportsSymbolicLinks: nil), false)
+      return (AndroidSDKFolderFacts(kind: kind, entries: nil, volumeSupportsInstall: nil), false)
     }
     let entries = (try? FileManager.default.contentsOfDirectory(atPath: path)).map { names in
       names.sorted().map { name in
@@ -242,7 +255,7 @@ enum SDKFileFacts {
     let facts = AndroidSDKFolderFacts(
       kind: .directory,
       entries: entries,
-      volumeSupportsSymbolicLinks: volume(url).supportsSymbolicLinks
+      volumeSupportsInstall: volume(url).supportsInstall
     )
     return (facts, access(path, W_OK) == 0 && systemImagesWritable)
   }
@@ -253,7 +266,7 @@ enum SDKFileFacts {
     kind: AndroidSDKRootKind,
     writable: Bool,
     checked: URL?,
-    symlinks: Bool?
+    supportsInstall: Bool?
   ) -> AndroidSDKFileFacts {
     AndroidSDKFileFacts(
       root: choice,
@@ -261,7 +274,7 @@ enum SDKFileFacts {
       rootWritable: writable,
       writeCheckedFolder: checked,
       systemImagesWritable: true,
-      volumeSupportsSymbolicLinks: symlinks,
+      volumeSupportsInstall: supportsInstall,
       platformTools: .absent,
       emulator: .absent,
       systemImagesFolder: .absent,

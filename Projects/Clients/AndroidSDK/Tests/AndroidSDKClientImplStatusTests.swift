@@ -169,6 +169,16 @@ struct AndroidSDKClientImplStatusTests {
     #expect(await harness.client.checkSDK().installBlocker == .unsupportedVolume)
   }
 
+  @Test("링크는 지원해도 RENAME_EXCL 을 지원하지 않는 볼륨이면 unsupportedVolume (설치·후보 모두)")
+  func noExclusiveRenaming() async throws {
+    let volume = SDKVolume(device: 1, name: "Share", supportsSymbolicLinks: true, supportsExclusiveRenaming: false)
+    let harness = try Self.harness(volume: volume)
+    defer { harness.directory.remove() }
+
+    #expect(await harness.client.checkSDK().installBlocker == .unsupportedVolume)
+    #expect(await harness.client.inspectCandidateFolder(harness.directory.url).candidate == .unsupportedVolume)
+  }
+
   @Test("provider 는 공개 메서드마다 한 번 부른다 (후보 판정은 부르지 않는다)")
   func providerOncePerCall() async throws {
     let harness = try Self.harness()

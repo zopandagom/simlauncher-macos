@@ -6,6 +6,36 @@ import Testing
 @testable import AndroidSDKImpl
 
 struct SDKFilesTests {
+  @Test(
+    "설치 지원 볼륨: 링크·RENAME_EXCL 중 하나라도 false 면 false, 둘 다 nil 이면 nil, 그 밖은 true",
+    arguments: [
+      VolumeCase(true, true, true), VolumeCase(true, nil, true), VolumeCase(nil, true, true),
+      VolumeCase(nil, nil, nil), VolumeCase(false, true, false), VolumeCase(true, false, false),
+      VolumeCase(false, nil, false), VolumeCase(nil, false, false), VolumeCase(false, false, false),
+    ]
+  )
+  func volumeSupportsInstall(_ item: VolumeCase) {
+    let volume = SDKVolume(
+      device: 1,
+      name: "V",
+      supportsSymbolicLinks: item.symbolicLinks,
+      supportsExclusiveRenaming: item.exclusiveRenaming
+    )
+    #expect(volume.supportsInstall == item.expected)
+  }
+
+  struct VolumeCase: Sendable {
+    let symbolicLinks: Bool?
+    let exclusiveRenaming: Bool?
+    let expected: Bool?
+
+    init(_ symbolicLinks: Bool?, _ exclusiveRenaming: Bool?, _ expected: Bool?) {
+      self.symbolicLinks = symbolicLinks
+      self.exclusiveRenaming = exclusiveRenaming
+      self.expected = expected
+    }
+  }
+
   @Test("source.properties 의 Pkg.Revision (키 앞뒤 공백 무시, 처음 것), 없거나 형식이 틀리면 nil")
   func revisionProperties() {
     #expect(SDKFiles.revision(properties: "Pkg.UserSrc=false\nPkg.Revision=37.0.1\n") == AndroidRevision(

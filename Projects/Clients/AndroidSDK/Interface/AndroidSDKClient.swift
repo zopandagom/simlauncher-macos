@@ -67,7 +67,7 @@ public enum AndroidSDKPlanError: Error, Hashable, Sendable {
   case repositoryUnreadable
   /// 이 Mac 에 맞는 패키지가 없다 (라이선스 원문이 없는 것도 여기 든다: 앱 업데이트가 필요할 수 있다).
   case noCompatiblePackage(AndroidSDKComponent)
-  /// SDK 위치를 쓸 수 없다 (위치 문제·쓰기 권한·링크 미지원 볼륨).
+  /// SDK 위치를 쓸 수 없다 (위치 문제·쓰기 권한·링크나 `RENAME_EXCL` 미지원 볼륨).
   case sdkFolderUnavailable
   case cancelled
 }
@@ -83,7 +83,7 @@ public enum AndroidSDKInstallError: Error, Hashable, Sendable {
   case archiveUnsafe(AndroidSDKComponent)
   /// 저장 공간이 모자라다. required 는 필요한 바이트(어림 포함), available 은 여유(읽지 못하면 nil).
   case insufficientDiskSpace(AndroidSDKComponent, required: Int64, available: Int64?)
-  /// SDK 폴더를 만들 수 없다·쓸 수 없다·파일이 있다·링크 미지원 볼륨.
+  /// SDK 폴더를 만들 수 없다·쓸 수 없다·파일이 있다·링크나 `RENAME_EXCL` 미지원 볼륨.
   case sdkFolderUnavailable
   /// 최종 경로에 이미 무엇인가 생겼다 (Android Studio 가 그사이 설치했을 수 있다). 덮어쓰지 않았다.
   case destinationExists(AndroidSDKComponent)

@@ -79,7 +79,7 @@ struct AndroidSDKClientImplPrecheckTests {
     #expect(harness.download.calls.isEmpty)
   }
 
-  @Test("쓰기 확인: 쓸 수 없는 루트(0o555)·링크 미지원 볼륨이면 받지 않고 sdkFolderUnavailable")
+  @Test("쓰기 확인: 쓸 수 없는 루트(0o555)·링크나 RENAME_EXCL 미지원 볼륨이면 받지 않고 sdkFolderUnavailable")
   func precheckRoot() async throws {
     let readOnly = try Harness()
     defer { readOnly.directory.remove() }
@@ -91,6 +91,13 @@ struct AndroidSDKClientImplPrecheckTests {
     defer { usb.directory.remove() }
     #expect(try await usb.install(usb.plan()).result == .failure(.sdkFolderUnavailable))
     #expect(usb.download.calls.isEmpty)
+
+    let share = try Harness(volume: { _ in
+      SDKVolume(device: 1, name: "Share", supportsSymbolicLinks: true, supportsExclusiveRenaming: false)
+    })
+    defer { share.directory.remove() }
+    #expect(try await share.install(share.plan()).result == .failure(.sdkFolderUnavailable))
+    #expect(share.download.calls.isEmpty)
   }
 
   @Test("고른 폴더가 없으면 만들지 않고 sdkFolderUnavailable (기본 위치는 만든다)")
