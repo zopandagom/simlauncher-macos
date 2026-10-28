@@ -12,10 +12,12 @@ public enum AndroidSDKFolderCandidate: Hashable, Sendable {
   /// 심볼릭 링크를 지원하지 않는 볼륨이다 → 저장하지 않는다.
   case unsupportedVolume
 
-  /// Android Studio·sdkmanager 가 SDK 루트에 만드는 폴더 이름.
+  /// Android Studio·sdkmanager 가 SDK 루트에 만드는 폴더 중 Android SDK 에만 쓰는 이름.
+  /// `tools`·`licenses`·`ndk`·`sources`·`platforms`(Cordova·Ionic 프로젝트)·`emulator` 처럼 다른 폴더에도 흔한 이름은
+  /// 넣지 않는다 (그런 폴더가 있는 프로젝트·작업 폴더를 SDK 로 보고 사용자 파일 사이에 설치하지 않게).
+  /// Studio·SimLauncher 가 설치한 SDK 에는 `platform-tools` 가 있다.
   public static let sdkFolderNames: Set<String> = [
-    "platform-tools", "emulator", "system-images", "platforms", "build-tools",
-    "cmdline-tools", "tools", "licenses", "ndk", "sources",
+    "platform-tools", "system-images", "build-tools", "cmdline-tools",
   ]
 
   /// 내용 판정에서 세지 않는 이름 (Finder 메타데이터와 이 앱의 남은 스테이징).

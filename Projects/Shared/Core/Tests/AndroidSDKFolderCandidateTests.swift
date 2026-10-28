@@ -49,6 +49,17 @@ struct AndroidSDKFolderCandidateTests {
     #expect(Self.judge([Self.file(".hidden")]) == .otherContents)
   }
 
+  @Test("다른 폴더에도 흔한 이름(tools·licenses·ndk·sources·platforms·emulator)만으로는 SDK 가 아니다 → otherContents")
+  func commonNamesAreNotSDK() {
+    #expect(Self.judge([Self.folder("platforms"), Self.folder("www"), Self.folder("plugins")]) == .otherContents)
+    for name in ["tools", "licenses", "ndk", "sources", "platforms", "emulator"] {
+      #expect(!AndroidSDKFolderCandidate.sdkFolderNames.contains(name))
+      #expect(Self.judge([Self.folder(name)]) == .otherContents)
+      #expect(Self.judge([Self.folder(name), Self.file("README.md"), Self.folder("src")]) == .otherContents)
+    }
+    #expect(Self.judge([Self.folder("tools"), Self.folder("platform-tools")]) == .sdk)
+  }
+
   @Test("종류: 없음·깨진 링크 → missing, 파일 → notDirectory, 읽기 실패·항목을 읽지 못함 → unreadable")
   func kinds() {
     #expect(Self.judge(nil, kind: .absent) == .missing)

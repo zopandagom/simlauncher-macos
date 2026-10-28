@@ -212,7 +212,7 @@ struct AndroidSDKClientImplStatusTests {
     let base = harness.directory.url
     try FileTree.directory(base, "readonly", mode: 0o555)
     try FileTree.directory(base, "images/system-images", mode: 0o555)
-    try FileTree.directory(base, "target/emulator")
+    try FileTree.directory(base, "target/platform-tools")
     try FileTree.link(base, "link", to: harness.directory.child("target").path(percentEncoded: false))
 
     #expect(await harness.client.inspectCandidateFolder(harness.directory.child("readonly")) == (.empty, false))
