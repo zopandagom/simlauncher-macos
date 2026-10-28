@@ -73,3 +73,43 @@ struct PreferencesClientFakeTests {
     #expect(statuses.contains(.invalid(.empty)))
   }
 }
+
+struct PreferencesClientFakeAndroidTests {
+  @Test("SDK 위치: 넣은 값을 읽고, 쓰기는 nil 이면 absent·문자열이면 path, 호출을 기록한다")
+  func sdkPath() throws {
+    let fake = PreferencesClientFake(androidSDKPath: AndroidSDKPathSetting(value: .path("/a"), isLocked: false))
+
+    #expect(fake.androidSDKPath() == AndroidSDKPathSetting(value: .path("/a"), isLocked: false))
+    try fake.setAndroidSDKPath("/b")
+    #expect(fake.storedAndroidSDKPath.value == .path("/b"))
+    try fake.setAndroidSDKPath(nil)
+    #expect(fake.storedAndroidSDKPath == .absent)
+    #expect(fake.calls == [.androidSDKPath, .setAndroidSDKPath("/b"), .setAndroidSDKPath(nil)])
+  }
+
+  @Test("SDK 위치가 잠겼으면 locked, 값은 그대로")
+  func sdkPathLocked() {
+    let locked = AndroidSDKPathSetting(value: .path("/a"), isLocked: true)
+    let fake = PreferencesClientFake(androidSDKPath: locked)
+
+    #expect(throws: PreferencesError.locked) { try fake.setAndroidSDKPath(nil) }
+    #expect(fake.storedAndroidSDKPath == locked)
+  }
+
+  @Test("지문: 더하기는 합집합, 잠겼으면 locked 이고 그대로")
+  func licenses() throws {
+    let fake = PreferencesClientFake(androidSDKPath: .absent, androidLicenses: ["a"])
+
+    try fake.addAcceptedAndroidLicenses(["b"])
+    #expect(fake.acceptedAndroidLicenses() == ["a", "b"])
+
+    fake.setStoredAndroidLicenses(["admin"], isLocked: true)
+    #expect(throws: PreferencesError.locked) { try fake.addAcceptedAndroidLicenses(["c"]) }
+    #expect(fake.storedAndroidLicenses == ["admin"])
+    #expect(fake.calls == [
+      .addAcceptedAndroidLicenses(["b"]),
+      .acceptedAndroidLicenses,
+      .addAcceptedAndroidLicenses(["c"]),
+    ])
+  }
+}
