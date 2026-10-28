@@ -59,7 +59,7 @@ extension AndroidDevicesText {
     }
   }
 
-  /// 만들기·삭제·초기화의 파일 작업 실패 본문.
+  /// 목록 읽기·만들기·삭제·초기화의 파일 작업 실패 본문.
   private static func fileMessage(for error: AndroidEmulatorError) -> String? {
     switch error {
     case let .invalidDeviceName(problem):
@@ -69,7 +69,7 @@ extension AndroidDevicesText {
     case .creationOptionUnavailable:
       String(localized: "고른 시스템 이미지를 더 이상 찾을 수 없습니다. 목록을 새로 고친 뒤 다시 만드세요.", bundle: .module)
     case .avdFolderUnavailable:
-      String(localized: "기기 폴더(~/.android/avd)에 쓰지 못했습니다. 폴더 권한과 저장 공간을 확인하세요.", bundle: .module)
+      String(localized: "기기 폴더(~/.android/avd)를 읽거나 쓰지 못했습니다. 폴더 권한과 저장 공간을 확인하세요.", bundle: .module)
     case .fileOperationFailed:
       String(localized: "기기 파일을 모두 지우지 못했습니다. 폴더 권한을 확인한 뒤 다시 시도하세요.", bundle: .module)
     case let .unsafeDeviceFolder(folder):
