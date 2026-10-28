@@ -1,0 +1,332 @@
+import AndroidEmulatorInterface
+import Core
+import Foundation
+import Synchronization
+
+/// 테스트·Example 용 `AndroidEmulatorClient`. 호출을 기록하고, 결과·에러·지연·멈춤을 바꿀 수 있다. 파일·명령을 쓰지 않는다.
+/// - `boot` 가 성공하면 그 기기를 `.booted`, `shutdown` 이 성공하면 `.shutdown` 으로 바꾼 목록을 저장한다.
+///   목록에 없는 기기여도 성공하고, 쓸 수 있는지·상태는 검사하지 않는다 (Model 가드를 테스트한다).
+/// - `create` 는 Impl 과 같은 순서로 검사한다: 표시 이름(`DeviceName.problem` → `.invalidDeviceName`) → 선택지
+///   (`creationOptions.contains` 가 아니면 `.creationOptionUnavailable`) → AVD 이름(`AndroidAVDName.make`, 지금 목록의 이름 기준,
+///   nil 이면 `.nameUnavailable`). 성공하면 꺼진 새 기기(표시 이름은 `DeviceName.normalized`)를 목록 끝에 더한다.
+/// - `delete` 는 성공하면 그 기기를 빼고 설정한 결과(기본 `.deleted`)를 돌려준다. 목록에 없는 기기여도 성공한다.
+/// - `erase` 는 성공해도 목록을 바꾸지 않는다.
+/// - 멈춤(`suspend…`) 중인 호출은 기록만 하고 재개까지 기다린다 (취소를 받지 않는다). 결과는 깨어난 뒤의 설정을 쓴다.
+public final class AndroidEmulatorClientFake: AndroidEmulatorClient {
+  public enum Call: Hashable, Sendable {
+    case fetchDevices
+    case boot(AndroidVirtualDevice.ID)
+    case shutdown(AndroidVirtualDevice.ID)
+    case create(displayName: String, image: AndroidSystemImageRef, profile: AndroidDeviceProfile.ID)
+    case delete(AndroidVirtualDevice.ID)
+    case erase(AndroidVirtualDevice.ID)
+  }
+
+  private enum SuspendableCall: Hashable {
+    case fetch, boot, shutdown, create, delete, erase
+    case bootOf(AndroidVirtualDevice.ID)
+  }
+
+  private struct State {
+    var inventory: AndroidDeviceInventory
+    var calls: [Call] = []
+    var fetchError: AndroidEmulatorError?
+    var bootErrors: [AndroidVirtualDevice.ID: AndroidEmulatorError] = [:]
+    var bootError: AndroidEmulatorError?
+    var shutdownError: AndroidEmulatorError?
+    var createError: AndroidEmulatorError?
+    var deleteResult: Result<AndroidDeleteOutcome, AndroidEmulatorError> = .success(.deleted)
+    var eraseError: AndroidEmulatorError?
+    var delay: Duration?
+    var suspended: Set<SuspendableCall> = []
+    var waiters: [SuspendableCall: [CheckedContinuation<Void, Never>]] = [:]
+  }
+
+  private let state: Mutex<State>
+
+  public init(inventory: AndroidDeviceInventory = AndroidDeviceInventory(devices: [], creationOptions: .emptySample)) {
+    self.state = Mutex(State(inventory: inventory))
+  }
+
+  /// 들어온 호출 순서대로. 멈춘 호출도 들어오는 즉시 기록된다.
+  public var calls: [Call] {
+    self.state.withLock { $0.calls }
+  }
+
+  /// 지금 저장된 목록 (`boot`·`create` 등이 바꾼 뒤의 값).
+  public var inventory: AndroidDeviceInventory {
+    self.state.withLock { $0.inventory }
+  }
+
+  public func fetchDevices() async throws(AndroidEmulatorError) -> AndroidDeviceInventory {
+    self.record(.fetchDevices)
+    await self.waitIfSuspended(.fetch)
+    await self.sleepIfNeeded()
+    let result: Result<AndroidDeviceInventory, AndroidEmulatorError> = self.state.withLock { state in
+      if let error = state.fetchError {
+        return .failure(error)
+      }
+      return .success(state.inventory)
+    }
+    return try result.get()
+  }
+
+  public func boot(_ id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError) {
+    self.record(.boot(id))
+    await self.waitIfSuspended(.boot)
+    await self.waitIfSuspended(.bootOf(id))
+    await self.sleepIfNeeded()
+    let result: Result<Void, AndroidEmulatorError> = self.state.withLock { state in
+      if let error = state.bootErrors[id] ?? state.bootError {
+        return .failure(error)
+      }
+      state.inventory = Self.inventory(state.inventory, setting: id, to: .booted)
+      return .success(())
+    }
+    try result.get()
+  }
+
+  public func shutdown(_ id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError) {
+    self.record(.shutdown(id))
+    await self.waitIfSuspended(.shutdown)
+    await self.sleepIfNeeded()
+    let result: Result<Void, AndroidEmulatorError> = self.state.withLock { state in
+      if let error = state.shutdownError {
+        return .failure(error)
+      }
+      state.inventory = Self.inventory(state.inventory, setting: id, to: .shutdown)
+      return .success(())
+    }
+    try result.get()
+  }
+
+  public func create(
+    displayName: String,
+    image: AndroidSystemImageRef,
+    profile: AndroidDeviceProfile.ID
+  ) async throws(AndroidEmulatorError) -> AndroidVirtualDevice.ID {
+    self.record(.create(displayName: displayName, image: image, profile: profile))
+    await self.waitIfSuspended(.create)
+    await self.sleepIfNeeded()
+    let result: Result<AndroidVirtualDevice.ID, AndroidEmulatorError> = self.state.withLock { state in
+      if let error = state.createError {
+        return .failure(error)
+      }
+      if let problem = DeviceName.problem(in: displayName) {
+        return .failure(.invalidDeviceName(problem))
+      }
+      let inventory = state.inventory
+      guard
+        inventory.creationOptions.contains(image: image, profile: profile),
+        let chosenProfile = AndroidDeviceProfile.profile(profile)
+      else {
+        return .failure(.creationOptionUnavailable)
+      }
+      let normalized = DeviceName.normalized(displayName)
+      let existing = Set(inventory.devices.map(\.id.rawValue))
+      guard let name = AndroidAVDName.make(from: normalized, existing: existing) else {
+        return .failure(.nameUnavailable)
+      }
+      let device = AndroidVirtualDevice(
+        id: AndroidVirtualDevice.ID(name),
+        displayName: normalized,
+        systemImage: image,
+        formFactor: chosenProfile.formFactor,
+        state: .shutdown,
+        availability: .available
+      )
+      state.inventory = AndroidDeviceInventory(
+        devices: inventory.devices + [device],
+        creationOptions: inventory.creationOptions
+      )
+      return .success(device.id)
+    }
+    return try result.get()
+  }
+
+  public func delete(_ id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError) -> AndroidDeleteOutcome {
+    self.record(.delete(id))
+    await self.waitIfSuspended(.delete)
+    await self.sleepIfNeeded()
+    let result: Result<AndroidDeleteOutcome, AndroidEmulatorError> = self.state.withLock { state in
+      if case .success = state.deleteResult {
+        state.inventory = AndroidDeviceInventory(
+          devices: state.inventory.devices.filter { $0.id != id },
+          creationOptions: state.inventory.creationOptions
+        )
+      }
+      return state.deleteResult
+    }
+    return try result.get()
+  }
+
+  public func erase(_ id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError) {
+    self.record(.erase(id))
+    await self.waitIfSuspended(.erase)
+    await self.sleepIfNeeded()
+    if let error = self.state.withLock({ $0.eraseError }) {
+      throw error
+    }
+  }
+
+  private func record(_ call: Call) {
+    self.state.withLock { $0.calls.append(call) }
+  }
+
+  private func sleepIfNeeded() async {
+    if let delay = self.state.withLock({ $0.delay }) {
+      try? await Task.sleep(for: delay)
+    }
+  }
+
+  private func suspend(_ call: SuspendableCall) {
+    self.state.withLock { _ = $0.suspended.insert(call) }
+  }
+
+  private func resume(_ call: SuspendableCall) {
+    let waiters = self.state.withLock { state in
+      state.suspended.remove(call)
+      return state.waiters.removeValue(forKey: call) ?? []
+    }
+    for waiter in waiters {
+      waiter.resume()
+    }
+  }
+
+  private func waitIfSuspended(_ call: SuspendableCall) async {
+    // 플래그 확인과 continuation 저장을 한 lock 안에서 해야 resume 이 저장보다 먼저 와도 놓치지 않는다.
+    await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+      let wait = self.state.withLock { state in
+        guard state.suspended.contains(call) else { return false }
+        state.waiters[call, default: []].append(continuation)
+        return true
+      }
+      if !wait {
+        continuation.resume()
+      }
+    }
+  }
+
+  private static func inventory(
+    _ inventory: AndroidDeviceInventory,
+    setting id: AndroidVirtualDevice.ID,
+    to newState: AndroidVirtualDevice.State
+  ) -> AndroidDeviceInventory {
+    let devices = inventory.devices.map { device in
+      guard device.id == id else { return device }
+      return AndroidVirtualDevice(
+        id: device.id,
+        displayName: device.displayName,
+        systemImage: device.systemImage,
+        formFactor: device.formFactor,
+        state: newState,
+        availability: device.availability
+      )
+    }
+    return AndroidDeviceInventory(devices: devices, creationOptions: inventory.creationOptions)
+  }
+}
+
+// 테스트가 결과·멈춤을 정하는 설정 메서드. `private` 상태(`state`)를 쓰므로 같은 파일에 둔다.
+public extension AndroidEmulatorClientFake {
+  func setInventory(_ inventory: AndroidDeviceInventory) {
+    self.state.withLock { $0.inventory = inventory }
+  }
+
+  func setFetchError(_ error: AndroidEmulatorError?) {
+    self.state.withLock { $0.fetchError = error }
+  }
+
+  /// 모든 기기의 `boot` 에러. 기기별 에러(`setBootError(_:for:)`)가 먼저다.
+  func setBootError(_ error: AndroidEmulatorError?) {
+    self.state.withLock { $0.bootError = error }
+  }
+
+  /// 이 기기의 `boot` 에러 (함께 켜기에서 일부만 실패하게 할 때).
+  func setBootError(_ error: AndroidEmulatorError?, for id: AndroidVirtualDevice.ID) {
+    self.state.withLock { $0.bootErrors[id] = error }
+  }
+
+  func setShutdownError(_ error: AndroidEmulatorError?) {
+    self.state.withLock { $0.shutdownError = error }
+  }
+
+  /// 검사 전에 던질 `create` 에러.
+  func setCreateError(_ error: AndroidEmulatorError?) {
+    self.state.withLock { $0.createError = error }
+  }
+
+  /// `delete` 결과. 성공이면 그 기기를 목록에서 뺀다.
+  func setDeleteResult(_ result: Result<AndroidDeleteOutcome, AndroidEmulatorError>) {
+    self.state.withLock { $0.deleteResult = result }
+  }
+
+  func setEraseError(_ error: AndroidEmulatorError?) {
+    self.state.withLock { $0.eraseError = error }
+  }
+
+  /// Example 용. 모든 호출이 결과를 내기 전에 이만큼 기다린다 (`nil` 이면 바로).
+  func setDelay(_ delay: Duration?) {
+    self.state.withLock { $0.delay = delay }
+  }
+
+  /// 이후 `fetchDevices()` 가 기록만 하고 `resumeFetches()` 까지 기다린다.
+  func suspendFetches() {
+    self.suspend(.fetch)
+  }
+
+  /// 기다리는 `fetchDevices()` 를 모두 깨우고, 이후 호출은 기다리지 않는다.
+  func resumeFetches() {
+    self.resume(.fetch)
+  }
+
+  /// 이후 `boot(_:)` 가 기록만 하고 `resumeBoots()` 까지 기다린다.
+  func suspendBoots() {
+    self.suspend(.boot)
+  }
+
+  func resumeBoots() {
+    self.resume(.boot)
+  }
+
+  /// 이후 이 기기의 `boot(_:)` 만 기록하고 `resumeBoot(of:)` 까지 기다린다 (다른 기기는 기다리지 않는다).
+  func suspendBoot(of id: AndroidVirtualDevice.ID) {
+    self.suspend(.bootOf(id))
+  }
+
+  func resumeBoot(of id: AndroidVirtualDevice.ID) {
+    self.resume(.bootOf(id))
+  }
+
+  func suspendShutdowns() {
+    self.suspend(.shutdown)
+  }
+
+  func resumeShutdowns() {
+    self.resume(.shutdown)
+  }
+
+  func suspendCreates() {
+    self.suspend(.create)
+  }
+
+  func resumeCreates() {
+    self.resume(.create)
+  }
+
+  func suspendDeletes() {
+    self.suspend(.delete)
+  }
+
+  func resumeDeletes() {
+    self.resume(.delete)
+  }
+
+  func suspendErases() {
+    self.suspend(.erase)
+  }
+
+  func resumeErases() {
+    self.resume(.erase)
+  }
+}
