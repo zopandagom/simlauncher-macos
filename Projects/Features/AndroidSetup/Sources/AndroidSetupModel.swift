@@ -13,6 +13,9 @@ import WorkspaceInterface
 /// (AndroidSDK Client 는 마무리 단계 안에서만 취소를 미루고 다음 패키지를 시작하지 않는다). 설치 중이 아니어도 종료 표시를 세워
 /// App 이 다른 대기(녹화 저장·런타임 설치)를 기다리는 동안 확인·설치 버튼을 끈다.
 /// 설정 창에서 SDK 위치가 바뀌면 App 이 `sdkLocationChanged()` 를 부른다.
+/// 앱 시작 뒤 첫 확인 결과가 셋 다 설치됨(위치가 폴더)이면 `isFinished` 가 true 가 되어 App 이 Android 기기 목록 화면을 보인다.
+/// 아니면 이 화면에서 설치가 끝나 셋 다 설치됨이 된 뒤 "기기 목록 열기"(`deviceListButtonTapped()`)로 넘어간다 (자동 전환하지 않는다).
+/// 기기 목록의 "Android 도구" 버튼은 App 이 `reopened()` 로 이 화면을 다시 연다.
 @MainActor
 @Observable
 public final class AndroidSetupModel {
@@ -31,6 +34,8 @@ public final class AndroidSetupModel {
   public private(set) var isVerifyingInstall = false
   /// 띄울 알림. 한 번에 하나.
   public private(set) var notice: AndroidSetupNotice?
+  /// true 면 App 이 Android 기기 목록 화면을 보인다.
+  public private(set) var isFinished = false
 
   /// 계획을 받는 중이거나 동의를 기다리는 중이다 (확인·설치 버튼을 막는다).
   public var isPlanning: Bool {
@@ -52,6 +57,14 @@ public final class AndroidSetupModel {
     }
     return !self.isChecking && !self.isPlanning && self.install == nil && !self.isVerifyingInstall
       && !self.isTerminating
+  }
+
+  /// 마지막 확인이 셋 다 설치됨(위치가 폴더)이고, 확인·계획·설치·설치 결과 확인 중이 아니다 ("기기 목록 열기").
+  public var canOpenDeviceList: Bool {
+    guard case let .checked(status) = self.checkState, Self.isDeviceListReady(status) else {
+      return false
+    }
+    return !self.isChecking && !self.isPlanning && self.install == nil && !self.isVerifyingInstall
   }
 
   public var canCancelInstall: Bool {
@@ -81,6 +94,9 @@ public final class AndroidSetupModel {
   @ObservationIgnored private var installTask: Task<Void, Never>?
   /// 지금 설치의 번호. 끝난 설치에서 늦게 온 진행 알림을 무시한다.
   @ObservationIgnored private var installID: UUID?
+  /// 앱 시작 뒤 첫 확인이 끝나기 전이다. 첫 확인 결과가 셋 다 설치됨이면 곧바로 기기 목록으로 넘어간다
+  /// (다시 연 뒤에는 넘어가지 않는다: 사용자가 도구 화면을 보려고 연 것이다).
+  @ObservationIgnored private var autoFinishPending = true
   /// App 이 종료를 확정했다. 이후 확인·계획·설치를 시작하지 않고, 설치가 끝나도 다시 확인하지 않는다.
   /// 관찰되는 값이라 바뀌면 `canInstall`·`canRecheck` 를 쓰는 화면이 다시 그려진다 (바깥에는 그 둘로만 보인다).
   private var isTerminating = false
@@ -120,6 +136,21 @@ public final class AndroidSetupModel {
     guard self.install == nil else { return }
     self.discardPlan()
     await self.check()
+  }
+
+  // MARK: - 기기 목록
+
+  /// "기기 목록 열기". 열 수 없으면(`canOpenDeviceList`) 무시한다.
+  public func deviceListButtonTapped() {
+    guard self.canOpenDeviceList else { return }
+    self.isFinished = true
+  }
+
+  /// App 이 기기 목록 화면의 "Android 도구" 요청을 받아 부른다. 지난 설치 결과를 지운다.
+  /// 확인은 다시 나타난 View 의 `onAppear()` 가 한다.
+  public func reopened() {
+    self.isFinished = false
+    self.lastResult = nil
   }
 
   // MARK: - 계획·동의
@@ -196,11 +227,14 @@ public final class AndroidSetupModel {
     task.cancel()
     await task.value
   }
+}
 
+// `private(set)` 상태를 바꾸므로 같은 파일에 둔다.
+public extension AndroidSetupModel {
   // MARK: - Finder·알림
 
   /// 쓸 수 없는 SDK 위치·구성 요소 폴더·설치를 막는 폴더를 Finder 에서 보인다. 실패하면 알림을 띄운다.
-  public func revealButtonTapped(_ target: AndroidSetupRevealTarget) async {
+  func revealButtonTapped(_ target: AndroidSetupRevealTarget) async {
     guard let url = self.revealURL(target) else { return }
     do throws(WorkspaceError) {
       try await self.workspace.revealInFinder(url)
@@ -209,11 +243,17 @@ public final class AndroidSetupModel {
     }
   }
 
-  public func noticeDismissed() {
+  func noticeDismissed() {
     self.notice = nil
   }
 
   // MARK: - 내부
+
+  /// 기기 목록을 열 수 있는 확인 결과: 셋 다 설치됨이고 위치가 폴더다.
+  private static func isDeviceListReady(_ status: AndroidSDKStatus) -> Bool {
+    guard case .folder = status.location else { return false }
+    return status.isReady
+  }
 
   private var canStartCheck: Bool {
     !self.isPlanning && self.install == nil && !self.isTerminating
@@ -315,6 +355,10 @@ public final class AndroidSetupModel {
         self.lastResult?.locationChecked(status.location.root)
         self.isVerifyingInstall = false
       } while self.recheckRequested
+      if self.autoFinishPending, case let .checked(status) = self.checkState, Self.isDeviceListReady(status) {
+        self.isFinished = true
+      }
+      self.autoFinishPending = false
       self.isChecking = false
       self.checkTask = nil
     }

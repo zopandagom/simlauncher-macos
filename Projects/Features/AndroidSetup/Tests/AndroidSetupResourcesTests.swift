@@ -211,6 +211,7 @@ enum AndroidSetupTextCatalog {
       AndroidSetupText.lockedLocationNote, AndroidSetupText.installButton, AndroidSetupText.recheckButton,
       AndroidSetupText.recheckingLabel, AndroidSetupText.revealButton, AndroidSetupText.openSettingsButton,
       AndroidSetupText.cancelButton, AndroidSetupText.okButton, AndroidSetupText.fetchingPlanLabel,
+      AndroidSetupText.deviceListButton,
       AndroidSetupText.consentTitle, AndroidSetupText.consentMessage, AndroidSetupText.consentRecordNote,
       AndroidSetupText.acceptButton, AndroidSetupText.downloadSizeLabel, AndroidSetupText.installSizeLabel,
       AndroidSetupText.requiredSpaceLabel, AndroidSetupText.unknownVolumeName,
