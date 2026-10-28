@@ -113,6 +113,7 @@ final class FakeADB: Sendable {
   private struct State {
     var emulators: [String: Emulator] = [:]
     var devicesFail = false
+    var killFails = false
     var onDevices: (@Sendable () -> Void)?
     var onKill: (@Sendable (String) -> Void)?
   }
@@ -125,6 +126,11 @@ final class FakeADB: Sendable {
 
   func setDevicesFail(_ fail: Bool) {
     self.state.withLock { $0.devicesFail = fail }
+  }
+
+  /// true 면 `emu kill` 은 handler 를 부른 뒤 종료 코드 1 (앱 밖에서 끄는 중이라 막혔다가 시간 초과된 흉내).
+  func setKillFails(_ fails: Bool) {
+    self.state.withLock { $0.killFails = fails }
   }
 
   /// `adb devices` 를 받을 때마다 (답하기 전에) 부른다.
@@ -160,9 +166,9 @@ final class FakeADB: Sendable {
     case ["shell", "getprop", "sys.boot_completed"]:
       return Self.result(0, emulator?.bootCompleted == true ? "1\r\n" : "\r\n")
     case ["emu", "kill"]:
-      let handler = self.state.withLock { $0.onKill }
+      let (handler, fails) = self.state.withLock { ($0.onKill, $0.killFails) }
       handler?(serial)
-      return Self.result(emulator == nil ? 1 : 0, "OK: killing emulator, bye bye\r\nOK\r\n")
+      return Self.result(fails || emulator == nil ? 1 : 0, "OK: killing emulator, bye bye\r\nOK\r\n")
     default:
       return Self.result(1, "")
     }
@@ -223,6 +229,15 @@ struct Harness {
     serialSearchLimit: .milliseconds(150),
     adbTimeout: .seconds(10)
   )
+  /// 기다림 단계에서 잠금을 푸는 테스트용: 끄기 기다림만 넉넉히 둔다.
+  static let longShutdownTiming = AndroidEmulatorClientImpl.Timing(
+    pollInterval: .milliseconds(10),
+    bootLimit: .milliseconds(400),
+    shutdownPollInterval: .milliseconds(10),
+    shutdownLimit: .seconds(10),
+    serialSearchLimit: .milliseconds(150),
+    adbTimeout: .seconds(10)
+  )
   static let image = AndroidSystemImageRef(apiFolder: "android-37.0", tag: "google_apis", abi: "arm64-v8a")!
 
   let directory: TemporaryDirectory
@@ -234,8 +249,14 @@ struct Harness {
   let client: AndroidEmulatorClientImpl
   let processes = ProcessHooks()
 
-  /// - Parameter sdkChoice: nil 이면 `sdk` 폴더. emulator·adb·기본 이미지(`image`)를 설치해 둔다.
-  init(sdkChoice: AndroidSDKRootChoice? = nil, installSDK: Bool = true) throws {
+  /// - Parameters:
+  ///   - sdkChoice: nil 이면 `sdk` 폴더. emulator·adb·기본 이미지(`image`)를 설치해 둔다.
+  ///   - timing: 기본은 `Harness.timing`.
+  init(
+    sdkChoice: AndroidSDKRootChoice? = nil,
+    installSDK: Bool = true,
+    timing: AndroidEmulatorClientImpl.Timing = Harness.timing
+  ) throws {
     let directory = try TemporaryDirectory()
     self.directory = directory
     self.home = directory.url.appending(path: "home", directoryHint: .isDirectory)
@@ -261,7 +282,7 @@ struct Harness {
       sdkRoot: { choice },
       home: self.home,
       host: .aarch64,
-      timing: Self.timing
+      timing: timing
     )
   }
 
@@ -342,9 +363,26 @@ struct Harness {
     self.command.invocations.filter { !$0.isLaunch }.map(\.arguments)
   }
 
+  /// `adb devices` 를 받은 횟수.
+  var devicesCallCount: Int {
+    self.adbCalls.count(where: { $0 == ["devices"] })
+  }
+
   var launches: [CommandClientFake.Invocation] {
     self.command.invocations.filter(\.isLaunch)
   }
+}
+
+/// `condition` 이 참이 될 때까지 10ms 마다 본다. `limit` 이 지나면 false.
+func waitUntil(_ limit: Duration = .seconds(2), _ condition: () -> Bool) async throws -> Bool {
+  let deadline = ContinuousClock.now.advanced(by: limit)
+  while !condition() {
+    guard ContinuousClock.now < deadline else {
+      return false
+    }
+    try await Task.sleep(for: .milliseconds(10))
+  }
+  return true
 }
 
 /// 던진 `AndroidEmulatorError` 를 돌려준다. 던지지 않으면 nil. 값을 돌려주는 호출은 `_ = try await …` 로 감싼다.

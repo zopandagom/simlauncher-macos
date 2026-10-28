@@ -5,7 +5,7 @@ import Foundation
 import Testing
 @testable import AndroidEmulatorImpl
 
-/// `boot(_:)`·`shutdown(_:)`: emulator 는 `CommandClientFake.launch`, 잠금은 테스트의 `flock`, adb 는 흉내. 간격·제한은 짧게 줄였다.
+/// `boot(_:)`: emulator 는 `CommandClientFake.launch`, 잠금은 테스트의 `flock`, adb 는 흉내. 간격·제한은 짧게 줄였다.
 struct AndroidEmulatorClientImplPowerTests {
   static let pixel = AndroidVirtualDevice.ID("Pixel")
 
@@ -30,6 +30,62 @@ struct AndroidEmulatorClientImplPowerTests {
       "HOME": FileFacts.path(harness.home),
       "ANDROID_EMULATOR_WAIT_TIME_BEFORE_KILL": "120",
     ])
+  }
+
+  @Test("띄우기 전에 emulator 와 같은 HOME 으로 adb devices 를 한 번 부른다 (adb 가 먼저 adbkey 를 만들게)")
+  func bootCallsADBBeforeLaunch() async throws {
+    let harness = try Harness()
+    defer { harness.cleanUp() }
+    try harness.addDevice("Pixel")
+    let adb = harness.adb
+    harness.processes.onLaunch { _, _ in adb.set("emulator-5554", FakeADB.Emulator(name: "Pixel")) }
+
+    try await harness.client.boot(Self.pixel)
+
+    let invocations = harness.command.invocations
+    let devicesIndex = invocations.firstIndex { !$0.isLaunch && $0.arguments == ["devices"] }
+    let launchIndex = invocations.firstIndex(where: \.isLaunch)
+    let devices = try #require(devicesIndex)
+    let launch = try #require(launchIndex)
+    #expect(devices < launch)
+    #expect(invocations[devices].executable.path(percentEncoded: false) == FileFacts
+      .path(harness.sdk) + "/platform-tools/adb")
+    #expect(invocations[devices].environment == ["HOME": FileFacts.path(harness.home), "ADB_MDNS": "0"])
+  }
+
+  @Test("띄우기 전 adb devices 가 실패해도 켜기는 이어진다")
+  func bootContinuesWhenADBFailsBeforeLaunch() async throws {
+    let harness = try Harness()
+    defer { harness.cleanUp() }
+    try harness.addDevice("Pixel")
+    let adb = harness.adb
+    adb.setDevicesFail(true)
+    // 처리기는 실패 여부를 읽은 뒤 불리므로 첫 호출만 실패한다.
+    adb.onDevices { adb.setDevicesFail(false) }
+    harness.processes.onLaunch { _, _ in adb.set("emulator-5554", FakeADB.Emulator(name: "Pixel")) }
+
+    try await harness.client.boot(Self.pixel)
+
+    let invocations = harness.command.invocations
+    let launchIndex = invocations.firstIndex(where: \.isLaunch)
+    let launch = try #require(launchIndex)
+    #expect(harness.launches.count == 1)
+    #expect(invocations[..<launch].count { $0.arguments == ["devices"] } == 1)
+  }
+
+  @Test("띄우기 전 adb devices 중에 취소되면 띄우지 않고 cancelled")
+  func bootCancelledDuringADBBeforeLaunch() async throws {
+    let harness = try Harness()
+    defer { harness.cleanUp() }
+    try harness.addDevice("Pixel")
+    let client = harness.client
+    // 처리기는 boot 를 부른 Task 안에서 동기로 불린다.
+    harness.adb.onDevices { withUnsafeCurrentTask { $0?.cancel() } }
+
+    let task = Task { await thrownError { try await client.boot(Self.pixel) } }
+    #expect(try await waitUntil { harness.devicesCallCount >= 1 })
+    #expect(await task.value == .cancelled)
+    #expect(harness.launches.isEmpty)
   }
 
   @Test("이미 잠금이 있으면 띄우지 않고 완료를 기다린다")
@@ -123,91 +179,11 @@ struct AndroidEmulatorClientImplPowerTests {
     let client = harness.client
 
     let task = Task { await thrownError { try await client.boot(Self.pixel) } }
-    try await Task.sleep(for: .milliseconds(50))
+    // 띄운 뒤(기다림 중) 취소한다.
+    #expect(try await waitUntil { harness.launches.count == 1 })
     task.cancel()
     #expect(await task.value == .cancelled)
     #expect(harness.launches.count == 1)
     #expect(harness.command.interrupts.isEmpty)
-  }
-
-  // MARK: - 끄기
-
-  @Test("꺼진 기기는 명령 없이 성공")
-  func shutdownAlreadyOff() async throws {
-    let harness = try Harness()
-    defer { harness.cleanUp() }
-    try harness.addDevice("Pixel")
-
-    try await harness.client.shutdown(Self.pixel)
-    #expect(harness.command.invocations.isEmpty)
-  }
-
-  @Test("serial 이 있으면 emu kill 뒤 잠금이 풀릴 때까지 기다린다")
-  func shutdownKillsBySerial() async throws {
-    let harness = try Harness()
-    defer { harness.cleanUp() }
-    let folder = try harness.addDevice("Pixel")
-    harness.locks.hold(folder)
-    harness.adb.set("emulator-5554", FakeADB.Emulator(name: "Pixel"))
-    let locks = harness.locks
-    harness.adb.onKill { _ in locks.release(folder) }
-
-    try await harness.client.shutdown(Self.pixel)
-    #expect(harness.adbCalls.last == ["-s", "emulator-5554", "emu", "kill"])
-    #expect(harness.command.interrupts.isEmpty)
-  }
-
-  @Test("serial 이 없고 이 앱이 띄운 프로세스면 SIGINT 를 보낸다")
-  func shutdownInterruptsOwnProcess() async throws {
-    let harness = try Harness()
-    defer { harness.cleanUp() }
-    let folder = try harness.addDevice("Pixel")
-    let (adb, locks, command) = (harness.adb, harness.locks, harness.command)
-    harness.processes.onLaunch { _, _ in
-      locks.hold(folder)
-      adb.set("emulator-5554", FakeADB.Emulator(name: "Pixel"))
-    }
-    try await harness.client.boot(Self.pixel)
-    adb.set("emulator-5554", nil)
-    harness.processes.onInterrupt { process in
-      locks.release(folder)
-      command.exit(process, status: 0)
-    }
-
-    try await harness.client.shutdown(Self.pixel)
-    #expect(harness.command.interrupts.count == 1)
-    #expect(harness.adbCalls.allSatisfy { !$0.contains("kill") })
-  }
-
-  @Test("serial 도 앱 프로세스도 없으면 잠시 다시 찾은 뒤 adbUnavailable")
-  func shutdownWithoutSerial() async throws {
-    let harness = try Harness()
-    defer { harness.cleanUp() }
-    try harness.locks.hold(harness.addDevice("Pixel"))
-
-    #expect(await thrownError { try await harness.client.shutdown(Self.pixel) } == .adbUnavailable)
-    #expect(harness.adbCalls.count(where: { $0 == ["devices"] }) > 2)
-  }
-
-  @Test("serial 을 다시 찾는 중 잠금이 풀리면 성공")
-  func shutdownLockReleasedWhileSearching() async throws {
-    let harness = try Harness()
-    defer { harness.cleanUp() }
-    let folder = try harness.addDevice("Pixel")
-    harness.locks.hold(folder)
-    let locks = harness.locks
-    harness.adb.onDevices { locks.release(folder) }
-
-    try await harness.client.shutdown(Self.pixel)
-  }
-
-  @Test("잠금이 풀리지 않으면 shutdownTimedOut")
-  func shutdownTimesOut() async throws {
-    let harness = try Harness()
-    defer { harness.cleanUp() }
-    try harness.locks.hold(harness.addDevice("Pixel"))
-    harness.adb.set("emulator-5554", FakeADB.Emulator(name: "Pixel"))
-
-    #expect(await thrownError { try await harness.client.shutdown(Self.pixel) } == .shutdownTimedOut)
   }
 }

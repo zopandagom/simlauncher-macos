@@ -14,7 +14,8 @@ public protocol AndroidEmulatorClient: Sendable {
   func fetchDevices() async throws(AndroidEmulatorError) -> AndroidDeviceInventory
 
   /// 켠다: 실행 직전에 다시 읽어 없으면 `.deviceNotFound`, 쓸 수 없으면 `.deviceUnavailable`.
-  /// 이미 실행 중(잠금)이면 띄우지 않고 완료를 기다린다. 아니면 emulator 를 띄우고(`launch`)
+  /// 이미 실행 중(잠금)이면 띄우지 않고 완료를 기다린다. 아니면 `adb devices` 를 한 번 부른 뒤(adb 가 먼저
+  /// `~/.android/adbkey` 를 0600 으로 만들게. 실패는 무시) emulator 를 띄우고(`launch`)
   /// `sys.boot_completed=1` 까지 1초 간격으로 확인한다. 완료 전에 프로세스가 끝나면 `.emulatorExited`,
   /// 10분이 지나면 `.bootTimedOut` (에뮬레이터는 끄지 않는다). 띄우지 않고 기다리는 중 잠금이 풀리고 앱 프로세스도 없으면
   /// `.emulatorExited(nil)`. Task 취소는 기다림만 멈추고 `.cancelled` (끄지 않는다).
@@ -22,7 +23,10 @@ public protocol AndroidEmulatorClient: Sendable {
 
   /// 끈다: 꺼져 있으면 성공. adb 로 그 AVD 의 serial 을 찾아 `emu kill`, serial 이 없고 이 앱이 띄운 프로세스면 SIGINT.
   /// 잠금이 풀릴 때(또는 이 앱이 띄운 프로세스가 끝날 때)까지 최대 150초 기다리고, 넘으면 `.shutdownTimedOut`.
-  /// serial 도 프로세스도 없으면 10초 동안 1초 간격으로 다시 찾은 뒤(앱 밖에서 막 켜 adb 에 아직 안 보이는 경우) `.adbUnavailable`.
+  /// serial 도 프로세스도 없으면 10초 동안 1초 간격으로 다시 찾는다(앱 밖에서 막 켜 adb 에 아직 안 보이는 경우). 그래도 없을 때
+  /// adb 가 답했으면 같은 150초까지 잠금 풀림을 기다리고(앱 밖에서 끄는 중이면 저장이 끝날 때까지 콘솔이 이름에 답하지 않는다),
+  /// adb 가 답하지 않으면 `.adbUnavailable`. `emu kill` 이 실패하고 이 앱이 띄운 프로세스가 없으면, 잠금이 풀렸거나 잠금이 잡힌 채
+  /// 그 기기가 이름에 답하지 않을 때는 기다리고, 아니면(잠금을 알 수 없을 때 포함) `.adbUnavailable`.
   func shutdown(_ id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError)
 
   /// 새 AVD 를 만들고 그 이름을 돌려준다. 표시 이름에 `DeviceName.problem` 이 있으면 `.invalidDeviceName`.
@@ -79,7 +83,7 @@ public enum AndroidEmulatorError: Error, Hashable, Sendable {
   /// 완료 전에 끝났다. nil = 앱이 띄우지 않고 기다리기만 한 에뮬레이터라 종료 코드를 모른다.
   case emulatorExited(Int32?)
   case bootTimedOut
-  /// adb 실행·서버 시작 실패, 또는 끌 serial 을 찾지 못했다.
+  /// adb 실행·서버 시작 실패, 또는 끌 기기를 adb 로 확인하지 못했다(adb 가 답하지 않거나, 이름에 답하는 기기에 `emu kill` 이 실패).
   case adbUnavailable
   case shutdownTimedOut
   case invalidDeviceName(DeviceNameProblem)

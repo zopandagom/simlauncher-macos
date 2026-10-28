@@ -17,7 +17,7 @@ public struct AndroidEmulatorClientImpl: AndroidEmulatorClient {
     var shutdownPollInterval: Duration
     /// 끄기를 기다리는 한도 (에뮬레이터 자체 감시가 120초면 스스로 강제 종료한다).
     var shutdownLimit: Duration
-    /// 끌 serial 이 adb 에 아직 없을 때 다시 찾는 한도.
+    /// 끌 serial 이 adb 에 아직 없을 때 다시 찾는 한도. 지나도 adb 가 답했으면 실패하지 않고 잠금 풀림을 기다린다(앱 밖에서 끄는 중).
     var serialSearchLimit: Duration
     /// adb 명령 하나의 한도.
     var adbTimeout: Duration
@@ -88,7 +88,8 @@ public struct AndroidEmulatorClientImpl: AndroidEmulatorClient {
     )
   }
 
-  /// 다시 읽기 → 쓸 수 있는지 → (이 앱이 띄운 프로세스가 돌거나 잠금이 있으면 띄우지 않고) emulator 띄우기 → 완료 기다리기.
+  /// 다시 읽기 → 쓸 수 있는지 → (이 앱이 띄운 프로세스가 돌거나 잠금이 있으면 띄우지 않고) `adb devices` 한 번(실패 무시)
+  /// → emulator 띄우기 → 완료 기다리기.
   @concurrent
   public func boot(_ id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError) {
     let tools = try await SDKTools.resolve(self.sdkRoot())
@@ -108,6 +109,9 @@ public struct AndroidEmulatorClientImpl: AndroidEmulatorClient {
 
   /// 다시 읽기 → 꺼져 있으면 성공 → serial 이면 `emu kill`, 없고 이 앱이 띄운 프로세스면 SIGINT,
   /// 둘 다 없으면 serial 을 다시 찾는다 → 잠금 풀림(또는 프로세스 끝남)까지 기다린다.
+  /// 앱 밖에서 끄는 중이면 저장이 끝날 때까지 adb 목록에는 남고 `emu avd name`·`emu kill` 이 막힌다(실측). 그래서 다시 찾아도
+  /// 없는데 adb 는 답했거나, `emu kill` 이 실패했는데 이 앱이 띄운 프로세스가 없고 잠금이 풀렸거나 잠금이 잡힌 채 그 기기가 이름에 답하지 않으면
+  /// 실패로 끝내지 않고 잠금 풀림을 기다린다.
   @concurrent
   public func shutdown(_ id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError) {
     let tools = try await SDKTools.resolve(self.sdkRoot())
@@ -120,24 +124,45 @@ public struct AndroidEmulatorClientImpl: AndroidEmulatorClient {
     let adb = self.adb(tools)
     var serial = target.emulator?.serial
     if serial == nil, process == nil {
-      guard let found = try await self.searchSerial(name, folder: target.entry.folder, adb: adb) else {
+      switch try await self.searchSerial(name, folder: target.entry.folder, adb: adb) {
+      case let .found(found):
+        serial = found
+      case .released:
         return
+      case .unidentified:
+        break
       }
-      serial = found
     }
+    try await self.requestShutdown(serial: serial, process: process, target: target, adb: adb)
+    try await self.waitForShutdown(name, folder: target.entry.folder, process: process)
+  }
+
+  /// serial 이면 `emu kill`(실패하면 SIGINT 또는 앱 밖 종료 확인), 없으면 이 앱이 띄운 프로세스에 SIGINT.
+  private func requestShutdown(
+    serial: String?,
+    process: LaunchedProcess?,
+    target: ReadDevice,
+    adb: ADBCommand
+  ) async throws(AndroidEmulatorError) {
     if let serial {
       do throws(AndroidEmulatorError) {
         try await adb.emuKill(serial: serial)
       } catch {
-        guard error != .cancelled, let process else {
+        guard error != .cancelled else {
           throw error
         }
-        self.command.interrupt(process)
+        if let process {
+          self.command.interrupt(process)
+        } else {
+          guard try await self.externalShutdownInProgress(target.entry.name, folder: target.entry.folder, adb: adb)
+          else {
+            throw error
+          }
+        }
       }
     } else if let process {
       self.command.interrupt(process)
     }
-    try await self.waitForShutdown(name, folder: target.entry.folder, process: process)
   }
 
   /// 표시 이름 검사 → 선택지 다시 읽기 → 폴더 준비 → 이름 정하기 → 독점 생성.
