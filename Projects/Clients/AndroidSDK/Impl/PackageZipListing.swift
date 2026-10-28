@@ -1,4 +1,5 @@
-/// `zipinfo -s -T` 출력 (AppBundle Impl 의 `ZipListing` 과 같은 해석. Impl 끼리 import 할 수 없어 복제한다).
+/// `zipinfo -s -T` 출력 (AppBundle Impl 의 `ZipListing` 을 복제했다. Impl 끼리 import 할 수 없다).
+/// 다른 점은 종류 판정 하나다: 여기서는 링크(`l`)를 이름 끝 `/` 보다 먼저 본다 (`ZipListing` 은 `/` 로 끝나는 링크를 폴더로 본다).
 /// 중앙 디렉터리만 읽은 값이라 이름·크기를 믿지 않고, 풀기 전에 빨리 거절하는 데만 쓴다.
 struct PackageZipListing: Equatable {
   enum Kind: Equatable {
@@ -75,10 +76,11 @@ struct PackageZipListing: Equatable {
     guard !name.isEmpty else {
       return nil
     }
+    // 링크(`l`)는 이름 끝 `/` 보다 먼저 본다: `top/a/` 인 링크를 폴더로 보면 "링크 아래 항목" 검사를 빠져나간다.
     let kind: Kind = switch columns[0].first {
     case "d": .directory
-    case _ where name.hasSuffix("/"): .directory
     case "l": .symlink
+    case _ where name.hasSuffix("/"): .directory
     case "-": .file
     default: .other
     }

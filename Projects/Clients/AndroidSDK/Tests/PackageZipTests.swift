@@ -41,12 +41,13 @@ struct PackageZipTests {
     #expect(listing.declaredTotalBytes == 5_498_732_664)
   }
 
-  @Test("종류: d → 폴더, 끝 / → 폴더, l → 링크, - → 파일. 넘치는 크기 합은 Int64.max")
+  @Test("종류: d → 폴더, l → 링크 (이름이 / 로 끝나도), 끝 / → 폴더, - → 파일. 넘치는 크기 합은 Int64.max")
   func kinds() {
     let listing = Self.listing([
-      Self.folder("a/"), Self.file("a/b/"), Self.link("a/l"), Self.file("a/f", size: .max), Self.file("a/g", size: 1),
+      Self.folder("a/"), Self.file("a/b/"), Self.link("a/l"), Self.link("a/m/"),
+      Self.file("a/f", size: .max), Self.file("a/g", size: 1),
     ])
-    #expect(listing.entries.map(\.kind) == [.directory, .directory, .symlink, .file, .file])
+    #expect(listing.entries.map(\.kind) == [.directory, .directory, .symlink, .symlink, .file, .file])
     #expect(listing.declaredTotalBytes == .max)
   }
 
@@ -100,6 +101,7 @@ struct PackageZipTests {
   func writesThroughLink() {
     #expect(Self.check([Self.link("platform-tools/lib"), Self.file("platform-tools/lib/evil")]) == .unsafe)
     #expect(Self.check([Self.link("platform-tools/lib"), Self.file("platform-tools/library")]) == nil)
+    #expect(Self.check([Self.link("platform-tools/lib/"), Self.file("platform-tools/lib/evil")]) == .unsafe)
   }
 
   // MARK: - 푼 뒤 트리 검사
