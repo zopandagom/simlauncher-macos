@@ -5,12 +5,12 @@ struct AndroidSDKFolderCandidateTests {
   static func judge(
     _ entries: [AndroidSDKFolderEntry]?,
     kind: AndroidSDKRootKind = .directory,
-    symlinks: Bool? = true
+    supportsInstall: Bool? = true
   ) -> AndroidSDKFolderCandidate {
     AndroidSDKFolderCandidate.judge(AndroidSDKFolderFacts(
       kind: kind,
       entries: entries,
-      volumeSupportsSymbolicLinks: symlinks
+      volumeSupportsInstall: supportsInstall
     ))
   }
 
@@ -79,11 +79,11 @@ struct AndroidSDKFolderCandidateTests {
     #expect(Self.judge(nil) == .unreadable)
   }
 
-  @Test("링크를 지원하지 않는 볼륨이면 unsupportedVolume (SDK 폴더여도), nil 은 지원으로 본다")
+  @Test("링크·RENAME_EXCL 을 지원하지 않는 볼륨이면 unsupportedVolume (SDK 폴더여도), nil 은 지원으로 본다")
   func unsupportedVolume() {
-    #expect(Self.judge([Self.folder("platform-tools")], symlinks: false) == .unsupportedVolume)
-    #expect(Self.judge([], symlinks: false) == .unsupportedVolume)
-    #expect(Self.judge([], symlinks: nil) == .empty)
+    #expect(Self.judge([Self.folder("platform-tools")], supportsInstall: false) == .unsupportedVolume)
+    #expect(Self.judge([], supportsInstall: false) == .unsupportedVolume)
+    #expect(Self.judge([], supportsInstall: nil) == .empty)
   }
 
   @Test("저장: canSave 는 empty·sdk, shouldSave 는 sdk 는 항상·empty 는 쓸 수 있을 때만")

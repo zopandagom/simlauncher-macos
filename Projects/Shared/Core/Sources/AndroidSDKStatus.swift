@@ -55,7 +55,7 @@ public enum AndroidSDKLocation: Hashable, Sendable {
 public enum AndroidSDKInstallBlocker: Hashable, Sendable {
   /// 이 폴더에 쓸 수 없다 (SDK 위치, 없으면 가장 가까운 있는 조상, 또는 `system-images`).
   case notWritable(URL)
-  /// 심볼릭 링크를 지원하지 않는 볼륨(exFAT·FAT·SMB 등)이다.
+  /// 심볼릭 링크나 `RENAME_EXCL` 을 지원하지 않는 볼륨(exFAT·FAT·SMB 등)이다.
   case unsupportedVolume
 }
 
@@ -116,7 +116,7 @@ public struct AndroidSDKStatus: Hashable, Sendable {
   /// - 위치 없음: 기본 위치면 `.absent`(셋 다 없음), 고른 폴더면 `.unusable(.missing)` (만들지 않는다).
   /// - 파일·디렉터리가 아닌 것을 가리키는 링크 → `.notDirectory`, 깨진 링크 → `.brokenLink`, 읽지 못함 → `.unreadable`.
   /// - 디렉터리: 구성 요소마다 판정 (ARCHITECTURE·설계 §3 표).
-  /// 막는 이유 순서: 링크를 지원하지 않는 볼륨(false 일 때만, nil 은 지원으로 본다) → 위치(또는 조상)에 쓸 수 없음 →
+  /// 막는 이유 순서: 링크나 `RENAME_EXCL` 을 지원하지 않는 볼륨(false 일 때만, nil 은 지원으로 본다) → 위치(또는 조상)에 쓸 수 없음 →
   /// `system-images` 에 쓸 수 없음.
   public static func judge(_ facts: AndroidSDKFileFacts) -> AndroidSDKStatus {
     guard case let .root(root) = facts.root else {
@@ -138,7 +138,7 @@ public struct AndroidSDKStatus: Hashable, Sendable {
     case .unreadable:
       return Self.unusable(root, .unreadable)
     }
-    let blocker: AndroidSDKInstallBlocker? = if facts.volumeSupportsSymbolicLinks == false {
+    let blocker: AndroidSDKInstallBlocker? = if facts.volumeSupportsInstall == false {
       .unsupportedVolume
     } else if !facts.rootWritable {
       .notWritable(facts.writeCheckedFolder ?? root.url)
@@ -292,8 +292,9 @@ public struct AndroidSDKFileFacts: Hashable, Sendable {
   public let writeCheckedFolder: URL?
   /// `system-images` 가 있으면 그 `access(W_OK)`, 없으면 true.
   public let systemImagesWritable: Bool
-  /// 위치(없으면 가장 가까운 있는 조상) 볼륨의 `volumeSupportsSymbolicLinks`. 읽지 못하면 nil (지원으로 본다).
-  public let volumeSupportsSymbolicLinks: Bool?
+  /// 위치(없으면 가장 가까운 있는 조상) 볼륨이 링크와 `RENAME_EXCL` 을 모두 지원하는지
+  /// (`volumeSupportsSymbolicLinks`·`volumeSupportsExclusiveRenaming`, 하나라도 false 면 false). 읽지 못하면 nil (지원으로 본다).
+  public let volumeSupportsInstall: Bool?
   public let platformTools: AndroidToolFolderFacts
   public let emulator: AndroidToolFolderFacts
   /// `<root>/system-images`.
@@ -307,7 +308,7 @@ public struct AndroidSDKFileFacts: Hashable, Sendable {
     rootWritable: Bool,
     writeCheckedFolder: URL?,
     systemImagesWritable: Bool,
-    volumeSupportsSymbolicLinks: Bool?,
+    volumeSupportsInstall: Bool?,
     platformTools: AndroidToolFolderFacts,
     emulator: AndroidToolFolderFacts,
     systemImagesFolder: AndroidFileKind,
@@ -318,7 +319,7 @@ public struct AndroidSDKFileFacts: Hashable, Sendable {
     self.rootWritable = rootWritable
     self.writeCheckedFolder = writeCheckedFolder
     self.systemImagesWritable = systemImagesWritable
-    self.volumeSupportsSymbolicLinks = volumeSupportsSymbolicLinks
+    self.volumeSupportsInstall = volumeSupportsInstall
     self.platformTools = platformTools
     self.emulator = emulator
     self.systemImagesFolder = systemImagesFolder

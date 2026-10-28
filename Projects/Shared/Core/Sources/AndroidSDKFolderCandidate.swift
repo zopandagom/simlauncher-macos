@@ -9,7 +9,7 @@ public enum AndroidSDKFolderCandidate: Hashable, Sendable {
   case notDirectory
   case missing
   case unreadable
-  /// 심볼릭 링크를 지원하지 않는 볼륨이다 → 저장하지 않는다.
+  /// 심볼릭 링크나 `RENAME_EXCL` 을 지원하지 않는 볼륨이다 → 저장하지 않는다.
   case unsupportedVolume
 
   /// Android Studio·sdkmanager 가 SDK 루트에 만드는 폴더 중 Android SDK 에만 쓰는 이름.
@@ -45,7 +45,7 @@ public enum AndroidSDKFolderCandidate: Hashable, Sendable {
     }
   }
 
-  /// 종류 → 읽지 못함 → 링크 미지원 볼륨(false 일 때만) → 내용. 깨진 링크는 `.missing`.
+  /// 종류 → 읽지 못함 → 링크·`RENAME_EXCL` 미지원 볼륨(false 일 때만) → 내용. 깨진 링크는 `.missing`.
   public static func judge(_ facts: AndroidSDKFolderFacts) -> AndroidSDKFolderCandidate {
     switch facts.kind {
     case .absent, .brokenLink: return .missing
@@ -56,7 +56,7 @@ public enum AndroidSDKFolderCandidate: Hashable, Sendable {
     guard let entries = facts.entries else {
       return .unreadable
     }
-    if facts.volumeSupportsSymbolicLinks == false {
+    if facts.volumeSupportsInstall == false {
       return .unsupportedVolume
     }
     let counted = entries.filter { !Self.isIgnored($0.name) }
@@ -85,12 +85,13 @@ public struct AndroidSDKFolderFacts: Hashable, Sendable {
   public let kind: AndroidSDKRootKind
   /// 맨 위 항목. 디렉터리가 아니거나 읽지 못하면 nil.
   public let entries: [AndroidSDKFolderEntry]?
-  /// 볼륨의 `volumeSupportsSymbolicLinks`. 읽지 못하면 nil (지원으로 본다).
-  public let volumeSupportsSymbolicLinks: Bool?
+  /// 볼륨이 링크와 `RENAME_EXCL` 을 모두 지원하는지 (`volumeSupportsSymbolicLinks`·`volumeSupportsExclusiveRenaming`, 하나라도 false 면
+  /// false). 읽지 못하면 nil (지원으로 본다).
+  public let volumeSupportsInstall: Bool?
 
-  public init(kind: AndroidSDKRootKind, entries: [AndroidSDKFolderEntry]?, volumeSupportsSymbolicLinks: Bool?) {
+  public init(kind: AndroidSDKRootKind, entries: [AndroidSDKFolderEntry]?, volumeSupportsInstall: Bool?) {
     self.kind = kind
     self.entries = entries
-    self.volumeSupportsSymbolicLinks = volumeSupportsSymbolicLinks
+    self.volumeSupportsInstall = volumeSupportsInstall
   }
 }

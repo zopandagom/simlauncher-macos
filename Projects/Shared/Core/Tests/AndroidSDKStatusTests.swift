@@ -36,7 +36,7 @@ struct AndroidSDKStatusTests {
     writable: Bool = true,
     checked: URL? = nil,
     systemImagesWritable: Bool = true,
-    symlinks: Bool? = true,
+    supportsInstall: Bool? = true,
     platformTools: AndroidToolFolderFacts = Self.installedTool,
     emulator: AndroidToolFolderFacts = Self.installedTool,
     systemImagesFolder: AndroidFileKind = .directory,
@@ -48,7 +48,7 @@ struct AndroidSDKStatusTests {
       rootWritable: writable,
       writeCheckedFolder: checked,
       systemImagesWritable: systemImagesWritable,
-      volumeSupportsSymbolicLinks: symlinks,
+      volumeSupportsInstall: supportsInstall,
       platformTools: platformTools,
       emulator: emulator,
       systemImagesFolder: systemImagesFolder,
@@ -204,9 +204,9 @@ struct AndroidSDKStatusTests {
     #expect(status.installBlocker == .notWritable(ancestor))
   }
 
-  @Test("링크를 지원하지 않는 볼륨: false 면 unsupportedVolume (쓰기보다 먼저), nil 은 지원으로 본다")
+  @Test("링크·RENAME_EXCL 을 지원하지 않는 볼륨: false 면 unsupportedVolume (쓰기보다 먼저), nil 은 지원으로 본다")
   func unsupportedVolume() {
-    #expect(Self.status(Self.facts(writable: false, symlinks: false)).installBlocker == .unsupportedVolume)
-    #expect(Self.status(Self.facts(symlinks: nil)).installBlocker == nil)
+    #expect(Self.status(Self.facts(writable: false, supportsInstall: false)).installBlocker == .unsupportedVolume)
+    #expect(Self.status(Self.facts(supportsInstall: nil)).installBlocker == nil)
   }
 }
