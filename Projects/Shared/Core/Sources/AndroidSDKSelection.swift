@@ -4,8 +4,8 @@ import Foundation
 /// - platform-tools·emulator: path 가 정확히 `platform-tools`·`emulator`, stable 채널, obsolete·미리보기 아님, 이 Mac 에 맞는
 ///   archive(아래)가 있는 것 중 가장 높은 revision.
 /// - 시스템 이미지: tag 가 정확히 `[google_apis]` 하나, codename 없음, base-extension true, abi = 호스트, 숫자 API
-///   (`major[.minor]`), path 가 `system-images;<api>;google_apis;<호스트 abi>` 모양, stable·obsolete·미리보기 아님. 같은 path 면 높은
-/// revision 하나만 두고 API 가 높은 것부터 본다.
+///   (`major[.minor]`), path 가 `system-images;android-…;google_apis;<호스트 abi>` 모양, stable·obsolete·미리보기 아님.
+///   같은 path 면 높은 revision 하나만 두고 API 가 높은 것부터 본다.
 ///   emulator 의존(min-revision)이 이번에 설치할 emulator(없으면 설치된 revision, 모르면 만족)보다 높으면 다음 API 로 내려간다.
 /// - archive: host-os 가 없거나 `macosx`, host-arch 가 없거나 호스트와 같다 (같은 것을 먼저). 파일 이름이
 ///   `^[A-Za-z0-9_][A-Za-z0-9._-]*$` 인 것만 XML 폴더 기준 https 주소로 만든다 (경로·절대 주소·숨김 이름은 거절).
@@ -188,12 +188,13 @@ public enum AndroidSDKSelection {
     package.channel == .stable && !package.obsolete && package.revision.preview == nil
   }
 
-  /// path 가 그대로 설치 경로가 되므로, 고른 tag·abi 와 같은 `system-images;<api>;google_apis;<abi>` 모양만 고른다
-  /// (그 밖의 모양이면 SDK 안 엉뚱한 곳에 설치된다. 상태 판정은 `system-images/<api>/<tag>/<abi>` 를 본다).
+  /// path 가 그대로 설치 경로가 되므로, 고른 tag·abi 와 같은 `system-images;android-…;google_apis;<abi>` 모양만 고른다
+  /// (그 밖의 모양이면 SDK 안 엉뚱한 곳에 설치된다. 상태 판정은 `system-images/<API 폴더>/<tag>/<abi>` 를 본다).
   private static func isSystemImagePath(_ path: AndroidPackagePath, abi: String) -> Bool {
     let components = path.components
-    return components.count == 4 && components[0] == "system-images" && components[2] == "google_apis"
-      && components[3] == abi
+    // 둘째 칸(API 폴더)은 `android-` 로 시작해야 한다: 상태 판정은 숨김(`.` 으로 시작하는) API 폴더를 건너뛴다.
+    return components.count == 4 && components[0] == "system-images" && components[1].hasPrefix("android-")
+      && components[2] == "google_apis" && components[3] == abi
   }
 
   /// 이 Mac 에 맞는 archive 중 host-arch 가 정확히 같은 것을 먼저, 그다음 host-arch 없는 것. 같은 순위면 문서 순서.

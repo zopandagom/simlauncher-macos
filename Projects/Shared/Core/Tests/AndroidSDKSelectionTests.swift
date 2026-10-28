@@ -124,7 +124,7 @@ struct AndroidSDKSelectionTests: AndroidSelectionTesting {
     #expect(Self.problem(images: excluded, missing: [.systemImage]) == .noCompatiblePackage(.systemImage))
   }
 
-  @Test("path 가 system-images;<api>;google_apis;<호스트 abi> 모양이 아니면 제외 (path 가 설치 경로가 된다)")
+  @Test("path 가 system-images;android-…;google_apis;<호스트 abi> 모양이 아니면 제외 (path 가 설치 경로가 된다)")
   func imagePathShape() throws {
     /// type-details 는 호스트(arm64-v8a)·google_apis 그대로 두고 path 만 바꾼다.
     func withPath(_ raw: String) -> AndroidRemotePackage {
@@ -146,6 +146,7 @@ struct AndroidSDKSelectionTests: AndroidSelectionTesting {
       Fixture.image(api: "39", pathTag: "google_apis;extra"),
       withPath("system-images;android-39;google_apis;x86_64"),
       withPath("images;android-39;google_apis;arm64-v8a"),
+      withPath("system-images;.x;google_apis;arm64-v8a"),
     ]
     let plan = try Self.plan(images: excluded + [Fixture.image(api: "30")], missing: [.systemImage])
     #expect(plan.packages.first?.path.raw == "system-images;android-30;google_apis;arm64-v8a")
