@@ -29,6 +29,16 @@ struct AndroidSDKFolderCandidateTests {
       .judge([Self.file(".DS_Store"), Self.file(".localized"), Self.folder(".simlauncher-staging-X")]) == .empty)
   }
 
+  @Test("외장 디스크 맨 위의 볼륨 메타데이터(.fseventsd 등)만 있으면 empty, 다른 숨김 항목이 있으면 otherContents")
+  func volumeRoot() {
+    #expect(Self.judge([
+      Self.folder(".fseventsd"), Self.folder(".Spotlight-V100"), Self.folder(".Trashes"),
+      Self.folder(".TemporaryItems"), Self.folder(".DocumentRevisions-V100"), Self.file(".VolumeIcon.icns"),
+    ]) == .empty)
+    #expect(Self.judge([Self.folder(".fseventsd"), Self.folder("platform-tools")]) == .sdk)
+    #expect(Self.judge([Self.folder(".fseventsd"), Self.file(".hidden")]) == .otherContents)
+  }
+
   @Test("SDK 폴더 이름이 디렉터리로 있으면 sdk (다른 항목이 함께 있어도)")
   func sdk() {
     for name in AndroidSDKFolderCandidate.sdkFolderNames {

@@ -1,6 +1,6 @@
 /// 설정 창에서 고른 폴더의 판정. 사용자 파일 사이에 SDK 구성 요소가 섞이지 않게, 빈 폴더와 SDK 폴더만 저장한다.
 public enum AndroidSDKFolderCandidate: Hashable, Sendable {
-  /// 항목이 없다 (`.DS_Store`·`.localized`·`.simlauncher-staging-*` 는 세지 않는다).
+  /// 항목이 없다 (`.DS_Store`·`.localized`·볼륨 메타데이터(`volumeMetadataNames`)·`.simlauncher-staging-*` 는 세지 않는다).
   case empty
   /// 맨 위에 SDK 폴더 이름(`sdkFolderNames`) 중 하나가 디렉터리로 있다. 다른 항목이 함께 있어도 SDK 다.
   case sdk
@@ -20,9 +20,15 @@ public enum AndroidSDKFolderCandidate: Hashable, Sendable {
     "platform-tools", "system-images", "build-tools", "cmdline-tools",
   ]
 
-  /// 내용 판정에서 세지 않는 이름 (Finder 메타데이터와 이 앱의 남은 스테이징).
+  /// 볼륨 맨 위에 시스템이 만드는 숨김 항목 (외장 디스크 맨 위를 골라도 빈 폴더로 본다).
+  static let volumeMetadataNames: Set<String> = [
+    ".fseventsd", ".Spotlight-V100", ".Trashes", ".TemporaryItems", ".DocumentRevisions-V100", ".VolumeIcon.icns",
+  ]
+
+  /// 내용 판정에서 세지 않는 이름 (Finder·볼륨 메타데이터와 이 앱의 남은 스테이징).
   static func isIgnored(_ name: String) -> Bool {
-    name == ".DS_Store" || name == ".localized" || name.hasPrefix(".simlauncher-staging-")
+    name == ".DS_Store" || name == ".localized" || self.volumeMetadataNames.contains(name)
+      || name.hasPrefix(".simlauncher-staging-")
   }
 
   /// empty·sdk.
