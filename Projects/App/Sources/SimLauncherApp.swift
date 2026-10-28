@@ -1,3 +1,5 @@
+import AndroidDevicesFeature
+import AndroidEmulatorImpl
 import AndroidSDKImpl
 import AndroidSetupFeature
 import AppBundleImpl
@@ -17,12 +19,14 @@ import WorkspaceImpl
 /// 조립 지점. Client Impl 을 만들어 Feature Model 에 주입하는 곳은 여기뿐이다.
 /// 메인 창(`MainWindow`)은 사이드바로 iOS / Android 칸을 나눈다. 화면 간 흐름도 여기서 잇는다: iOS 칸은 Setup 이 끝나면
 /// (`SetupModel.isFinished`) 기기 목록, 기기 목록의 Setup 진입 버튼("개발 환경", 빈 화면의 iOS 설치 등)이면 다시 Setup.
-/// Android 칸은 Android 도구 화면(`AndroidSetupModel`)이다. 앱 종료 요청은 `AppDelegate` 가 받아, 기다릴 것(녹화·런타임 설치·
+/// Android 칸도 같다: Android 도구가 준비되면(`AndroidSetupModel.isFinished`) Android 기기 목록(`AndroidDevicesModel`),
+/// 기기 목록의 "Android 도구" 버튼이면 다시 Android 도구 화면. 앱 종료 요청은 `AppDelegate` 가 받아, 기다릴 것(녹화·런타임 설치·
 /// Android 도구 설치)이 있으면 기기 목록(`LauncherModel`)·Setup·Android 도구 화면에 함께 종료를 알리고 모두 끝나기를 기다린다
 /// (녹화 저장과 두 설치의 멈춤·취소를 함께 시작한다).
 /// 기기 행·툴바의 "카탈로그에서…" 시트(`CatalogInstallModel`)가 고른 버전은 `installRequested` 로 기기 목록(`LauncherModel`)이 설치한다.
 /// 설정 창(`Settings` 씬, ⌘,)은 메인 창의 칸·화면과 관계없이 열리고, 설정 창에서 Android SDK 위치를 바꾸면
-/// `androidSDKLocationChanged` 로 Android 도구 화면이 다시 확인한다 (같은 앱의 다른 창이라 앱 활성화 알림이 오지 않는다).
+/// `androidSDKLocationChanged` 로 Android 도구 화면이 다시 확인하고 Android 기기 목록이 (보이면) 다시 읽는다 (같은 앱의 다른 창이라
+/// 앱 활성화 알림이 오지 않는다). Android 기기(에뮬레이터)는 종료 요청 때 보지 않는다 (켜진 에뮬레이터는 앱이 끝나도 남는다).
 @main
 struct SimLauncherApp: App {
   @NSApplicationDelegateAdaptor private var appDelegate: AppDelegate
@@ -31,6 +35,7 @@ struct SimLauncherApp: App {
   @State private var catalogInstallModel: CatalogInstallModel
   @State private var settingsModel: SettingsModel
   @State private var androidSetupModel: AndroidSetupModel
+  @State private var androidDevicesModel: AndroidDevicesModel
 
   /// 명령 실행 Client 하나를 개발 환경·시뮬레이터·앱 번들 Client 가 함께 쓰고,
   /// 개발 환경 Client 하나를 Setup 과 시뮬레이터의 개발자 디렉터리가 함께 쓰며,
@@ -41,6 +46,7 @@ struct SimLauncherApp: App {
   /// Android 도구 화면(라이선스 동의 기록), Android SDK Client 의 위치 provider 가 함께 쓴다
   /// (같은 프로세스의 쓰기를 Impl 안의 `Mutex` 로 묶는다). 앱 번들 Client 하나를 Launcher 와 Android SDK Client 의 호스트
   /// 아키텍처(Rosetta 로 돌아도 arm64)에 함께 쓴다. Android SDK Client 도 받기 Client 를 Launcher 와 함께 쓴다.
+  /// Android 기기 Client 는 명령 실행 Client·SDK 위치 provider·호스트 아키텍처를 Android SDK Client 와 함께 쓴다.
   init() {
     let command = CommandClientImpl()
     let devEnvironment = DevEnvironmentClientImpl(command: command)
@@ -55,20 +61,18 @@ struct SimLauncherApp: App {
     let preferences = PreferencesClientImpl()
     let appBundle = AppBundleClientImpl(command: command)
     let home = FileManager.default.homeDirectoryForCurrentUser
-    // SDK 위치는 공개 메서드마다 설정을 다시 읽어 정한다 (기본 ~/Library/Android/sdk, 설정 창에서 고른 폴더). ANDROID_HOME 은 보지 않는다.
-    // Client 생성자는 파일·네트워크·명령을 건드리지 않는다. 확인은 Android 칸이 보일 때 한다.
-    let androidSDK = AndroidSDKClientImpl(
-      download: download,
+    let android = Self.makeAndroid(
       command: command,
-      hostArchitecture: appBundle.hostArchitecture,
-      sdkRoot: { AndroidSDKRootChoice.resolve(preferences.androidSDKPath().value, home: home) }
-    )
-    let androidSetup = AndroidSetupModel(
-      androidSDK: androidSDK,
+      download: download,
       preferences: preferences,
-      workspace: WorkspaceClientImpl()
+      appBundle: appBundle,
+      home: home
     )
+    let androidSDK = android.sdk
+    let androidSetup = android.setup
+    let androidDevices = android.devices
     self._androidSetupModel = State(initialValue: androidSetup)
+    self._androidDevicesModel = State(initialValue: androidDevices)
     let setup = SetupModel(devEnvironment: devEnvironment, simulator: simulator)
     self._setupModel = State(initialValue: setup)
     // 스크린샷·녹화 저장 폴더는 "스크린샷"·"녹화" 를 누를 때 만든다 (Workspace Client 생성자는 파일을 건드리지 않는다).
@@ -93,7 +97,10 @@ struct SimLauncherApp: App {
       download: download,
       androidSDK: androidSDK,
       home: home,
-      androidSDKLocationChanged: { Task { await androidSetup.sdkLocationChanged() } }
+      androidSDKLocationChanged: {
+        Task { await androidSetup.sdkLocationChanged() }
+        Task { await androidDevices.sdkLocationChanged() }
+      }
     ))
     // 종료 요청 때 AppDelegate 가 Setup 에 설치 상태를 묻는다: 준비·내려받기 중이면 확인을 받아 멈추게 하고,
     // 설치 단계·멈추는 중이면 끝나기를 기다린다 (어댑터는 init 에서 넣은 값을 종료 요청 때 그대로 본다, 측정).
@@ -104,13 +111,59 @@ struct SimLauncherApp: App {
     self.appDelegate.androidSetupModel = androidSetup
   }
 
+  /// Android 칸의 Client 와 Model 을 조립한다 (`init` 안에서 쓰는 값 묶음).
+  private struct AndroidAssembly {
+    let sdk: AndroidSDKClientImpl
+    let setup: AndroidSetupModel
+    let devices: AndroidDevicesModel
+  }
+
+  private static func makeAndroid(
+    command: CommandClientImpl,
+    download: DownloadClientImpl,
+    preferences: PreferencesClientImpl,
+    appBundle: AppBundleClientImpl,
+    home: URL
+  ) -> AndroidAssembly {
+    // SDK 위치는 공개 메서드마다 설정을 다시 읽어 정한다 (기본 ~/Library/Android/sdk, 설정 창에서 고른 폴더). ANDROID_HOME 은 보지 않는다.
+    // Client 생성자는 파일·네트워크·명령을 건드리지 않는다. 확인은 Android 칸이 보일 때 한다.
+    let sdkRoot: @Sendable () async -> AndroidSDKRootChoice = {
+      AndroidSDKRootChoice.resolve(preferences.androidSDKPath().value, home: home)
+    }
+    let sdk = AndroidSDKClientImpl(
+      download: download,
+      command: command,
+      hostArchitecture: appBundle.hostArchitecture,
+      sdkRoot: sdkRoot
+    )
+    // AVD 폴더는 ~/.android/avd (Android Studio 와 함께 쓴다). 생성자는 파일·명령을 건드리지 않고,
+    // 기기 목록은 Android 칸의 기기 목록 화면이 보일 때 읽는다.
+    let emulator = AndroidEmulatorClientImpl(
+      command: command,
+      sdkRoot: sdkRoot,
+      home: home,
+      host: AndroidHostArchitecture(appBundle.hostArchitecture)
+    )
+    let setup = AndroidSetupModel(
+      androidSDK: sdk,
+      preferences: preferences,
+      workspace: WorkspaceClientImpl()
+    )
+    let devices = AndroidDevicesModel(
+      emulator: emulator,
+      setupRequested: { setup.reopened() }
+    )
+    return AndroidAssembly(sdk: sdk, setup: setup, devices: devices)
+  }
+
   var body: some Scene {
     WindowGroup {
       MainWindow(
         setupModel: self.setupModel,
         launcherModel: self.launcherModel,
         catalogInstallModel: self.catalogInstallModel,
-        androidSetupModel: self.androidSetupModel
+        androidSetupModel: self.androidSetupModel,
+        androidDevicesModel: self.androidDevicesModel
       )
     }
     // 창을 닫으면 진행 중인 등록 확인을 취소한다 (SettingsView 의 onDisappear).
