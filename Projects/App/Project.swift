@@ -10,6 +10,7 @@ let project = Project.app(
     .feature(.setup),
     .feature(.settings),
     .feature(.androidSetup),
+    .feature(.androidDevices),
     .client(impl: .command),
     .client(impl: .devEnvironment),
     .client(impl: .simulator),
@@ -18,6 +19,7 @@ let project = Project.app(
     .client(impl: .preferences),
     .client(impl: .workspace),
     .client(impl: .androidSDK),
+    .client(impl: .androidEmulator),
     .shared(.core),
   ]
 )

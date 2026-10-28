@@ -157,11 +157,14 @@ https://github.com/zopandagom/simlauncher-macos/releases/download/sample-catalog
 | 기기를 끄거나 초기화·삭제할 수 없어요 | 녹화 중이라면 녹화를 먼저 멈춰 주세요. 초기화·삭제는 기기를 끈 뒤에 할 수 있어요. "사용할 수 없음" 기기는 초기화할 수 없고 삭제만 할 수 있어요. |
 
 ## 인터넷은 언제 쓰나요?
-SimLauncher 는 아래 네 가지 경우에만 인터넷을 써요.
+SimLauncher 는 아래 다섯 가지 경우에만 인터넷을 써요.
 - 등록한 빌드 카탈로그(`catalog.json`)를 받을 때
 - 고르거나 입력한 주소에서 앱 빌드(.app 또는 .app 을 담은 zip)를 받을 때
 - 설치하기로 고른 iOS 시뮬레이터를 Apple 서버에서 받을 때
 - Android 도구(SDK)를 설치하기로 골랐을 때 Google 의 Android SDK 저장소에서 받을 때
+- Android 기기를 켤 때, 그리고 에뮬레이터 창의 지도 같은 기능을 쓸 때 Android 에뮬레이터가 스스로 Google 서버에서 업데이트 정보와 설정을 받을 때 (SimLauncher 가 끌 수 없어요. 사용 통계·오류 보고는 꺼요)
+
+에뮬레이터 안의 Android 는 실제 기기처럼 인터넷을 써요 (테스트하는 앱과 Android 의 Google 서비스). SimLauncher 가 보내는 데이터는 아니에요.
 
 ---
 
@@ -171,7 +174,7 @@ SimLauncher 는 공개 레포라서, 어느 회사든 자기 빌드 저장소에
 ### 기술 스택
 - SwiftUI (규칙 기반 단방향 MV), Swift 6 strict concurrency, macOS 26.0+
 - Tuist 모듈러 아키텍처 (Feature / Client Interface·Impl·Testing / Shared)
-- Foundation `Process` 로 `xcrun simctl` 등 실행 (Command Client Impl)
+- Foundation `Process` 로 `xcrun simctl`·Android `emulator`·`adb` 등 실행 (Command Client Impl)
 - Foundation `URLSession` 으로 카탈로그·빌드 다운로드와 Android SDK 저장소 목록·패키지 받기 (Download Client Impl. Android SDK 설치는 AndroidSDK Client Impl 이 Download Client 를 거쳐 받는다)
 - Foundation `UserDefaults` 로 사용자 설정(카탈로그 주소, Android SDK 위치, Android SDK 라이선스 동의 기록) 저장 (Preferences Client Impl)
 - AppKit `NSWorkspace` 로 Finder 에서 보이기, Foundation `FileManager` 로 사진·동영상 폴더에 스크린샷·녹화 저장 폴더 준비·파일 이름 예약 (Workspace Client Impl)

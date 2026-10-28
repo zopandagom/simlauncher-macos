@@ -12,7 +12,7 @@ enum AndroidSetupText {
   static let checkingTitle = String(localized: "Android 도구를 확인하는 중…", bundle: .module)
   static let readyTitle = String(localized: "Android 도구가 준비되었습니다", bundle: .module)
   static let readyMessage = String(
-    localized: "Android 기기 켜기와 앱 설치는 다음 업데이트에서 제공합니다.",
+    localized: "기기 목록에서 Android 기기를 만들고 켤 수 있습니다. 앱 설치는 다음 업데이트에서 제공합니다.",
     bundle: .module
   )
   static let notReadyTitle = String(localized: "Android 도구를 설치하세요", bundle: .module)
@@ -150,6 +150,7 @@ enum AndroidSetupText {
 
   static let installButton = String(localized: "Android 도구 설치", bundle: .module)
   static let recheckButton = String(localized: "다시 확인", bundle: .module)
+  static let deviceListButton = String(localized: "기기 목록 열기", bundle: .module)
   static let recheckingLabel = String(localized: "확인 중…", bundle: .module)
   static let revealButton = String(localized: "Finder 에서 보기", bundle: .module)
   static let openSettingsButton = String(localized: "설정 열기", bundle: .module)

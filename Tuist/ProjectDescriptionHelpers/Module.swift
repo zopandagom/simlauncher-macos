@@ -49,6 +49,10 @@ public extension Client {
   /// → 받기·크기·체크섬 확인 → zipinfo 검사 → unzip(CommandClient)으로 SDK 안 스테이징에 풀기 → 원자적 이름 바꾸기(덮어쓰지 않음).
   /// 설정 창이 고른 폴더 판정. adb·emulator 는 실행하지 않는다.
   static let androidSDK = Client("AndroidSDK")
+  /// Android 기기(AVD, `~/.android/avd`. Android Studio 와 함께 쓴다) 목록과 상태(잠금 파일·adb), 켜기(emulator 띄우기·완료 기다리기)·
+  /// 끄기(adb emu kill, 앱이 띄운 프로세스는 SIGINT)·만들기(설정 파일 직접 쓰기, 덮어쓰지 않음)·삭제·초기화.
+  /// SDK 위치는 AndroidSDK 와 같은 provider 를 App 이 준다. 명령은 CommandClient 로 SDK 의 emulator·adb 만 실행한다.
+  static let androidEmulator = Client("AndroidEmulator")
 }
 
 /// 화면 단위 기능 모듈. Feature 끼리는 서로 의존하지 않는다.
@@ -63,6 +67,8 @@ public enum Feature: String, CaseIterable {
   case settings = "Settings"
   /// Android 도구(SDK) 상태 확인과 없는 구성 요소 설치(라이선스 동의, 진행률·취소). 메인 창 사이드바의 Android 칸.
   case androidSetup = "AndroidSetup"
+  /// Android 기기(AVD) 목록과 켜기·끄기·만들기·삭제·초기화, 함께 켜기. 메인 창 사이드바 Android 칸에서 Android 도구가 준비되면 보인다.
+  case androidDevices = "AndroidDevices"
 
   public var name: String { "\(self.rawValue)Feature" }
   public var tests: String { "\(self.name)Tests" }

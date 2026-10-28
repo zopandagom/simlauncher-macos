@@ -180,6 +180,14 @@ public struct AndroidSetupView: View {
             self.note(AndroidSetupText.originalLocationNote(result.root))
           }
         }
+        // 셋 다 설치됐으면 기기 목록으로 가는 길. 설치 직후에도 결과 줄을 볼 수 있게 자동으로 넘어가지 않는다.
+        if status.isReady {
+          Button(AndroidSetupText.deviceListButton) {
+            self.model.deviceListButtonTapped()
+          }
+          .buttonStyle(.borderedProminent)
+          .disabled(!self.model.canOpenDeviceList)
+        }
       }
     }
   }

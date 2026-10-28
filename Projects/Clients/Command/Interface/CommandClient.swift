@@ -41,4 +41,26 @@ public protocol CommandClient: Sendable {
     timeout: Duration?,
     onOutput: @escaping @Sendable (CommandOutput) async -> Void
   ) async throws(CommandError) -> CommandResult
+
+  /// 오래 사는 프로세스를 띄우고 곧바로 돌아온다 (끝날 때까지 기다리지 않는다). 셸을 거치지 않는다.
+  /// stdin·stdout·stderr 는 /dev/null 이다 (출력을 읽지 않는다: 오래 켜 두면 파이프가 차 자식이 막히므로).
+  /// 프로세스를 시작하지 못하면 `.launchFailed`. 이 앱이 끝나도 프로세스는 남는다 (앱은 아무것도 보내지 않는다).
+  /// - Parameter environment: 프로세스 환경 전체. 물려받은 환경에 더하지 않는다.
+  func launch(
+    _ executable: URL,
+    _ arguments: [String],
+    environment: [String: String]
+  ) async throws(CommandError) -> LaunchedProcess
+
+  /// 프로세스가 끝나기를 기다려 종료 상태를 돌려준다 (정상 종료면 종료 코드, 신호면 128+신호 번호. 셸과 같다).
+  /// 이미 끝났으면 바로 돌려준다. 여러 번·여러 곳에서 불러도 같은 값. 부른 Task 가 취소되면 nil 로 돌아오고 프로세스는 건드리지 않는다.
+  /// 이 Client 가 띄우지 않은 값이면 곧바로 -1 (끝난 것으로 본다).
+  func waitForExit(_ process: LaunchedProcess) async -> Int32?
+
+  /// 기다리지 않고 지금 종료 상태를 돌려준다. 아직 돌고 있으면 nil (`waitForExit` 와 같은 값 규칙).
+  func exitStatus(_ process: LaunchedProcess) -> Int32?
+
+  /// 아직 끝나지 않았으면 SIGINT 를 한 번 보낸다. 끝난 뒤(종료 처리 뒤)거나 이 Client 가 띄우지 않은 값이면 아무것도 하지 않는다.
+  /// 끝날 때까지 기다리지 않는다 (`waitForExit` 로 기다린다).
+  func interrupt(_ process: LaunchedProcess)
 }
