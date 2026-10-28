@@ -59,7 +59,7 @@ enum DemoScenario: String, CaseIterable, Hashable {
   case invalidSetting = "위치: 잘못된 설정"
   case locked = "위치: 잘못된 설정 (관리자 잠김)"
   case notWritable = "위치: 쓸 수 없음"
-  case unsupportedVolume = "위치: 링크 미지원 볼륨"
+  case unsupportedVolume = "위치: 링크·RENAME_EXCL 미지원 볼륨"
   case fetchingPlan = "계획 받는 중"
   case consent = "동의 대기 (원문 두 개)"
   case downloading = "진행: 받기"

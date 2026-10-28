@@ -106,7 +106,7 @@ struct SettingsAndroidSDKTests: SettingsAndroidSDKTesting {
   }
 
   @Test(
-    "빈 폴더(쓸 수 없음)·다른 내용·폴더 아님·없음·읽기 실패·링크 미지원 볼륨은 저장하지 않고 이유를 둔다",
+    "빈 폴더(쓸 수 없음)·다른 내용·폴더 아님·없음·읽기 실패·링크나 RENAME_EXCL 미지원 볼륨은 저장하지 않고 이유를 둔다",
     arguments: [
       (AndroidSDKFolderCandidate.empty, false), (.otherContents, true), (.notDirectory, true), (.missing, true),
       (.unreadable, true), (.unsupportedVolume, true),
