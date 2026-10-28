@@ -1,3 +1,5 @@
+import AndroidSDKInterface
+import AndroidSDKTesting
 import Core
 import DownloadInterface
 import DownloadTesting
@@ -17,11 +19,28 @@ extension SettingsModelTesting {
   /// 창을 연(`onAppear`) Model. 받기 Client 는 넘긴 것(기본: 앱 2개 카탈로그를 돌려주는 Fake)을 쓴다.
   static func openedModel(
     preferences: PreferencesClientFake = PreferencesClientFake(),
-    download: any DownloadClient = Self.catalogFake()
+    download: any DownloadClient = Self.catalogFake(),
+    androidSDK: AndroidSDKClientFake = AndroidSDKClientFake(),
+    locationChanges: LocationChangeCounter = LocationChangeCounter()
   ) -> SettingsModel {
-    let model = SettingsModel(preferences: preferences, download: download)
+    let model = Self.makeModel(
+      preferences: preferences, download: download, androidSDK: androidSDK, locationChanges: locationChanges
+    )
     model.onAppear()
     return model
+  }
+
+  /// 창을 열기 전(`onAppear` 전) Model. 홈은 `testHome`, SDK 위치 바뀜 알림은 `locationChanges` 가 센다.
+  static func makeModel(
+    preferences: PreferencesClientFake = PreferencesClientFake(),
+    download: any DownloadClient = Self.catalogFake(),
+    androidSDK: AndroidSDKClientFake = AndroidSDKClientFake(),
+    locationChanges: LocationChangeCounter = LocationChangeCounter()
+  ) -> SettingsModel {
+    SettingsModel(
+      preferences: preferences, download: download, androidSDK: androidSDK, home: testHome,
+      androidSDKLocationChanged: { locationChanges.count += 1 }
+    )
   }
 
   /// `fetchData` 가 앱 2개 카탈로그를 돌려주는 Fake.
@@ -88,6 +107,20 @@ extension SettingsModelTesting {
   /// 직접 await 하지 않고 이것으로 띄운다.
   static func start(_ operation: @escaping @MainActor () async -> Void) -> TrackedTask {
     TrackedTask(operation)
+  }
+}
+
+/// 테스트의 사용자 홈. 기본 SDK 위치는 `/Users/tester/Library/Android/sdk`.
+let testHome = URL(filePath: "/Users/tester", directoryHint: .isDirectory)
+
+/// `androidSDKLocationChanged` 호출 수.
+@MainActor
+final class LocationChangeCounter {
+  var count = 0
+
+  /// 한 번도 알리지 않았다.
+  var isEmpty: Bool {
+    self.count == .zero
   }
 }
 
