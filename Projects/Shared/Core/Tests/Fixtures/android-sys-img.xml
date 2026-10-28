@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- 직접 만든 픽스처. sys-img/google_apis/sys-img2-3.xml (2026-10-28 실측) 의 구조를 줄였다. 크기·체크섬·원문은 지어낸 값이다. -->
+<sys-img:sdk-sys-img xmlns:common="http://schemas.android.com/repository/android/common/02" xmlns:sys-img="http://schemas.android.com/sdk/android/repo/sys-img2/03" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <license id="android-sdk-arm-dbt-license" type="text">Terms and Conditions
+
+This is the Android SDK ARM DBT License Agreement (fixture).</license>
+  <license id="android-sdk-license" type="text">Terms and Conditions
+
+This is the Android Software Development Kit License Agreement (fixture, sys-img copy).</license>
+  <channel id="channel-0">stable</channel>
+  <channel id="channel-3">canary</channel>
+  <remotePackage path="system-images;android-37.0;google_apis;arm64-v8a">
+    <type-details xsi:type="sys-img:sysImgDetailsType">
+      <api-level>37.0</api-level>
+      <extension-level>22</extension-level>
+      <base-extension>true</base-extension>
+      <tag>
+        <id>google_apis</id>
+        <display>Google APIs</display>
+      </tag>
+      <vendor>
+        <id>google</id>
+        <display>Google Inc.</display>
+      </vendor>
+      <abi>arm64-v8a</abi>
+    </type-details>
+    <revision>
+      <major>8</major>
+    </revision>
+    <display-name>Google APIs ARM 64 v8a System Image</display-name>
+    <uses-license ref="android-sdk-arm-dbt-license"/>
+    <channelRef ref="channel-0"/>
+    <dependencies>
+      <dependency path="emulator">
+        <min-revision>
+          <major>37</major>
+          <minor>2</minor>
+          <micro>11</micro>
+        </min-revision>
+      </dependency>
+    </dependencies>
+    <archives>
+      <archive>
+        <complete>
+          <size>2104098168</size>
+          <checksum type="sha1">71b2c3d4e5f60718293a4b5c6d7e8f9001122334</checksum>
+          <url>arm64-v8a-37.0_r08.zip</url>
+        </complete>
+      </archive>
+    </archives>
+  </remotePackage>
+  <remotePackage path="system-images;android-37.0;google_apis;x86_64">
+    <type-details xsi:type="sys-img:sysImgDetailsType">
+      <api-level>37.0</api-level>
+      <extension-level>22</extension-level>
+      <base-extension>true</base-extension>
+      <tag>
+        <id>google_apis</id>
+        <display>Google APIs</display>
+      </tag>
+      <vendor>
+        <id>google</id>
+        <display>Google Inc.</display>
+      </vendor>
+      <abi>x86_64</abi>
+    </type-details>
+    <revision>
+      <major>8</major>
+    </revision>
+    <display-name>Google APIs Intel x86_64 Atom System Image</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+    <dependencies>
+      <dependency path="emulator">
+        <min-revision>
+          <major>37</major>
+          <minor>2</minor>
+          <micro>11</micro>
+        </min-revision>
+      </dependency>
+    </dependencies>
+    <archives>
+      <archive>
+        <complete>
+          <size>2143899425</size>
+          <checksum type="sha1">81b2c3d4e5f60718293a4b5c6d7e8f9001122334</checksum>
+          <url>x86_64-37.0_r08.zip</url>
+        </complete>
+      </archive>
+    </archives>
+  </remotePackage>
+  <remotePackage path="system-images;android-36.1;google_apis;arm64-v8a">
+    <type-details xsi:type="sys-img:sysImgDetailsType">
+      <api-level>36.1</api-level>
+      <base-extension>true</base-extension>
+      <tag>
+        <id>google_apis</id>
+        <display>Google APIs</display>
+      </tag>
+      <abi>arm64-v8a</abi>
+    </type-details>
+    <revision>
+      <major>3</major>
+    </revision>
+    <display-name>Google APIs ARM 64 v8a System Image</display-name>
+    <uses-license ref="android-sdk-arm-dbt-license"/>
+    <channelRef ref="channel-0"/>
+    <archives>
+      <archive>
+        <complete>
+          <size>2000000000</size>
+          <checksum type="sha1">91b2c3d4e5f60718293a4b5c6d7e8f9001122334</checksum>
+          <url>arm64-v8a-36.1_r03.zip</url>
+        </complete>
+      </archive>
+    </archives>
+  </remotePackage>
+  <remotePackage path="system-images;android-37.2;google_apis_ps16k;arm64-v8a">
+    <type-details xsi:type="sys-img:sysImgDetailsType">
+      <api-level>37.2</api-level>
+      <base-extension>true</base-extension>
+      <tag>
+        <id>google_apis</id>
+        <display>Google APIs</display>
+      </tag>
+      <tag>
+        <id>page_size_16kb</id>
+        <display>16 KB Page Size</display>
+      </tag>
+      <abi>arm64-v8a</abi>
+    </type-details>
+    <revision>
+      <major>1</major>
+    </revision>
+    <display-name>Google APIs 16 KB Page Size ARM 64 v8a System Image</display-name>
+    <uses-license ref="android-sdk-arm-dbt-license"/>
+    <channelRef ref="channel-0"/>
+    <archives>
+      <archive>
+        <complete>
+          <size>2200000000</size>
+          <checksum type="sha1">a2b2c3d4e5f60718293a4b5c6d7e8f9001122334</checksum>
+          <url>arm64-v8a-ps16k-37.2_r01.zip</url>
+        </complete>
+      </archive>
+    </archives>
+  </remotePackage>
+  <remotePackage path="system-images;android-36-ext19;google_apis;arm64-v8a">
+    <type-details xsi:type="sys-img:sysImgDetailsType">
+      <api-level>36x</api-level>
+      <extension-level>19</extension-level>
+      <base-extension>false</base-extension>
+      <tag>
+        <id>google_apis</id>
+        <display>Google APIs</display>
+      </tag>
+      <abi>arm64-v8a</abi>
+    </type-details>
+    <revision>
+      <major>2</major>
+    </revision>
+    <display-name>Google APIs ARM 64 v8a System Image</display-name>
+    <uses-license ref="android-sdk-arm-dbt-license"/>
+    <channelRef ref="channel-0"/>
+    <archives>
+      <archive>
+        <complete>
+          <size>1900000000</size>
+          <checksum type="sha1">b2b2c3d4e5f60718293a4b5c6d7e8f9001122334</checksum>
+          <url>arm64-v8a-36-ext19_r02.zip</url>
+        </complete>
+      </archive>
+    </archives>
+  </remotePackage>
+  <remotePackage path="system-images;android-CANARY;google_apis;arm64-v8a">
+    <type-details xsi:type="sys-img:sysImgDetailsType">
+      <api-level>37.0</api-level>
+      <codename>CANARY</codename>
+      <base-extension>true</base-extension>
+      <tag>
+        <id>google_apis</id>
+        <display>Google APIs</display>
+      </tag>
+      <abi>arm64-v8a</abi>
+    </type-details>
+    <revision>
+      <major>4</major>
+    </revision>
+    <display-name>Google APIs ARM 64 v8a System Image</display-name>
+    <uses-license ref="android-sdk-arm-dbt-license"/>
+    <channelRef ref="channel-3"/>
+    <archives>
+      <archive>
+        <complete>
+          <size>2300000000</size>
+          <checksum type="sha1">c2b2c3d4e5f60718293a4b5c6d7e8f9001122334</checksum>
+          <url>arm64-v8a-CANARY_r04.zip</url>
+        </complete>
+      </archive>
+    </archives>
+  </remotePackage>
+  <remotePackage path="system-images;android-36;google_apis;arm64-v8a">
+    <type-details xsi:type="sys-img:sysImgDetailsType">
+      <api-level>36</api-level>
+      <base-extension>true</base-extension>
+      <tag>
+        <id>google_apis</id>
+        <display>Google APIs</display>
+      </tag>
+      <abi>arm64-v8a</abi>
+    </type-details>
+    <revision>
+      <major>7</major>
+    </revision>
+    <display-name>Google APIs ARM 64 v8a System Image</display-name>
+    <uses-license ref="android-sdk-arm-dbt-license"/>
+    <channelRef ref="channel-0"/>
+    <archives>
+      <archive>
+        <complete>
+          <size>1800000000</size>
+          <checksum type="sha1">d2b2c3d4e5f60718293a4b5c6d7e8f9001122334</checksum>
+          <url>arm64-v8a-36_r07.zip</url>
+        </complete>
+      </archive>
+    </archives>
+  </remotePackage>
+  <remotePackage obsolete="true" path="system-images;android-38;google_apis;arm64-v8a">
+    <type-details xsi:type="sys-img:sysImgDetailsType">
+      <api-level>38</api-level>
+      <base-extension>true</base-extension>
+      <tag>
+        <id>google_apis</id>
+        <display>Google APIs</display>
+      </tag>
+      <abi>arm64-v8a</abi>
+    </type-details>
+    <revision>
+      <major>1</major>
+    </revision>
+    <display-name>Google APIs ARM 64 v8a System Image</display-name>
+    <uses-license ref="android-sdk-arm-dbt-license"/>
+    <channelRef ref="channel-0"/>
+    <archives>
+      <archive>
+        <complete>
+          <size>2400000000</size>
+          <checksum type="sha1">e2b2c3d4e5f60718293a4b5c6d7e8f9001122334</checksum>
+          <url>arm64-v8a-38_r01.zip</url>
+        </complete>
+      </archive>
+    </archives>
+  </remotePackage>
+</sys-img:sdk-sys-img>
