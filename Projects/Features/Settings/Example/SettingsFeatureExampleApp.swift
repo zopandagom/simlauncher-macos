@@ -1,3 +1,6 @@
+import AndroidSDKInterface
+import AndroidSDKTesting
+import Core
 import DownloadInterface
 import DownloadTesting
 import Foundation
@@ -9,6 +12,8 @@ import SwiftUI
 /// App 없이 설정 화면만 띄우는 데모 앱. Preview 도 여기에 둔다.
 /// 위의 고르기에서 상황을 바꾸면 Fake 를 새로 만든다: 저장된 목록은 `PreferencesClientFake`(메모리, 등록·삭제가 그대로
 /// 반영된다), 등록 확인의 받기는 `DownloadClientFake`(1초 뒤 상황에 정한 결과, "확인 중" 은 취소할 때까지 끝나지 않음)다.
+/// "Android SDK 위치" 절은 저장된 위치를 상황에 정하고, "다른 폴더 고르기…" 로 아무 폴더나 고르면 `AndroidSDKClientFake` 가
+/// 0.5초 뒤 상황에 정한 판정(기본: 빈 폴더, 쓸 수 있음)을 돌려준다. 위치가 바뀐 알림은 받을 Android 화면이 없어 버린다.
 /// 설정 씬은 App 이 조립한다. 여기서는 일반 창에 띄우고, 확인 중 창을 닫으면(onDisappear) 확인이 취소된다.
 @main
 struct SettingsFeatureExampleApp: App {
@@ -55,6 +60,13 @@ enum ExampleScenario: CaseIterable, Hashable {
   case notFound
   case hostNotFound
   case tooLarge
+  case sdkChosen
+  case sdkLocked
+  case sdkInvalid
+  case sdkPickSDK
+  case sdkPickReadOnlySDK
+  case sdkPickOtherContents
+  case sdkPickUnsupportedVolume
 
   var title: String {
     switch self {
@@ -69,6 +81,13 @@ enum ExampleScenario: CaseIterable, Hashable {
     case .notFound: "등록 실패: HTTP 404"
     case .hostNotFound: "등록 실패: 서버 주소를 찾지 못함"
     case .tooLarge: "등록 실패: 5 MiB 초과"
+    case .sdkChosen: "SDK 위치: 고른 폴더"
+    case .sdkLocked: "SDK 위치: 관리자 잠금"
+    case .sdkInvalid: "SDK 위치: 잘못된 저장 값"
+    case .sdkPickSDK: "SDK 위치 고르기: SDK 폴더"
+    case .sdkPickReadOnlySDK: "SDK 위치 고르기: 쓸 수 없는 SDK 폴더"
+    case .sdkPickOtherContents: "SDK 위치 고르기: 다른 파일이 든 폴더"
+    case .sdkPickUnsupportedVolume: "SDK 위치 고르기: exFAT 디스크"
     }
   }
 
@@ -76,13 +95,39 @@ enum ExampleScenario: CaseIterable, Hashable {
   func makeModel() -> SettingsModel {
     let setting = self.setting
     let preferences = PreferencesClientFake(urls: setting.urls, isLocked: setting.isLocked)
+    preferences.setStoredAndroidSDKPath(self.androidSDKPath)
     let download = DownloadClientFake()
     download.setDelay(.seconds(1))
     download.setFetchResult(self.fetchResult)
     if self == .checking {
       download.suspendFetches()
     }
-    return SettingsModel(preferences: preferences, download: download)
+    let androidSDK = AndroidSDKClientFake()
+    androidSDK.setDelay(.milliseconds(500))
+    androidSDK.setCandidateResult(self.candidateResult)
+    return SettingsModel(
+      preferences: preferences, download: download, androidSDK: androidSDK,
+      home: URL(filePath: "/Users/example", directoryHint: .isDirectory), androidSDKLocationChanged: {}
+    )
+  }
+
+  private var androidSDKPath: AndroidSDKPathSetting {
+    switch self {
+    case .sdkChosen: AndroidSDKPathSetting(value: .path("/Volumes/Tools/AndroidSDK"), isLocked: false)
+    case .sdkLocked: AndroidSDKPathSetting(value: .path("/Volumes/Tools/AndroidSDK"), isLocked: true)
+    case .sdkInvalid: AndroidSDKPathSetting(value: .path("tools/sdk"), isLocked: false)
+    default: .absent
+    }
+  }
+
+  private var candidateResult: AndroidSDKClientFake.CandidateResult {
+    switch self {
+    case .sdkPickSDK: (.sdk, true)
+    case .sdkPickReadOnlySDK: (.sdk, false)
+    case .sdkPickOtherContents: (.otherContents, true)
+    case .sdkPickUnsupportedVolume: (.unsupportedVolume, true)
+    default: (.empty, true)
+    }
   }
 
   private var setting: CatalogURLSetting {
@@ -90,13 +135,15 @@ enum ExampleScenario: CaseIterable, Hashable {
     case .sample: .sample
     case .withProblems: .withProblems
     case .locked: .locked
-    case .empty, .checking, .notCatalog, .newerSchema, .versionProblem, .notFound, .hostNotFound, .tooLarge: .empty
+    default: .empty
     }
   }
 
   private var fetchResult: Result<Data, DownloadError> {
     switch self {
-    case .empty, .sample, .withProblems, .locked, .checking: .success(ExampleCatalog.valid)
+    case .empty, .sample, .withProblems, .locked, .checking, .sdkChosen, .sdkLocked, .sdkInvalid, .sdkPickSDK,
+         .sdkPickReadOnlySDK, .sdkPickOtherContents, .sdkPickUnsupportedVolume:
+      .success(ExampleCatalog.valid)
     case .notCatalog: .success(ExampleCatalog.loginPage)
     case .newerSchema: .success(ExampleCatalog.newerSchema)
     case .versionProblem: .success(ExampleCatalog.badCreatedAt)
@@ -163,6 +210,14 @@ enum ExampleCatalog {
 
 #Preview("문제 섞인 목록") {
   SettingsView(model: ExampleScenario.withProblems.makeModel())
+}
+
+#Preview("SDK 위치: 고른 폴더") {
+  SettingsView(model: ExampleScenario.sdkChosen.makeModel())
+}
+
+#Preview("SDK 위치: 관리자 잠금") {
+  SettingsView(model: ExampleScenario.sdkLocked.makeModel())
 }
 
 #Preview("관리자 잠금") {

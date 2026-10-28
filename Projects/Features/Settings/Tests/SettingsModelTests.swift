@@ -16,13 +16,13 @@ struct SettingsModelTests: SettingsModelTesting {
   @Test("만들 때는 아무것도 읽지 않고, 창을 열면 목록과 잠금을 읽는다")
   func onAppearReads() {
     let preferences = PreferencesClientFake(urls: [Self.first], isLocked: true)
-    let model = SettingsModel(preferences: preferences, download: DownloadClientFake())
+    let model = Self.makeModel(preferences: preferences, download: DownloadClientFake())
     #expect(preferences.calls.isEmpty)
     #expect(model.setting == .empty)
 
     model.onAppear()
 
-    #expect(preferences.calls == [.catalogURLs])
+    #expect(preferences.calls == [.catalogURLs, .androidSDKPath])
     #expect(model.setting == CatalogURLSetting(urls: [Self.first], isLocked: true))
   }
 

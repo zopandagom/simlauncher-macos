@@ -34,25 +34,35 @@ public extension Client {
   /// 쓸 Xcode 확인·선택(xcode-select, /Applications), 라이선스·첫 실행 준비 확인, Xcode·App Store 열기,
   /// 기본 iOS 런타임 확인·설치(`xcodebuild -downloadPlatform iOS`).
   static let devEnvironment = Client("DevEnvironment")
-  /// 사용자가 입력·등록한 HTTPS 주소에서 큰 파일(임시 폴더, 진행률·취소)과 작은 파일(메모리, 상한)을 받는다 (URLSession).
-  /// https 로만 리다이렉트를 따라가고 인증은 하지 않는다.
+  /// 사용자가 입력·등록한 HTTPS 주소와 앱이 정한 Android SDK 저장소 주소(`dl.google.com/android/repository`)에서
+  /// 큰 파일(임시 폴더, 진행률·취소)과 작은 파일(메모리, 상한)을 받는다 (URLSession). https 로만 리다이렉트를 따라가고 인증은 하지 않는다.
   static let download = Client("Download")
-  /// 사용자 설정(UserDefaults 표준 도메인 = 앱 번들 ID): 빌드 카탈로그 주소 목록 읽기·추가·삭제.
+  /// 사용자 설정(UserDefaults 표준 도메인 = 앱 번들 ID): 빌드 카탈로그 주소 목록 읽기·추가·삭제(`CatalogURLs`),
+  /// Android SDK 위치 읽기·바꾸기(`AndroidSDKPath`), 동의한 Android SDK 라이선스 원문의 지문 읽기·더하기(`AcceptedAndroidLicenses`).
   /// 관리자가 구성 프로필로 강제한 키(`objectIsForced`)는 잠김이라 쓰지 않는다.
   static let preferences = Client("Preferences")
   /// 사용자 폴더와 Finder: 스크린샷·녹화 저장 폴더(사진·동영상 폴더의 `SimLauncher`) 준비와 파일 이름 예약(덮어쓰지 않음)·
   /// 빈 예약 파일 지우기, Finder 에서 파일 선택해 보이기 (FileManager·NSWorkspace).
   static let workspace = Client("Workspace")
+  /// Android SDK 위치(기본 `~/Library/Android/sdk` 또는 설정에서 고른 폴더, App 이 주는 provider)의 상태 확인(파일만 읽는다)과
+  /// 없는 구성 요소(platform-tools·emulator·기본 시스템 이미지) 설치: 저장소 XML 받기·해석(DownloadClient) → 라이선스 동의 확인
+  /// → 받기·크기·체크섬 확인 → zipinfo 검사 → unzip(CommandClient)으로 SDK 안 스테이징에 풀기 → 원자적 이름 바꾸기(덮어쓰지 않음).
+  /// 설정 창이 고른 폴더 판정. adb·emulator 는 실행하지 않는다.
+  static let androidSDK = Client("AndroidSDK")
 }
 
 /// 화면 단위 기능 모듈. Feature 끼리는 서로 의존하지 않는다.
 /// 각 Feature 는 Feature / Tests / Example 세 타깃으로 나뉜다.
 public enum Feature: String, CaseIterable {
+  /// iOS 시뮬레이터 기기 목록과 기기·앱 작업 (iOS 전용. 이름은 바꾸지 않는다).
   case launcher = "Launcher"
-  /// Xcode 설치·라이선스·첫 실행 준비 단계별 안내와 다시 확인, 기본 iOS 런타임 설치(진행·취소).
+  /// iOS 개발 환경: Xcode 설치·라이선스·첫 실행 준비 단계별 안내와 다시 확인, 기본 iOS 런타임 설치(진행·취소) (iOS 전용. 이름은 바꾸지 않는다).
   case setup = "Setup"
-  /// 설정 창(⌘,): 빌드 카탈로그 주소 등록(한 번 받아 형식 확인)·삭제, 관리자 강제 목록은 잠금 안내.
+  /// 설정 창(⌘,): 빌드 카탈로그 주소 등록(한 번 받아 형식 확인)·삭제, Android SDK 위치(다른 폴더 고르기·기본으로 되돌리기),
+  /// 관리자 강제 값은 잠금 안내.
   case settings = "Settings"
+  /// Android 도구(SDK) 상태 확인과 없는 구성 요소 설치(라이선스 동의, 진행률·취소). 메인 창 사이드바의 Android 칸.
+  case androidSetup = "AndroidSetup"
 
   public var name: String { "\(self.rawValue)Feature" }
   public var tests: String { "\(self.name)Tests" }

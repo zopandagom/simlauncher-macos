@@ -1,3 +1,4 @@
+import Core
 import Foundation
 import Synchronization
 @testable import PreferencesImpl
@@ -9,6 +10,12 @@ final class InMemoryPreferenceStore: PreferenceStore {
     var urls: [String]
     var isForced: Bool
     var setCount = 0
+    var androidSDKPath: AndroidSDKPathSetting.Value = .absent
+    var isAndroidSDKPathForced = false
+    var androidSDKPathSetCount = 0
+    var licenses: [String] = []
+    var isLicensesForced = false
+    var licensesSetCount = 0
   }
 
   private let state: Mutex<State>
@@ -49,6 +56,69 @@ final class InMemoryPreferenceStore: PreferenceStore {
     self.state.withLock { state in
       state.urls = urls
       state.setCount += 1
+    }
+  }
+
+  /// `setAndroidSDKPath(_:)` 가 불린 횟수.
+  var androidSDKPathSetCount: Int {
+    self.state.withLock { $0.androidSDKPathSetCount }
+  }
+
+  /// `setAcceptedAndroidLicenses(_:)` 가 불린 횟수.
+  var licensesSetCount: Int {
+    self.state.withLock { $0.licensesSetCount }
+  }
+
+  /// 저장된 지문 배열 (쉬지 않고 읽는다).
+  var licenses: [String] {
+    self.state.withLock { $0.licenses }
+  }
+
+  /// 바깥 변경을 흉내 낸다. 쓰기 횟수에 넣지 않는다.
+  func replaceAndroidSDKPath(_ value: AndroidSDKPathSetting.Value, isForced: Bool) {
+    self.state.withLock { state in
+      state.androidSDKPath = value
+      state.isAndroidSDKPathForced = isForced
+    }
+  }
+
+  /// 바깥 변경을 흉내 낸다. 쓰기 횟수에 넣지 않는다.
+  func replaceLicenses(_ fingerprints: [String], isForced: Bool) {
+    self.state.withLock { state in
+      state.licenses = fingerprints
+      state.isLicensesForced = isForced
+    }
+  }
+
+  func androidSDKPath() -> AndroidSDKPathSetting.Value {
+    self.state.withLock { $0.androidSDKPath }
+  }
+
+  func isAndroidSDKPathForced() -> Bool {
+    self.state.withLock { $0.isAndroidSDKPathForced }
+  }
+
+  func setAndroidSDKPath(_ path: String?) {
+    self.state.withLock { state in
+      state.androidSDKPath = path.map { .path($0) } ?? .absent
+      state.androidSDKPathSetCount += 1
+    }
+  }
+
+  func acceptedAndroidLicenses() -> [String] {
+    let licenses = self.state.withLock { $0.licenses }
+    usleep(50)
+    return licenses
+  }
+
+  func isAcceptedAndroidLicensesForced() -> Bool {
+    self.state.withLock { $0.isLicensesForced }
+  }
+
+  func setAcceptedAndroidLicenses(_ fingerprints: [String]) {
+    self.state.withLock { state in
+      state.licenses = fingerprints
+      state.licensesSetCount += 1
     }
   }
 }

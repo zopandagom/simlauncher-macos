@@ -54,6 +54,24 @@ struct SettingsTextTests {
     }
   }
 
+  @Test("SDK 폴더 판정 결과 줄: 쓸 수 있는지가 저장·설치 여부를 바꾸는 빈 폴더·SDK 폴더만 문구가 갈리고, 저장하지 않은 줄은 그렇게 말한다")
+  func sdkFolderResultTexts() {
+    let byCandidate = Dictionary(grouping: SettingsTextCatalog.sdkFolderResults, by: \.candidate)
+    for (candidate, results) in byCandidate {
+      let texts = Set(results.map(SettingsText.sdkFolderResult))
+      #expect(texts.count == (candidate == .empty || candidate == .sdk ? 2 : 1), "\(candidate)")
+    }
+    for result in SettingsTextCatalog.sdkFolderResults {
+      #expect(SettingsText.sdkFolderResult(result).contains("저장하지 않았습니다") == !result.isSaved, "\(result)")
+    }
+    let readOnlySDK = SettingsSDKFolderResult(path: "/x", candidate: .sdk, writable: false)
+    #expect(SettingsText.sdkFolderResult(readOnlySDK).contains("설치할 수 없습니다"))
+    #expect(
+      SettingsText.androidSDKInvalidSetting(isLocked: true) != SettingsText.androidSDKInvalidSetting(isLocked: false)
+    )
+    #expect(SettingsText.androidSDKInvalidSetting(isLocked: true).contains("담당자"))
+  }
+
   @Test("빈 입력은 안내 없이 버튼만 비활성이고, 그 밖의 입력 문제와 중복은 안내가 있다")
   func draftProblemTexts() {
     #expect(SettingsText.draftProblem(.url(.empty)) == nil)
@@ -237,7 +255,28 @@ enum SettingsTextCatalog {
     // 형식 문제의 첫 줄·끝 줄과 보간 없는 본문 (JSON 이 아님).
     texts += SettingsText.message(for: BuildCatalogProblem.notJSONObject).components(separatedBy: "\n")
     texts += [self.line(.invalidID(position: .root), 2), self.line(.missingField(.schemaVersion, position: .root), 2)]
+    texts += self.androidSDKTexts
     return texts
+  }
+
+  /// 판정 결과 줄의 모든 경우 (후보 × 쓸 수 있음).
+  static var sdkFolderResults: [SettingsSDKFolderResult] {
+    let candidates: [AndroidSDKFolderCandidate] = [
+      .empty, .sdk, .otherContents, .notDirectory, .missing, .unreadable, .unsupportedVolume,
+    ]
+    return candidates.flatMap { candidate in
+      [true, false].map { SettingsSDKFolderResult(path: "/Volumes/Tools/sdk", candidate: candidate, writable: $0) }
+    }
+  }
+
+  /// "Android SDK 위치" 절의 문구 (모두 보간 없음).
+  static var androidSDKTexts: [String] {
+    [
+      SettingsText.androidSDKSectionTitle, SettingsText.androidSDKDefaultBadge, SettingsText.androidSDKChooseButton,
+      SettingsText.androidSDKResetButton, SettingsText.androidSDKInspecting, SettingsText.androidSDKLockedNote,
+      SettingsText.androidSDKInvalidSetting(isLocked: true), SettingsText.androidSDKInvalidSetting(isLocked: false),
+      SettingsText.androidSDKGuide, SettingsText.androidSDKInstallNote,
+    ] + self.sdkFolderResults.map(SettingsText.sdkFolderResult)
   }
 
   struct FormatSample {

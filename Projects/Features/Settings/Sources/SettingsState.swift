@@ -24,3 +24,24 @@ public enum CatalogRegistrationFailure: Hashable, Sendable {
   /// 받은 파일이 카탈로그 규격(docs/CATALOG.md)에 맞지 않는다.
   case catalog(BuildCatalogProblem)
 }
+
+/// 설정 창에서 고른 Android SDK 폴더의 판정 결과 줄. 저장했는지는 `candidate.shouldSave(writable:)` 로 정해진다.
+/// 판정 뒤 저장하려는데 바깥에서 잠겼으면 결과 줄을 남기지 않는다 (다시 읽어 잠금 안내로 한 번만 보인다).
+public struct SettingsSDKFolderResult: Hashable, Sendable {
+  /// 고른 폴더의 경로 (링크를 풀지 않은 값).
+  public let path: String
+  public let candidate: AndroidSDKFolderCandidate
+  /// 고른 폴더(이미 있으면 `system-images` 도)에 쓸 수 있다.
+  public let writable: Bool
+
+  public init(path: String, candidate: AndroidSDKFolderCandidate, writable: Bool) {
+    self.path = path
+    self.candidate = candidate
+    self.writable = writable
+  }
+
+  /// 저장했다: SDK 폴더는 쓸 수 없어도, 빈 폴더는 쓸 수 있을 때만.
+  public var isSaved: Bool {
+    self.candidate.shouldSave(writable: self.writable)
+  }
+}

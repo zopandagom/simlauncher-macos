@@ -121,6 +121,18 @@ defaults write com.zopandagom.simlauncher CatalogURLs -array "https://builds.exa
 - 주의: 강제 중에도 사용자 도메인의 값(`defaults write` 로 넣었거나 강제 전에 등록한 것)은 지워지지 않고 남아 있다가, 프로필을 제거하면 다시 보인다.
 - 실측 범위: 사용자 범위 프로필(`/Library/Managed Preferences/<사용자>/`)로만 확인했다. 기기 범위(`/Library/Managed Preferences/com.zopandagom.simlauncher.plist`)도 같은 판정(`objectIsForced`)이라 같게 동작할 것으로 보지만 확인하지 않았다.
 
+같은 도메인의 다른 키:
+- `AndroidSDKPath`(문자열): Android SDK 위치. 키가 없으면 기본 위치 `~/Library/Android/sdk` 를 쓴다. 값은 `/` 로 시작하는 절대 경로나 `~/` 로 시작하는 경로(사용자 홈 기준)다. 관리자가 미리 넣을 수 있다:
+
+  ```sh
+  defaults write com.zopandagom.simlauncher AndroidSDKPath "/Volumes/Tools/AndroidSDK"
+  ```
+
+  - 사용자는 설정 창의 "Android SDK 위치" 에서 다른 폴더를 고르거나 기본 위치로 되돌릴 수 있다. 앱이 실행 중이어도 설정 창을 다시 열 때, Android 화면을 다시 열 때, 다른 앱에서 SimLauncher 로 돌아올 때, "다시 확인" 을 누를 때 반영된다.
+  - 구성 프로필로 강제하면 `CatalogURLs` 와 같은 규칙(`objectIsForced`)으로 잠긴다: 설정 창은 관리자가 정한 위치라는 안내와 경로만 보이고 바꿀 수 없다.
+  - 값을 경로로 읽을 수 없으면(빈 문자열·상대 경로·문자열이 아닌 값) Android 화면은 설정된 SDK 위치를 읽을 수 없다고 알리고 설치하지 않는다. 그 경로에 폴더가 없으면 만들지 않는다(분리된 외장 디스크 대신 내장 디스크에 설치되는 것을 막는다). 기본 위치만 없을 때 설치하면서 만든다.
+- `AcceptedAndroidLicenses`(문자열 배열): 사용자가 Android 화면에서 동의한 SDK 라이선스 원문의 기록이다. 앱이 기록하며, 라이선스 동의는 사용자 본인이 하므로 미리 넣는 용도로 쓰지 않는다.
+
 ## 10. 앱에서 설치하기
 기기 목록에서 설치할 수 있는 기기(쓸 수 있고 꺼짐·켜짐. 꺼져 있으면 켜고 설치한다) 행의 "앱 설치" 메뉴 > "카탈로그에서…" 를 누르면 등록된 카탈로그의 앱·버전 목록 시트가 열린다. 목록에서 여러 기기를 고르고(⌘·⇧ 클릭) 툴바의 "선택한 기기에 앱 설치" > "카탈로그에서…" 를 누르면 같은 시트가 고른 기기를 대상으로 열리고(고른 기기 중 설치할 수 있는 기기가 하나라도 있을 때), 제목과 대상 줄에 기기 수와 이름이 보인다.
 

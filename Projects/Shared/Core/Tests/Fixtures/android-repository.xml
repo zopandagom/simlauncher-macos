@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- 직접 만든 픽스처. repository2-3.xml (2026-10-28 실측) 의 구조를 줄였다. 크기·체크섬·원문은 지어낸 값이다. -->
+<sdk:sdk-repository xmlns:common="http://schemas.android.com/repository/android/common/02" xmlns:generic="http://schemas.android.com/repository/android/generic/02" xmlns:sdk="http://schemas.android.com/sdk/android/repo/repository2/03" xmlns:sdk-common="http://schemas.android.com/sdk/android/repo/common/03" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <license id="android-sdk-license" type="text">Terms and Conditions
+
+This is the Android Software Development Kit License Agreement (fixture).</license>
+  <license id="android-sdk-preview-license" type="text">Preview license (fixture).</license>
+  <channel id="channel-0">stable</channel>
+  <channel id="channel-1">beta</channel>
+  <channel id="channel-2">dev</channel>
+  <channel id="channel-3">canary</channel>
+  <remotePackage path="platform-tools">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>37</major>
+      <minor>0</minor>
+      <micro>1</micro>
+    </revision>
+    <display-name>Android SDK Platform-Tools</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+    <archives>
+      <archive>
+        <complete>
+          <size>16110554</size>
+          <checksum type="sha1">a1b2c3d4e5f60718293a4b5c6d7e8f9001122334</checksum>
+          <url>platform-tools_r37.0.1-darwin.zip</url>
+        </complete>
+        <host-os>macosx</host-os>
+      </archive>
+      <archive>
+        <complete>
+          <size>7000000</size>
+          <checksum type="sha1">b1b2c3d4e5f60718293a4b5c6d7e8f9001122334</checksum>
+          <url>platform-tools_r37.0.1-linux.zip</url>
+        </complete>
+        <host-os>linux</host-os>
+      </archive>
+      <archive>
+        <complete>
+          <size>7100000</size>
+          <checksum type="sha1">c1b2c3d4e5f60718293a4b5c6d7e8f9001122334</checksum>
+          <url>platform-tools_r37.0.1-win.zip</url>
+        </complete>
+        <host-os>windows</host-os>
+      </archive>
+    </archives>
+  </remotePackage>
+  <remotePackage path="platform-tools">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>36</major>
+    </revision>
+    <display-name>Android SDK Platform-Tools</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+    <archives>
+      <archive>
+        <complete>
+          <size>15000000</size>
+          <checksum type="sha1">d1b2c3d4e5f60718293a4b5c6d7e8f9001122334</checksum>
+          <url>platform-tools_r36.0.0-darwin.zip</url>
+        </complete>
+        <host-os>macosx</host-os>
+      </archive>
+    </archives>
+  </remotePackage>
+  <remotePackage path="emulator">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>37</major>
+      <minor>2</minor>
+      <micro>12</micro>
+    </revision>
+    <display-name>Android Emulator</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+    <archives>
+      <archive>
+        <complete>
+          <size>488731099</size>
+          <checksum type="sha1">e1b2c3d4e5f60718293a4b5c6d7e8f9001122334</checksum>
+          <url>emulator-darwin_x64-16428233.zip</url>
+        </complete>
+        <host-os>macosx</host-os>
+        <host-arch>x64</host-arch>
+      </archive>
+      <archive>
+        <complete>
+          <size>416112708</size>
+          <checksum type="sha1">f1b2c3d4e5f60718293a4b5c6d7e8f9001122334</checksum>
+          <url>emulator-darwin_aarch64-16428233.zip</url>
+        </complete>
+        <host-os>macosx</host-os>
+        <host-arch>aarch64</host-arch>
+      </archive>
+      <archive>
+        <complete>
+          <size>300000000</size>
+          <checksum type="sha1">01b2c3d4e5f60718293a4b5c6d7e8f9001122334</checksum>
+          <url>emulator-linux_x64-16428233.zip</url>
+        </complete>
+        <host-os>linux</host-os>
+        <host-arch>x64</host-arch>
+      </archive>
+    </archives>
+  </remotePackage>
+  <remotePackage path="emulator">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>37</major>
+      <minor>3</minor>
+      <micro>5</micro>
+    </revision>
+    <display-name>Android Emulator</display-name>
+    <uses-license ref="android-sdk-preview-license"/>
+    <channelRef ref="channel-2"/>
+    <archives>
+      <archive>
+        <complete>
+          <size>420000000</size>
+          <checksum type="sha1">11b2c3d4e5f60718293a4b5c6d7e8f9001122334</checksum>
+          <url>emulator-darwin_aarch64-16500000.zip</url>
+        </complete>
+        <host-os>macosx</host-os>
+        <host-arch>aarch64</host-arch>
+      </archive>
+    </archives>
+  </remotePackage>
+  <remotePackage obsolete="true" path="tools">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>26</major>
+      <minor>1</minor>
+      <micro>1</micro>
+    </revision>
+    <display-name>Android SDK Tools</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+    <dependencies>
+      <dependency path="emulator"/>
+      <dependency path="platform-tools">
+        <min-revision>
+          <major>20</major>
+        </min-revision>
+      </dependency>
+    </dependencies>
+    <archives>
+      <archive>
+        <complete>
+          <size>103000000</size>
+          <checksum type="sha1">21b2c3d4e5f60718293a4b5c6d7e8f9001122334</checksum>
+          <url>sdk-tools-darwin-4333796.zip</url>
+        </complete>
+        <host-os>macosx</host-os>
+      </archive>
+    </archives>
+  </remotePackage>
+  <remotePackage path="platforms;android-37">
+    <type-details xsi:type="sdk:platformDetailsType">
+      <api-level>37</api-level>
+      <extension-level>22</extension-level>
+      <base-extension>true</base-extension>
+      <layoutlib api="15"/>
+    </type-details>
+    <revision>
+      <major>1</major>
+    </revision>
+    <display-name>Android SDK Platform 37</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+    <archives>
+      <archive>
+        <complete>
+          <size>65000000</size>
+          <checksum type="sha256">a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90</checksum>
+          <url>platform-37_r01.zip</url>
+        </complete>
+      </archive>
+    </archives>
+  </remotePackage>
+  <remotePackage path="no-revision">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <display-name>Missing revision</display-name>
+    <archives>
+      <archive>
+        <complete>
+          <size>1</size>
+          <checksum type="sha1">31b2c3d4e5f60718293a4b5c6d7e8f9001122334</checksum>
+          <url>x.zip</url>
+        </complete>
+      </archive>
+    </archives>
+  </remotePackage>
+  <remotePackage>
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>1</major>
+    </revision>
+    <display-name>Missing path</display-name>
+  </remotePackage>
+  <remotePackage path="odd-archives">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>2</major>
+      <minor>1</minor>
+      <micro>0</micro>
+      <preview>3</preview>
+    </revision>
+    <unknown-element attribute="x">
+      <nested>ignored</nested>
+    </unknown-element>
+    <channelRef ref="channel-9"/>
+    <archives>
+      <archive>
+        <complete>
+          <size>10</size>
+          <checksum type="md5">0123456789abcdef0123456789abcdef</checksum>
+          <url>md5.zip</url>
+        </complete>
+      </archive>
+      <archive>
+        <complete>
+          <checksum type="sha1">41b2c3d4e5f60718293a4b5c6d7e8f9001122334</checksum>
+          <url>no-size.zip</url>
+        </complete>
+      </archive>
+      <archive>
+        <complete>
+          <size>12</size>
+          <url>no-checksum.zip</url>
+        </complete>
+      </archive>
+      <archive>
+        <complete>
+          <size>13</size>
+          <checksum type="sha1">51B2C3D4E5F60718293A4B5C6D7E8F9001122334</checksum>
+        </complete>
+      </archive>
+      <archive>
+        <complete>
+          <size>14</size>
+          <checksum type="sha1">61B2C3D4E5F60718293A4B5C6D7E8F9001122334</checksum>
+          <url>upper.zip</url>
+        </complete>
+      </archive>
+    </archives>
+  </remotePackage>
+</sdk:sdk-repository>
