@@ -4,7 +4,8 @@ import Foundation
 import Synchronization
 
 /// 테스트·Example 용 `DownloadClient`. 호출을 기록하고, 진행·결과·지연·멈춤을 바꿀 수 있다. 네트워크·파일을 쓰지 않는다.
-/// `download` 는 설정한 진행을 순서대로 알린 뒤 결과로 끝나고, 결과를 정하지 않았으면 k 번째 호출(1부터)에
+/// `download` 는 설정한 진행을 순서대로 알린 뒤 결과로 끝난다. 결과는 `setDownloadResult(_:for:)` 로 정한 주소별 결과가 있으면
+/// 그것, 없으면 `setDownloadScript(progress:result:)` 의 공통 결과, 그것도 정하지 않았으면 k 번째 호출(1부터)에
 /// `.fake(index: k)` 를 돌려준다. 취소 계약은 Impl 과 같다: 시작 전 취소면 기록 뒤 바로, 진행 사이·멈춤 중·결과 전
 /// (마지막 진행 콜백 안 포함) 취소면 그때 `.cancelled`, 돌아온 뒤에는 `onProgress` 를 부르지 않는다.
 /// 멈춘 받기에 `sendDownloadProgress(_:)` 가 진행을 넘기는 중에 온 취소·재개는 그 콜백이 끝난 뒤 받기를 깨운다.
@@ -40,6 +41,8 @@ public final class DownloadClientFake: DownloadClient {
     var calls: [Call] = []
     var downloadProgress: [DownloadProgress] = DownloadProgress.samples
     var downloadResult: Result<DownloadedFile, DownloadError>?
+    /// 주소별 `download` 결과 (키는 `absoluteString`). 없으면 `downloadResult`.
+    var downloadResultsByURL: [String: Result<DownloadedFile, DownloadError>] = [:]
     var fetchResult: Result<Data, DownloadError> = .success(Data())
     var delay: Duration?
     var downloadCount = 0
@@ -96,6 +99,12 @@ public final class DownloadClientFake: DownloadClient {
       state.downloadProgress = progress
       state.downloadResult = result
     }
+  }
+
+  /// 이후 `url` 로 들어오는 `download` 결과. 공통 결과(`setDownloadScript`)보다 먼저 쓰고, 진행 알림은 공통 설정을 쓴다.
+  /// 결과는 끝날 때의 설정을 쓴다.
+  public func setDownloadResult(_ result: Result<DownloadedFile, DownloadError>, for url: DownloadURL) {
+    self.state.withLock { $0.downloadResultsByURL[Self.fetchKey(url)] = result }
   }
 
   /// 이후 `fetchData` 결과 (기본은 빈 Data). 주소별 결과(`setFetchResult(_:for:)`)가 있는 주소에는 쓰지 않는다.
@@ -205,7 +214,9 @@ public final class DownloadClientFake: DownloadClient {
     guard !Task.isCancelled else {
       throw .cancelled
     }
-    let result = self.state.withLock { $0.downloadResult } ?? .success(.fake(index: index))
+    let key = Self.fetchKey(url)
+    let result = self.state
+      .withLock { $0.downloadResultsByURL[key] ?? $0.downloadResult } ?? .success(.fake(index: index))
     return try result.get()
   }
 

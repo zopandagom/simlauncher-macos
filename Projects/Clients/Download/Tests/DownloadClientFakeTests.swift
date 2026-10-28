@@ -45,6 +45,36 @@ struct DownloadClientFakeTests {
     #expect(try await fake.fetchData(Self.url, maxBytes: 10) == Data("{}".utf8))
   }
 
+  @Test("주소별 결과가 있는 주소는 그 결과를, 없는 주소는 공통 결과(없으면 fake(index:))를 돌려준다")
+  func perURLDownloadResult() async throws {
+    let fake = DownloadClientFake()
+    let other = try #require(DownloadURL("https://example.org/other.zip"))
+    let file = DownloadedFile(
+      file: URL(filePath: "/x/download"),
+      folder: URL(filePath: "/x/"),
+      byteCount: 3,
+      mimeType: nil
+    )
+    fake.setDownloadResult(.success(file), for: other)
+    fake.setDownloadResult(.failure(.httpStatus(404)), for: Self.url)
+
+    func result(_ url: DownloadURL) async -> Result<DownloadedFile, DownloadError> {
+      do throws(DownloadError) {
+        return try await .success(fake.download(url) { _ in })
+      } catch {
+        return .failure(error)
+      }
+    }
+
+    let first = await result(Self.url)
+    let second = await result(other)
+    let third = try await result(#require(DownloadURL("https://example.net/x.zip")))
+
+    #expect(first == .failure(.httpStatus(404)))
+    #expect(second == .success(file))
+    #expect(third == .success(.fake(index: 3)))
+  }
+
   @Test("설정한 에러를 던진다")
   func errors() async {
     let fake = DownloadClientFake()
