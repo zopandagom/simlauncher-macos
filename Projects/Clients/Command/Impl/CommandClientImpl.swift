@@ -5,6 +5,8 @@ import Synchronization
 /// `Process` 로 실제 명령을 실행하는 `CommandClient`.
 public struct CommandClientImpl: CommandClient {
   private let timing: ProcessControl.Timing
+  /// `launch` 가 띄운 프로세스. 복사본끼리 같은 표를 쓴다.
+  private let launchedProcesses = LaunchedProcessTable()
 
   public init() {
     self.timing = .standard
@@ -130,5 +132,54 @@ public struct CommandClientImpl: CommandClient {
       control.requestStop(.cancelled)
     }
     return try result.get()
+  }
+
+  public func launch(
+    _ executable: URL,
+    _ arguments: [String],
+    environment: [String: String]
+  ) async throws(CommandError) -> LaunchedProcess {
+    let id = UUID()
+    let table = self.launchedProcesses
+    let process = Process()
+    process.executableURL = executable
+    process.arguments = arguments
+    process.environment = environment
+    process.standardInput = FileHandle.nullDevice
+    process.standardOutput = FileHandle.nullDevice
+    process.standardError = FileHandle.nullDevice
+    process.terminationHandler = { process in
+      table.exited(id, status: Self.exitStatus(of: process))
+    }
+    table.register(id)
+    do {
+      try process.run()
+    } catch {
+      table.discard(id)
+      throw .launchFailed
+    }
+    table.launched(id, process: process)
+    return LaunchedProcess(id: id)
+  }
+
+  public func waitForExit(_ process: LaunchedProcess) async -> Int32? {
+    await self.launchedProcesses.wait(process.id)
+  }
+
+  public func exitStatus(_ process: LaunchedProcess) -> Int32? {
+    self.launchedProcesses.status(process.id)
+  }
+
+  public func interrupt(_ process: LaunchedProcess) {
+    self.launchedProcesses.interrupt(process.id)
+  }
+
+  /// 정상 종료면 종료 코드, 신호로 끝났으면 128+신호 번호 (셸과 같다).
+  private static func exitStatus(of process: Process) -> Int32 {
+    switch process.terminationReason {
+    case .exit: process.terminationStatus
+    case .uncaughtSignal: 128 + process.terminationStatus
+    @unknown default: process.terminationStatus
+    }
   }
 }
