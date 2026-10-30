@@ -32,6 +32,24 @@ struct DownloadClientFakeTests {
     #expect(fake.leftoverCleanupCount == 1)
   }
 
+  @Test("받기 이름을 주소와 함께 기록하고, 기본 결과의 파일은 그 이름을 따른다")
+  func recordsFileName() async throws {
+    let fake = DownloadClientFake()
+
+    let plain = try await fake.download(Self.url) { _ in }
+    let apk = try await fake.download(Self.url, savingAs: .apk) { _ in }
+
+    #expect(plain == .fake(index: 1))
+    #expect(plain.file.lastPathComponent == "download")
+    #expect(apk == .fake(index: 2, name: .apk))
+    #expect(apk.file.lastPathComponent == "download.apk")
+    #expect(fake.downloadRequests == [
+      DownloadClientFake.DownloadRequest(url: Self.url, name: .download),
+      DownloadClientFake.DownloadRequest(url: Self.url, name: .apk),
+    ])
+    #expect(fake.calls == [.download(Self.url.url), .download(Self.url.url)])
+  }
+
   @Test("설정한 진행을 순서대로 알리고 설정한 결과로 끝난다")
   func script() async throws {
     let fake = DownloadClientFake()

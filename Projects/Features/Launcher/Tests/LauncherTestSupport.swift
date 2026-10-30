@@ -271,7 +271,22 @@ enum CatalogData {
     #"{"schemaVersion":1,"apps":[{"id":"alpha","name":"Alpha","versions":[]}]}"#.utf8
   )
   static let emptyApps = Data(#"{"schemaVersion":1,"apps":[]}"#.utf8)
-  static let newerSchema = Data(#"{"schemaVersion":2,"apps":[]}"#.utf8)
+  static let newerSchema = Data(#"{"schemaVersion":3,"apps":[]}"#.utf8)
+  /// schemaVersion 2: Android 앱 alpha(같은 id, 버전 v1)·iOS 앱 alpha(버전 v1)·Android 앱 beta (파일 순서).
+  static let v2Mixed = Data(
+    [
+      #"{"schemaVersion":2,"apps":[{"id":"alpha","name":"Alpha Android","platform":"android","versions":["#,
+      alphaV1JSON, #"]},{"id":"alpha","name":"Alpha","platform":"ios","versions":["#, alphaV1JSON,
+      #"]},{"id":"beta","name":"Beta","platform":"android","versions":[]}]}"#,
+    ].joined().utf8
+  )
+  /// schemaVersion 2: alpha 가 Android 앱으로만 있다 (새로 고침 뒤 플랫폼이 바뀐 앱).
+  static let v2AlphaAndroidOnly = Data(
+    [
+      #"{"schemaVersion":2,"apps":[{"id":"alpha","name":"Alpha","platform":"android","versions":["#,
+      alphaV1JSON, "]}]}",
+    ].joined().utf8
+  )
   static let html = Data("<html><body>로그인</body></html>".utf8)
 
   /// 해석한 값.

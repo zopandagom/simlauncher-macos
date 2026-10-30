@@ -26,7 +26,15 @@ struct AndroidDevicesResourcesTests {
       #expect(table[sample.key] == sample.key, "\(sample.key)")
       #expect(String(format: table[sample.key] ?? "", arguments: sample.arguments) == sample.text, "\(sample.key)")
     }
-    let keys = Set(AndroidDevicesTextCatalog.plain).union(AndroidDevicesTextCatalog.formatted.map(\.key))
+    // URL·카탈로그에서 설치 문구는 표로 기대 문구를 만드는 확인 목록이다 (`DownloadTextCatalog`).
+    let downloadChecks = DownloadTextCatalog.sharedChecks(table) + DownloadTextCatalog.androidChecks(table)
+    for check in downloadChecks {
+      #expect(table[check.key] == check.key, "\(check.key)")
+      #expect(check.actual == check.expected, "\(check.key)")
+    }
+    let keys = Set(AndroidDevicesTextCatalog.plain)
+      .union(AndroidDevicesTextCatalog.formatted.map(\.key))
+      .union(downloadChecks.map(\.key))
     #expect(keys == Set(table.keys))
   }
 }
@@ -223,6 +231,10 @@ enum AndroidDevicesTextCatalog {
       .installedButNotLaunched(label, .launchFailed(.noLauncherActivity)),
       .launchFailed(label, .deviceNotReady(.unavailable)), .launchFailed(label, .emulator(.appCommandFailed)),
       .openURLFailed(label, .emulator(.urlNotHandled)),
+      .installFailed(label, .download(.offline, origin: .enteredURL)),
+      .installFailed(label, .download(.httpStatus(404), origin: .catalog)),
+      .installFailed(label, .downloadedPackage(.unreadable, isWebPage: true, origin: .enteredURL)),
+      .installFailed(label, .downloadedPackage(.appBundle, isWebPage: false, origin: .catalog)),
     ]
   }()
 

@@ -1,6 +1,7 @@
 import Foundation
 
 // catalog.json 하나를 앱과 같은 규칙(Core `BuildCatalog(jsonData:)` 와 크기 상한)으로 검사한다.
+// schemaVersion 1(앱은 모두 iOS, platform 무시)과 2(앱마다 platform 필수)를 읽는다.
 // Core 소스와 함께 컴파일해 쓴다: make catalog-check CATALOG=<catalog.json>
 // 종료 코드: 0 통과, 1 규격 위반(크기 초과 포함), 2 사용법·파일 읽기 실패.
 @main
@@ -24,9 +25,9 @@ enum ValidateCatalog {
     } catch {
       self.fail("규격 위반: \(error)", status: 1)
     }
-    print("OK \(path): 앱 \(catalog.apps.count)개")
+    print("OK \(path): schemaVersion \(catalog.schemaVersion), 앱 \(catalog.apps.count)개")
     for app in catalog.apps {
-      print("  \(app.id.rawValue): 버전 \(app.versions.count)개")
+      print("  \(app.id.rawValue) (\(app.platform.rawValue)): 버전 \(app.versions.count)개")
     }
   }
 

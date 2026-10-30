@@ -1,0 +1,6 @@
+# Gradle 빌드 산출물
+build/
+.gradle/
+local.properties
+# sample-signing.pem 을 바꾼 서명 키 파일. 커밋하지 않는다 (PEM 텍스트만 커밋한다)
+*.p12

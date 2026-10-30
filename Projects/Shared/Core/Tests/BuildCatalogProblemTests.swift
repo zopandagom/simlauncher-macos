@@ -73,18 +73,25 @@ struct BuildCatalogProblemTests {
     #expect(catalogProblem(data) == .wrongType(.schemaVersion, position: .root))
   }
 
-  @Test("1 이 아닌 정수 schemaVersion 은 unsupportedSchemaVersion", arguments: [0, 2, -1])
+  @Test("1·2 가 아닌 정수 schemaVersion 은 unsupportedSchemaVersion", arguments: [0, 3, -1])
   func unsupportedSchemaVersion(version: Int) {
     let data = Data(#"{"schemaVersion":\#(version),"apps":[]}"#.utf8)
 
     #expect(catalogProblem(data) == .unsupportedSchemaVersion(version))
   }
 
-  @Test("정수가 되는 숫자 2.0·2e0 은 unsupportedSchemaVersion(2)", arguments: ["2.0", "2e0"])
+  @Test("정수가 되는 숫자 3.0·3e0 은 unsupportedSchemaVersion(3)", arguments: ["3.0", "3e0"])
   func schemaVersionIntegralNumberUnsupported(value: String) {
     let data = Data(#"{"schemaVersion":\#(value),"apps":[]}"#.utf8)
 
-    #expect(catalogProblem(data) == .unsupportedSchemaVersion(2))
+    #expect(catalogProblem(data) == .unsupportedSchemaVersion(3))
+  }
+
+  @Test("정수가 되는 숫자 2.0·2e0 은 schemaVersion 2 로 읽는다", arguments: ["2.0", "2e0"])
+  func schemaVersionIntegralNumberTwo(value: String) throws {
+    let data = Data(#"{"schemaVersion":\#(value),"apps":[]}"#.utf8)
+
+    #expect(try BuildCatalog(jsonData: data).schemaVersion == 2)
   }
 
   @Test("schemaVersion 은 64비트 정수 끝까지 정수로 읽고 그 밖은 wrongType")
@@ -99,11 +106,11 @@ struct BuildCatalogProblemTests {
     #expect(problem("-9223372036854775809") == .wrongType(.schemaVersion, position: .root))
   }
 
-  @Test("schemaVersion 이 2 면 나머지 구조가 달라도 unsupportedSchemaVersion(2)")
+  @Test("schemaVersion 이 3 이면 나머지 구조가 달라도 unsupportedSchemaVersion(3)")
   func schemaVersionCheckedFirst() {
-    let data = Data(#"{"schemaVersion":2,"apps":"다른 구조"}"#.utf8)
+    let data = Data(#"{"schemaVersion":3,"apps":"다른 구조"}"#.utf8)
 
-    #expect(catalogProblem(data) == .unsupportedSchemaVersion(2))
+    #expect(catalogProblem(data) == .unsupportedSchemaVersion(3))
   }
 
   @Test("apps 가 없거나 null 이면 missingField, 배열이 아니면 wrongType, 항목이 객체가 아니면(null·배열·문자열) 그 인덱스의 wrongType(.apps)")

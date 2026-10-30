@@ -15,6 +15,7 @@ struct MainWindow: View {
   let catalogInstallModel: CatalogInstallModel
   let androidSetupModel: AndroidSetupModel
   let androidDevicesModel: AndroidDevicesModel
+  let androidDownloadInstallModel: AndroidDownloadInstallModel
   @State private var platform: Platform = .iOS
 
   /// 사이드바 항목. 이름("iOS"·"Android")은 고유 이름이라 카탈로그를 거치지 않는다 (App 에는 String Catalog 가 없다).
@@ -64,7 +65,7 @@ struct MainWindow: View {
         // 기기 목록 화면은 Android 도구 첫 확인이 셋 다 설치됨이거나 "기기 목록 열기" 뒤에 만들어진다 (그 전에는 목록 읽기·adb 가
         // 돌지 않는다). 돌아올 때마다 새로 만들어져 onAppear 가 목록을 다시 읽는다.
         if self.androidSetupModel.isFinished {
-          AndroidDevicesView(model: self.androidDevicesModel)
+          AndroidDevicesView(model: self.androidDevicesModel, downloadModel: self.androidDownloadInstallModel)
         } else {
           AndroidSetupView(model: self.androidSetupModel)
         }

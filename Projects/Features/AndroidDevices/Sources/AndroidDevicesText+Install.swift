@@ -8,7 +8,7 @@ import Foundation
 extension AndroidDevicesText {
   // MARK: - 기기 행
 
-  /// 앱 설치 메뉴 제목 (항목은 `installFromFileMenuItem`).
+  /// 앱 설치 메뉴 제목 (항목은 `installFromFileMenuItem`·`installFromURLMenuItem`·`installFromCatalogMenuItem`).
   static var installAppButton: String {
     String(localized: "앱 설치", bundle: .module)
   }
@@ -18,7 +18,13 @@ extension AndroidDevicesText {
   }
 
   static var installAppHelp: String {
-    String(localized: ".apk 파일을 골라 이 기기에 설치하고 바로 실행합니다. 이 줄에 .apk 를 끌어다 놓아도 됩니다.", bundle: .module)
+    String(
+      localized: """
+      .apk 파일을 고르거나, https 주소나 등록한 빌드 카탈로그에서 받아 이 기기에 설치하고 바로 실행합니다. \
+      이 줄에 .apk 를 끌어다 놓아도 됩니다.
+      """,
+      bundle: .module
+    )
   }
 
   static var launchAppButton: String {
@@ -116,6 +122,10 @@ extension AndroidDevicesText {
       self.appActionBlockReason(reason)
     case let .emulator(error):
       self.message(for: error) ?? ""
+    case let .download(error, origin):
+      self.downloadMessage(for: error, origin: origin)
+    case let .downloadedPackage(error, isWebPage, origin):
+      self.downloadedPackageMessage(for: error, isWebPage: isWebPage, origin: origin)
     }
   }
 

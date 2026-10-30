@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 권한 없음. 홈 화면에서 여는 화면 하나 (SimLauncher 가 설치 뒤 이 화면을 실행한다). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <application android:label="SimLauncher Sample">
+    <activity
+      android:name=".MainActivity"
+      android:exported="true">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
+    </activity>
+  </application>
+</manifest>

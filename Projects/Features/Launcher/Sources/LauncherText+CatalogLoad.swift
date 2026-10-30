@@ -137,7 +137,7 @@ extension LauncherText {
     switch problem {
     case .notJSONObject:
       return [header, detail, self.checkCatalogAddressThenReport].joined(separator: "\n")
-    case let .unsupportedSchemaVersion(version) where version > BuildCatalog.supportedSchemaVersion:
+    case let .unsupportedSchemaVersion(version) where version > BuildCatalog.latestSchemaVersion:
       // 앱을 업데이트할 일이라 카탈로그를 만든 사람에게 알릴 필요가 없다.
       return [header, detail].joined(separator: "\n")
     case let .missingField(_, position) where position == .root, let .wrongType(_, position) where position == .root:
@@ -173,6 +173,8 @@ extension LauncherText {
       self.catalogFieldDetail(for: problem)
     case let .invalidID(position):
       self.catalogInvalidIDDetail(at: self.catalogLocation(position))
+    case let .unsupportedPlatform(position):
+      self.catalogUnsupportedPlatformDetail(at: self.catalogLocation(position))
     case let .duplicateAppID(position):
       self.catalogDuplicateAppIDDetail(at: self.catalogLocation(position))
     case let .duplicateVersionID(position):
@@ -188,14 +190,14 @@ extension LauncherText {
   }
 
   private static func catalogSchemaVersionDetail(_ version: Int) -> String {
-    if version > BuildCatalog.supportedSchemaVersion {
+    if version > BuildCatalog.latestSchemaVersion {
       return String(
         localized: "이 카탈로그는 이 앱보다 새 규격(schemaVersion \(version))입니다. SimLauncher 를 업데이트하세요.",
         bundle: .module
       )
     }
-    let supported = BuildCatalog.supportedSchemaVersion
-    return String(localized: "카탈로그의 schemaVersion \(version) 은 없는 규격입니다 (지원: \(supported)).", bundle: .module)
+    let latest = BuildCatalog.latestSchemaVersion
+    return String(localized: "카탈로그의 schemaVersion \(version) 은 없는 규격입니다 (지원: 1~\(latest)).", bundle: .module)
   }
 
   /// 필드 문제 (`catalogDetail(for:)` 가 넘기는 케이스만 온다). 필드 이름은 JSON 키 그대로다.
@@ -218,8 +220,8 @@ extension LauncherText {
       let place = self.catalogLocation(position)
       let name = field.rawValue
       return String(localized: "\(place)의 \(name) 가 비어 있습니다.", bundle: .module)
-    case .notJSONObject, .unsupportedSchemaVersion, .invalidID, .duplicateAppID, .duplicateVersionID,
-         .invalidCreatedAt, .invalidBuildURL:
+    case .notJSONObject, .unsupportedSchemaVersion, .invalidID, .unsupportedPlatform, .duplicateAppID,
+         .duplicateVersionID, .invalidCreatedAt, .invalidBuildURL:
       return self.catalogDetail(for: problem)
     }
   }
@@ -234,6 +236,10 @@ extension LauncherText {
       localized: "\(place)의 id 가 형식에 맞지 않습니다 (영문·숫자로 시작하고 영문·숫자·. _ - 만, 128자까지).",
       bundle: .module
     )
+  }
+
+  private static func catalogUnsupportedPlatformDetail(at place: String) -> String {
+    String(localized: "\(place)의 platform 이 ios 나 android 가 아닙니다 (소문자로 씁니다).", bundle: .module)
   }
 
   private static func catalogDuplicateAppIDDetail(at place: String) -> String {
@@ -397,8 +403,8 @@ extension LauncherText {
       self.lockedCatalogProblemLines(for: problem)
     case let .missingField(_, position) where position == .root, let .wrongType(_, position) where position == .root:
       self.lockedCatalogProblemLines(for: problem)
-    case .unsupportedSchemaVersion, .missingField, .wrongType, .emptyField, .invalidID, .duplicateAppID,
-         .duplicateVersionID, .invalidCreatedAt, .invalidBuildURL:
+    case .unsupportedSchemaVersion, .missingField, .wrongType, .emptyField, .invalidID, .unsupportedPlatform,
+         .duplicateAppID, .duplicateVersionID, .invalidCreatedAt, .invalidBuildURL:
       nil
     }
   }

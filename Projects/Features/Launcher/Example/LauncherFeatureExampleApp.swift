@@ -490,7 +490,7 @@ enum ExampleCatalog {
   }
   """.utf8)
 
-  static let newerSchema = Data(#"{ "schemaVersion": 2, "apps": [] }"#.utf8)
+  static let newerSchema = Data(#"{ "schemaVersion": 3, "apps": [] }"#.utf8)
 
   /// 첫 앱의 첫 버전 날짜에 시간대가 없다.
   static let badCreatedAt = Data("""

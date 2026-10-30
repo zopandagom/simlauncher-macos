@@ -24,8 +24,8 @@ enum CatalogText {
 
   static let defaultCreatedAt = "2026-10-21T04:08:49Z"
 
-  static func catalog(_ apps: [String]) -> Data {
-    Data(#"{"schemaVersion":1,"apps":[\#(apps.joined(separator: ","))]}"#.utf8)
+  static func catalog(_ apps: [String], schemaVersion: Int = 1) -> Data {
+    Data(#"{"schemaVersion":\#(schemaVersion),"apps":[\#(apps.joined(separator: ","))]}"#.utf8)
   }
 
   static func app(

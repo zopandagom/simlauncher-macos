@@ -1,10 +1,29 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "apps": [
     {
       "id": "com.zopandagom.simlauncher.sampleapp",
       "name": "SimLauncher Sample",
+      "platform": "ios",
       "versions": [
+        {
+          "id": "sample-build-320",
+          "name": "1.0.0 (7)",
+          "branch": "main",
+          "tag": "sample-build-320",
+          "buildNumber": "7",
+          "createdAt": "2026-10-30T10:00:00Z",
+          "buildURL": "https://github.com/zopandagom/simlauncher-macos/releases/download/sample-build-320/SampleApp.zip"
+        },
+        {
+          "id": "sample-build-310",
+          "name": "1.0.0 (5)",
+          "branch": "feat/android-url-catalog",
+          "tag": "sample-build-310",
+          "buildNumber": "5",
+          "createdAt": "2026-10-29T09:00:00Z",
+          "buildURL": "https://github.com/zopandagom/simlauncher-macos/releases/download/sample-build-310/SampleApp.zip"
+        },
         {
           "id": "sample-build-300",
           "name": "1.0.0 (4)",
@@ -37,6 +56,31 @@
           "buildNumber": "2",
           "createdAt": "2026-10-21T09:00:00Z",
           "buildURL": "https://github.com/zopandagom/simlauncher-macos/releases/download/sample-build-150/SampleApp.zip"
+        }
+      ]
+    },
+    {
+      "id": "com.zopandagom.simlauncher.sampleapp",
+      "name": "SimLauncher Sample",
+      "platform": "android",
+      "versions": [
+        {
+          "id": "sample-build-320",
+          "name": "1.0.0 (7)",
+          "branch": "main",
+          "tag": "sample-build-320",
+          "buildNumber": "7",
+          "createdAt": "2026-10-30T10:00:00Z",
+          "buildURL": "https://github.com/zopandagom/simlauncher-macos/releases/download/sample-build-320/SampleAndroidApp.apk"
+        },
+        {
+          "id": "sample-build-315",
+          "name": "1.0.0 (6)",
+          "branch": "main",
+          "tag": "sample-build-315",
+          "buildNumber": "6",
+          "createdAt": "2026-10-30T09:00:00Z",
+          "buildURL": "https://github.com/zopandagom/simlauncher-macos/releases/download/sample-build-315/SampleAndroidApp.apk"
         }
       ]
     }

@@ -15,7 +15,9 @@ public enum BuildCatalogProblem: Error, Hashable, Sendable {
   case emptyField(Field, position: Position)
   /// id 가 형식(docs/CATALOG.md "id 형식")에 맞지 않는다.
   case invalidID(position: Position)
-  /// 앱 id 가 앞 앱과 (대소문자 무시) 같다. 위치는 뒤 앱(인덱스·id).
+  /// schemaVersion 2 에서 앱의 `platform` 이 문자열인데 `ios`·`android` (소문자 정확히) 가 아니다.
+  case unsupportedPlatform(position: Position)
+  /// 앱 id 가 같은 플랫폼의 앞 앱과 (대소문자 무시) 같다. 위치는 뒤 앱(인덱스·id).
   case duplicateAppID(position: Position)
   /// 같은 앱 안에서 버전 id 가 앞 버전과 (대소문자 무시) 같다. 위치는 뒤 버전(앱·버전 인덱스와 id).
   case duplicateVersionID(position: Position)
@@ -26,7 +28,7 @@ public enum BuildCatalogProblem: Error, Hashable, Sendable {
 
   /// rawValue 는 JSON 키.
   public enum Field: String, Hashable, Sendable, CaseIterable {
-    case schemaVersion, apps, id, name, versions, branch, tag, buildNumber, createdAt, buildURL
+    case schemaVersion, apps, id, platform, name, versions, branch, tag, buildNumber, createdAt, buildURL
   }
 
   /// 문제가 난 곳. 인덱스는 파일 순서(0부터), id 는 그 객체의 id 가 형식 검사를 통과했을 때만.

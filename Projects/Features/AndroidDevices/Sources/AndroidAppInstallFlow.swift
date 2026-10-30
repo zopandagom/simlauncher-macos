@@ -1,13 +1,16 @@
 import AndroidEmulatorInterface
 import AndroidPackageInterface
 import Core
+import DownloadInterface
 import Foundation
 
-/// 앱 설치 흐름: 항목 수 → apk 검사 → 지금 목록으로 대상 다시 확인 → 기기 값(API·ABI) → 판정 → 설치 → 실행 → 다시 읽기.
-/// 같은 창구를 쓰는 앱 실행(행 "앱 실행…")과 링크 열기도 맡는다.
+/// 앱 설치 흐름: (로컬이면 항목 수 / URL·카탈로그면 받은 결과) → apk 검사 → 지금 목록으로 대상 다시 확인 → 기기 값(API·ABI) →
+/// 판정 → 설치 → 실행 → 다시 읽기. 같은 창구를 쓰는 앱 실행(행 "앱 실행…")·그 목록 읽기와 링크 열기, 앱 작업 대상 확인도 맡는다.
 /// `AndroidDevicesModel` 이 `private` 으로 소유하고, 진행 기록(`activity`)을 시작한 Model 메서드 안에서만 부른다.
 /// Client 는 직접 부르고, Model 상태에는 부를 때 넘겨받는 `Host` 창구로만 닿는다 (Model 상태를 직접 바꾸지 않는다).
-/// 모든 실패가 안에서 알림으로 끝나 던지지 않는다. 명령이 기기에 닿기 전의 실패(검사·대상·판정)는 다시 읽지 않는다.
+/// 모든 실패가 안에서 알림으로 끝나 던지지 않는다. 명령이 기기에 닿기 전의 실패(받기·검사·대상·판정)는 다시 읽지 않는다.
+/// 받은 파일은 모든 경로에서 정확히 한 번 지운다: 설치 명령이 끝나면(성공·실패) 곧바로(실행 전), 설치 전에 끝나면 알림을
+/// 쌓기 전에. 설치 명령은 `--no-incremental` 이라 설치가 끝난 뒤 호스트 파일을 읽지 않는다 (AndroidEmulator Impl).
 @MainActor
 struct AndroidAppInstallFlow {
   /// Model 이 부를 때마다 만들어 넘기는 창구. Model 을 잡으므로 저장하지 않는다.
@@ -22,6 +25,7 @@ struct AndroidAppInstallFlow {
 
   let emulator: any AndroidEmulatorClient
   let package: any AndroidPackageClient
+  let download: any DownloadClient
 
   /// 고르거나 끌어다 놓은 항목: 정확히 하나여야 하고(둘 이상이면 이유를 알린다), 검사·판정을 통과하면 설치하고 실행한다.
   func install(_ items: [URL], on id: AndroidVirtualDevice.ID, label: AndroidDeviceLabel, host: Host) async {
@@ -37,8 +41,61 @@ struct AndroidAppInstallFlow {
       host.enqueue(.installFailed(label, .package(error)))
       return
     }
-    // 검사하는 동안 새로 고침으로 목록이 바뀌었을 수 있다. 이 기기의 작업은 지금 이 설치라 진행 중은 보지 않는다.
+    await self.installInspected(info, on: id, label: label, downloaded: nil, host: host)
+  }
+
+  /// URL·카탈로그에서 받은 결과: 취소를 눌렀으면 받은 파일을 지우고 알림 없이, 실패면 출처에 맞는 알림으로 끝낸다
+  /// (폴더는 Download 가 지웠다). 받았으면 검사하고 로컬 apk 와 같은 단계로 설치·실행한다. 받기 실패·검사 실패는 다시 읽지 않는다.
+  func installDownloaded(
+    _ result: Result<DownloadedFile, DownloadError>,
+    cancelRequested: Bool,
+    request: AndroidDownloadInstallRequest,
+    host: Host
+  ) async {
+    let label = request.device
+    if cancelRequested {
+      // 막 끝난 성공 뒤에 취소를 눌렀어도 취소가 이긴다.
+      if case let .success(file) = result {
+        await self.download.removeDownloaded(file)
+      }
+      return
+    }
+    let file: DownloadedFile
+    switch result {
+    case let .success(downloaded):
+      file = downloaded
+    case let .failure(error):
+      // 취소를 누르지 않았는데 온 `.cancelled` 도 이유 없이 행만 돌아가지 않게 알린다 (코드상 나오지 않는다).
+      host.enqueue(.installFailed(label, .download(error, origin: request.origin)))
+      return
+    }
+    let info: AndroidPackageInfo
+    do throws(AndroidPackageError) {
+      info = try await self.package.inspect(file.file)
+    } catch {
+      await self.download.removeDownloaded(file)
+      host.enqueue(.installFailed(label, AndroidAppInstallFailure(
+        downloaded: error,
+        mimeType: file.mimeType,
+        origin: request.origin
+      )))
+      return
+    }
+    await self.installInspected(info, on: request.deviceID, label: label, downloaded: file, host: host)
+  }
+
+  /// 검사를 통과한 apk: 대상 다시 확인 → 기기 값 → 판정 → 설치 → 실행 → 다시 읽기. `downloaded` 가 있으면 설치 명령이
+  /// 끝난 직후(실행 전), 설치 전에 끝나면 알림을 쌓기 전에 지운다.
+  private func installInspected(
+    _ info: AndroidPackageInfo,
+    on id: AndroidVirtualDevice.ID,
+    label: AndroidDeviceLabel,
+    downloaded: DownloadedFile?,
+    host: Host
+  ) async {
+    // 검사하는 동안(받는 동안) 새로 고침으로 목록이 바뀌었을 수 있다. 이 기기의 작업은 지금 이 설치라 진행 중은 보지 않는다.
     if let failure = self.target(id, in: host.listState()).failure {
+      await self.remove(downloaded)
       host.enqueue(.installFailed(label, .init(failure)))
       return
     }
@@ -46,18 +103,26 @@ struct AndroidAppInstallFlow {
     do throws(AndroidEmulatorError) {
       traits = try await self.emulator.deviceTraits(id)
     } catch {
+      await self.remove(downloaded)
       host.enqueue(.installFailed(label, .emulator(error)))
       await host.reload()
       return
     }
     if let problem = info.installProblem(on: traits) {
+      await self.remove(downloaded)
       host.enqueue(.installFailed(label, .rejected(problem)))
       return
     }
+    var installError: AndroidEmulatorError?
     do throws(AndroidEmulatorError) {
       try await self.emulator.install(info.location, on: id)
     } catch {
-      host.enqueue(.installFailed(label, .emulator(error)))
+      installError = error
+    }
+    // 설치 명령이 끝나면 받은 파일은 필요 없다 (실측: 설치 직후 지워도 실행된다).
+    await self.remove(downloaded)
+    if let installError {
+      host.enqueue(.installFailed(label, .emulator(installError)))
       await host.reload()
       return
     }
@@ -67,6 +132,12 @@ struct AndroidAppInstallFlow {
       host.enqueue(.installedButNotLaunched(label, error))
     }
     await host.reload()
+  }
+
+  /// 받은 파일이 있으면 지운다. 로컬 apk(nil)면 아무것도 하지 않는다 (기다리지도 않는다).
+  private func remove(_ downloaded: DownloadedFile?) async {
+    guard let downloaded else { return }
+    await self.download.removeDownloaded(downloaded)
   }
 
   /// 행 "앱 실행…" 시트에서 고른 앱을 실행하고 다시 읽는다. 실패하면 알림을 쌓는다.
@@ -92,6 +163,31 @@ struct AndroidAppInstallFlow {
       host.enqueue(.openURLFailed(label, .emulator(error)))
     }
     await host.reload()
+  }
+
+  /// 행 "앱 실행…" 시트의 목록: 그 기기의 사용자 설치 앱. 실패도 값으로 돌려준다 (Model 은 결과만 초안에 넣는다).
+  func installedPackages(on id: AndroidVirtualDevice.ID) async -> Result<[AndroidPackageName], AndroidEmulatorError> {
+    do throws(AndroidEmulatorError) {
+      return try await .success(self.emulator.installedPackages(on: id))
+    } catch {
+      return .failure(error)
+    }
+  }
+
+  /// 시트를 연 사이 바뀌었을 수 있는 대상 기기를 지금 목록으로 확인한다. 안 되면 `failed` 로 만든 알림을 쌓고 nil.
+  func target(
+    _ id: AndroidVirtualDevice.ID,
+    host: Host,
+    failed: (AndroidAppActionFailure) -> AndroidDevicesNotice
+  ) -> AndroidVirtualDevice? {
+    let target = self.target(id, in: host.listState())
+    guard case let .ready(device) = target else {
+      if let failure = target.failure {
+        host.enqueue(failed(failure))
+      }
+      return nil
+    }
+    return device
   }
 
   /// 앱 작업 대상 기기를 지금 목록으로 다시 확인한다 (시트를 연 사이나 검사하는 사이 바뀌었을 수 있다).

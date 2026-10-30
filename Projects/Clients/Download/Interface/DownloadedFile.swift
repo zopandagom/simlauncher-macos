@@ -1,8 +1,8 @@
 import Foundation
 
-/// `DownloadClient.download(_:onProgress:)` 가 받은 파일과 그 임시 폴더. `DownloadClient.removeDownloaded(_:)` 로 지운다.
+/// `DownloadClient.download(_:savingAs:onProgress:)` 가 받은 파일과 그 임시 폴더. `DownloadClient.removeDownloaded(_:)` 로 지운다.
 public struct DownloadedFile: Hashable, Sendable {
-  /// `<folder>/download`. 이름은 고정이고 서버가 준 이름을 쓰지 않는다. 일반 파일, 권한 0o600.
+  /// `<folder>/<DownloadedFileName>` (`download`·`download.apk`). 이름은 고정이고 서버가 준 이름을 쓰지 않는다. 일반 파일, 권한 0o600.
   public let file: URL
   /// 이번 받기가 만든 `SimLauncher-Download-<UUID>` 폴더 (0o700).
   public let folder: URL

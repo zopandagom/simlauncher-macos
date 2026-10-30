@@ -2,8 +2,9 @@ import Core
 import DownloadInterface
 import Foundation
 
-/// URLSession 데이터 작업으로 받는 `DownloadClient`. 큰 파일은 delegate 가 `SimLauncher-Download-<UUID>/download` 에
-/// 직접 쓴다 (다운로드 작업은 성공·취소·실패 때 시스템 임시 폴더에 지울 수 없는 파일을 남겨 쓰지 않는다).
+/// URLSession 데이터 작업으로 받는 `DownloadClient`. 큰 파일은 delegate 가 `SimLauncher-Download-<UUID>/<고정 이름>`
+/// (`DownloadedFileName`: `download`·`download.apk`) 에 직접 쓴다 (다운로드 작업은 성공·취소·실패 때 시스템 임시 폴더에
+/// 지울 수 없는 파일을 남겨 쓰지 않는다).
 /// 호출마다 세션을 새로 만든다: 쿠키·캐시·자격 증명 저장소 없음, 요청 유휴 시간 제한 60초, 연결을 기다리지 않음.
 public struct DownloadClientImpl: DownloadClient {
   /// 요청 유휴 시간 제한, `fetchData` 의 전체 시간 제한.
@@ -46,6 +47,7 @@ public struct DownloadClientImpl: DownloadClient {
   @concurrent
   public func download(
     _ url: DownloadURL,
+    savingAs fileName: DownloadedFileName,
     onProgress: @escaping @Sendable (DownloadProgress) async -> Void
   ) async throws(DownloadError) -> DownloadedFile {
     guard !Task.isCancelled else {
@@ -68,7 +70,7 @@ public struct DownloadClientImpl: DownloadClient {
       self.folders.unregister(name)
       throw DownloadErrorMapping.writeFailure(error)
     }
-    let file = folder.appending(path: DownloadFolders.fileName, directoryHint: .notDirectory)
+    let file = folder.appending(path: fileName.rawValue, directoryHint: .notDirectory)
     let availableCapacity = self.availableCapacity
     do throws(DownloadError) {
       let received = try await self.run(

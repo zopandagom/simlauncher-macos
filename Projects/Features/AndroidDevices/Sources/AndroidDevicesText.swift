@@ -6,7 +6,8 @@ import Foundation
 /// 기기 표시 이름·API 값·시스템 이미지 태그·경로는 번역하지 않는 값이라 `%@` 자리에 그대로 넣는다.
 /// 케이스를 기본값 없이 모두 적어, 상태·오류가 늘면 컴파일러가 잡는다. 에러 본문·행 이유는 `AndroidDevicesText+Error.swift`, 확인 대화상자·만들기 시트는
 /// `AndroidDevicesText+Dialogs.swift`, 앱 설치·실행은 `AndroidDevicesText+Install.swift`, 링크 열기는
-/// `AndroidDevicesText+OpenURL.swift`.
+/// `AndroidDevicesText+OpenURL.swift`, URL 에서 설치는 `AndroidDevicesText+Download.swift`, 카탈로그에서 설치는
+/// `AndroidDevicesText+Catalog.swift`(시트·버전 설치 실패)와 `AndroidDevicesText+CatalogLoad.swift`(카탈로그 읽기 실패).
 enum AndroidDevicesText {
   // MARK: - 기기 라벨
 

@@ -1,6 +1,90 @@
 [
   [
     {
+      "tag_name": "sample-build-320",
+      "name": "1.0.0 (7)",
+      "draft": false,
+      "prerelease": true,
+      "created_at": "2026-10-30T09:40:00Z",
+      "published_at": "2026-10-30T10:00:00Z",
+      "body": "샘플 빌드입니다 (iOS 시뮬레이터용 zip, Android apk).\nbranch: main\nbuildNumber: 7\ncommit: 3333333\n",
+      "assets": [
+        {
+          "name": "SampleApp.zip",
+          "state": "uploaded",
+          "browser_download_url": "https://github.com/zopandagom/simlauncher-macos/releases/download/sample-build-320/SampleApp.zip"
+        },
+        {
+          "name": "SampleAndroidApp.apk",
+          "state": "uploaded",
+          "browser_download_url": "https://github.com/zopandagom/simlauncher-macos/releases/download/sample-build-320/SampleAndroidApp.apk"
+        }
+      ]
+    },
+    {
+      "tag_name": "sample-build-315",
+      "name": "1.0.0 (6)",
+      "draft": false,
+      "prerelease": true,
+      "created_at": "2026-10-30T08:40:00Z",
+      "published_at": "2026-10-30T09:00:00Z",
+      "body": "zip 업로드가 끝나지 않은 빌드\nbranch: main\nbuildNumber: 6\n",
+      "assets": [
+        {
+          "name": "SampleAndroidApp.apk",
+          "state": "uploaded",
+          "browser_download_url": "https://github.com/zopandagom/simlauncher-macos/releases/download/sample-build-315/SampleAndroidApp.apk"
+        },
+        {
+          "name": "SampleApp.zip",
+          "state": "starter",
+          "browser_download_url": "https://github.com/zopandagom/simlauncher-macos/releases/download/sample-build-315/SampleApp.zip"
+        }
+      ]
+    },
+    {
+      "tag_name": "sample-build-310",
+      "name": "1.0.0 (5)",
+      "draft": false,
+      "prerelease": true,
+      "created_at": "2026-10-29T08:40:00Z",
+      "published_at": "2026-10-29T09:00:00Z",
+      "body": "apk 업로드가 끝나지 않은 빌드\nbranch: feat/android-url-catalog\nbuildNumber: 5\n",
+      "assets": [
+        {
+          "name": "SampleApp.zip",
+          "state": "uploaded",
+          "browser_download_url": "https://github.com/zopandagom/simlauncher-macos/releases/download/sample-build-310/SampleApp.zip"
+        },
+        {
+          "name": "SampleAndroidApp.apk",
+          "state": "starter",
+          "browser_download_url": "https://github.com/zopandagom/simlauncher-macos/releases/download/sample-build-310/SampleAndroidApp.apk"
+        }
+      ]
+    },
+    {
+      "tag_name": "sample-build-305",
+      "name": "게시되지 않은 두 자산 draft",
+      "draft": true,
+      "prerelease": true,
+      "created_at": "2026-10-29T07:00:00Z",
+      "published_at": null,
+      "body": "",
+      "assets": [
+        {
+          "name": "SampleApp.zip",
+          "state": "uploaded",
+          "browser_download_url": "https://github.com/zopandagom/simlauncher-macos/releases/download/untagged-fedcba9876543210/SampleApp.zip"
+        },
+        {
+          "name": "SampleAndroidApp.apk",
+          "state": "uploaded",
+          "browser_download_url": "https://github.com/zopandagom/simlauncher-macos/releases/download/untagged-fedcba9876543210/SampleAndroidApp.apk"
+        }
+      ]
+    },
+    {
       "tag_name": "sample-build-300",
       "name": "1.0.0 (4)",
       "draft": false,

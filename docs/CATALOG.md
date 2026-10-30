@@ -1,10 +1,12 @@
-# 빌드 카탈로그 규격 (schemaVersion 1)
+# 빌드 카탈로그 규격 (schemaVersion 2)
 
-SimLauncher 가 읽는 빌드 카탈로그 `catalog.json` 의 형식이다. 어느 회사든 자기 빌드 저장소(GitHub Releases·S3·사내 웹 서버)에 이 형식의 파일 하나를 두고, 사용자가 그 주소를 앱에 등록하면(설정 창, 9절) 기기 행의 "앱 설치 > 카탈로그에서…"(여러 기기면 툴바의 "선택한 기기에 앱 설치 > 카탈로그에서…") 에서 앱·버전 목록을 보고 골라 설치한다(10절). 서버는 필요 없다.
+SimLauncher 가 읽는 빌드 카탈로그 `catalog.json` 의 형식이다. 어느 회사든 자기 빌드 저장소(GitHub Releases·S3·사내 웹 서버)에 이 형식의 파일 하나를 두고, 사용자가 그 주소를 앱에 등록하면(설정 창, 9절) iOS 기기 행의 "앱 설치 > 카탈로그에서…"(여러 기기면 툴바의 "선택한 기기에 앱 설치 > 카탈로그에서…") 에서는 iOS 앱을, 켜진 Android 기기 행의 "앱 설치 > 카탈로그에서…" 에서는 Android 앱을 앱·버전 목록에서 골라 설치한다(10절). 서버는 필요 없다.
 
-전체 예시: [`catalog-example.json`](../Projects/Shared/Core/Tests/Fixtures/catalog-example.json) (테스트가 이 파일을 읽어 아래 규칙대로 해석되는지 확인한다).
+한 카탈로그에 iOS 앱과 Android 앱을 함께 담을 수 있다(schemaVersion 2, 앱마다 `platform`). schemaVersion 1 카탈로그도 계속 읽고, 그 앱은 모두 iOS 앱으로 본다. 1 에서 2 로 바꾸는 방법과 옛 앱(1.0.0)이 schemaVersion 2 를 거절하는 방식은 7절 "schemaVersion 1 에서 2 로" 에 있다.
 
-앱 코드에서는 Core `BuildCatalog(jsonData:)` 가 이 규격대로 해석하고, 틀린 곳은 `BuildCatalogProblem` 하나로 알린다.
+전체 예시: [`catalog-example.json`](../Projects/Shared/Core/Tests/Fixtures/catalog-example.json) (schemaVersion 2, iOS 앱 둘과 Android 앱 하나), [`catalog-example-v1.json`](../Projects/Shared/Core/Tests/Fixtures/catalog-example-v1.json) (schemaVersion 1). 테스트가 두 파일을 읽어 아래 규칙대로 해석되는지 확인한다.
+
+앱 코드에서는 Core `BuildCatalog(jsonData:)` 가 이 규격대로 해석하고(읽은 규격은 `schemaVersion`, 플랫폼별 앱은 `apps(for:)`), 틀린 곳은 `BuildCatalogProblem` 하나로 알린다.
 
 ## 1. 파일
 - 인코딩: UTF-8, 표준 JSON(RFC 8259). 주석·끝 쉼표 같은 비표준 문법은 쓰지 않는다. 앱이 일부 비표준 입력을 읽더라도 규격이 보장하지 않는다.
@@ -15,7 +17,7 @@ SimLauncher 가 읽는 빌드 카탈로그 `catalog.json` 의 형식이다. 어�
 - 표준 JSON 이어도 앱이 읽지 못하는 값이 있다: Double 범위를 넘는 큰 숫자(`1e400`, 아주 긴 정수)와 짝이 없는 서러게이트 이스케이프(`"\ud800"`)가 든 문자열·키. 이런 값이 **어디에 있든(모르는 필드 안이어도)** 카탈로그 전체를 JSON 객체가 아닌 것으로 거절한다.
 
 ## 2. 구조와 필드
-최상위 객체 → `apps`(앱 배열) → 앱마다 `versions`(버전 배열) 이고, 버전 하나가 빌드 zip 하나를 가리킨다.
+최상위 객체 → `apps`(앱 배열) → 앱마다 `versions`(버전 배열) 이고, 버전 하나가 빌드 파일 하나(iOS 앱은 .app 을 담은 zip, Android 앱은 .apk)를 가리킨다.
 
 필드 이름은 camelCase 이고 대소문자를 구분한다(`SchemaVersion`·`schema_version` 은 없는 것으로 본다). 문서에 없는 필드는 어디에 있든 무시한다. 단 1절의 읽지 못하는 값과 중첩 상한은 모르는 필드 안에서도 적용된다.
 
@@ -23,14 +25,15 @@ SimLauncher 가 읽는 빌드 카탈로그 `catalog.json` 의 형식이다. 어�
 
 | 필드 | 타입 | 필수 | 제약 |
 |---|---|---|---|
-| `schemaVersion` | 정수 | 필수 | `1`. 정수 표기(`1`)로 쓴다. 숫자를 Double 로 읽은 값이 정수면 그 정수로 읽는다(`1.0`, `1e0`, Double 로 반올림되어 1 이 되는 `0.99999999999999999` 포함). 64비트 정수 범위(−9223372036854775808~9223372036854775807)의 다른 정수면 "이 앱이 모르는 규격"으로 거절한다. 정수가 아니면(`"1"`, `1.5`, `true`) 타입 오류이고, 64비트 범위 밖 정수(`9223372036854775808`, `99999999999999999999`)도 정수로 읽히지 않아 타입 오류다(Double 범위를 넘는 큰 숫자는 1절대로 JSON 객체가 아닌 것으로 거절). 가장 먼저 검사한다 |
+| `schemaVersion` | 정수 | 필수 | `2` 또는 `1`. 새 카탈로그는 `2` 로 쓴다(`1` 은 앱이 모두 iOS 이고 `platform` 을 읽지 않는다, 7절). 정수 표기(`2`)로 쓴다. 숫자를 Double 로 읽은 값이 정수면 그 정수로 읽는다(`2.0`, `2e0`, Double 로 반올림되어 1 이 되는 `0.99999999999999999` 포함). 64비트 정수 범위(−9223372036854775808~9223372036854775807)의 다른 정수면 "이 앱이 모르는 규격"으로 거절한다(2 보다 크면 앱을 업데이트하라고 알린다). 정수가 아니면(`"2"`, `1.5`, `true`) 타입 오류이고, 64비트 범위 밖 정수(`9223372036854775808`, `99999999999999999999`)도 정수로 읽히지 않아 타입 오류다(Double 범위를 넘는 큰 숫자는 1절대로 JSON 객체가 아닌 것으로 거절). 가장 먼저 검사한다 |
 | `apps` | 앱 객체 배열 | 필수 | 비어도 된다. 순서는 앱이 보여 주는 순서다 |
 
 앱 객체:
 
 | 필드 | 타입 | 필수 | 제약 |
 |---|---|---|---|
-| `id` | 문자열 | 필수 | id 형식(3절). 카탈로그 안에서 대소문자를 무시하고 유일하다. 숫자만인 id 도 문자열로 쓴다(`"8812345678"`. JSON 숫자는 타입 오류) |
+| `id` | 문자열 | 필수 | id 형식(3절). 같은 `platform` 의 앱 사이에서 대소문자를 무시하고 유일하다(iOS 앱과 Android 앱은 같은 id 를 쓸 수 있다. schemaVersion 1 은 모든 앱 사이에서). 숫자만인 id 도 문자열로 쓴다(`"8812345678"`. JSON 숫자는 타입 오류) |
+| `platform` | 문자열 | schemaVersion 2 에서 필수 | `"ios"` 또는 `"android"`. 소문자 그대로 정확히 쓴다(`"iOS"`·`" ios"`·`""` 는 거절, 공백을 빼지 않는다). iOS 기기 시트는 `ios` 앱만, Android 기기 시트는 `android` 앱만 보인다(10절). schemaVersion 1 에서는 읽지 않고(모르는 필드처럼 무시) 모든 앱을 iOS 앱으로 본다 |
 | `name` | 문자열 | 필수 | 화면에 보일 앱 이름. 앞뒤 공백·개행을 뺀 값이 비면 안 된다. 뺀 값을 쓴다 |
 | `versions` | 버전 객체 배열 | 필수 | 비어도 된다. 파일 순서와 관계없이 앱이 정렬한다(5절) |
 
@@ -44,15 +47,16 @@ SimLauncher 가 읽는 빌드 카탈로그 `catalog.json` 의 형식이다. 어�
 | `tag` | 문자열 | 선택 | 빌드한 커밋의 태그. 앞뒤 공백·개행을 뺀 값을 쓴다 |
 | `buildNumber` | 문자열 | 선택 | 빌드 번호(`CFBundleVersion` 등). 숫자여도 문자열로 쓴다(`"42"`. JSON 숫자 `42` 는 타입 오류). 앞뒤 공백·개행을 뺀 값을 쓴다 |
 | `createdAt` | 문자열 | 필수 | 빌드를 만든 시각. 날짜 형식(4절) |
-| `buildURL` | 문자열 | 필수 | 빌드 zip(.app 을 담은 zip)의 절대 `https://` 주소(6절). 앞뒤 공백·개행은 빼고 읽는다 |
+| `buildURL` | 문자열 | 필수 | 빌드 파일의 절대 `https://` 주소(6절): iOS 앱은 시뮬레이터용 .app 을 담은 zip, Android 앱은 .apk 파일. 앞뒤 공백·개행은 빼고 읽는다 |
 
 - 선택 필드는 없거나, `null` 이거나, 앞뒤 공백·개행을 빼면 빈 문자열이면 "값 없음"이다. 문자열이 아닌 값(숫자·불·객체·배열)은 타입 오류다.
 - 필수 필드가 없거나 `null` 이면 "필드 없음", JSON 타입이 다르면 "타입 오류"다.
-- `id` 와 `createdAt` 은 공백을 빼지 않는다(공백이 있으면 형식 오류). 그 밖의 문자열은 앞뒤 공백·개행을 뺀 값을 쓴다.
+- `id`·`platform`·`createdAt` 은 공백을 빼지 않는다(공백이 있으면 형식 오류). 그 밖의 문자열은 앞뒤 공백·개행을 뺀 값을 쓴다.
 
 ## 3. id 형식
 - `^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$`: ASCII 영문·숫자로 시작하고, 영문·숫자·`.`·`_`·`-` 만, 1~128 자. 앞뒤 공백도 허용하지 않는다.
 - 유일한지는 ASCII 소문자로 바꿔 비교한다(`MyApp` 과 `myapp` 은 중복). 값은 적힌 그대로 쓴다.
+- 앱 id 는 같은 `platform` 안에서만 비교한다(schemaVersion 2): iOS 앱 `com.example.sample` 과 Android 앱 `com.example.sample` 은 함께 쓸 수 있고, Android 앱 둘이 `MyApp`·`myapp` 이면 중복이다. iOS 번들 id 와 Android 패키지 이름을 같게 쓰는 경우가 많아서다.
 - 예: 앱 `com.example.sample`, `sample-app`. 버전 `build-42`, `1.3.0-42`, `8812345678`(CI 실행 번호).
 - 쓰임: 목록을 새로 고쳐도 고른 앱·버전을 유지하는 식별자다. CI 를 다시 돌려 같은 빌드가 두 번 붙으면 중복으로 드러난다.
 
@@ -71,39 +75,52 @@ SimLauncher 가 읽는 빌드 카탈로그 `catalog.json` 의 형식이다. 어�
 ## 6. 빌드 URL
 - 앱의 URL 입력과 같은 규칙(Core `DownloadURL`)이다: 앞뒤 공백·개행을 빼고 읽어, 스킴이 `https`(대소문자 무시)이고 호스트가 있고 사용자 이름·비밀번호가 없어야 한다.
 - **상대 주소는 거절한다**: `builds/a.zip`·`/a.zip`·`./a.zip`·`//host/a.zip` 은 스킴이 없어 https 가 아닌 주소다. GitHub Releases 의 `releases/latest/download/catalog.json` 기준으로 상대 주소를 풀면 `releases/latest/download/…` 가 되어, 다음 릴리스가 나오면 옛 버전 항목이 새 빌드를 받게 되기 때문이다.
+- 가리키는 파일: iOS 앱은 시뮬레이터용 .app 을 압축한 zip(맨 위에 .app 하나). Android 앱은 .apk 파일을 바로 가리킨다. zip 으로 감싼 apk, App Bundle(.aab), 분할 묶음(.apks·.xapk)은 설치하지 못한다(받은 뒤 내용을 보고 거절한다, 10절).
+- 확장자는 검사하지 않는다: 서명된 S3 주소처럼 확장자가 없는 주소가 흔해, 받은 파일의 내용으로 판정한다.
 - 권고(검사하지 않음): 버전 항목에는 그 빌드에 고정된 주소(GitHub Releases 면 `releases/download/<태그>/…`)를 쓰고 `releases/latest/…` 는 쓰지 않는다.
 - 주의: 공백으로 이어 붙인 두 주소(`https://a/x.zip https://b`)는 경로의 공백(`%20`)으로 읽혀 통과한다. URL 입력과 같은 규칙이라 막지 않는다.
 
 ## 7. 버전 정책
 - 같은 `schemaVersion` 안에서는 **선택 필드 추가만** 한다. 옛 앱은 모르는 필드를 무시하므로 새 카탈로그도 계속 읽는다.
-- 필드 삭제, 선택 필드를 필수로 바꾸기, 타입이나 의미 바꾸기는 `schemaVersion` 을 올린다. 옛 앱은 모르는 `schemaVersion` 을 등록할 때 거절하고(설치 시트에서는 그 카탈로그를 읽지 않는다), 더 큰 값이면 앱을 업데이트하라고 알린다.
+- 필드 삭제, 필수 필드 추가, 선택 필드를 필수로 바꾸기, 타입이나 의미 바꾸기는 `schemaVersion` 을 올린다. 옛 앱은 모르는 `schemaVersion` 을 등록할 때 거절하고(설치 시트에서는 그 카탈로그를 읽지 않는다), 더 큰 값이면 앱을 업데이트하라고 알린다.
+- schemaVersion 2 는 Android 앱을 담으려고 앱에 필수 필드 `platform` 을 더해 올렸다. 선택 필드로 두면 옛 앱이 Android 앱을 iOS 앱으로 보여 설치에 실패하기 때문이다. 이 앱은 1 과 2 를 모두 읽는다.
+
+### schemaVersion 1 에서 2 로
+- 바꿀 것: 최상위 `schemaVersion` 을 `2` 로 하고, 모든 앱에 `"platform": "ios"` 를 더한다(빠지면 `missingField`). Android 앱은 `"platform": "android"` 앱으로 더하고 버전의 `buildURL` 은 .apk 주소로 쓴다(6절). 다른 필드·규칙은 같다.
+- SimLauncher 1.0.0 은 schemaVersion 2 카탈로그를 읽지 않는다. `schemaVersion` 이 첫 검사라 나머지 내용과 관계없이 거절하고, 다음 문구를 보인다:
+  - 설정 창에서 등록할 때: "카탈로그 형식이 맞지 않아 등록하지 않았습니다." / "이 카탈로그는 이 앱보다 새 규격(schemaVersion 2)입니다. SimLauncher 를 업데이트한 뒤 다시 등록하세요."
+  - 카탈로그에서 설치 시트(관리자가 미리 넣은 주소 등): "카탈로그 형식이 맞지 않아 읽지 않았습니다." / "이 카탈로그는 이 앱보다 새 규격(schemaVersion 2)입니다. SimLauncher 를 업데이트하세요."
+- 옛 앱 사용자가 남아 있으면 schemaVersion 1 카탈로그를 지금 주소에 그대로 두고, schemaVersion 2 카탈로그는 새 주소에 올린다. 1.0.0 사용자는 v1 주소를, 새 앱 사용자는 v2 주소를 등록한다. 새 앱에 둘 다 등록하면 카탈로그마다 따로 판정한다: iOS 기기 시트에는 두 카탈로그의 iOS 앱이 따로 보이고(같은 앱이 두 번 보인다, 10절), Android 기기 시트에는 v2 카탈로그의 Android 앱만 보이며 v1 카탈로그 자리에는 schemaVersion 1 이라 iOS 앱만 담는다는 안내가 보인다.
+- schemaVersion 1 카탈로그에 Android 앱을 넣지 않는다: `platform` 을 써도 1.0.0 과 이 앱 모두 무시하고 iOS 앱으로 보여, iOS 기기에 설치하려다 실패한다.
+- 이 레포의 샘플 카탈로그도 이렇게 나눈다: v1 은 `sample-catalog` 태그에 그대로 두고, v2 는 `sample-catalog-v2` 태그에 올린다(11절).
 
 ## 8. 앱이 거절하는 경우
-읽기는 처음 만난 문제 하나로 카탈로그 전체를 거절한다. 틀린 항목만 빼고 보여 주지 않는다(빠진 버전을 "없는 빌드"로 오해하지 않게). 검사 순서: JSON 객체인지 → `schemaVersion` → `apps` → 앱을 파일 순서로(각 앱: `id` → id 중복 → `name` → `versions` → 버전을 파일 순서로(각 버전: `id` → id 중복 → `name` → `branch` → `tag` → `buildNumber` → `createdAt` → `buildURL`)).
+읽기는 처음 만난 문제 하나로 카탈로그 전체를 거절한다. 틀린 항목만 빼고 보여 주지 않는다(빠진 버전을 "없는 빌드"로 오해하지 않게). 검사 순서: JSON 객체인지 → `schemaVersion` → `apps` → 앱을 파일 순서로(각 앱: `id` → `platform`(schemaVersion 2 만) → id 중복(같은 `platform` 안) → `name` → `versions` → 버전을 파일 순서로(각 버전: `id` → id 중복 → `name` → `branch` → `tag` → `buildNumber` → `createdAt` → `buildURL`)).
 
 문제마다 위치(앱·버전의 파일 순서 인덱스, 그 객체의 id 가 형식에 맞으면 id 도)를 함께 알린다. 중복은 뒤에 나온 항목의 위치로 알린다.
 
 | 문제 | `BuildCatalogProblem` | 예 |
 |---|---|---|
 | JSON 객체가 아님 | `notJSONObject` | 로그인 HTML, 빈 파일, 잘못된 UTF-8 바이트, 최상위가 배열·문자열, 중첩 32 단계 초과, `1e400` 같은 읽지 못하는 숫자·짝 없는 서러게이트(어디에 있든) |
-| 모르는 schemaVersion | `unsupportedSchemaVersion` | `2`, `2.0`, `0`, `-1` (64비트 정수 범위 안) |
-| 필드 없음 (없음·null) | `missingField` | `schemaVersion`·`apps`·`id`·`name`·`versions`·`createdAt`·`buildURL` |
-| 타입 오류 | `wrongType` | `"schemaVersion": "1"`, `"apps": {}`, `"id": 8812345678`, `"buildNumber": 42`, `"branch": 1`, `"tag": []`, 앱·버전 배열 항목이 객체가 아님(`null`·배열·문자열) |
+| 모르는 schemaVersion | `unsupportedSchemaVersion` | `3`, `3.0`, `0`, `-1` (64비트 정수 범위 안. 2 보다 크면 앱 업데이트 안내) |
+| 필드 없음 (없음·null) | `missingField` | `schemaVersion`·`apps`·`id`·`platform`(schemaVersion 2)·`name`·`versions`·`createdAt`·`buildURL` |
+| 타입 오류 | `wrongType` | `"schemaVersion": "2"`, `"apps": {}`, `"id": 8812345678`, `"platform": 1`, `"buildNumber": 42`, `"branch": 1`, `"tag": []`, 앱·버전 배열 항목이 객체가 아님(`null`·배열·문자열) |
 | 빈 이름 | `emptyField` | `"name": "  "`, `"name": "\n"` |
 | id 형식 | `invalidID` | `""`, `"my app"`, `"-a"`, `"앱"`, 129 자 |
-| 앱 id 중복 | `duplicateAppID` | `sample` 과 `Sample` |
+| 모르는 platform | `unsupportedPlatform` | schemaVersion 2 에서 `"iOS"`, `" ios"`, `""`, `"windows"` (소문자 `ios`·`android` 만) |
+| 앱 id 중복 | `duplicateAppID` | `sample` 과 `Sample` (schemaVersion 2 는 같은 `platform` 안에서만) |
 | 같은 앱 안 버전 id 중복 | `duplicateVersionID` | `build-42` 와 `Build-42` |
 | 날짜 형식 | `invalidCreatedAt` | 4절의 거절하는 예 |
 | 빌드 URL | `invalidBuildURL` | `http://…`, 상대 주소, 사용자 이름·비밀번호, 빈 값 (URL 문제 종류를 함께 알린다) |
 
 ## 9. 앱에 등록하기
-사용자는 앱의 설정 창(메뉴 "SimLauncher > 설정…", ⌘,)의 "빌드 카탈로그" 에서 `catalog.json` 주소를 등록하고 지운다. 개발 환경 안내 화면이든 기기 목록 화면이든, 메인 창을 닫았어도 열린다.
+사용자는 앱의 설정 창(메뉴 "SimLauncher > 설정…", ⌘,)의 "빌드 카탈로그" 에서 `catalog.json` 주소를 등록하고 지운다. 개발 환경 안내 화면이든 기기 목록 화면이든, 메인 창을 닫았어도 열린다. 등록한 목록은 iOS 기기와 Android 기기의 카탈로그에서 설치 시트가 함께 쓴다(10절).
 
 - 입력 규칙: 6절의 빌드 URL 과 같다(Core `DownloadURL`). http 주소·사용자 이름·비밀번호가 든 주소·이미 등록된 카탈로그는 "등록" 을 누르기 전에 입력란 아래에 이유가 보이고 등록할 수 없다.
 - 같은 카탈로그 판정(Core `DownloadURL.comparisonKey`): 요청이 같은 파일을 받는 주소는 같은 카탈로그로 본다.
   - 같게 본다: 스킴·호스트의 대소문자, `:443` 유무, 빈 경로와 `/`, 예약되지 않은 문자의 퍼센트 인코딩(`%7E` 와 `~`), 퍼센트 인코딩의 대소문자(`%2f` 와 `%2F`), `/./`·`/x/../`, 조각(`#…`) 유무, 한글 경로와 그 퍼센트 인코딩, 한글 호스트와 퓨니코드.
   - 다르게 본다(서버가 구분할 수 있다): 경로의 대소문자, 끝 슬래시, `//`, 다른 포트, 쿼리 값·순서, `?` 유무, `%2F` 와 `/`.
-- 확인: "등록" 을 누르면 그 주소를 한 번 받아(5 MiB 까지, 1절) 8절 규칙으로 해석하고, 통과해야 목록 끝에 저장한다. 받기 실패(HTTP 상태·https 가 아닌 주소로 넘겨 보냄·연결·5 MiB 초과)와 형식 문제(위치와 함께, 8절)는 이유를 보이고 저장하지 않는다. 확인 중 "취소" 를 누르거나 설정 창을 닫으면 등록하지 않는다. 앱 시작 때나 설정 창의 목록을 볼 때는 받지 않는다(카탈로그에서 설치 시트는 열 때마다 받는다, 10절).
+- 확인: "등록" 을 누르면 그 주소를 한 번 받아(5 MiB 까지, 1절) 8절 규칙으로 해석하고, 통과해야 목록 끝에 저장한다. schemaVersion 1·2 를 모두 받아들이고, 등록 결과에 보이는 앱 수는 iOS·Android 앱을 합친 수다(SimLauncher 1.0.0 은 schemaVersion 2 를 등록하지 않는다, 7절). 받기 실패(HTTP 상태·https 가 아닌 주소로 넘겨 보냄·연결·5 MiB 초과)와 형식 문제(위치와 함께, 8절)는 이유를 보이고 저장하지 않는다. 확인 중 "취소" 를 누르거나 설정 창을 닫으면 등록하지 않는다. 앱 시작 때나 설정 창의 목록을 볼 때는 받지 않는다(카탈로그에서 설치 시트는 열 때마다 받는다, 10절).
 - 지우기: 항목의 삭제 버튼을 누르면 확인 없이 바로 지운다(다시 등록하면 되돌릴 수 있다). 저장된 문자열이 같은 항목은 함께 지운다.
 - 목록의 안내: 저장된 주소가 6절 규칙에 걸리면 이유와 함께 "쓸 수 없는 주소" 로, 앞 항목과 같은 카탈로그면 "위의 N번째 주소와 같은 카탈로그" 로 보이고 한 번만 읽는다.
 
@@ -134,33 +151,51 @@ defaults write com.zopandagom.simlauncher CatalogURLs -array "https://builds.exa
 - `AcceptedAndroidLicenses`(문자열 배열): 사용자가 Android 화면에서 동의한 SDK 라이선스 원문의 기록이다. 앱이 기록하며, 라이선스 동의는 사용자 본인이 하므로 미리 넣는 용도로 쓰지 않는다.
 
 ## 10. 앱에서 설치하기
-기기 목록에서 설치할 수 있는 기기(쓸 수 있고 꺼짐·켜짐. 꺼져 있으면 켜고 설치한다) 행의 "앱 설치" 메뉴 > "카탈로그에서…" 를 누르면 등록된 카탈로그의 앱·버전 목록 시트가 열린다. 목록에서 여러 기기를 고르고(⌘·⇧ 클릭) 툴바의 "선택한 기기에 앱 설치" > "카탈로그에서…" 를 누르면 같은 시트가 고른 기기를 대상으로 열리고(고른 기기 중 설치할 수 있는 기기가 하나라도 있을 때), 제목과 대상 줄에 기기 수와 이름이 보인다.
+
+### iOS 기기
+iOS 기기 목록에서 설치할 수 있는 기기(쓸 수 있고 꺼짐·켜짐. 꺼져 있으면 켜고 설치한다) 행의 "앱 설치" 메뉴 > "카탈로그에서…" 를 누르면 등록된 카탈로그의 앱·버전 목록 시트가 열린다. 목록에서 여러 기기를 고르고(⌘·⇧ 클릭) 툴바의 "선택한 기기에 앱 설치" > "카탈로그에서…" 를 누르면 같은 시트가 고른 기기를 대상으로 열리고(고른 기기 중 설치할 수 있는 기기가 하나라도 있을 때), 제목과 대상 줄에 기기 수와 이름이 보인다.
 
 - 받기: 시트를 열 때와 시트의 "새로 고침" 을 누를 때만 9절 목록을 읽고, 쓸 수 있는 주소를 모두 동시에 받는다(5 MiB 까지, 1절). 앱 시작 때·기기 목록을 볼 때는 받지 않는다. 받은 내용은 저장하지 않아 시트를 열 때마다 다시 받는다.
 - 구역: 저장 순서대로 카탈로그마다 구역을 두고, 머리글은 저장된 주소 그대로다. 앞 항목과 같은 카탈로그(9절 판정)는 한 번만 읽고 따로 보이지 않는다. 쓸 수 없는 주소(6절 규칙)는 받지 않고 그 자리에 이유를 보인다(설정 창에서 지우고 https 주소로 다시 등록하라는 안내, 관리자가 잠근 목록이면 담당자에게 알려 달라는 안내).
 - 결과는 카탈로그마다 오는 대로 보인다. 받기 실패(HTTP 상태·https 가 아닌 주소로 넘겨 보냄·연결·5 MiB 초과)와 형식 문제(8절, 위치와 함께)는 그 카탈로그 자리에 이유를 보이고, 나머지 카탈로그는 그대로 쓸 수 있다. 주소를 확인하라는 안내는 설정 창을 가리키고, 관리자가 잠근 목록이면 사용자가 주소를 바꿀 수 없으므로 Mac 을 관리하는 담당자에게 확인해 달라는 안내로 바뀐다.
+- 플랫폼: iOS 앱만 보인다(schemaVersion 1 카탈로그의 모든 앱, schemaVersion 2 의 `"platform": "ios"` 앱). 읽었는데 iOS 앱이 없는 카탈로그 자리에는 "이 카탈로그에는 iOS 앱이 없습니다." 를 보인다(앱이 하나도 없으면 "이 카탈로그에는 앱이 없습니다.").
 - 같은 앱 id 라도 다른 카탈로그면 다른 앱으로 따로 보인다(합치지 않는다).
 - 앱을 고르면 그 앱의 버전 목록(5절 순서, 이름·태그·브랜치·빌드 번호·생성 시각)이 보이고 가장 새 버전(맨 위)이 골라진다. 다른 버전으로 바꿔 고를 수 있다.
-- 새로 고침: 목록을 다시 읽고 모두 다시 받는다. 고른 앱·버전은 같은 카탈로그에 같은 id(3절)가 있으면 그대로 둔다. 고른 버전이 사라졌으면 다른 버전으로 바꾸지 않고 버전 선택만 비우고, 고른 앱이나 그 카탈로그가 사라졌거나 읽지 못하면 선택을 비운다.
+- 새로 고침: 목록을 다시 읽고 모두 다시 받는다. 고른 앱·버전은 같은 카탈로그에 같은 id(3절)가 있으면 그대로 둔다. 고른 버전이 사라졌으면 다른 버전으로 바꾸지 않고 버전 선택만 비우고, 고른 앱이나 그 카탈로그가 사라졌거나 읽지 못하면(고른 앱의 `platform` 이 `android` 로 바뀐 경우 포함) 선택을 비운다.
 - 등록된 카탈로그가 없으면 설정 창에서 등록하라는 안내와 "설정 열기" 버튼을 보인다. 관리자가 잠근 목록이 비었으면 담당자에게 문의하라는 안내만 보인다.
 - "받아서 설치": 시트를 닫고 고른 버전의 `buildURL` 을 앱의 "URL 에서…" 설치와 같은 경로·검사(https 만, 받기·압축 풀기 보호, 시뮬레이터용 .app 검사)로 받아 설치하고 실행한다. 진행과 취소는 기기 행에 보인다. 여러 기기면 한 번만 받고 풀어 검사한 뒤 기기별로 동시에 설치·실행한다: 받는 동안 대상 행 모두에 같은 진행과 취소가 보이고 어느 행에서 취소하든 모두 멈춘다. 시작할 때 설치할 수 없거나 다른 작업 중인 기기, 앱이 맞지 않는 기기(iOS 버전 등)는 그 기기만 건너뛰고, 실패·건너뛴 기기가 있으면 기기별 결과를 알림 하나에 모은다. 받지 못했거나 받은 파일을 쓸 수 없으면 이유와 함께 알린다. 빌드 주소·빌드 파일 쪽 원인(https 가 아닌 주소로 넘겨 보냄, 407·5xx 밖의 HTTP 상태, 빌드 서버 주소를 찾지 못함·연결하지 못함·보안 연결 실패, 그 밖의 받기 실패, zip 대신 웹 페이지, zip 이 아님, zip 맨 위 .app 이 없거나 여럿)은 사용자가 고칠 주소가 없으므로 카탈로그를 만든 사람에게 알려 달라고 안내하고, 빌드가 없거나(HTTP 404·410) 접근이 거부되면(401·403) 다른 버전을 고르는 길도 함께 보인다. 빌드 주소와 관계없는 원인(인터넷 연결, 프록시 인증(HTTP 407), 서버 오류(HTTP 5xx), 시간 초과, 받는 중 끊김, 저장 공간, 임시 폴더), 그 밖의 받은 zip 풀기 실패(안전하지 않은 경로, 앱이 아닌 내용 등), 받은 뒤의 앱 검사·설치·실행 실패는 "URL 에서…" 설치와 같은 안내다. 여러 기기에서 받기·받은 파일·앱 검사가 실패하면 이 안내를 알림 하나로 보인다.
 
+### Android 기기
+Android 화면의 기기 목록에서 켜진 기기(쓸 수 있고 켜짐) 행의 "앱 설치" 메뉴 > "카탈로그에서…" 를 누르면 9절 목록의 카탈로그에서 Android 앱만 보이는 시트가 열린다. 대상은 그 기기 한 대다(여러 기기를 한 번에 고르는 설치는 없다). 꺼진 기기를 켜면서 설치하지 않는다.
+
+- 받기·구역·받기 실패와 형식 문제 안내·새로 고침과 선택 유지·빈 목록과 잠긴 목록 안내는 iOS 기기 시트와 같다.
+- 플랫폼: schemaVersion 2 카탈로그의 `"platform": "android"` 앱만 보인다. schemaVersion 1 카탈로그 자리에는 iOS 앱만 담는 규격이라 카탈로그를 만든 사람에게 schemaVersion 2 로 바꿔 달라고 알려 달라는 안내를, Android 앱이 없는 schemaVersion 2 카탈로그 자리에는 "이 카탈로그에는 Android 앱이 없습니다." 를 보인다(앱이 하나도 없으면 "이 카탈로그에는 앱이 없습니다.").
+- "받아서 설치": 시트를 닫고 고른 버전의 `buildURL` 을 그 기기 행의 "URL 에서…" 설치와 같은 경로로 받아 설치하고 실행한다: 받기(행에 진행과 취소) → 받은 파일 검사(로컬 apk 와 같다: 풀지 않고 manifest·서명만 읽는다) → 기기에 맞는지 판정 → 설치 → 받은 파일 지우기(설치 명령이 끝나면 곧바로) → 실행. 받는 중 취소하면 알림 없이 멈추고 받은 파일을 지운다.
+- 실패 안내: 빌드 주소·빌드 파일 쪽 원인(https 가 아닌 주소로 넘겨 보냄, 407·5xx 밖의 HTTP 상태, 빌드 서버 주소를 찾지 못함·연결하지 못함·보안 연결 실패, 그 밖의 받기 실패, apk 대신 웹 페이지, apk 가 아니거나 손상, App Bundle(.aab), 서명 없는 apk)은 카탈로그를 만든 사람에게 알려 달라고 안내하고, 빌드가 없거나(HTTP 404·410) 접근이 거부되면(401·403) 다른 버전을 고르는 길도 함께 보인다. 빌드 주소와 관계없는 원인(인터넷 연결, 프록시 인증(HTTP 407), 서버 오류(HTTP 5xx), 시간 초과, 받는 중 끊김, 저장 공간, 임시 폴더)은 "URL 에서…" 설치와 같은 안내이고, 받은 뒤의 판정·설치·실행 실패는 로컬 apk 설치와 같은 안내다.
+
 ## 11. GitHub Actions 예시
-레포의 [`.github/workflows/sample-catalog.yml`](../.github/workflows/sample-catalog.yml)("Sample Catalog")이 샘플 iOS 앱([`Examples/SampleApp`](../Examples/SampleApp))을 빌드해 GitHub Releases 에 올리고 `catalog.json` 을 만들어 올리는 예시다. 이 레포의 샘플 카탈로그 주소:
+레포의 [`.github/workflows/sample-catalog.yml`](../.github/workflows/sample-catalog.yml)("Sample Catalog")이 샘플 iOS 앱([`Examples/SampleApp`](../Examples/SampleApp))과 샘플 Android 앱([`Examples/SampleAndroidApp`](../Examples/SampleAndroidApp))을 빌드해 GitHub Releases 에 올리고 `catalog.json`(schemaVersion 2, iOS·Android 앱 둘)을 만들어 올리는 예시다. 이 레포의 샘플 카탈로그 주소:
 
 ```
-https://github.com/zopandagom/simlauncher-macos/releases/download/sample-catalog/catalog.json
+https://github.com/zopandagom/simlauncher-macos/releases/download/sample-catalog-v2/catalog.json
 ```
 
-- 실행: Actions > Sample Catalog > Run workflow 를 **main 에서** 누른다(`workflow_dispatch` 만, 손으로 실행). 워크플로 파일이 기본 브랜치에 있어야 실행할 수 있다. 워크플로 파일이 main 과 다른 브랜치에서 실행하면 GitHub 이 기본 토큰으로 하는 릴리스 생성을 거절한다(draft 릴리스가 남을 수 있다. 카탈로그에는 영향이 없고 손으로 지운다).
-- 흐름: `build` 잡(읽기 권한)이 `make sample` 로 시뮬레이터용 .app 을 빌드해(빌드 번호 = 실행 번호) `SampleApp.zip` 으로 묶고, `publish` 잡(쓰기 권한. 쓰기 토큰은 빌드 릴리스 게시·카탈로그 생성(릴리스 목록 조회와 `sample-catalog.sh`·`jq` 실행)·카탈로그 게시 세 단계의 env 에만 두어, 그 단계 안의 명령이 모두 받는다)이 넘겨받아:
-  1. 빌드 릴리스: 태그 `sample-build-<run_id>` 의 prerelease 릴리스에 `SampleApp.zip` 하나를 올린다. 이름은 `<버전> (<빌드 번호>)`, 본문에 `branch: …`·`buildNumber: …` 줄.
-  2. 카탈로그 생성: 이전 `catalog.json` 을 읽지 않고, 릴리스 목록에서 태그가 `sample-build-<숫자>` 이고 draft 가 아니며 `SampleApp.zip` 이 다 올라간 릴리스마다 버전 하나를 처음부터 만든다([`.github/scripts/sample-catalog.sh`](../.github/scripts/sample-catalog.sh)). 버전 id·tag 는 태그, `createdAt` 은 릴리스 게시 시각(`published_at`. `created_at` 은 태그 커밋 시각이라 쓰지 않는다), `buildURL` 은 `releases/download/<태그>/SampleApp.zip`.
-  3. 게시 전 검증: 앱과 같은 규칙(Core `BuildCatalog`·5 MiB, `make catalog-check`)과 모든 `buildURL` 이 태그 고정 주소인지, 이번 빌드가 들었는지 본다. 하나라도 어긋나면 올리지 않는다.
-  4. 카탈로그 게시: 고정 태그 `sample-catalog` 의 prerelease 릴리스에 `catalog.json` 을 바꿔 올리고, 고정 주소에서 다시 받아 같은지 확인한다.
+- 옛 주소 `…/releases/download/sample-catalog/catalog.json`(schemaVersion 1, iOS 앱만)은 더 고치지 않는다. 1.0.0 은 schemaVersion 2 를 읽지 못하므로, 마지막으로 올린 내용 그대로 1.0.0 사용자에게 남긴다 (새 빌드는 v2 주소에만 들어간다).
+- 실행: Actions > Sample Catalog > Run workflow 를 누른다(`workflow_dispatch` 만, 손으로 실행). 워크플로 파일이 기본 브랜치에 있어야 실행할 수 있다. **게시(`publish` 잡)는 기본 브랜치(main)에서 실행할 때만 한다.** 기능 브랜치에서 실행하면 빌드 두 잡만 돌아, 머지 전에 iOS·Android 빌드와 apk 서명을 확인할 수 있고(빌드 결과는 run 의 아티팩트로 7일 남는다) 릴리스는 생기지 않는다. 워크플로 파일이 main 과 다른 브랜치에서 릴리스를 만들면 GitHub 이 기본 토큰으로 하는 릴리스 생성을 거절하기 때문이다.
+- 동시 실행: ref 마다 한 번에 하나만 돈다(`concurrency` 그룹 `sample-catalog-<ref>`). 기능 브랜치 실행이 main 의 게시 대기 실행을 취소하지 않는다.
+- 흐름:
+  - `build` 잡(읽기 권한, macOS)이 `make sample` 로 시뮬레이터용 .app 을 빌드해(빌드 번호 = 실행 번호) `SampleApp.zip` 으로 묶는다.
+  - `build-android` 잡(읽기 권한·토큰 없음, ubuntu)이 러너의 Android SDK·JDK 17 과 Gradle 9.8.2 로 `assembleDebug` 를 돌려(`versionCode` = 실행 번호) 샘플 키로 서명한 `SampleAndroidApp.apk` 를 만들고, 맨 위 `AndroidManifest.xml` 이 하나인지와 `apksigner` 의 인증서 SHA-256 이 워크플로에 적은 값과 같은지 확인한다. 다르면 실패한다.
+  - `publish` 잡(쓰기 권한. 쓰기 토큰은 빌드 릴리스 게시·카탈로그 생성(릴리스 목록 조회와 `sample-catalog.sh`·`jq` 실행)·카탈로그 게시 세 단계의 env 에만 두어, 그 단계 안의 명령이 모두 받는다)이 두 빌드를 넘겨받아:
+  1. 빌드 릴리스: 태그 `sample-build-<run_id>` 의 prerelease 릴리스에 `SampleApp.zip`·`SampleAndroidApp.apk` 를 함께 올린다. 이름은 `<버전> (<빌드 번호>)`, 본문에 `branch: …`·`buildNumber: …` 줄.
+  2. 카탈로그 생성: 이전 `catalog.json` 을 읽지 않고 릴리스 목록에서 처음부터 만든다([`.github/scripts/sample-catalog.sh`](../.github/scripts/sample-catalog.sh)). 앱은 둘이고(같은 `id`·`name`, `platform` 은 `ios` → `android` 순서), 태그가 `sample-build-<숫자>` 이고 draft 가 아닌 릴리스마다 iOS 앱에는 `SampleApp.zip` 이, Android 앱에는 `SampleAndroidApp.apk` 가 다 올라갔을 때 버전 하나를 넣는다(Android 빌드를 함께 올리기 전의 릴리스는 iOS 앱에만 든다). 버전 id·tag 는 태그, `createdAt` 은 릴리스 게시 시각(`published_at`. `created_at` 은 태그 커밋 시각이라 쓰지 않는다), `buildURL` 은 `releases/download/<태그>/<자산 이름>`. 방금 만든 릴리스가 두 앱 모두에 들 때까지 목록을 몇 번 다시 조회한다.
+  3. 게시 전 검증: 앱과 같은 규칙(Core `BuildCatalog`·5 MiB, `make catalog-check`)과 앱이 iOS·Android 둘인지, 모든 `buildURL` 이 그 플랫폼 자산의 태그 고정 주소인지, 이번 빌드가 두 앱 모두에 들었는지 본다. 하나라도 어긋나면 올리지 않는다.
+  4. 카탈로그 게시: 고정 태그 `sample-catalog-v2` 의 prerelease 릴리스에 `catalog.json` 을 바꿔 올리고, 고정 주소에서 다시 받아 같은지 확인한다.
+- Android 서명 키: Android 는 설치된 앱을 서명이 같은 apk 로만 업데이트하므로, 러너마다 새 디버그 키로 서명하면 다음 빌드 설치가 서명 불일치(`INSTALL_FAILED_UPDATE_INCOMPATIBLE`)로 실패한다. 그래서 샘플은 공개해 둔(비밀이 아닌) 샘플 전용 개인 키·인증서 [`Examples/SampleAndroidApp/sample-signing.pem`](../Examples/SampleAndroidApp/sample-signing.pem)(PEM 텍스트, **비밀 아님**)을 커밋해 두고, 워크플로가 openssl 로 PKCS12 로 바꿔 서명한다. 자기 앱에서는 이 키를 쓰지 말고 회사 서명 키를 GitHub Secret 으로 넣는다 ([`Examples/SampleAndroidApp/README.md`](../Examples/SampleAndroidApp/README.md)).
+- Gradle 래퍼를 두지 않는 이유: 래퍼 jar 는 검토할 수 없는 바이너리라 커밋하지 않고, `gradle/actions/setup-gradle`(커밋 SHA 로 고정)의 `gradle-version` 으로 Gradle 버전을 고정한다. 샘플 Android 앱은 로컬에서 빌드하지 않는다(이 워크플로만 빌드한다).
 - `releases/latest` 를 쓰지 않는 이유: 이 레포는 SimLauncher 앱 릴리스도 같은 레포에 두므로 latest 를 앱 릴리스용으로 비워 둔다. 샘플 릴리스는 모두 prerelease 라 latest 가 되지 않는다. 빌드만 두는 레포라면 `releases/latest/download/catalog.json` 도 고정 주소로 쓸 수 있지만, 버전의 `buildURL` 은 그때도 태그 고정 주소로 쓴다(6절).
-- 재실행: 같은 run 을 다시 돌리면 같은 태그라 버전이 늘지 않고, 이미 게시된 빌드는 다시 올리지 않는다. 새로 실행하면 새 태그가 생기고 옛 버전 주소는 그대로 옛 빌드를 가리킨다.
-- 실패: 카탈로그는 매번 릴리스 목록에서 다시 만들므로 실패한 실행은 다음 성공 실행이 고친다. 카탈로그를 바꿔 올리는 짧은 동안이나 그 업로드가 실패하면 주소가 404 가 되고(앱에는 받기 실패로 보인다), 재실행이나 다음 실행이 다시 올린다. 빌드 zip 은 7일 동안 run 에 남아, 그 안에는 실패한 `publish` 만 "Re-run failed jobs" 로 다시 돌릴 수 있다. 7일이 지났으면 "Re-run all jobs" 나 새 실행으로 한다.
-- 정리: 오래된 빌드는 자동으로 지우지 않는다. 버전 하나가 약 380 바이트라 5 MiB(1절)까지 약 1만 3천 번 실행할 수 있다. 지우려면 `gh release delete sample-build-<run_id> --cleanup-tag` 로 릴리스와 태그를 함께 지운다. 다음 실행의 카탈로그에서 빠지고, 그 전까지 그 버전을 고르면 빌드가 없다는 안내(10절)가 보인다.
+- 재실행: 같은 run 을 다시 돌리면 같은 태그라 버전이 늘지 않고, 이미 게시된 빌드(두 자산이 다 올라간 릴리스)는 다시 올리지 않는다. 새로 실행하면 새 태그가 생기고 옛 버전 주소는 그대로 옛 빌드를 가리킨다.
+- 실패: 카탈로그는 매번 릴리스 목록에서 다시 만들므로 실패한 실행은 다음 성공 실행이 고친다. 카탈로그를 바꿔 올리는 짧은 동안이나 그 업로드가 실패하면 주소가 404 가 되고(앱에는 받기 실패로 보인다), 재실행이나 다음 실행이 다시 올린다. 빌드 zip·apk 는 7일 동안 run 에 남아, 그 안에는 실패한 `publish` 만 "Re-run failed jobs" 로 다시 돌릴 수 있다. 7일이 지났으면 "Re-run all jobs" 나 새 실행으로 한다.
+- 정리: 오래된 빌드는 자동으로 지우지 않는다. 실행마다 버전이 두 개(iOS·Android) 늘고 하나가 약 380 바이트라 5 MiB(1절)까지 약 6천 9백 번 실행할 수 있다. 지우려면 `gh release delete sample-build-<run_id> --cleanup-tag` 로 릴리스와 태그를 함께 지운다. 다음 실행의 카탈로그에서 빠지고, 그 전까지 그 버전을 고르면 빌드가 없다는 안내(10절)가 보인다.
 - 제약: 레포의 release immutability 를 켜면 게시된 `catalog.json` 을 바꿀 수 없어 게시가 실패한다. 이 예시는 끈 상태로 쓴다.
-- 자기 앱에 맞게 바꿀 곳: `make sample` 의 프로젝트·스킴(`Makefile`), 생성기의 앱 `id`·`name` 과 태그 접두어 `sample-build-`·자산 이름 `SampleApp.zip`(`sample-catalog.sh`), 워크플로의 태그·검증 패턴. 비공개 레포의 Releases 는 인증 없이 받을 수 없으므로 이 앱으로는 쓸 수 없다(1절 "두는 곳").
+- 자기 앱에 맞게 바꿀 곳: `make sample` 의 프로젝트·스킴(`Makefile`), 생성기의 앱 `id`·`name`·`platform` 과 태그 접두어 `sample-build-`·자산 이름 `SampleApp.zip`·`SampleAndroidApp.apk`(`sample-catalog.sh`), 워크플로의 태그·검증 패턴과 카탈로그 태그 `sample-catalog-v2`, Android 빌드의 프로젝트 경로·Gradle 태스크(`build-android` 잡)와 서명(샘플 키 대신 회사 키를 Secret 으로, 인증서 SHA-256 고정값). Android 앱이 없으면 `build-android` 잡과 Android 앱 항목을 지운다. 비공개 레포의 Releases 는 인증 없이 받을 수 없으므로 이 앱으로는 쓸 수 없다(1절 "두는 곳").

@@ -231,19 +231,20 @@ private struct HookedDownloadClient: DownloadClient {
 
   func download(
     _ url: DownloadURL,
+    savingAs name: DownloadedFileName,
     onProgress: @escaping @Sendable (DownloadProgress) async -> Void
   ) async throws(DownloadError) -> DownloadedFile {
     switch self.point {
     case .lastProgress:
       let hook = self.hook
-      return try await self.fake.download(url) { progress in
+      return try await self.fake.download(url, savingAs: name) { progress in
         await onProgress(progress)
         if progress == DownloadProgress.samples.last {
           await hook()
         }
       }
     case .beforeReturn:
-      let file = try await self.fake.download(url, onProgress: onProgress)
+      let file = try await self.fake.download(url, savingAs: name, onProgress: onProgress)
       await self.hook()
       return file
     }

@@ -105,7 +105,7 @@ struct SettingsTextTests {
         // 주소 확인과 만든 사람에게 알리는 안내가 본문 한 줄에 함께 있다.
         #expect(lines.count == 2)
         #expect(lines.last?.contains("catalog.json") == true)
-      case let .unsupportedSchemaVersion(version) where version > BuildCatalog.supportedSchemaVersion:
+      case let .unsupportedSchemaVersion(version) where version > BuildCatalog.latestSchemaVersion:
         #expect(lines.count == 2)
         #expect(lines.last?.contains("업데이트") == true)
       case let .missingField(_, position) where position == .root, let .wrongType(_, position) where position == .root:
@@ -118,7 +118,7 @@ struct SettingsTextTests {
       }
     }
     #expect(
-      SettingsText.message(for: BuildCatalogProblem.unsupportedSchemaVersion(2))
+      SettingsText.message(for: BuildCatalogProblem.unsupportedSchemaVersion(3))
         != SettingsText.message(for: BuildCatalogProblem.unsupportedSchemaVersion(0))
     )
     let field = SettingsText.message(for: BuildCatalogProblem.missingField(
@@ -224,7 +224,7 @@ enum SettingsTextCatalog {
 
   /// 모든 케이스, 필드 문제는 모든 필드 (항목이 객체가 아닌 `apps`·`versions` 도).
   static var catalogProblems: [BuildCatalogProblem] {
-    var problems: [BuildCatalogProblem] = [.notJSONObject, .unsupportedSchemaVersion(2), .unsupportedSchemaVersion(0)]
+    var problems: [BuildCatalogProblem] = [.notJSONObject, .unsupportedSchemaVersion(3), .unsupportedSchemaVersion(0)]
     for field in BuildCatalogProblem.Field.allCases {
       problems += [
         .missingField(field, position: .root), .wrongType(field, position: self.versionPosition),
@@ -234,7 +234,8 @@ enum SettingsTextCatalog {
     problems += [
       .wrongType(.apps, position: self.appItemPosition), .wrongType(.versions, position: self.versionItemPosition),
       .wrongType(.apps, position: .root),
-      .invalidID(position: self.versionPosition), .duplicateAppID(position: self.versionPosition),
+      .invalidID(position: self.versionPosition), .unsupportedPlatform(position: self.versionPosition),
+      .duplicateAppID(position: self.versionPosition),
       .duplicateVersionID(position: self.versionPosition), .invalidCreatedAt(position: self.versionPosition),
     ]
     problems += self.urlProblems.map { BuildCatalogProblem.invalidBuildURL($0, position: self.versionPosition) }
@@ -321,11 +322,11 @@ enum SettingsTextCatalog {
     [
       FormatSample(
         key: "이 카탈로그는 이 앱보다 새 규격(schemaVersion %lld)입니다. SimLauncher 를 업데이트한 뒤 다시 등록하세요.",
-        arguments: [2], text: self.line(.unsupportedSchemaVersion(2), 1)
+        arguments: [3], text: self.line(.unsupportedSchemaVersion(3), 1)
       ),
       FormatSample(
-        key: "카탈로그의 schemaVersion %lld 은 없는 규격입니다 (지원: %lld).",
-        arguments: [0, BuildCatalog.supportedSchemaVersion], text: self.line(.unsupportedSchemaVersion(0), 1)
+        key: "카탈로그의 schemaVersion %lld 은 없는 규격입니다 (지원: 1~%lld).",
+        arguments: [0, BuildCatalog.latestSchemaVersion], text: self.line(.unsupportedSchemaVersion(0), 1)
       ),
     ]
   }
@@ -382,6 +383,10 @@ enum SettingsTextCatalog {
       FormatSample(
         key: "%@의 id 가 형식에 맞지 않습니다 (영문·숫자로 시작하고 영문·숫자·. _ - 만, 128자까지).", arguments: [place],
         text: self.line(.invalidID(position: self.versionPosition), 1)
+      ),
+      FormatSample(
+        key: "%@의 platform 이 ios 나 android 가 아닙니다 (소문자로 씁니다).", arguments: [place],
+        text: self.line(.unsupportedPlatform(position: self.versionPosition), 1)
       ),
       FormatSample(
         key: "%@의 id 가 앞의 앱과 같습니다 (대소문자 무시).", arguments: [place],

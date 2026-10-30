@@ -1,21 +1,29 @@
 import Core
+import DownloadInterface
 import SwiftUI
 
-/// 기기 한 줄: 모양 아이콘, 표시 이름, "API · 상태" 글자(쓸 수 없으면 이유 줄), 앱 설치 메뉴(파일에서 고르기…)와 드롭,
+/// 기기 한 줄: 모양 아이콘, 표시 이름, "API · 상태" 글자(쓸 수 없으면 이유 줄), 앱 설치 메뉴(파일에서 고르기…·URL 에서…·
+/// 카탈로그에서…)와 드롭,
 /// "앱 실행…"·"링크 열기…" 버튼(시트), 켜기·끄기 버튼(앱 작업 중이면 진행 표시), 기기 작업 메뉴(… 버튼과 컨텍스트 메뉴: 초기화·삭제).
 /// 앱 설치·실행·링크 열기는 켜진 기기만 된다 (꺼진·켜는 중·쓸 수 없는 행은 비활성이고 도움말에 이유를 보이며, 드롭을 거절한다).
 /// 앱이 켜는 중인 행은 끄기를 포함한 모든 동작을 막는다. 앱 밖에서 켜는 중인 행은 끌 수 있다.
 /// 쓸 수 없는 기기는 흐리게 그리고 이유를 보인다. 실행 중이면 상태도 함께 보이고 끌 수 있다.
-/// 막힌 메뉴 항목은 비활성으로 두고 이유를 메뉴 맨 위에 보인다.
+/// 막힌 메뉴 항목은 비활성으로 두고 이유를 메뉴 맨 위에 보인다. URL·카탈로그에서 받는 중이면 진행(전체 크기를 알면 막대, 모르면
+/// 원형)과 받기 취소 버튼을, 취소 중이면 원형 진행만 보인다. 받기가 끝나면 설치 중 표시로 돌아간다.
 struct AndroidDeviceRow: View {
   let device: AndroidVirtualDevice
   /// 이 기기에서 앱이 진행 중인 작업. nil 이면 없다.
   let task: AndroidDeviceTask?
+  /// URL·카탈로그에서 설치의 받기 단계. nil 이면 받는 중이 아니다.
+  let downloadStage: AndroidDownloadStage?
   let bootTapped: () -> Void
   let shutdownTapped: () -> Void
   let eraseTapped: () -> Void
   let deleteTapped: () -> Void
   let installFromFileTapped: () -> Void
+  let installFromURLTapped: () -> Void
+  let installFromCatalogTapped: () -> Void
+  let cancelDownloadTapped: () -> Void
   let appDropped: ([URL]) -> Void
   let launchAppTapped: () -> Void
   let openURLTapped: () -> Void
@@ -42,6 +50,8 @@ struct AndroidDeviceRow: View {
       Spacer()
       Menu(AndroidDevicesText.installAppButton) {
         Button(AndroidDevicesText.installFromFileMenuItem, action: self.installFromFileTapped)
+        Button(AndroidDevicesText.installFromURLMenuItem, action: self.installFromURLTapped)
+        Button(AndroidDevicesText.installFromCatalogMenuItem, action: self.installFromCatalogTapped)
       }
       .menuStyle(.button)
       .fixedSize()
@@ -106,10 +116,13 @@ struct AndroidDeviceRow: View {
     return nil
   }
 
-  /// 앱 작업 중이면 진행 표시(켜는 중이면 오래 걸릴 수 있다는 도움말), 켤 수 있으면 "켜기", 켜는 중·켜짐이면 "끄기".
+  /// 받는 중이면 받기 진행, 앱 작업 중이면 진행 표시(켜는 중이면 오래 걸릴 수 있다는 도움말), 켤 수 있으면 "켜기",
+  /// 켜는 중·켜짐이면 "끄기".
   @ViewBuilder
   private var action: some View {
-    if let task = self.task {
+    if let stage = self.downloadStage {
+      self.downloadProgress(stage)
+    } else if let task = self.task {
       ProgressView()
         .controlSize(.small)
         .help(task == .boot ? AndroidDevicesText.bootingHelp : AndroidDevicesText.taskLabel(for: task))
@@ -118,6 +131,28 @@ struct AndroidDeviceRow: View {
       Button(AndroidDevicesText.bootButton, action: self.bootTapped)
     } else if self.device.canShutdown {
       Button(AndroidDevicesText.shutdownButton, action: self.shutdownTapped)
+    }
+  }
+
+  /// 받는 중이면 진행(전체 크기를 알면 막대, 모르면 원형)과 받기 취소 버튼. 취소 중이면 원형 진행만.
+  @ViewBuilder
+  private func downloadProgress(_ stage: AndroidDownloadStage) -> some View {
+    switch stage {
+    case let .receiving(progress):
+      if let progress, let expected = progress.expectedBytes, expected > 0 {
+        ProgressView(value: Double(min(progress.receivedBytes, expected)), total: Double(expected))
+          .frame(width: 80)
+      } else {
+        ProgressView()
+          .controlSize(.small)
+      }
+      Button(AndroidDevicesText.cancelButton, action: self.cancelDownloadTapped)
+        .accessibilityLabel(AndroidDevicesText.cancelDownloadAccessibilityLabel)
+        .help(AndroidDevicesText.cancelDownloadHelp)
+    case .cancelling:
+      ProgressView()
+        .controlSize(.small)
+        .accessibilityLabel(AndroidDevicesText.cancellingDownloadLabel)
     }
   }
 
@@ -140,13 +175,19 @@ struct AndroidDeviceRow: View {
     self.device.availability == .available
   }
 
-  /// "API 37.0 · 꺼짐". 앱 작업 중이면 작업 글자(켜는 중이면 오래 걸릴 수 있다는 안내도), 쓸 수 없으면 "사용할 수 없음" (실행 중이면 상태도 함께).
+  /// "API 37.0 · 꺼짐". 받는 중이면 받기 글자, 앱 작업 중이면 작업 글자(켜는 중이면 오래 걸릴 수 있다는 안내도), 쓸 수 없으면
+  /// "사용할 수 없음" (실행 중이면 상태도 함께).
   private var statusLine: String {
     var parts: [String] = []
     if let image = self.device.systemImage {
       parts.append(AndroidDevicesText.apiLabel(image))
     }
-    if let task = self.task {
+    if let stage = self.downloadStage {
+      switch stage {
+      case let .receiving(progress): parts.append(AndroidDevicesText.downloadingLabel(progress))
+      case .cancelling: parts.append(AndroidDevicesText.cancellingDownloadLabel)
+      }
+    } else if let task = self.task {
       parts.append(AndroidDevicesText.taskLabel(for: task))
       if task == .boot {
         parts.append(AndroidDevicesText.bootingHelp)

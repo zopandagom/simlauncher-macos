@@ -165,7 +165,23 @@ enum CatalogData {
   static let loginHTML = Data("<!doctype html><html><body>로그인</body></html>".utf8)
 
   /// 이 앱보다 새 규격.
-  static let newerSchema = Data(#"{"schemaVersion":2,"apps":[]}"#.utf8)
+  static let newerSchema = Data(#"{"schemaVersion":3,"apps":[]}"#.utf8)
+
+  /// schemaVersion 2: iOS 앱 하나와 같은 id 의 Android 앱 하나, Android 앱 하나 (앱 3개).
+  static let v2ThreeApps = Data(
+    """
+    {"schemaVersion":2,"apps":[
+      {"id":"app-a","name":"App A","platform":"ios","versions":[]},
+      {"id":"app-a","name":"App A","platform":"android","versions":[]},
+      {"id":"app-c","name":"App C","platform":"android","versions":[]}
+    ]}
+    """.utf8
+  )
+
+  /// schemaVersion 2 의 1번째 앱 platform 이 대문자다.
+  static let v2UppercasePlatform = Data(
+    #"{"schemaVersion":2,"apps":[{"id":"app-a","name":"App A","platform":"iOS","versions":[]}]}"#.utf8
+  )
 
   /// 2번째 앱의 1번째 버전에 createdAt 이 없다.
   static let missingCreatedAt = Data(
@@ -236,9 +252,10 @@ final class LateFetchDownloadClient: DownloadClient {
 
   func download(
     _ url: DownloadURL,
+    savingAs name: DownloadedFileName,
     onProgress: @escaping @Sendable (DownloadProgress) async -> Void
   ) async throws(DownloadError) -> DownloadedFile {
-    try await self.fake.download(url, onProgress: onProgress)
+    try await self.fake.download(url, savingAs: name, onProgress: onProgress)
   }
 
   func removeDownloaded(_ file: DownloadedFile) async {

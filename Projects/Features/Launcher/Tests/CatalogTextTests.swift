@@ -73,10 +73,11 @@ struct CatalogTextTests {
       "받은 파일을 카탈로그(JSON 객체)로 읽지 못했습니다. 로그인 페이지 같은 웹 페이지이거나 다른 파일일 수 있습니다.",
       checkAddress,
     ])
-    #expect(lines(.unsupportedSchemaVersion(2)) == [
-      header, "이 카탈로그는 이 앱보다 새 규격(schemaVersion 2)입니다. SimLauncher 를 업데이트하세요.",
+    #expect(lines(.unsupportedSchemaVersion(3)) == [
+      header, "이 카탈로그는 이 앱보다 새 규격(schemaVersion 3)입니다. SimLauncher 를 업데이트하세요.",
     ])
-    #expect(lines(.unsupportedSchemaVersion(0)) == [header, "카탈로그의 schemaVersion 0 은 없는 규격입니다 (지원: 1).", report])
+    #expect(lines(.unsupportedSchemaVersion(0)) == [header, "카탈로그의 schemaVersion 0 은 없는 규격입니다 (지원: 1~2).", report])
+    #expect(lines(.unsupportedSchemaVersion(-1))[1] == "카탈로그의 schemaVersion -1 은 없는 규격입니다 (지원: 1~2).")
     #expect(lines(.missingField(.apps, position: .root)) == [
       header, "카탈로그 최상위에 필수 필드 apps 가 없거나 null 입니다.", checkAddress,
     ])
@@ -91,6 +92,10 @@ struct CatalogTextTests {
     #expect(lines(.invalidBuildURL(.hasCredentials, position: version)) == [
       header, "1번째 앱(id: a)의 3번째 버전(id: v)의 buildURL 을 쓸 수 없습니다: 사용자 이름이나 비밀번호가 들어 있습니다.", report,
     ])
+    #expect(lines(.unsupportedPlatform(position: app)) == [
+      header, "2번째 앱(id: app-b)의 platform 이 ios 나 android 가 아닙니다 (소문자로 씁니다).", report,
+    ])
+    #expect(lines(.missingField(.platform, position: app))[1] == "2번째 앱(id: app-b)에 필수 필드 platform 가 없거나 null 입니다.")
     #expect(LauncherText.catalogLocation(.root) == "카탈로그 최상위")
   }
 
@@ -286,8 +291,10 @@ extension CatalogTextTests {
     }
     let version = BuildCatalogProblem.Position(appIndex: 0, appID: "a", versionIndex: 1, versionID: "v")
     let otherProblems: [BuildCatalogProblem] = [
-      .unsupportedSchemaVersion(2), .unsupportedSchemaVersion(0),
-      .invalidID(position: CatalogTextCatalog.position(app: 1)), .invalidCreatedAt(position: version),
+      .unsupportedSchemaVersion(3), .unsupportedSchemaVersion(0),
+      .invalidID(position: CatalogTextCatalog.position(app: 1)),
+      .unsupportedPlatform(position: CatalogTextCatalog.position(app: 1, appID: "a")),
+      .invalidCreatedAt(position: version),
       .invalidBuildURL(.notHTTPS, position: version),
     ]
     rows += otherProblems.map { (problem: BuildCatalogProblem) -> (CatalogLoadFailure, String?) in

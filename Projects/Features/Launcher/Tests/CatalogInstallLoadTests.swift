@@ -189,6 +189,7 @@ private final class LateCatalogDownload: DownloadClient {
 
   func download(
     _: DownloadURL,
+    savingAs _: DownloadedFileName,
     onProgress _: @escaping @Sendable (DownloadProgress) async -> Void
   ) async throws(DownloadError) -> DownloadedFile {
     throw .failed
