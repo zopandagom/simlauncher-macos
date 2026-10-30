@@ -1,7 +1,7 @@
 import Core
 import Foundation
 
-/// Android 기기(AVD) 목록·상태와 켜기·끄기·만들기·삭제·초기화, 켜진 기기에 apk 설치·앱 실행·링크 열기.
+/// Android 기기(AVD) 목록·상태와 켜기·끄기·만들기·삭제·초기화, 켜진 기기에 apk 설치·앱 실행·링크 열기·스크린샷·녹화.
 /// AVD 폴더는 `$HOME/.android/avd` (Android Studio 와 함께 쓴다. ANDROID_AVD_HOME 은 보지 않는다).
 /// SDK 위치는 App 이 주입한 provider 를 공개 메서드 한 번에 한 번 부른다. 명령은 CommandClient 로
 /// `<SDK>/emulator/emulator` 와 `<SDK>/platform-tools/adb` 만 실행한다. 네트워크 API 를 쓰지 않는다
@@ -71,6 +71,39 @@ public protocol AndroidEmulatorClient: Sendable {
 
   /// 사용자가 설치한 앱(`pm list packages -3`)의 패키지 이름, 이름순. 형식에 맞지 않는 줄은 건너뛴다.
   func installedPackages(on id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError) -> [AndroidPackageName]
+
+  /// 켜진 기기 화면을 PNG 로 `file`(Workspace 가 예약한 빈 파일)에 쓴다 (`adb -s <serial> exec-out screencap -p`, 30초 제한).
+  /// 사전 확인은 앱 작업과 같다. 종료 코드 ≠ 0·출력이 PNG 가 아님·시간 초과는 `.captureFailed`,
+  /// 파일에 쓰지 못하면(파일 없음·링크·일반 파일 아님·디스크) `.captureFileUnwritable` (일부만 썼으면 0바이트로 자른다).
+  /// 화면이 꺼져 있으면 검은 화면이 저장된다(실측).
+  func screenshot(on id: AndroidVirtualDevice.ID, to file: URL) async throws(AndroidEmulatorError)
+
+  /// 켜진 기기 화면을 H.264 mp4 로 기기 임시 파일(`/data/local/tmp/simlauncher-recording-<UUID>.mp4`)에 녹화한 뒤
+  /// `file`(예약한 빈 파일)로 가져온다(`adb pull`). **호출한 Task 의 취소가 멈춤이다**: 기기 안 screenrecord 에 `kill -2 <pid>` 를
+  /// 보내 마무리를 기다린 뒤 가져오고 돌아온다 (취소는 실패가 아니다. 멈춘 뒤의 명령은 취소를 물려받지 않는다).
+  /// 녹화 adb 프로세스가 끝나기 전에는 돌아오지 않는다. 시작 신호(셸 pid 줄)를 받으면 `onStarted` 를 한 번(돌아오기 전에만) 부른다.
+  /// 시작 전에 이미 취소됐으면 `.stoppedBeforeStart`. API 34 이상은 `--time-limit 0`(제한 없음), 그 아래는 기본 180초.
+  /// 사전 확인은 앱 작업과 같다. 시작 전에 이 앱이 남긴 기기 임시 파일(`simlauncher-recording-*.mp4`)을 지운다. 끝난 녹화의 기기 임시
+  /// 파일은 가져왔거나 화면이 없을 때만 지우고, 화면이 담긴 파일을 가져오지 못했으면(`.captureFileUnwritable`·`.recordingLost`·
+  /// `.recordingTransferTimedOut`) 기기에 남긴다(그 기기에서 다음 녹화를 시작할 때 지운다).
+  /// 가져오지 못하면 `file` 은 0바이트로 남긴다(호출한 쪽이 지운다).
+  func recordScreen(
+    on id: AndroidVirtualDevice.ID,
+    to file: URL,
+    onStarted: @escaping @Sendable () async -> Void
+  ) async throws(AndroidEmulatorError) -> AndroidScreenRecordingResult
+}
+
+/// 끝난 녹화의 결과. 실패(화면이 없거나 가져오지 못함)는 `AndroidEmulatorError` 로 던진다.
+public enum AndroidScreenRecordingResult: Hashable, Sendable {
+  /// 멈춤 요청으로 끝나고 화면이 담긴 파일을 가져왔다.
+  case saved
+  /// 요청 없이 정상 종료로 끝나고(API 33 이하의 3분 제한) 화면이 담긴 파일을 가져왔다.
+  case savedAtTimeLimit
+  /// 녹화가 실패로 끝났거나 마무리를 확인하지 못했지만 화면이 담긴 파일을 가져왔다.
+  case savedAfterFailure
+  /// 화면을 담기 전에 멈췄다 (파일 없음·0바이트).
+  case stoppedBeforeStart
 }
 
 /// 목록 읽기 결과.
@@ -132,6 +165,18 @@ public enum AndroidEmulatorError: Error, Hashable, Sendable {
   case urlNotHandled
   /// am·pm 이 그 밖의 이유로 실패했다 (종료 코드 ≠ 0, 해석할 수 없는 출력).
   case appCommandFailed
+  /// 스크린샷: 기기 화면을 읽지 못했다 (종료 코드 ≠ 0, PNG 아님, 시간 초과).
+  case captureFailed
+  /// 스크린샷·녹화: Mac 의 예약 파일에 쓰지 못했다 (파일 없음·링크·디스크·폴더).
+  case captureFileUnwritable
+  /// 녹화를 시작하지 못했다: 화면 없이 실패로 끝났다 (경로·인코더·기기 저장 공간).
+  case recordingFailed
+  /// 녹화가 끝났는데 가져온 파일이 0바이트이거나 없다.
+  case recordingEmpty
+  /// 녹화가 끝났지만 기기가 꺼지거나 adb 가 끊겨 가져오지 못했다 (기기 임시 파일은 남는다).
+  case recordingLost
+  /// 녹화 파일 가져오기가 시간 제한(600초) 안에 끝나지 않았다 (기기 임시 파일은 남는다).
+  case recordingTransferTimedOut
 }
 
 /// adb install 실패 원인 (`Failure [<코드>: …]` 의 코드).

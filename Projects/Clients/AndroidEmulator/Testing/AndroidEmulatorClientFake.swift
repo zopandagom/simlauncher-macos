@@ -11,8 +11,10 @@ import Synchronization
 ///   nil 이면 `.nameUnavailable`). 성공하면 꺼진 새 기기(표시 이름은 `DeviceName.normalized`)를 목록 끝에 더한다.
 /// - `delete` 는 성공하면 그 기기를 빼고 설정한 결과(기본 `.deleted`)를 돌려준다. 목록에 없는 기기여도 성공한다.
 /// - `erase` 는 성공해도 목록을 바꾸지 않는다.
-/// - 앱 작업(`deviceTraits`·`install`·`launch`·`openURL`·`installedPackages`)은 설정한 결과만 돌려주고 목록·기기 상태를 보지 않는다.
-///   기본은 `AndroidDeviceTraits.sample`·성공·빈 앱 목록.
+/// - 앱 작업(`deviceTraits`·`install`·`launch`·`openURL`·`installedPackages`·`screenshot`·`recordScreen`)은 설정한 결과만 돌려주고
+///   목록·기기 상태를 보지 않는다. 기본은 `AndroidDeviceTraits.sample`·성공·빈 앱 목록.
+/// - `screenshot`·`recordScreen` 은 파일을 만들거나 쓰지 않는다. `recordScreen` 은 기본으로 바로 시작 신호를 보내고 호출한 Task 가
+///   취소될 때까지 기다린 뒤 `.saved` 를 돌려준다 (iOS `SimulatorClientFake.recordVideo` 와 같다).
 /// - 멈춤(`suspend…`) 중인 호출은 기록만 하고 재개까지 기다린다 (취소를 받지 않는다). 결과는 깨어난 뒤의 설정을 쓴다.
 public final class AndroidEmulatorClientFake: AndroidEmulatorClient {
   public enum Call: Hashable, Sendable {
@@ -27,10 +29,12 @@ public final class AndroidEmulatorClientFake: AndroidEmulatorClient {
     case launch(AndroidPackageName, AndroidVirtualDevice.ID)
     case openURL(DeepLink, AndroidVirtualDevice.ID)
     case installedPackages(AndroidVirtualDevice.ID)
+    case screenshot(AndroidVirtualDevice.ID, URL)
+    case recordScreen(AndroidVirtualDevice.ID, URL)
   }
 
   private enum SuspendableCall: Hashable {
-    case fetch, boot, shutdown, create, delete, erase, install, packageList
+    case fetch, boot, shutdown, create, delete, erase, install, packageList, screenshot, recording
     case bootOf(AndroidVirtualDevice.ID)
   }
 
@@ -47,6 +51,10 @@ public final class AndroidEmulatorClientFake: AndroidEmulatorClient {
     var deviceTraits: Result<AndroidDeviceTraits, AndroidEmulatorError> = .success(.sample)
     var installError: AndroidEmulatorError?
     var launchError: AndroidEmulatorError?
+    var screenshotError: AndroidEmulatorError?
+    var recordingResult: Result<AndroidScreenRecordingResult, AndroidEmulatorError>?
+    var recordingEndsByItself: Result<AndroidScreenRecordingResult, AndroidEmulatorError>?
+    var recordingSignalsStart = true
     var openURLError: AndroidEmulatorError?
     var installedPackages: Result<[AndroidPackageName], AndroidEmulatorError> = .success([])
     var delay: Duration?
@@ -212,15 +220,6 @@ public final class AndroidEmulatorClientFake: AndroidEmulatorClient {
     }
   }
 
-  public func installedPackages(on id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError)
-    -> [AndroidPackageName]
-  {
-    self.record(.installedPackages(id))
-    await self.waitIfSuspended(.packageList)
-    await self.sleepIfNeeded()
-    return try self.state.withLock { $0.installedPackages }.get()
-  }
-
   private func record(_ call: Call) {
     self.state.withLock { $0.calls.append(call) }
   }
@@ -276,6 +275,59 @@ public final class AndroidEmulatorClientFake: AndroidEmulatorClient {
       )
     }
     return AndroidDeviceInventory(devices: devices, creationOptions: inventory.creationOptions)
+  }
+}
+
+public extension AndroidEmulatorClientFake {
+  func installedPackages(on id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError)
+    -> [AndroidPackageName]
+  {
+    self.record(.installedPackages(id))
+    await self.waitIfSuspended(.packageList)
+    await self.sleepIfNeeded()
+    return try self.state.withLock { $0.installedPackages }.get()
+  }
+
+  /// 기록 → 멈춤 → 지연 → 설정한 에러면 던진다. 파일은 쓰지 않는다.
+  func screenshot(on id: AndroidVirtualDevice.ID, to file: URL) async throws(AndroidEmulatorError) {
+    self.record(.screenshot(id, file))
+    await self.waitIfSuspended(.screenshot)
+    await self.sleepIfNeeded()
+    if let error = self.state.withLock({ $0.screenshotError }) {
+      throw error
+    }
+  }
+
+  /// 기록 → 멈춤 → 지연 → 스스로 끝나는 결과가 설정돼 있으면: 실패는 신호 없이 던지고(시작 실패 흉내), 성공은 (취소되지 않았으면)
+  /// 신호를 보낸 뒤 곧바로 돌려준다. 아니면 아직 취소되지 않았고 신호를 보내기로 했으면 `onStarted` → 호출한 Task 가 취소될 때까지
+  /// 기다림(이미 취소됐으면 바로) → 설정한 멈춘 뒤 결과, 없으면 신호를 보냈으면 `.saved`, 아니면 `.stoppedBeforeStart`.
+  func recordScreen(
+    on id: AndroidVirtualDevice.ID,
+    to file: URL,
+    onStarted: @escaping @Sendable () async -> Void
+  ) async throws(AndroidEmulatorError) -> AndroidScreenRecordingResult {
+    self.record(.recordScreen(id, file))
+    await self.waitIfSuspended(.recording)
+    await self.sleepIfNeeded()
+    let (endsByItself, signals) = self.state.withLock { ($0.recordingEndsByItself, $0.recordingSignalsStart) }
+    if case let .failure(error) = endsByItself {
+      throw error
+    }
+    // 실제처럼 시작 전에 이미 취소됐으면 신호 없이 멈춘다.
+    let signaled = !Task.isCancelled && signals
+    if signaled {
+      await onStarted()
+    }
+    if let endsByItself {
+      return try endsByItself.get()
+    }
+    while !Task.isCancelled {
+      try? await Task.sleep(for: .seconds(3600))
+    }
+    if let result = self.state.withLock({ $0.recordingResult }) {
+      return try result.get()
+    }
+    return signaled ? .saved : .stoppedBeforeStart
   }
 }
 
@@ -411,6 +463,45 @@ public extension AndroidEmulatorClientFake {
 
   func resumeInstalls() {
     self.resume(.install)
+  }
+
+  func setScreenshotError(_ error: AndroidEmulatorError?) {
+    self.state.withLock { $0.screenshotError = error }
+  }
+
+  /// 이후 `screenshot(on:to:)` 가 기록만 하고 `resumeScreenshots()` 까지 기다린다.
+  func suspendScreenshots() {
+    self.suspend(.screenshot)
+  }
+
+  func resumeScreenshots() {
+    self.resume(.screenshot)
+  }
+
+  /// 설정하면 이후 `recordScreen` 이 취소로 멈춘 뒤 이 결과를 낸다 (실패면 던진다). nil 이면 신호를 보냈으면 `.saved`,
+  /// 아니면 `.stoppedBeforeStart`.
+  func setRecordingResult(_ result: Result<AndroidScreenRecordingResult, AndroidEmulatorError>?) {
+    self.state.withLock { $0.recordingResult = result }
+  }
+
+  /// 설정하면 이후 `recordScreen` 이 취소를 기다리지 않고 끝난다: 성공은 시작 신호 뒤 그 값(예: `.savedAtTimeLimit`), 실패는 신호 없이
+  /// 그 에러(시작 실패·기기 꺼짐 흉내). nil 이면 취소까지 기다린다.
+  func setRecordingEndsByItself(_ result: Result<AndroidScreenRecordingResult, AndroidEmulatorError>?) {
+    self.state.withLock { $0.recordingEndsByItself = result }
+  }
+
+  /// false 면 이후 `recordScreen` 이 시작 신호(`onStarted`)를 보내지 않는다 (기본 true).
+  func setRecordingSignalsStart(_ signals: Bool) {
+    self.state.withLock { $0.recordingSignalsStart = signals }
+  }
+
+  /// 이후 `recordScreen` 이 기록만 하고 `resumeRecordings()` 까지 기다린다 (시작 신호 전, 취소를 받지 않는다).
+  func suspendRecordings() {
+    self.suspend(.recording)
+  }
+
+  func resumeRecordings() {
+    self.resume(.recording)
   }
 
   /// 이후 `installedPackages(on:)` 이 기록만 하고 `resumePackageLists()` 까지 기다린다.
