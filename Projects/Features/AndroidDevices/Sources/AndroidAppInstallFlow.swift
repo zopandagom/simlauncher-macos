@@ -15,13 +15,17 @@ import Foundation
 @MainActor
 struct AndroidAppInstallFlow {
   /// Model 이 부를 때마다 만들어 넘기는 창구. Model 을 잡으므로 저장하지 않는다.
-  struct Host {
+  /// 여러 기기 흐름(함께 켜기)이 기기별 자식 작업에 넘기므로 Sendable 이다 (Model 은 `@MainActor` 클래스라 잡아도 Sendable).
+  struct Host: Sendable {
     /// 알림을 쌓는다.
-    let enqueue: @MainActor (AndroidDevicesNotice) -> Void
+    let enqueue: @MainActor @Sendable (AndroidDevicesNotice) -> Void
     /// 목록을 다시 읽는다 (읽는 중이면 그 읽기에 합쳐진다).
-    let reload: @MainActor () async -> Void
+    let reload: @MainActor @Sendable () async -> Void
     /// 지금 목록 상태. 부르는 순간의 값을 돌려준다 (미리 잡아 두지 않는다).
-    let listState: @MainActor () -> AndroidDevicesListState
+    let listState: @MainActor @Sendable () -> AndroidDevicesListState
+    /// 여러 기기 묶음에서 그 기기가 끝났다 (기기, 묶음 소유자 번호). 그 번호의 진행 기록만 지워 행을 바로 푼다.
+    /// 한 기기 흐름은 부르지 않는다 (Model 의 defer 가 끝낸다).
+    let finished: @MainActor @Sendable (AndroidVirtualDevice.ID, Int) -> Void
   }
 
   let emulator: any AndroidEmulatorClient

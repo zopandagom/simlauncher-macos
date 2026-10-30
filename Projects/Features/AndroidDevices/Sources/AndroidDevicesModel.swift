@@ -177,22 +177,7 @@ public extension AndroidDevicesModel {
       defer { self.taskEnded(on: device.id, owner: start.owner) }
       return await self.commandFlow.bootAndReport(device, host: self.appHost)
     }
-    let errors = await withTaskGroup(of: (AndroidVirtualDevice.ID, AndroidEmulatorError?).self) { group in
-      for device in start.begun {
-        group.addTask { await self.bootMember(device, owner: start.owner) }
-      }
-      var errors: [AndroidVirtualDevice.ID: AndroidEmulatorError] = [:]
-      for await (id, error) in group {
-        errors[id] = error
-      }
-      return errors
-    }
-    let report = AndroidBatchBootReport(entries: start.begun.map {
-      AndroidBatchBootReport.Entry(device: AndroidDeviceLabel($0), error: errors[$0.id])
-    })
-    if report.needsNotice {
-      self.enqueue(.batchBootFinished(report))
-    }
+    await self.commandFlow.bootAll(start, host: self.appHost)
   }
 
   /// 켜는 중(앱 밖에서 켜는 중·시간 초과 포함)이거나 켜진 기기를 끄고 목록을 다시 읽는다. 실패하면 알림을 띄우고 다시 읽는다.
@@ -399,11 +384,13 @@ extension AndroidDevicesModel {
   }
 
   /// 흐름(기기 명령·앱 작업)이 Model 상태에 닿는 창구. 부를 때마다 만들어 넘기고 흐름 타입은 저장하지 않는다.
+  /// 묶음의 기기별 끝(`finished`)은 `taskEnded` 라 시간 초과로 켜는 중에 남은 기기의 자동 다시 읽기도 시작한다.
   private var appHost: AndroidAppInstallFlow.Host {
     AndroidAppInstallFlow.Host(
       enqueue: { self.enqueue($0) },
       reload: { await self.reload() },
-      listState: { self.listState }
+      listState: { self.listState },
+      finished: { self.taskEnded(on: $0, owner: $1) }
     )
   }
 
@@ -413,17 +400,6 @@ extension AndroidDevicesModel {
       return
     }
     self.noticeQueue.enqueue(notice)
-  }
-
-  /// 함께 켜기의 기기 한 대: 켜고 다시 읽은 뒤 그 행을 푼다 (먼저 켜진 행이 꺼짐으로 남지 않게 다시 읽기가 먼저다).
-  private func bootMember(_ device: AndroidVirtualDevice, owner: Int) async -> (
-    AndroidVirtualDevice.ID,
-    AndroidEmulatorError?
-  ) {
-    let error = await self.commandFlow.boot(device.id)
-    await self.reload()
-    self.taskEnded(on: device.id, owner: owner)
-    return (device.id, error)
   }
 
   /// 작업 기록을 지우고, 그 기기가 앱 밖 켜는 중으로 남았으면(켜기 시간 초과 등) 자동 다시 읽기를 시작한다.

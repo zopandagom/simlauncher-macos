@@ -151,7 +151,8 @@ struct AndroidDevicesDownloadTests: AndroidDevicesTesting {
     let host = AndroidAppInstallFlow.Host(
       enqueue: { _ in enqueued.increment() },
       reload: { reloads.increment() },
-      listState: { setup.model.listState }
+      listState: { setup.model.listState },
+      finished: { _, _ in }
     )
     await flow.installDownloaded(.success(Self.file), cancelRequested: true, request: Self.request(), host: host)
     #expect(Self.removals(setup.download) == [Self.file])
