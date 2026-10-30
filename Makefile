@@ -13,7 +13,7 @@ SAMPLE_BUILD_NUMBER ?= 1
 SAMPLE_DERIVED_DATA := build/SampleApp
 SAMPLE_APP := $(SAMPLE_DERIVED_DATA)/Build/Products/Release-iphonesimulator/SampleApp.app
 SAMPLE_ZIP := build/SampleApp.zip
-# catalog.json 검증기: Core 소스와 함께 컴파일해 앱과 같은 규칙으로 검사한다. mise 없이 돈다 (워크플로 publish 잡)
+# catalog.json 검증기: Core 소스와 함께 컴파일해 앱과 같은 규칙(schemaVersion 1·2)으로 검사한다. mise 없이 돈다 (워크플로 publish 잡)
 CATALOG_VALIDATOR := build/validate-catalog
 CATALOG_FIXTURES := .github/scripts/Fixtures
 # make release 가 쓰는 공증 키체인 프로필 이름 (xcrun notarytool store-credentials 로 저장, docs/RELEASING.md)
@@ -82,15 +82,18 @@ catalog-check: $(CATALOG_VALIDATOR)
 	$(CATALOG_VALIDATOR) "$(CATALOG)"
 
 ## 샘플 카탈로그 생성기·검증기 회귀 테스트 (.github/scripts/Fixtures)
-## 양성: 릴리스 목록 → 손으로 쓴 기대값과 같고 검사 통과. 음성: 규격 위반 카탈로그마다 종료 1 과 그 문제
+## 양성: 릴리스 목록 → 손으로 쓴 기대값(schemaVersion 2, iOS·Android 앱 둘)과 같고 검사 통과, 빈 목록이면 앱 둘·버전 0,
+## schemaVersion 1 카탈로그(valid-v1.json)도 통과. 음성: 규격 위반 카탈로그마다 종료 1 과 그 문제
 catalog-test: $(CATALOG_VALIDATOR)
 	set -o pipefail && .github/scripts/sample-catalog.sh $(CATALOG_FIXTURES)/releases.json | jq -S . > build/catalog-test.json
 	jq -S . $(CATALOG_FIXTURES)/expected-catalog.json | diff -u - build/catalog-test.json
 	$(CATALOG_VALIDATOR) build/catalog-test.json
 	.github/scripts/sample-catalog.sh $(CATALOG_FIXTURES)/releases-empty.json > build/catalog-test-empty.json
-	jq -e '.apps | length == 1 and (.[0].versions | length == 0)' build/catalog-test-empty.json > /dev/null
+	jq -e '.apps | length == 2 and all(.[]; .versions | length == 0)' build/catalog-test-empty.json > /dev/null
 	$(CATALOG_VALIDATOR) build/catalog-test-empty.json
-	for entry in invalid-http-url:invalidBuildURL invalid-duplicate-id:duplicateVersionID invalid-created-at:invalidCreatedAt; do \
+	$(CATALOG_VALIDATOR) $(CATALOG_FIXTURES)/valid-v1.json
+	for entry in invalid-http-url:invalidBuildURL invalid-duplicate-id:duplicateVersionID invalid-created-at:invalidCreatedAt \
+		invalid-platform:unsupportedPlatform invalid-missing-platform:missingField; do \
 		file=$(CATALOG_FIXTURES)/$${entry%%:*}.json; \
 		output=$$($(CATALOG_VALIDATOR) "$$file" 2>&1); status=$$?; \
 		if [[ $$status != 1 || $$output != *"$${entry#*:}"* ]]; then \
