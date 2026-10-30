@@ -129,6 +129,9 @@ enum DemoScenario: String, CaseIterable, Hashable {
   case recordingStartFailure = "녹화 실패: 시작 (기기 저장 공간)"
   case recordingLost = "녹화 실패: 기기 꺼짐 (가져오지 못함)"
   case recordingUnwritable = "녹화 실패: Mac 에 쓰지 못함"
+  case multiDevice = "여러 기기: 켜진 기기 둘 (선택한 기기에 앱 설치)"
+  case multiDeviceSlowDownload = "여러 기기: 함께 받는 중 유지 (취소)"
+  case multiDeviceFailure = "여러 기기 결과: 한 기기만 설치 실패"
 
   private static let allDevices = AndroidDeviceInventory(
     devices: [
@@ -156,6 +159,7 @@ enum DemoScenario: String, CaseIterable, Hashable {
     download.setDelay(.milliseconds(300))
     download.setDownloadScript(progress: Self.downloadProgress, result: nil)
     self.configure(fake)
+    DemoMultiDevices.configure(fake, for: self)
     self.configure(package)
     self.configure(download)
     let workspace = WorkspaceClientFake()
@@ -208,7 +212,7 @@ enum DemoScenario: String, CaseIterable, Hashable {
     download.setFetchResult(.success(DemoCatalog.iOSOnly), for: DemoCatalog.iOSOnlyURL)
     download.setFetchResult(.failure(.httpStatus(404)), for: DemoCatalog.missingURL)
     switch self {
-    case .slowDownload:
+    case .slowDownload, .multiDeviceSlowDownload:
       download.setDownloadScript(progress: Array(Self.downloadProgress.prefix(4)), result: nil)
       download.suspendDownloads()
     case .unknownSizeDownload:
@@ -242,6 +246,8 @@ enum DemoScenario: String, CaseIterable, Hashable {
       AndroidDeviceInventory(devices: [.phoneSample], creationOptions: .emptySample)
     case .outsideBooting:
       AndroidDeviceInventory(devices: [.phoneSample, .bootingSample], creationOptions: .sample)
+    case .multiDevice, .multiDeviceSlowDownload, .multiDeviceFailure:
+      DemoMultiDevices.inventory
     default:
       Self.allDevices
     }
@@ -351,6 +357,31 @@ enum DemoScenario: String, CaseIterable, Hashable {
   }
 }
 
+/// 여러 기기 장면의 목록: 켜진 기기 둘(태블릿·"두 번째 폰")과 꺼진·쓸 수 없는 기기. 툴바 "선택한 기기에 앱 설치" 의 대상·건너뜀을
+/// 보인다.
+enum DemoMultiDevices {
+  static let secondBootedPhone = AndroidVirtualDevice(
+    id: AndroidVirtualDevice.ID("Second_Phone"),
+    displayName: "두 번째 폰",
+    systemImage: .sample,
+    formFactor: .phone,
+    state: .booted,
+    availability: .available
+  )
+
+  static let inventory = AndroidDeviceInventory(
+    devices: [.phoneSample, .bootedTabletSample, secondBootedPhone, .unsupportedNameSample],
+    creationOptions: .sample
+  )
+
+  /// "한 기기만 설치 실패" 장면이면 "두 번째 폰" 의 설치만 실패하게 한다.
+  @MainActor
+  static func configure(_ fake: AndroidEmulatorClientFake, for scenario: DemoScenario) {
+    guard scenario == .multiDeviceFailure else { return }
+    fake.setInstallError(.installFailed(.updateIncompatible), for: self.secondBootedPhone.id)
+  }
+}
+
 /// 카탈로그 받기가 돌려줄 내용 (docs/CATALOG.md). v2 는 iOS·Android 앱이 같은 id 를 쓴다 (Android 시트에는 Android 앱만 보인다).
 enum DemoCatalog {
   static let v2URL = DownloadURL("https://builds.example.com/catalog.json")!
@@ -434,4 +465,8 @@ private func demoPreview(_ scenario: DemoScenario) -> some View {
 
 #Preview("받는 중") {
   demoPreview(.slowDownload)
+}
+
+#Preview("여러 기기") {
+  demoPreview(.multiDevice)
 }

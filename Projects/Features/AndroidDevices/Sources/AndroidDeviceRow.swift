@@ -11,13 +11,16 @@ import SwiftUI
 /// 앱이 켜는 중인 행은 끄기를 포함한 모든 동작을 막는다. 앱 밖에서 켜는 중인 행은 끌 수 있다.
 /// 쓸 수 없는 기기는 흐리게 그리고 이유를 보인다. 실행 중이면 상태도 함께 보이고 끌 수 있다.
 /// 막힌 메뉴 항목은 비활성으로 두고 이유를 메뉴 맨 위에 보인다. URL·카탈로그에서 받는 중이면 진행(전체 크기를 알면 막대, 모르면
-/// 원형)과 받기 취소 버튼을, 취소 중이면 원형 진행만 보인다. 받기가 끝나면 설치 중 표시로 돌아간다.
+/// 원형)과 받기 취소 버튼을(여러 기기에 함께 받는 중이면 취소가 모두를 멈춘다는 툴팁), 취소 중이면 원형 진행만 보인다.
+/// 받기가 끝나면 설치 중 표시로 돌아간다.
 struct AndroidDeviceRow: View {
   let device: AndroidVirtualDevice
   /// 이 기기에서 앱이 진행 중인 작업. nil 이면 없다.
   let task: AndroidDeviceTask?
   /// URL·카탈로그에서 설치의 받기 단계. nil 이면 받는 중이 아니다.
   let downloadStage: AndroidDownloadStage?
+  /// 이 기기와 같은 받기 묶음에서 받는 중인 기기 수 (`AndroidDeviceActivity.downloadGroupSize`). 2 이상이면 취소가 모두를 멈춘다.
+  let downloadGroupSize: Int
   let bootTapped: () -> Void
   let shutdownTapped: () -> Void
   let eraseTapped: () -> Void
@@ -193,7 +196,11 @@ struct AndroidDeviceRow: View {
       }
       Button(AndroidDevicesText.cancelButton, action: self.cancelDownloadTapped)
         .accessibilityLabel(AndroidDevicesText.cancelDownloadAccessibilityLabel)
-        .help(AndroidDevicesText.cancelDownloadHelp)
+        .help(
+          self.downloadGroupSize > 1
+            ? AndroidDevicesText.batchCancelDownloadHelp(count: self.downloadGroupSize)
+            : AndroidDevicesText.cancelDownloadHelp
+        )
     case .cancelling:
       ProgressView()
         .controlSize(.small)

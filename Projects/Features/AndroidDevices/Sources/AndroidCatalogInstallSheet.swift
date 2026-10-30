@@ -3,7 +3,7 @@ import SwiftUI
 
 /// 카탈로그에서 설치 시트: 왼쪽은 카탈로그별(저장 순서) Android 앱 목록과 읽는 중·실패 이유·Android 앱이 없는 이유, 오른쪽은
 /// 고른 앱의 버전 목록(최신순), 아래는 새로 고침·취소·받아서 설치. 등록한 카탈로그가 없으면 두 열 대신 안내를 보인다.
-/// iOS `CatalogInstallSheet` 와 같은 배치이고, 대상은 행 한 대라 제목에만 기기를 보인다. 입력은 모두 Model 의 이벤트 메서드로
+/// iOS `CatalogInstallSheet` 와 같은 배치이고, 대상이 한 대면 제목에 기기를, 여러 대면 제목 아래 대상 줄에 이름을 보인다. 입력은 모두 Model 의 이벤트 메서드로
 /// 넘기고, 받기는 Model 이벤트(`catalogMenuTapped`·`catalogRefreshTapped`)가 시작한다 (이 View 의 `.task`·`onAppear` 로 받지 않는다).
 /// 카탈로그 값(주소·앱·버전 이름·브랜치·태그·빌드 번호)은 번역 키로 쓰지 않고 `Text(verbatim:)` 으로만 보인다.
 struct AndroidCatalogInstallSheet: View {
@@ -28,10 +28,10 @@ struct AndroidCatalogInstallSheet: View {
   /// 시트 크기는 내용의 min 프레임으로 정해지고 크기 조절이 안 된다. 빈 목록도 같은 프레임이라 크기가 바뀌지 않는다.
   private func content(_ draft: AndroidCatalogInstallDraft) -> some View {
     VStack(alignment: .leading, spacing: 12) {
-      // 기기 이름이 든 문구라 번역 키로 다시 찾지 않는다.
-      Text(verbatim: AndroidDevicesText.catalogSheetTitle(for: draft.device))
-        .font(.headline)
-        .accessibilityAddTraits(.isHeader)
+      AndroidSheetTitle(
+        title: AndroidDevicesText.catalogSheetTitle(for: draft.targets),
+        targetsLine: AndroidDevicesText.batchTargetsLine(draft.targets)
+      )
       if draft.isEmpty {
         self.emptyView(draft)
       } else {
