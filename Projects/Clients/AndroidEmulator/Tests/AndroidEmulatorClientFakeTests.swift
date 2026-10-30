@@ -83,4 +83,67 @@ struct AndroidEmulatorClientFakeTests {
     try await waiting.value
     #expect(fake.inventory.devices.first { $0.id == phone }?.state == .booted)
   }
+
+  @Test("앱 작업: 기본 결과, 설정한 결과·에러를 돌려주고 호출을 기록한다")
+  func appActions() async throws {
+    let fake = AndroidEmulatorClientFake(inventory: .sample)
+    let tablet = AndroidVirtualDevice.bootedTabletSample.id
+    let apk = URL(filePath: "/Users/fake/app.apk")
+    let package = try #require(AndroidPackageName("com.example.app"))
+    let other = try #require(AndroidPackageName("com.example.other"))
+    let link = try #require(DeepLink("myapp://item/1"))
+
+    #expect(try await fake.deviceTraits(tablet) == .sample)
+    try await fake.install(apk, on: tablet)
+    try await fake.launch(package, on: tablet)
+    try await fake.openURL(link, on: tablet)
+    #expect(try await fake.installedPackages(on: tablet).isEmpty)
+    #expect(fake.calls == [
+      .deviceTraits(tablet), .install(apk, tablet), .launch(package, tablet), .openURL(link, tablet),
+      .installedPackages(tablet),
+    ])
+
+    let traits = AndroidDeviceTraits(apiLevel: 30, abis: ["x86_64"])
+    fake.setDeviceTraits(.success(traits))
+    #expect(try await fake.deviceTraits(tablet) == traits)
+    fake.setDeviceTraits(.failure(.deviceNotBooted))
+    await #expect(throws: AndroidEmulatorError.deviceNotBooted) { _ = try await fake.deviceTraits(tablet) }
+    fake.setInstallError(.installFailed(.versionDowngrade))
+    await #expect(throws: AndroidEmulatorError.installFailed(.versionDowngrade)) {
+      try await fake.install(apk, on: tablet)
+    }
+    fake.setLaunchError(.launchFailed(.noLauncherActivity))
+    await #expect(throws: AndroidEmulatorError.launchFailed(.noLauncherActivity)) {
+      try await fake.launch(package, on: tablet)
+    }
+    fake.setOpenURLError(.urlNotHandled)
+    await #expect(throws: AndroidEmulatorError.urlNotHandled) { try await fake.openURL(link, on: tablet) }
+    fake.setInstalledPackages(.success([other, package]))
+    #expect(try await fake.installedPackages(on: tablet) == [other, package])
+    fake.setInstalledPackages(.failure(.appCommandFailed))
+    await #expect(throws: AndroidEmulatorError.appCommandFailed) { _ = try await fake.installedPackages(on: tablet) }
+  }
+
+  @Test("멈춘 설치·앱 목록은 기록만 하고 재개까지 기다린다, 결과는 깨어난 뒤의 설정을 쓴다")
+  func suspendAppActions() async throws {
+    let fake = AndroidEmulatorClientFake(inventory: .sample)
+    let tablet = AndroidVirtualDevice.bootedTabletSample.id
+    let apk = URL(filePath: "/Users/fake/app.apk")
+    let package = try #require(AndroidPackageName("com.example.app"))
+    fake.suspendInstalls()
+    fake.suspendPackageLists()
+
+    let installing = Task { try await fake.install(apk, on: tablet) }
+    let listing = Task { try await fake.installedPackages(on: tablet) }
+    while !(fake.calls.contains(.install(apk, tablet)) && fake.calls.contains(.installedPackages(tablet))) {
+      await Task.yield()
+    }
+    try await fake.launch(package, on: tablet)
+    fake.setInstallError(.installTimedOut)
+    fake.setInstalledPackages(.success([package]))
+    fake.resumeInstalls()
+    fake.resumePackageLists()
+    await #expect(throws: AndroidEmulatorError.installTimedOut) { try await installing.value }
+    #expect(try await listing.value == [package])
+  }
 }

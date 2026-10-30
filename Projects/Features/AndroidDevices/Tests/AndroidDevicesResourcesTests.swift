@@ -1,5 +1,6 @@
 import AndroidEmulatorInterface
 import AndroidEmulatorTesting
+import AndroidPackageInterface
 import Core
 import Foundation
 import Testing
@@ -102,6 +103,24 @@ struct AndroidDevicesTextTests {
     #expect(AndroidDevicesText.batchMessage(for: failed) == "“테스트 폰” (API 37.0): 켜지 못했습니다.")
   }
 
+  @Test("앱 작업 문구: 판정 거절은 판정 값을 보이고, 설치 뒤 실행할 화면이 없으면 시트 실패와 다른 문구다")
+  func appTexts() {
+    #expect(AndroidDevicesText.message(for: AndroidInstallProblem.noMatchingABI(app: ["x86"], device: ["x86_64"]))
+      .contains("(x86_64)"))
+    #expect(AndroidDevicesText.message(for: AndroidInstallProblem.requiresNewerAPI(required: 99, device: 37))
+      .contains("API 99"))
+    let noScreen = AndroidEmulatorError.launchFailed(.noLauncherActivity)
+    #expect(AndroidDevicesText.installedButNotLaunchedMessage(for: noScreen) != AndroidDevicesText
+      .message(for: noScreen))
+    #expect(AndroidDevicesText.installedButNotLaunchedMessage(for: .appCommandFailed)
+      == AndroidDevicesText.message(for: .appCommandFailed))
+    // apk 손상은 검사와 기기 거절이 같은 문구다.
+    #expect(AndroidDevicesText.message(for: AndroidEmulatorError.installFailed(.notAPK))
+      == AndroidDevicesText.message(for: AndroidPackageError.unreadable))
+    #expect(AndroidDevicesText.appActionBlockReason(.notBooted) != AndroidDevicesText
+      .appActionBlockReason(.unavailable))
+  }
+
   @Test("초기화 거절은 경로를 알면 끝에 보인다")
   func unsafeFolder() {
     let folder = URL(filePath: "/Users/fake/x/", directoryHint: .isDirectory)
@@ -134,6 +153,30 @@ struct NameProblemSyncTests {
   }
 }
 
+/// iOS 링크 열기와 같은 키·값으로 둔 링크 문구 (이름 문제와 같은 방식).
+struct LinkProblemSyncTests {
+  @Test("링크 열기 문구 8개가 Launcher 원본에 같은 키·값으로 있다")
+  func linkTextsMatchLauncher() throws {
+    let data = try Data(contentsOf: NameProblemSyncTests.launcherCatalog)
+    let root = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+    let strings = try #require(root["strings"] as? [String: Any])
+    let problems = try [DeepLinkProblem.malformed, .missingScheme]
+      .map { try #require(AndroidDevicesText.linkProblem($0)) }
+    let texts = problems + [
+      AndroidDevicesText.openURLButton, AndroidDevicesText.linkField, AndroidDevicesText.linkPrompt,
+      AndroidDevicesText.openURLConfirmButton, AndroidDevicesText.urlNotHandledMessage,
+      AndroidDevicesText.taskLabel(for: .openURL),
+    ]
+    for text in texts {
+      let entry = strings[text] as? [String: Any]
+      let localizations = entry?["localizations"] as? [String: Any]
+      let unit = (localizations?["ko"] as? [String: Any])?["stringUnit"] as? [String: Any]
+      #expect(unit?["value"] as? String == text, "Launcher 에 없거나 다른 값: \(text)")
+    }
+    #expect(AndroidDevicesText.linkProblem(.empty) == nil)
+  }
+}
+
 /// `AndroidDevicesText` 가 돌려줄 수 있는 문구.
 enum AndroidDevicesTextCatalog {
   struct Formatted {
@@ -152,7 +195,19 @@ enum AndroidDevicesTextCatalog {
     .sdkUnavailable, .deviceNotFound, .deviceUnavailable(.folderMissing), .deviceRunning, .emulatorLaunchFailed,
     .emulatorExited(1), .bootTimedOut, .adbUnavailable, .shutdownTimedOut, .invalidDeviceName(.tooLong),
     .nameUnavailable, .creationOptionUnavailable, .avdFolderUnavailable, .fileOperationFailed,
-    .unsafeDeviceFolder(nil), .unsafeDeviceFolder(URL(filePath: "/x")),
+    .unsafeDeviceFolder(nil), .unsafeDeviceFolder(URL(filePath: "/x")), .deviceNotBooted, .installTimedOut,
+    .launchFailed(.notInstalled), .launchFailed(.noLauncherActivity), .urlNotHandled, .appCommandFailed,
+  ] + installFailures.map { .installFailed($0) }
+
+  static let installFailures: [AndroidInstallFailure] = [
+    .olderSDK, .noMatchingABIs, .updateIncompatible, .versionDowngrade, .noCertificates, .notAPK, .deprecatedSDK,
+    .insufficientStorage, .conflict, .missingSharedLibrary, .testOnly, .missingSplit, .other("INSTALL_FAILED_X"),
+    .other(nil),
+  ]
+
+  static let packageErrors: [AndroidPackageError] = [
+    .notLocalFile, .fileNotFound, .appBundle, .splitPackage, .notAPK, .unreadable, .unsafeEntry, .unsigned,
+    .inspectionUnavailable,
   ]
 
   static let notices: [AndroidDevicesNotice] = {
@@ -162,6 +217,12 @@ enum AndroidDevicesTextCatalog {
       .createFailed(label, .nameUnavailable), .deleteFailed(label, .deviceRunning),
       .eraseFailed(label, .fileOperationFailed), .folderKept(label, URL(filePath: "/x")),
       .batchBootFinished(AndroidBatchBootReport(entries: [.init(device: label, error: .bootTimedOut)])),
+      .installFailed(label, .multipleItems), .installFailed(label, .package(.unsigned)),
+      .installFailed(label, .rejected(.requiresNewerAPI(required: 99, device: 37))),
+      .installFailed(label, .deviceNotReady(.notBooted)), .installFailed(label, .emulator(.installTimedOut)),
+      .installedButNotLaunched(label, .launchFailed(.noLauncherActivity)),
+      .launchFailed(label, .deviceNotReady(.unavailable)), .launchFailed(label, .emulator(.appCommandFailed)),
+      .openURLFailed(label, .emulator(.urlNotHandled)),
     ]
   }()
 
@@ -181,9 +242,22 @@ enum AndroidDevicesTextCatalog {
       AndroidDevicesText.nameField, AndroidDevicesText.imagePicker, AndroidDevicesText.profilePicker,
       AndroidDevicesText.createConfirmButton, AndroidDevicesText.title(for: .refreshFailed(.adbUnavailable)),
       AndroidDevicesText.title(for: .createFailed(AndroidDeviceLabel(.phoneSample), .nameUnavailable)),
+      AndroidDevicesText.installAppButton, AndroidDevicesText.installFromFileMenuItem,
+      AndroidDevicesText.installAppHelp,
+      AndroidDevicesText.launchAppButton, AndroidDevicesText.launchAppHelp, AndroidDevicesText.loadingPackages,
+      AndroidDevicesText.noInstalledPackages, AndroidDevicesText.packagePicker, AndroidDevicesText.launchConfirmButton,
+      AndroidDevicesText.closeButton, AndroidDevicesText.message(for: AndroidAppInstallFailure.multipleItems),
+      AndroidDevicesText.installedButNotLaunchedMessage(for: .launchFailed(.noLauncherActivity)),
+      AndroidDevicesText.openURLButton, AndroidDevicesText.openURLHelp, AndroidDevicesText.linkField,
+      AndroidDevicesText.linkPrompt, AndroidDevicesText.openURLConfirmButton, AndroidDevicesText.urlNotHandledMessage,
     ]
+    texts += [AndroidAppActionBlockReason.notBooted, .unavailable].map { AndroidDevicesText.appActionBlockReason($0) }
+    texts += [DeepLinkProblem.malformed, .missingScheme].compactMap { AndroidDevicesText.linkProblem($0) }
+    texts += self.packageErrors.map { AndroidDevicesText.message(for: $0) }
     texts += [AndroidVirtualDevice.State.shutdown, .booting, .booted].map { AndroidDevicesText.stateLabel(for: $0) }
-    texts += [AndroidDeviceTask.boot, .shutdown, .delete, .erase].map { AndroidDevicesText.taskLabel(for: $0) }
+    texts += [AndroidDeviceTask.boot, .shutdown, .delete, .erase, .installApp, .launchApp, .openURL].map {
+      AndroidDevicesText.taskLabel(for: $0)
+    }
     texts += [DeviceActionBlockReason.notShutdown, .unavailable].map { AndroidDevicesText.blockReason($0) }
     texts += [AndroidDeviceConfirmation.Action.delete, .erase].flatMap {
       [AndroidDevicesText.confirmationMessage(for: $0), AndroidDevicesText.confirmButton(for: $0)]
@@ -191,7 +265,7 @@ enum AndroidDevicesTextCatalog {
     texts += [DeviceNameProblem.empty, .tooLong, .containsControlCharacter].map { AndroidDevicesText.nameProblem($0) }
     texts += self.errors.compactMap { error -> String? in
       switch error {
-      case .deviceUnavailable, .invalidDeviceName, .unsafeDeviceFolder(.some):
+      case .deviceUnavailable, .invalidDeviceName, .unsafeDeviceFolder(.some), .installFailed(.other(.some)):
         nil
       default:
         AndroidDevicesText.message(for: error)
@@ -314,6 +388,62 @@ enum AndroidDevicesTextCatalog {
       Formatted(key: "휴대전화 (%@)", arguments: ["1080×2400"], text: AndroidDevicesText.profileOption(profiles[0])),
       Formatted(key: "작은 휴대전화 (%@)", arguments: ["720×1280"], text: AndroidDevicesText.profileOption(profiles[1])),
       Formatted(key: "태블릿 (%@)", arguments: ["2560×1600"], text: AndroidDevicesText.profileOption(profiles[2])),
+    ] + self.appFormatted(label: label, labelText: labelText)
+  }
+}
+
+extension AndroidDevicesTextCatalog {
+  /// 앱 설치·실행·링크 열기의 보간 문구.
+  static func appFormatted(label: AndroidDeviceLabel, labelText: String) -> [Formatted] {
+    [
+      Formatted(
+        key: "%@ 기기에서 앱 실행",
+        arguments: [labelText],
+        text: AndroidDevicesText.launchAppSheetTitle(for: label)
+      ),
+      Formatted(
+        key: "%@ 기기에 앱을 설치하지 못했습니다",
+        arguments: [labelText],
+        text: AndroidDevicesText.title(for: .installFailed(label, .multipleItems))
+      ),
+      Formatted(
+        key: "%@ 기기에 앱을 설치했지만 실행하지 못했습니다",
+        arguments: [labelText],
+        text: AndroidDevicesText.title(for: .installedButNotLaunched(label, .appCommandFailed))
+      ),
+      Formatted(
+        key: "%@ 기기에서 앱을 실행하지 못했습니다",
+        arguments: [labelText],
+        text: AndroidDevicesText.title(for: .launchFailed(label, .emulator(.appCommandFailed)))
+      ),
+      Formatted(
+        key: "%@ 기기에서 링크 열기",
+        arguments: [labelText],
+        text: AndroidDevicesText.openURLSheetTitle(for: label)
+      ),
+      Formatted(
+        key: "%@ 기기에서 링크를 열지 못했습니다",
+        arguments: [labelText],
+        text: AndroidDevicesText.title(for: .openURLFailed(label, .emulator(.urlNotHandled)))
+      ),
+      Formatted(
+        key: "이 앱에는 이 기기(%@)에서 실행할 코드가 없습니다 (앱: %@). 개발자에게 %@ 용 코드가 포함된 apk 를 요청하세요.",
+        arguments: ["arm64-v8a, x86_64", "armeabi-v7a, x86", "arm64-v8a"],
+        text: AndroidDevicesText.message(for: AndroidInstallProblem.noMatchingABI(
+          app: ["armeabi-v7a", "x86"],
+          device: ["arm64-v8a", "x86_64"]
+        ))
+      ),
+      Formatted(
+        key: "이 앱은 Android API %lld 이상에서 실행됩니다. 이 기기는 API %lld 입니다. 더 높은 API 의 기기를 만들어 설치하세요.",
+        arguments: [99, 37],
+        text: AndroidDevicesText.message(for: AndroidInstallProblem.requiresNewerAPI(required: 99, device: 37))
+      ),
+      Formatted(
+        key: "설치하지 못했습니다 (%@). 파일을 다시 골라 시도하고, 계속되면 이 코드를 개발자에게 알려 주세요.",
+        arguments: ["INSTALL_FAILED_X"],
+        text: AndroidDevicesText.message(for: AndroidEmulatorError.installFailed(.other("INSTALL_FAILED_X"))) ?? ""
+      ),
     ]
   }
 }

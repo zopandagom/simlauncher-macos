@@ -7,6 +7,12 @@ public enum AndroidDeviceTask: Hashable, Sendable {
   case shutdown
   case delete
   case erase
+  /// 로컬 apk 검사 → 기기 값 → 판정 → 설치 → 실행 (켜진 기기만).
+  case installApp
+  /// 행 "앱 실행…" 시트에서 고른 앱 실행 (켜진 기기만).
+  case launchApp
+  /// 행 "링크 열기…" 시트의 링크 열기 (켜진 기기만).
+  case openURL
 }
 
 /// 기기별 진행 작업과 "지금 이 기기에서 이 작업을 시작할 수 있나" 판정. Model 가드와 View(행의 진행 표시)가 쓴다.
@@ -33,7 +39,8 @@ public struct AndroidDeviceActivity: Hashable, Sendable {
 
   /// 진행 중인 작업이 없고 기기 규칙이 허용하면 true. 기기 규칙: boot = `canBoot`(쓸 수 있고 꺼짐),
   /// shutdown = `canShutdown`(켜는 중·켜짐. 앱이 켜는 중인 기기는 위의 작업 기록이 막는다),
-  /// delete = `deleteAvailability == .allowed`, erase = `eraseAvailability == .allowed`.
+  /// delete = `deleteAvailability == .allowed`, erase = `eraseAvailability == .allowed`,
+  /// 앱 설치·실행·링크 열기 = `appActionAvailability == .allowed`(쓸 수 있고 켜짐).
   public func canStart(_ task: AndroidDeviceTask, on device: AndroidVirtualDevice) -> Bool {
     guard self.tasks[device.id] == nil else { return false }
     return switch task {
@@ -41,6 +48,7 @@ public struct AndroidDeviceActivity: Hashable, Sendable {
     case .shutdown: device.canShutdown
     case .delete: device.deleteAvailability == .allowed
     case .erase: device.eraseAvailability == .allowed
+    case .installApp, .launchApp, .openURL: device.appActionAvailability == .allowed
     }
   }
 

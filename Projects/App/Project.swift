@@ -20,6 +20,7 @@ let project = Project.app(
     .client(impl: .workspace),
     .client(impl: .androidSDK),
     .client(impl: .androidEmulator),
+    .client(impl: .androidPackage),
     .shared(.core),
   ]
 )

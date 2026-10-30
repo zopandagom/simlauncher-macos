@@ -1,4 +1,5 @@
 import AndroidEmulatorInterface
+import AndroidPackageInterface
 import Core
 import Foundation
 
@@ -30,7 +31,8 @@ public struct AndroidDeviceLabel: Hashable, Sendable {
   }
 }
 
-/// 목록 위에 띄우는 알림. 기기 작업(켜기·끄기·만들기·삭제·초기화) 실패와 목록이 있을 때의 새로 고침 실패, 함께 켜기 결과.
+/// 목록 위에 띄우는 알림. 기기 작업(켜기·끄기·만들기·삭제·초기화)과 앱 작업(설치·실행·링크 열기) 실패, 목록이 있을 때의
+/// 새로 고침 실패, 함께 켜기 결과.
 /// 정보 알림은 삭제가 기기 폴더를 남긴 것 하나다. 취소(`.cancelled`)는 알리지 않는다.
 public enum AndroidDevicesNotice: Hashable, Sendable {
   case refreshFailed(AndroidEmulatorError)
@@ -44,6 +46,36 @@ public enum AndroidDevicesNotice: Hashable, Sendable {
   case folderKept(AndroidDeviceLabel, URL)
   /// 함께 켜기의 기기별 결과. 실패가 하나라도 있을 때만 쌓는다.
   case batchBootFinished(AndroidBatchBootReport)
+  /// apk 를 설치하지 못했다 (검사·판정·기기 상태·설치 명령).
+  case installFailed(AndroidDeviceLabel, AndroidAppInstallFailure)
+  /// 설치는 했지만 실행하지 못했다.
+  case installedButNotLaunched(AndroidDeviceLabel, AndroidEmulatorError)
+  /// 행 "앱 실행…" 시트에서 고른 앱을 실행하지 못했다.
+  case launchFailed(AndroidDeviceLabel, AndroidAppActionFailure)
+  /// 행 "링크 열기…" 시트의 링크를 열지 못했다.
+  case openURLFailed(AndroidDeviceLabel, AndroidAppActionFailure)
+}
+
+/// apk 설치 실패 원인.
+public enum AndroidAppInstallFailure: Hashable, Sendable {
+  /// 끌어다 놓은 항목이 둘 이상이다.
+  case multipleItems
+  /// apk 검사 실패.
+  case package(AndroidPackageError)
+  /// 기기에 맞지 않는 apk 다 (Core 판정).
+  case rejected(AndroidInstallProblem)
+  /// 파일을 고르거나 검사하는 사이 기기가 켜짐이 아니거나 쓸 수 없게 됐다.
+  case deviceNotReady(AndroidAppActionBlockReason)
+  /// 기기 값 읽기·설치 명령 실패. 기기가 목록에서 사라졌으면 `.deviceNotFound`.
+  case emulator(AndroidEmulatorError)
+}
+
+/// 앱 실행·링크 열기 실패 원인.
+public enum AndroidAppActionFailure: Hashable, Sendable {
+  /// 시트를 연 사이 기기가 켜짐이 아니거나 쓸 수 없게 됐다.
+  case deviceNotReady(AndroidAppActionBlockReason)
+  /// 명령 실패. 기기가 목록에서 사라졌으면 `.deviceNotFound`.
+  case emulator(AndroidEmulatorError)
 }
 
 /// 함께 켜기("선택한 기기 켜기")의 기기별 결과. 시작한 기기만 담는다 (켜져 있거나 작업 중·쓸 수 없는 기기는 알리지 않고 건너뛴다).

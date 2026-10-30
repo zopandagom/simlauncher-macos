@@ -1,5 +1,6 @@
 import AndroidEmulatorInterface
 import AndroidEmulatorTesting
+import AndroidPackageTesting
 import Core
 import Foundation
 import Synchronization
@@ -22,7 +23,7 @@ extension AndroidDevicesTesting {
     return fixture
   }
 
-  /// 아직 화면이 보이기 전(`onAppear` 전)의 Model.
+  /// 아직 화면이 보이기 전(`onAppear` 전)의 Model. apk 검사 Fake 는 샘플 apk 를 돌려주고, 테스트가 `package` 로 바꾼다.
   static func fixture(
     _ inventory: AndroidDeviceInventory = .sample,
     _ configure: (AndroidEmulatorClientFake) -> Void = { _ in }
@@ -31,12 +32,20 @@ extension AndroidDevicesTesting {
     configure(fake)
     let sleeper = ManualSleeper()
     let setupRequests = Counter()
+    let package = AndroidPackageClientFake()
     let model = AndroidDevicesModel(
       emulator: fake,
+      package: package,
       setupRequested: { setupRequests.increment() },
       sleep: { try await sleeper.sleep(for: $0) }
     )
-    return AndroidDevicesFixture(model: model, fake: fake, sleeper: sleeper, setupRequests: setupRequests)
+    return AndroidDevicesFixture(
+      model: model,
+      fake: fake,
+      package: package,
+      sleeper: sleeper,
+      setupRequests: setupRequests
+    )
   }
 
   static func count(_ call: AndroidEmulatorClientFake.Call, in fake: AndroidEmulatorClientFake) -> Int {
@@ -97,6 +106,7 @@ extension AndroidDevicesTesting {
 struct AndroidDevicesFixture {
   let model: AndroidDevicesModel
   let fake: AndroidEmulatorClientFake
+  let package: AndroidPackageClientFake
   let sleeper: ManualSleeper
   let setupRequests: Counter
 }

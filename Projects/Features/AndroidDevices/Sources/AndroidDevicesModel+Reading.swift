@@ -6,7 +6,12 @@ public extension AndroidDevicesModel {
   /// + 버튼을 누를 수 있는지: 목록을 읽었고, 선택지에 이미지가 있고, 만드는 중이 아니고, 시트·확인 대화상자가 없다.
   var canCreateDevice: Bool {
     guard case .loaded = self.listState else { return false }
-    return !self.creationOptions.isEmpty && !self.isCreating && self.creationDraft == nil && self.confirmation == nil
+    return !self.creationOptions.isEmpty && !self.isCreating && !self.hasPresentedSheet
+  }
+
+  /// 시트(만들기·앱 실행·링크 열기)나 삭제·초기화 확인 대화상자가 떠 있다. 하나가 떠 있으면 다른 것을 열지 않는다.
+  var hasPresentedSheet: Bool {
+    self.creationDraft != nil || self.confirmation != nil || self.launchAppDraft != nil || self.openURLDraft != nil
   }
 
   /// 목록을 읽었지만 만들 수 있는 시스템 이미지가 없어 + 버튼을 쓸 수 없다. 기기가 있으면 목록 위 안내 줄로 이유와

@@ -11,6 +11,8 @@ import Synchronization
 ///   nil 이면 `.nameUnavailable`). 성공하면 꺼진 새 기기(표시 이름은 `DeviceName.normalized`)를 목록 끝에 더한다.
 /// - `delete` 는 성공하면 그 기기를 빼고 설정한 결과(기본 `.deleted`)를 돌려준다. 목록에 없는 기기여도 성공한다.
 /// - `erase` 는 성공해도 목록을 바꾸지 않는다.
+/// - 앱 작업(`deviceTraits`·`install`·`launch`·`openURL`·`installedPackages`)은 설정한 결과만 돌려주고 목록·기기 상태를 보지 않는다.
+///   기본은 `AndroidDeviceTraits.sample`·성공·빈 앱 목록.
 /// - 멈춤(`suspend…`) 중인 호출은 기록만 하고 재개까지 기다린다 (취소를 받지 않는다). 결과는 깨어난 뒤의 설정을 쓴다.
 public final class AndroidEmulatorClientFake: AndroidEmulatorClient {
   public enum Call: Hashable, Sendable {
@@ -20,10 +22,15 @@ public final class AndroidEmulatorClientFake: AndroidEmulatorClient {
     case create(displayName: String, image: AndroidSystemImageRef, profile: AndroidDeviceProfile.ID)
     case delete(AndroidVirtualDevice.ID)
     case erase(AndroidVirtualDevice.ID)
+    case deviceTraits(AndroidVirtualDevice.ID)
+    case install(URL, AndroidVirtualDevice.ID)
+    case launch(AndroidPackageName, AndroidVirtualDevice.ID)
+    case openURL(DeepLink, AndroidVirtualDevice.ID)
+    case installedPackages(AndroidVirtualDevice.ID)
   }
 
   private enum SuspendableCall: Hashable {
-    case fetch, boot, shutdown, create, delete, erase
+    case fetch, boot, shutdown, create, delete, erase, install, packageList
     case bootOf(AndroidVirtualDevice.ID)
   }
 
@@ -37,6 +44,11 @@ public final class AndroidEmulatorClientFake: AndroidEmulatorClient {
     var createError: AndroidEmulatorError?
     var deleteResult: Result<AndroidDeleteOutcome, AndroidEmulatorError> = .success(.deleted)
     var eraseError: AndroidEmulatorError?
+    var deviceTraits: Result<AndroidDeviceTraits, AndroidEmulatorError> = .success(.sample)
+    var installError: AndroidEmulatorError?
+    var launchError: AndroidEmulatorError?
+    var openURLError: AndroidEmulatorError?
+    var installedPackages: Result<[AndroidPackageName], AndroidEmulatorError> = .success([])
     var delay: Duration?
     var suspended: Set<SuspendableCall> = []
     var waiters: [SuspendableCall: [CheckedContinuation<Void, Never>]] = [:]
@@ -167,6 +179,46 @@ public final class AndroidEmulatorClientFake: AndroidEmulatorClient {
     if let error = self.state.withLock({ $0.eraseError }) {
       throw error
     }
+  }
+
+  public func deviceTraits(_ id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError) -> AndroidDeviceTraits {
+    self.record(.deviceTraits(id))
+    await self.sleepIfNeeded()
+    return try self.state.withLock { $0.deviceTraits }.get()
+  }
+
+  public func install(_ apk: URL, on id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError) {
+    self.record(.install(apk, id))
+    await self.waitIfSuspended(.install)
+    await self.sleepIfNeeded()
+    if let error = self.state.withLock({ $0.installError }) {
+      throw error
+    }
+  }
+
+  public func launch(_ package: AndroidPackageName, on id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError) {
+    self.record(.launch(package, id))
+    await self.sleepIfNeeded()
+    if let error = self.state.withLock({ $0.launchError }) {
+      throw error
+    }
+  }
+
+  public func openURL(_ link: DeepLink, on id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError) {
+    self.record(.openURL(link, id))
+    await self.sleepIfNeeded()
+    if let error = self.state.withLock({ $0.openURLError }) {
+      throw error
+    }
+  }
+
+  public func installedPackages(on id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError)
+    -> [AndroidPackageName]
+  {
+    self.record(.installedPackages(id))
+    await self.waitIfSuspended(.packageList)
+    await self.sleepIfNeeded()
+    return try self.state.withLock { $0.installedPackages }.get()
   }
 
   private func record(_ call: Call) {
@@ -328,5 +380,45 @@ public extension AndroidEmulatorClientFake {
 
   func resumeErases() {
     self.resume(.erase)
+  }
+
+  /// `deviceTraits` 결과.
+  func setDeviceTraits(_ result: Result<AndroidDeviceTraits, AndroidEmulatorError>) {
+    self.state.withLock { $0.deviceTraits = result }
+  }
+
+  func setInstallError(_ error: AndroidEmulatorError?) {
+    self.state.withLock { $0.installError = error }
+  }
+
+  func setLaunchError(_ error: AndroidEmulatorError?) {
+    self.state.withLock { $0.launchError = error }
+  }
+
+  func setOpenURLError(_ error: AndroidEmulatorError?) {
+    self.state.withLock { $0.openURLError = error }
+  }
+
+  /// `installedPackages` 결과 (그대로 돌려준다. 정렬하지 않는다).
+  func setInstalledPackages(_ result: Result<[AndroidPackageName], AndroidEmulatorError>) {
+    self.state.withLock { $0.installedPackages = result }
+  }
+
+  /// 이후 `install(_:on:)` 이 기록만 하고 `resumeInstalls()` 까지 기다린다.
+  func suspendInstalls() {
+    self.suspend(.install)
+  }
+
+  func resumeInstalls() {
+    self.resume(.install)
+  }
+
+  /// 이후 `installedPackages(on:)` 이 기록만 하고 `resumePackageLists()` 까지 기다린다.
+  func suspendPackageLists() {
+    self.suspend(.packageList)
+  }
+
+  func resumePackageLists() {
+    self.resume(.packageList)
   }
 }
