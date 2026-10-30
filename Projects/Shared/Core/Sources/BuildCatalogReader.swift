@@ -44,8 +44,10 @@ enum CatalogJSON: Decodable, Hashable, Sendable {
 }
 
 /// 값 트리를 docs/CATALOG.md 의 검사 순서로 확인해 `BuildCatalog` 로 바꾼다.
-/// 순서: `schemaVersion` → `apps` → 앱을 파일 순서로(`id` → id 중복 → `name` → `versions` → 버전을 파일 순서로
+/// 순서: `schemaVersion` → `apps` → 앱을 파일 순서로(`id` → `platform`(schemaVersion 2 만) → id 중복(같은 플랫폼 안)
+/// → `name` → `versions` → 버전을 파일 순서로
 /// (`id` → id 중복 → `name` → `branch` → `tag` → `buildNumber` → `createdAt` → `buildURL`)).
+/// schemaVersion 1 은 앱의 `platform` 을 읽지 않고(모르는 필드처럼 무시) 모두 `.ios` 로 본다.
 enum BuildCatalogReader {
   typealias Object = [String: CatalogJSON]
   typealias Field = BuildCatalogProblem.Field
@@ -56,24 +58,25 @@ enum BuildCatalogReader {
 
   static func catalog(from root: CatalogJSON) throws(BuildCatalogProblem) -> BuildCatalog {
     guard case let .object(object) = root else { throw .notJSONObject }
-    try self.checkSchemaVersion(object[Field.schemaVersion.rawValue])
+    let schemaVersion = try self.schemaVersion(object[Field.schemaVersion.rawValue])
     let items = try self.requiredArray(object, .apps, at: .root)
     var apps: [BuildCatalog.App] = []
     var seenAppIDs: Set<String> = []
     for (index, item) in items.enumerated() {
       let position = Position.app(index, id: nil)
       guard case let .object(appObject) = item else { throw .wrongType(.apps, position: position) }
-      try apps.append(self.app(appObject, index: index, seenIDs: &seenAppIDs))
+      try apps.append(self.app(appObject, index: index, schemaVersion: schemaVersion, seenIDs: &seenAppIDs))
     }
-    return BuildCatalog(apps: apps)
+    return BuildCatalog(schemaVersion: schemaVersion, apps: apps)
   }
 
-  private static func checkSchemaVersion(_ value: CatalogJSON?) throws(BuildCatalogProblem) {
+  private static func schemaVersion(_ value: CatalogJSON?) throws(BuildCatalogProblem) -> Int {
     switch value {
     case nil, .null?:
       throw .missingField(.schemaVersion, position: .root)
     case let .integer(version)?:
-      guard version == BuildCatalog.supportedSchemaVersion else { throw .unsupportedSchemaVersion(version) }
+      guard BuildCatalog.supportedSchemaVersions.contains(version) else { throw .unsupportedSchemaVersion(version) }
+      return version
     default:
       throw .wrongType(.schemaVersion, position: .root)
     }
@@ -82,11 +85,19 @@ enum BuildCatalogReader {
   private static func app(
     _ object: Object,
     index: Int,
+    schemaVersion: Int,
     seenIDs: inout Set<String>
   ) throws(BuildCatalogProblem) -> BuildCatalog.App {
     let rawID = try self.id(object, at: .app(index, id: nil))
     let position = Position.app(index, id: rawID)
-    guard seenIDs.insert(rawID.lowercased()).inserted else { throw .duplicateAppID(position: position) }
+    let platform: BuildCatalogPlatform = if schemaVersion == 1 {
+      .ios
+    } else {
+      try self.platform(object, at: position)
+    }
+    // 키는 "<platform>:<id 소문자>". 다른 플랫폼의 같은 id 는 중복이 아니다.
+    let key = "\(platform.rawValue):\(rawID.lowercased())"
+    guard seenIDs.insert(key).inserted else { throw .duplicateAppID(position: position) }
     let name = try self.name(object, at: position)
     let items = try self.requiredArray(object, .versions, at: position)
     var versions: [BuildCatalog.Version] = []
@@ -96,7 +107,12 @@ enum BuildCatalogReader {
       guard case let .object(versionObject) = item else { throw .wrongType(.versions, position: versionPosition) }
       try versions.append(self.version(versionObject, index: versionIndex, in: position, seenIDs: &seenVersionIDs))
     }
-    return BuildCatalog.App(id: BuildCatalog.AppID(rawID), name: name, versions: versions.sorted(by: Self.precedes))
+    return BuildCatalog.App(
+      id: BuildCatalog.AppID(rawID),
+      name: name,
+      platform: platform,
+      versions: versions.sorted(by: Self.precedes)
+    )
   }
 
   private static func version(
@@ -183,6 +199,16 @@ enum BuildCatalogReader {
     return raw
   }
 
+  /// `platform` 을 공백을 빼지 않고 rawValue 와 정확히 비교한다 (`"iOS"`·`" ios"` 는 거절).
+  private static func platform(
+    _ object: Object,
+    at position: Position
+  ) throws(BuildCatalogProblem) -> BuildCatalogPlatform {
+    let raw = try self.requiredString(object, .platform, at: position)
+    guard let platform = BuildCatalogPlatform(rawValue: raw) else { throw .unsupportedPlatform(position: position) }
+    return platform
+  }
+
   /// 앞뒤 공백을 뺀 `name`. 비면 emptyField.
   private static func name(_ object: Object, at position: Position) throws(BuildCatalogProblem) -> String {
     let raw = try self.requiredString(object, .name, at: position)
@@ -222,7 +248,11 @@ enum BuildCatalogReader {
       false
     }
   }
+}
 
+// MARK: - 날짜 규칙
+
+extension BuildCatalogReader {
   /// 앞부분 `YYYY-MM-DDTHH:MM:SS`. `0` 자리는 ASCII 숫자, 나머지는 그 글자 그대로.
   private static let dateTimeTemplate = Array("0000-00-00T00:00:00".utf8)
   /// `+`·`-` 뒤의 시간대 `HH:MM`.

@@ -59,7 +59,7 @@ struct BuildCatalogTests {
       buildURL: buildURL
     )
     let app = BuildCatalog.App(id: BuildCatalog.AppID("a"), name: "A", versions: [version])
-    #expect(catalog == BuildCatalog(apps: [app]))
+    #expect(catalog == BuildCatalog(schemaVersion: 1, apps: [app]))
   }
 
   @Test("앱이 없는 카탈로그와 버전이 없는 앱도 읽는다")
@@ -228,11 +228,11 @@ struct BuildCatalogTests {
     let names = try BuildCatalog(jsonData: CatalogText.catalog([app]))
     #expect(names.apps.map(\.name) == ["First"])
 
-    let firstIsOne = Data(#"{"schemaVersion":1,"schemaVersion":2,"apps":[]}"#.utf8)
+    let firstIsOne = Data(#"{"schemaVersion":1,"schemaVersion":3,"apps":[]}"#.utf8)
     #expect(catalogProblem(firstIsOne) == nil)
 
-    let firstIsTwo = Data(#"{"schemaVersion":2,"schemaVersion":1,"apps":[]}"#.utf8)
-    #expect(catalogProblem(firstIsTwo) == .unsupportedSchemaVersion(2))
+    let firstIsThree = Data(#"{"schemaVersion":3,"schemaVersion":1,"apps":[]}"#.utf8)
+    #expect(catalogProblem(firstIsThree) == .unsupportedSchemaVersion(3))
   }
 
   @Test("소수 초는 1 마이크로초 차이까지 구분한다")
