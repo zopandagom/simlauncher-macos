@@ -34,7 +34,7 @@ public struct AndroidDeviceLabel: Hashable, Sendable {
 }
 
 /// 목록 위에 띄우는 알림. 기기 작업(켜기·끄기·만들기·삭제·초기화)과 앱 작업(설치·실행·링크 열기)·화면 캡처(스크린샷·녹화) 실패,
-/// 목록이 있을 때의 새로 고침 실패, 함께 켜기 결과.
+/// 목록이 있을 때의 새로 고침 실패, 함께 켜기·여러 기기 설치 결과.
 /// 정보 알림은 삭제가 기기 폴더를 남긴 것과 녹화가 기기 꺼짐·3분 제한으로 멈추고 저장된 것이다. 취소(`.cancelled`)는 알리지 않는다.
 public enum AndroidDevicesNotice: Hashable, Sendable {
   case refreshFailed(AndroidEmulatorError)
@@ -50,6 +50,10 @@ public enum AndroidDevicesNotice: Hashable, Sendable {
   case batchBootFinished(AndroidBatchBootReport)
   /// apk 를 설치하지 못했다 (받기·검사·판정·기기 상태·설치 명령).
   case installFailed(AndroidDeviceLabel, AndroidAppInstallFailure)
+  /// 여러 기기 설치의 공통 단계(받기·검사) 실패. 라벨들은 요청한 대상 (누른 시점).
+  case batchInstallFailed([AndroidDeviceLabel], AndroidAppInstallFailure)
+  /// 여러 기기 설치의 기기별 결과. 실패·건너뜀이 하나라도 있을 때만 쌓는다.
+  case batchInstallFinished(AndroidBatchInstallReport)
   /// 설치는 했지만 실행하지 못했다.
   case installedButNotLaunched(AndroidDeviceLabel, AndroidEmulatorError)
   /// 행 "앱 실행…" 시트에서 고른 앱을 실행하지 못했다.
@@ -94,6 +98,8 @@ public enum AndroidAppInstallFailure: Hashable, Sendable {
   case emulator(AndroidEmulatorError)
   /// URL·카탈로그에서 받기 실패 (주소·네트워크·저장 공간). 출처가 문구를 고른다.
   case download(DownloadError, origin: AndroidDownloadOrigin)
+  /// 여러 기기 설치를 시작할 때 그 기기에서 다른 작업이 진행 중이라 건너뛰었다 (한 기기 흐름은 알림 없이 끝내 쓰지 않는다).
+  case deviceBusy
   /// 받은 파일의 apk 검사 실패. `isWebPage` 는 `.unreadable` 이고 응답 형식이 웹 페이지(text/html·application/xhtml+xml)일 때만
   /// true 다 (iOS 와 같은 판정. apk 인지는 내용으로 정하고, 형식은 문구만 고른다).
   case downloadedPackage(AndroidPackageError, isWebPage: Bool, origin: AndroidDownloadOrigin)
@@ -117,23 +123,27 @@ public enum AndroidDownloadOrigin: Hashable, Sendable {
 }
 
 /// `AndroidDownloadInstallModel` 이 App 을 거쳐 `AndroidDevicesModel.downloadInstallRequested(_:)` 에 넘기는 설치 요청.
+/// 대상은 행 메뉴면 1대, 툴바 "선택한 기기에 앱 설치" 면 고른 기기 전부다.
 public struct AndroidDownloadInstallRequest: Hashable, Sendable {
-  public let deviceID: AndroidVirtualDevice.ID
-  /// 시트를 연 시점의 기기 라벨 (알림에 쓴다).
-  public let device: AndroidDeviceLabel
+  /// 시트를 연 시점의 대상 (목록 순서, 알림에 쓴다).
+  public let targets: [AndroidTargetDevice]
   public let url: DownloadURL
   public let origin: AndroidDownloadOrigin
 
+  public init(targets: [AndroidTargetDevice], url: DownloadURL, origin: AndroidDownloadOrigin) {
+    self.targets = targets
+    self.url = url
+    self.origin = origin
+  }
+
+  /// 기기 한 대짜리 요청.
   public init(
     deviceID: AndroidVirtualDevice.ID,
     device: AndroidDeviceLabel,
     url: DownloadURL,
     origin: AndroidDownloadOrigin
   ) {
-    self.deviceID = deviceID
-    self.device = device
-    self.url = url
-    self.origin = origin
+    self.init(targets: [AndroidTargetDevice(id: deviceID, label: device)], url: url, origin: origin)
   }
 }
 
@@ -172,6 +182,54 @@ public struct AndroidBatchBootReport: Hashable, Sendable {
   /// 실패가 있으면 알린다 (모두 켰으면 행 켜기처럼 알림이 없다).
   var needsNotice: Bool {
     self.entries.contains { $0.error != nil }
+  }
+}
+
+/// 여러 기기 설치의 기기별 결과 (`AndroidDevicesNotice.batchInstallFinished`). iOS `BatchReport` 의 설치와 같다.
+public struct AndroidBatchInstallReport: Hashable, Sendable {
+  public struct Entry: Hashable, Sendable {
+    public let device: AndroidDeviceLabel
+    public let result: AndroidBatchDeviceResult
+
+    public init(device: AndroidDeviceLabel, result: AndroidBatchDeviceResult) {
+      self.device = device
+      self.result = result
+    }
+  }
+
+  /// 요청 순서(목록 순서). 건너뛴 기기도 같은 자리에 넣는다.
+  public let entries: [Entry]
+
+  public init(entries: [Entry]) {
+    self.entries = entries
+  }
+
+  /// 설치한 기기 수. 실행에 실패해도 설치는 됐으므로 센다.
+  public var successCount: Int {
+    self.entries.count(where: { $0.result == .succeeded || $0.result.isLaunchFailure })
+  }
+
+  /// 실패·건너뜀이 있으면 알린다 (모두 성공이면 한 기기 설치처럼 알림이 없다).
+  var needsNotice: Bool {
+    self.entries.contains { $0.result != .succeeded }
+  }
+}
+
+/// 여러 기기 설치에서 기기 한 대의 결과.
+public enum AndroidBatchDeviceResult: Hashable, Sendable {
+  /// 설치하고 실행했다.
+  case succeeded
+  /// 시작 판정·기기별 판정·설치 명령 실패 (`deviceBusy` 포함).
+  case installFailed(AndroidAppInstallFailure)
+  /// 설치는 됐지만 실행하지 못했다.
+  case launchFailed(AndroidEmulatorError)
+
+  var isLaunchFailure: Bool {
+    if case .launchFailed = self {
+      true
+    } else {
+      false
+    }
   }
 }
 
@@ -257,7 +315,7 @@ extension AndroidDeviceList {
 }
 
 extension AndroidDevicesNotice {
-  /// 알림에 담긴 기기 명령 에러 (정보 알림·함께 켜기 결과·검사·판정·기기 상태·받기·저장 폴더 실패는 nil). Model 이 취소를 거르는 데
+  /// 알림에 담긴 기기 명령 에러 (정보 알림·여러 기기 결과·검사·판정·기기 상태·받기·저장 폴더 실패는 nil). Model 이 취소를 거르는 데
   /// 쓴다.
   var error: AndroidEmulatorError? {
     switch self {
@@ -269,7 +327,7 @@ extension AndroidDevicesNotice {
       error
     case let .screenshotFailed(_, .emulator(error)), let .recordingFailed(_, .emulator(error)):
       error
-    case .folderKept, .batchBootFinished, .installFailed, .launchFailed,
+    case .folderKept, .batchBootFinished, .batchInstallFailed, .batchInstallFinished, .installFailed, .launchFailed,
          .openURLFailed, .screenshotFailed,
          .screenshotRevealFailed, .recordingFailed, .recordingInterrupted, .recordingStoppedByDevice,
          .recordingAtTimeLimit, .recordingRevealFailed:

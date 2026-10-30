@@ -154,12 +154,30 @@ struct AndroidDevicesDownloadTests: AndroidDevicesTesting {
       listState: { setup.model.listState },
       finished: { _, _ in }
     )
-    await flow.installDownloaded(.success(Self.file), cancelRequested: true, request: Self.request(), host: host)
+    let start = AndroidInstallStart(
+      requested: Self.request().targets,
+      begun: [Self.tablet],
+      skipped: [],
+      owner: 1
+    )
+    await flow.installDownloaded(
+      .success(Self.file),
+      cancelRequested: true,
+      start: start,
+      origin: .enteredURL,
+      host: host
+    )
     #expect(Self.removals(setup.download) == [Self.file])
     #expect(enqueued.value == 0)
     #expect(reloads.value == 0)
     #expect(setup.package.calls.isEmpty)
-    await flow.installDownloaded(.failure(.cancelled), cancelRequested: true, request: Self.request(), host: host)
+    await flow.installDownloaded(
+      .failure(.cancelled),
+      cancelRequested: true,
+      start: start,
+      origin: .enteredURL,
+      host: host
+    )
     #expect(Self.removals(setup.download) == [Self.file])
     #expect(enqueued.value == 0)
   }
@@ -395,7 +413,7 @@ struct AndroidDeviceActivityDownloadTests {
     var plain = AndroidDeviceActivity()
     _ = plain.begin(.installApp, on: Self.tablet)
     #expect(activity != plain)
-    activity.downloadEnded(on: Self.tablet.id)
+    activity.downloadEnded(on: [Self.tablet.id])
     #expect(activity.downloadStage(on: Self.tablet.id) == nil)
     #expect(activity.task(on: Self.tablet.id) == .installApp)
     let result6 = activity.requestDownloadCancel(on: Self.tablet.id)

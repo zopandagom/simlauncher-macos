@@ -30,6 +30,7 @@ struct AndroidDevicesResourcesTests {
     // (`DownloadTextCatalog`·`CaptureTextCatalog`).
     let downloadChecks = DownloadTextCatalog.sharedChecks(table) + DownloadTextCatalog.androidChecks(table)
       + CaptureTextCatalog.sharedChecks(table) + CaptureTextCatalog.androidChecks(table)
+      + BatchTextCatalog.sharedChecks(table) + BatchTextCatalog.androidChecks(table)
     for check in downloadChecks {
       #expect(table[check.key] == check.key, "\(check.key)")
       #expect(check.actual == check.expected, "\(check.key)")
@@ -229,6 +230,10 @@ enum AndroidDevicesTextCatalog {
       .createFailed(label, .nameUnavailable), .deleteFailed(label, .deviceRunning),
       .eraseFailed(label, .fileOperationFailed), .folderKept(label, URL(filePath: "/x")),
       .batchBootFinished(AndroidBatchBootReport(entries: [.init(device: label, error: .bootTimedOut)])),
+      .batchInstallFailed([label, label], .package(.unsigned)),
+      .batchInstallFinished(AndroidBatchInstallReport(entries: [
+        .init(device: label, result: .installFailed(.deviceBusy)),
+      ])),
       .installFailed(label, .multipleItems), .installFailed(label, .package(.unsigned)),
       .installFailed(label, .rejected(.requiresNewerAPI(required: 99, device: 37))),
       .installFailed(label, .deviceNotReady(.notBooted)), .installFailed(label, .emulator(.installTimedOut)),

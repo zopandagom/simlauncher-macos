@@ -19,24 +19,23 @@ struct AndroidDownloadInstallModelTests: AndroidDevicesTesting {
   @Test("URL 시트는 켜진·쓸 수 있는 기기에만, 두 시트가 모두 닫혀 있을 때만 열린다")
   func urlMenuGuards() async {
     let model = Self.model()
-    model.urlMenuTapped(.phoneSample)
-    model.urlMenuTapped(.unsupportedNameSample)
+    model.urlMenuTapped([.phoneSample])
+    model.urlMenuTapped([.unsupportedNameSample])
     #expect(model.urlDraft == nil)
-    await model.catalogMenuTapped(Self.tablet)
-    model.urlMenuTapped(Self.tablet)
+    await model.catalogMenuTapped([Self.tablet])
+    model.urlMenuTapped([Self.tablet])
     #expect(model.urlDraft == nil)
     model.catalogCancelTapped()
-    model.urlMenuTapped(Self.tablet)
-    #expect(model.urlDraft?.deviceID == Self.tablet.id)
-    #expect(model.urlDraft?.device == Self.label)
-    await model.catalogMenuTapped(Self.tablet)
+    model.urlMenuTapped([Self.tablet])
+    #expect(model.urlDraft?.targets == [AndroidTargetDevice(id: Self.tablet.id, label: Self.label)])
+    await model.catalogMenuTapped([Self.tablet])
     #expect(model.catalogDraft == nil)
   }
 
   @Test("주소 문제가 있으면 설치를 눌러도 열린 채 요청하지 않고, 맞으면 닫고 입력한 주소로 한 번 요청한다")
   func urlInstall() async throws {
     let (model, requests) = Self.requestsSetup()
-    model.urlMenuTapped(Self.tablet)
+    model.urlMenuTapped([Self.tablet])
     model.urlTextChanged("http://builds.example.com/app.apk")
     #expect(model.urlDraft?.problem != nil)
     #expect(model.urlDraft?.canSubmit == false)
@@ -61,10 +60,10 @@ struct AndroidDownloadInstallModelTests: AndroidDevicesTesting {
   @Test("URL 시트의 취소·바깥 닫기는 초안을 지운다 (두 번 불려도 무해하다)")
   func urlClose() {
     let model = Self.model()
-    model.urlMenuTapped(Self.tablet)
+    model.urlMenuTapped([Self.tablet])
     model.urlCancelTapped()
     #expect(model.urlDraft == nil)
-    model.urlMenuTapped(Self.tablet)
+    model.urlMenuTapped([Self.tablet])
     model.urlSheetDismissed()
     model.urlSheetDismissed()
     #expect(model.urlDraft == nil)
@@ -84,11 +83,10 @@ struct AndroidDownloadInstallModelTests: AndroidDevicesTesting {
       ],
       download: download
     )
-    model.urlMenuTapped(.phoneSample)
-    await model.catalogMenuTapped(Self.tablet)
+    model.urlMenuTapped([.phoneSample])
+    await model.catalogMenuTapped([Self.tablet])
     let draft = try #require(model.catalogDraft)
-    #expect(draft.deviceID == Self.tablet.id)
-    #expect(draft.device == Self.label)
+    #expect(draft.targets == [AndroidTargetDevice(id: Self.tablet.id, label: Self.label)])
     #expect(draft.sources.count == 4)
     #expect(draft.apps(in: draft.sources[0]).map(\.name) == ["Sample (Android)", "Empty"])
     #expect(draft.apps(in: draft.sources[0]).allSatisfy { $0.platform == .android })
@@ -117,7 +115,7 @@ struct AndroidDownloadInstallModelTests: AndroidDevicesTesting {
         isLocked: isLocked,
         download: download
       )
-      await model.catalogMenuTapped(Self.tablet)
+      await model.catalogMenuTapped([Self.tablet])
       let draft = try #require(model.catalogDraft)
       #expect(draft.isLocked == isLocked)
       #expect(draft.note(for: draft.sources[0]) == nil)
@@ -138,7 +136,7 @@ struct AndroidDownloadInstallModelTests: AndroidDevicesTesting {
   func catalogEmpty() async {
     for isLocked in [false, true] {
       let model = Self.model(isLocked: isLocked)
-      await model.catalogMenuTapped(Self.tablet)
+      await model.catalogMenuTapped([Self.tablet])
       #expect(model.catalogDraft?.isEmpty == true)
       #expect(model.catalogDraft?.showsOpenSettings == !isLocked)
     }
@@ -148,7 +146,7 @@ struct AndroidDownloadInstallModelTests: AndroidDevicesTesting {
   func catalogSelection() async throws {
     let download = AndroidCatalogData.fake()
     let model = Self.model(urls: [AndroidCatalogData.v2Raw, AndroidCatalogData.iOSOnlyRaw], download: download)
-    await model.catalogMenuTapped(Self.tablet)
+    await model.catalogMenuTapped([Self.tablet])
     let sourceID = try #require(model.catalogDraft?.sources.first?.id)
     model.catalogAppSelected(AndroidCatalogAppKey(sourceID: sourceID, appID: AndroidCatalogData.sampleID))
     #expect(model.catalogDraft?.selectedAppValue?.name == "Sample (Android)")
@@ -169,7 +167,7 @@ struct AndroidDownloadInstallModelTests: AndroidDevicesTesting {
   func catalogRefreshKeepsSelection() async throws {
     let download = AndroidCatalogData.fake()
     let model = Self.model(urls: [AndroidCatalogData.v2Raw], download: download)
-    await model.catalogMenuTapped(Self.tablet)
+    await model.catalogMenuTapped([Self.tablet])
     let sourceID = try #require(model.catalogDraft?.sources.first?.id)
     let key = AndroidCatalogAppKey(sourceID: sourceID, appID: AndroidCatalogData.sampleID)
     model.catalogAppSelected(key)
@@ -198,7 +196,7 @@ struct AndroidDownloadInstallModelTests: AndroidDevicesTesting {
   func catalogRefreshClearsOnFailureOrRemoval() async throws {
     let download = AndroidCatalogData.fake()
     let (model, preferences) = Self.preferencesSetup(urls: [AndroidCatalogData.v2Raw], download: download)
-    await model.catalogMenuTapped(Self.tablet)
+    await model.catalogMenuTapped([Self.tablet])
     let sourceID = try #require(model.catalogDraft?.sources.first?.id)
     let key = AndroidCatalogAppKey(sourceID: sourceID, appID: AndroidCatalogData.sampleID)
     model.catalogAppSelected(key)
@@ -220,7 +218,7 @@ struct AndroidDownloadInstallModelTests: AndroidDevicesTesting {
     let download = AndroidCatalogData.fake()
     download.suspendFetches(for: AndroidCatalogData.catalogV2)
     let model = Self.model(urls: [AndroidCatalogData.v2Raw], download: download)
-    let open = Self.start { await model.catalogMenuTapped(Self.tablet) }
+    let open = Self.start { await model.catalogMenuTapped([Self.tablet]) }
     await Self.waitUntil { download.suspendedFetchCount == 1 }
     #expect(model.catalogDraft?.isLoading == true)
     model.catalogSheetDismissed()
@@ -234,7 +232,7 @@ struct AndroidDownloadInstallModelTests: AndroidDevicesTesting {
   func catalogInstall() async throws {
     let download = AndroidCatalogData.fake()
     let (model, requests) = Self.requestsSetup(urls: [AndroidCatalogData.v2Raw], download: download)
-    await model.catalogMenuTapped(Self.tablet)
+    await model.catalogMenuTapped([Self.tablet])
     await model.catalogInstallTapped()
     #expect(model.catalogDraft != nil)
     #expect(requests.items.isEmpty)
@@ -256,7 +254,7 @@ struct AndroidDownloadInstallModelTests: AndroidDevicesTesting {
   func versionPaneWhileReloading() async throws {
     let download = AndroidCatalogData.fake()
     let model = Self.model(urls: [AndroidCatalogData.v2Raw], download: download)
-    await model.catalogMenuTapped(Self.tablet)
+    await model.catalogMenuTapped([Self.tablet])
     let sourceID = try #require(model.catalogDraft?.sources.first?.id)
     model.catalogAppSelected(AndroidCatalogAppKey(sourceID: sourceID, appID: AndroidCatalogData.emptyAppID))
     #expect(model.catalogDraft?.versionPane == .noVersions)

@@ -45,6 +45,11 @@ public extension AndroidDevicesModel {
     self.selectedDevices.contains { self.activity.canStart(.boot, on: $0) }
   }
 
+  /// 고른 기기 중 하나라도 앱을 설치할 수 있다 (켜짐·쓸 수 있음·작업 없음). 툴바 "선택한 기기에 앱 설치" 의 세 항목을 켠다.
+  var canInstallOnSelection: Bool {
+    self.selectedDevices.contains { self.activity.canStart(.installApp, on: $0) }
+  }
+
   /// 어느 기기든 녹화 중이다 (시작 중·저장 중 포함, `recordings.isActive`). App 의 앱 종료 확인이 읽는다.
   var isRecording: Bool {
     self.recordings.isActive

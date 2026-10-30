@@ -59,11 +59,26 @@ struct LauncherTextSyncTests {
     }
   }
 
+  @Test("여러 기기 설치 공유 문구 12개가 Launcher 원본과 이 모듈 원본에 같은 키·값으로 있고, 문구 함수의 결과가 Launcher 값과 같다")
+  func sharedBatchTextsMatchLauncher() throws {
+    let launcher = try Self.koreanTable(at: NameProblemSyncTests.launcherCatalog)
+    let android = try Self.koreanTable(at: Self.androidCatalog)
+    let checks = BatchTextCatalog.sharedChecks(launcher)
+
+    #expect(Set(checks.map(\.key)).count == 12)
+    for check in checks {
+      #expect(launcher[check.key] == check.key, "Launcher 에 없거나 다른 값: \(check.key)")
+      #expect(android[check.key] == launcher[check.key], "이 모듈에 없거나 다른 값: \(check.key)")
+      #expect(check.actual == check.expected, "\(check.key)")
+    }
+  }
+
   @Test("Android 문장은 Launcher 에 같은 키가 없다 (공유로 잘못 옮기지 않았다)")
   func androidTextsAreOwn() throws {
     let launcher = try Self.koreanTable(at: NameProblemSyncTests.launcherCatalog)
     let android = try Self.koreanTable(at: Self.androidCatalog)
     let checks = DownloadTextCatalog.androidChecks(android) + CaptureTextCatalog.androidChecks(android)
+      + BatchTextCatalog.androidChecks(android)
     for check in checks {
       #expect(launcher[check.key] == nil, "\(check.key)")
     }

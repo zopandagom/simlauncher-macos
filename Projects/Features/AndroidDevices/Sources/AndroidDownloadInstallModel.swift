@@ -4,7 +4,8 @@ import Foundation
 import Observation
 import PreferencesInterface
 
-/// Android 기기 행 "앱 설치" 메뉴의 "URL 에서…"·"카탈로그에서…" 시트의 상태와 로직. 둘은 동시에 하나만 연다.
+/// Android 기기 행 "앱 설치" 메뉴와 툴바 "선택한 기기에 앱 설치" 의 "URL 에서…"·"카탈로그에서…" 시트의 상태와 로직.
+/// 둘은 동시에 하나만 연다. 대상은 행 메뉴면 그 기기 한 대, 툴바면 목록에서 고른 기기 전부다.
 /// URL 시트는 주소를 입력받고, 카탈로그 시트는 열 때와 새로 고칠 때만 등록 카탈로그를 동시에 받아 메인 밖에서 해석하고
 /// 카탈로그마다 결과가 오는 대로 보인다 (Android 앱만). 고른 주소·버전은 App 이 주입한 `installRequested` 로 기기 목록 화면
 /// (`AndroidDevicesModel.downloadInstallRequested(_:)`)에 넘기고, 받기·설치·진행 표시는 그쪽이 한다.
@@ -37,10 +38,12 @@ public final class AndroidDownloadInstallModel {
 
   // MARK: - URL 에서
 
-  /// 행 "URL 에서…": 두 시트가 닫혀 있고 켜진·쓸 수 있는 기기면 연다. 같은 기기의 진행 중 작업은 행이 메뉴를 비활성으로 막는다.
-  public func urlMenuTapped(_ device: AndroidVirtualDevice) {
-    guard self.canOpenSheet(for: device) else { return }
-    self.urlDraft = AndroidInstallURLDraft(deviceID: device.id, device: AndroidDeviceLabel(device))
+  /// "URL 에서…" (행은 그 기기 한 대, 툴바는 고른 기기 전부를 지금 목록 순서로): 두 시트가 닫혀 있고 대상 중 켜진·쓸 수 있는
+  /// 기기가 하나라도 있으면 대상 모두로 연다. 같은 기기의 진행 중 작업은 행이 메뉴를 비활성으로 막고, 툴바 대상의 작업 중·꺼진
+  /// 기기는 `AndroidDevicesModel` 이 설치를 시작할 때 이유와 함께 건너뛴다 (이 Model 은 기기 작업을 모른다).
+  public func urlMenuTapped(_ targets: [AndroidVirtualDevice]) {
+    guard self.canOpenSheet(for: targets) else { return }
+    self.urlDraft = AndroidInstallURLDraft(targets: targets.map(AndroidTargetDevice.init))
   }
 
   public func urlTextChanged(_ text: String) {
@@ -61,17 +64,16 @@ public final class AndroidDownloadInstallModel {
     guard let draft = self.urlDraft, let url = draft.url else { return }
     // 첫 await 전에 닫아, 연타해도 두 번째 호출은 위에서 끝난다.
     self.urlDraft = nil
-    await self.installRequested(
-      AndroidDownloadInstallRequest(deviceID: draft.deviceID, device: draft.device, url: url, origin: .enteredURL)
-    )
+    await self.installRequested(AndroidDownloadInstallRequest(targets: draft.targets, url: url, origin: .enteredURL))
   }
 
   // MARK: - 카탈로그에서
 
-  /// 행 "카탈로그에서…": 두 시트가 닫혀 있고 켜진·쓸 수 있는 기기면 열고 받는다. 받기가 끝날 때까지 기다린다.
-  public func catalogMenuTapped(_ device: AndroidVirtualDevice) async {
-    guard self.canOpenSheet(for: device) else { return }
-    self.catalogDraft = AndroidCatalogInstallDraft(deviceID: device.id, device: AndroidDeviceLabel(device))
+  /// "카탈로그에서…" (행은 한 대, 툴바는 고른 기기 전부): `urlMenuTapped(_:)` 와 같은 조건으로 열고 받는다.
+  /// 받기가 끝날 때까지 기다린다.
+  public func catalogMenuTapped(_ targets: [AndroidVirtualDevice]) async {
+    guard self.canOpenSheet(for: targets) else { return }
+    self.catalogDraft = AndroidCatalogInstallDraft(targets: targets.map(AndroidTargetDevice.init))
     await self.load()
   }
 
@@ -103,19 +105,14 @@ public final class AndroidDownloadInstallModel {
     // 첫 await 전에 닫아, 연타해도 두 번째 호출은 위에서 끝난다.
     self.closeCatalog()
     await self.installRequested(
-      AndroidDownloadInstallRequest(
-        deviceID: draft.deviceID,
-        device: draft.device,
-        url: version.buildURL,
-        origin: .catalog
-      )
+      AndroidDownloadInstallRequest(targets: draft.targets, url: version.buildURL, origin: .catalog)
     )
   }
 
   // MARK: - 내부
 
-  private func canOpenSheet(for device: AndroidVirtualDevice) -> Bool {
-    self.urlDraft == nil && self.catalogDraft == nil && device.appActionAvailability == .allowed
+  private func canOpenSheet(for targets: [AndroidVirtualDevice]) -> Bool {
+    self.urlDraft == nil && self.catalogDraft == nil && targets.contains { $0.appActionAvailability == .allowed }
   }
 
   /// 설정을 읽어 구역을 다시 만들고, 쓸 수 있는 카탈로그를 모두 동시에 받는다. 결과는 오는 대로(끝난 순서) 받기 식별자를

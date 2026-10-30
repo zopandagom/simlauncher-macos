@@ -14,7 +14,8 @@ import WorkspaceInterface
 /// (`viewDisappeared()` 면 멈춘다), 앱 활성화 때 다시 읽은 뒤 3초 뒤 한 번 더 읽는다 (창을 닫은 직후 adb 가 아직 켜짐으로 답한 경우).
 /// 모든 다시 읽기는 한 경로로 모아, 읽는 중에 온 요청은 지금 읽기가 끝난 뒤 한 번 더 읽는다.
 /// 켜진 기기에는 로컬 apk(파일 고르기·드롭)나 URL·카탈로그에서 받은 apk(`AndroidDownloadInstallModel` 의 요청을 App 이 넘긴다.
-/// 받기는 Model 이 소유하고 행에 진행·취소)를 설치·실행하고, 설치한 앱을 골라 실행하고, 링크를 연다 (앱 실행·링크 열기 시트는
+/// 받기는 Model 이 소유하고 행에 진행·취소)를 설치·실행하고(툴바 "선택한 기기에 앱 설치" 는 고른 기기 중 켜진 기기에 한 번 받고
+/// 검사해 동시에 설치하고 결과를 알림 하나에 모은다), 설치한 앱을 골라 실행하고, 링크를 연다 (앱 실행·링크 열기 시트는
 /// `AndroidAppSheetsModel` 에 있고, 확정한 요청을 App 이 넘긴다). Client 호출은 흐름 타입이 맡는다: 기기 명령은
 /// `AndroidDeviceCommandFlow`, 앱 작업은 `AndroidAppInstallFlow`, 스크린샷·녹화(예약·찍기·녹화·보이기)는 `AndroidScreenCaptureFlow`.
 /// 녹화는 Model 이 소유한 Task 로 돌고, 녹화 중인 기기는 끄기·삭제·초기화를 막으며, 다시 읽은 목록에서 없거나 꺼졌으면 멈춘다.
@@ -42,7 +43,7 @@ public final class AndroidDevicesModel {
   public private(set) var isCreating = false
   /// 확인을 기다리는 삭제·초기화. nil 이면 대화상자가 없다.
   public private(set) var confirmation: AndroidDeviceConfirmation?
-  /// 목록에서 고른 기기 (⌘·⇧ 클릭). 툴바 "선택한 기기 켜기" 의 대상이고, 다시 읽은 목록에 없는 기기는 빠진다.
+  /// 목록에서 고른 기기 (⌘·⇧ 클릭). 툴바 "선택한 기기 켜기"·"선택한 기기에 앱 설치" 의 대상이고, 다시 읽은 목록에 없는 기기는 빠진다.
   public private(set) var selection: Set<AndroidVirtualDevice.ID> = []
 
   @ObservationIgnored private let emulator: any AndroidEmulatorClient
@@ -57,7 +58,8 @@ public final class AndroidDevicesModel {
   @ObservationIgnored private var recordingTasks: [AndroidVirtualDevice.ID: Task<Void, Never>] = [:]
   /// 앱 종료를 기다리는 중이다. 새 녹화를 시작하지 않는다 (곧 종료하므로 되돌리지 않는다).
   @ObservationIgnored private var isTerminating = false
-  /// 기기별 받기 작업. Model 이 소유해 받기 취소(`downloadCancelTapped(_:)`)가 이것만 멈춘다. 결과를 받은 직후 지운다.
+  /// 기기별 받기 작업 (받기 묶음의 기기는 같은 Task). Model 이 소유해 받기 취소(`downloadCancelTapped(_:)`)가 이것만 멈춘다.
+  /// 결과를 받은 직후, 어느 기기도 풀리기 전에 지운다.
   @ObservationIgnored private var downloadTasks: [
     AndroidVirtualDevice.ID: Task<Result<DownloadedFile, DownloadError>, Never>
   ] = [:]
@@ -306,31 +308,42 @@ public extension AndroidDevicesModel {
     await self.installApp(urls, on: id)
   }
 
-  /// App 이 `AndroidDownloadInstallModel` 의 요청을 넘긴다. 지금 목록으로 대상을 확인하고(없음·막힘이면 알림, 다른 작업 중이면
-  /// 행이 진행 중을 보여 알림 없이 끝), Model 이 소유한 Task 로 받은 뒤(행에 진행·취소) 검사·설치·실행한다. 받기 시작과 Task 저장
-  /// 사이에 await 를 두지 않는다 (취소가 Task 를 놓치지 않게).
-  func downloadInstallRequested(_ request: AndroidDownloadInstallRequest) async {
-    let host = self.appHost
-    guard let device = self.appFlow.target(request.deviceID, host: host, failed: {
-      .installFailed(request.device, .init($0))
-    }), self.activity.beginDownload(on: device) else { return }
-    let id = device.id
-    defer { self.taskEnded(on: id) }
-    let download = self.download
-    let onProgress: @Sendable (DownloadProgress) async -> Void = { @MainActor progress in
-      self.activity.downloadProgressed(progress, on: id)
+  /// 툴바 "선택한 기기에 앱 설치" > "파일에서 고르기…" 로 고른 파일. 한 대면 행 메뉴와 같은 경로다. 여러 대면 한 번 검사하고
+  /// 켜진 기기마다 동시에 설치·실행해 결과를 알림 하나에 모은다 (꺼진·쓸 수 없는·작업 중 기기는 이유와 함께 건너뛴다).
+  func selectedAppFileChosen(_ url: URL) async {
+    let devices = self.selectedDevices
+    if devices.count == 1 {
+      return await self.installApp([url], on: devices[0].id)
     }
-    let task = Task { await download.downloadResult(request.url, savingAs: .apk, onProgress: onProgress) }
-    self.downloadTasks[id] = task
-    let result = await task.value
-    self.downloadTasks[id] = nil
-    let cancelRequested = self.activity.isDownloadCancelRequested(on: id)
-    self.activity.downloadEnded(on: id)
-    await self.appFlow.installDownloaded(result, cancelRequested: cancelRequested, request: request, host: host)
+    let targets = devices.map(AndroidTargetDevice.init)
+    let start = self.activity.beginInstall(on: targets, in: self.listState, downloading: false)
+    defer { start.begun.forEach { self.taskEnded(on: $0.id, owner: start.owner) } }
+    await self.appFlow.install(url, start: start, host: self.appHost)
   }
 
-  /// 행의 받기 취소: 받는 중일 때만 받기를 멈춘다. 받기가 막 끝났어도(늦은 취소) 받은 파일을 지우고 알림 없이 끝난다.
-  /// 받기가 끝난 뒤(검사·설치 중)에는 아무 일도 하지 않는다.
+  /// App 이 `AndroidDownloadInstallModel` 의 요청(행 메뉴면 1대, 툴바면 고른 기기 전부)을 넘긴다. 대상을 지금 목록으로 판정해
+  /// 받기 묶음을 시작하고(1대 요청이면 없음·막힘은 알림, 다른 작업 중이면 행이 진행 중을 보여 알림 없이 끝. 여러 대면 결과 알림에
+  /// 이유), Model 이 소유한 Task 로 한 번 받은 뒤(대상 행 모두에 진행·취소) 한 번 검사하고 기기별로 설치·실행한다.
+  /// 받기 시작과 Task 저장 사이에 await 를 두지 않는다 (취소가 Task 를 놓치지 않게).
+  func downloadInstallRequested(_ request: AndroidDownloadInstallRequest) async {
+    let start = self.activity.beginInstall(on: request.targets, in: self.listState, downloading: true)
+    let ids = start.begun.map(\.id)
+    defer { ids.forEach { self.taskEnded(on: $0, owner: start.owner) } }
+    guard !ids.isEmpty else { return self.appFlow.reportNotStarted(start, host: self.appHost) }
+    let result = await self.appFlow.downloadResult(
+      request.url,
+      progressed: { self.activity.downloadProgressed($0, on: ids) },
+      taskChanged: { task in ids.forEach { self.downloadTasks[$0] = task } }
+    )
+    let cancelRequested = self.activity.isDownloadCancelRequested(on: ids[0])
+    self.activity.downloadEnded(on: ids)
+    await self.appFlow.installDownloaded(
+      result, cancelRequested: cancelRequested, start: start, origin: request.origin, host: self.appHost
+    )
+  }
+
+  /// 행의 받기 취소: 받는 중일 때만 받기 묶음 전체를 멈춘다 (묶음의 기기가 같은 Task 를 갖는다). 받기가 막 끝났어도(늦은 취소)
+  /// 받은 파일을 지우고 알림 없이 끝난다. 받기가 끝난 뒤(검사·설치 중)에는 아무 일도 하지 않는다.
   func downloadCancelTapped(_ id: AndroidVirtualDevice.ID) {
     guard self.activity.requestDownloadCancel(on: id) else { return }
     self.downloadTasks[id]?.cancel()

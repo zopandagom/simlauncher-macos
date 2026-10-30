@@ -8,7 +8,7 @@ import Foundation
 /// `AndroidDevicesText+Dialogs.swift`, 앱 설치·실행은 `AndroidDevicesText+Install.swift`, 링크 열기는
 /// `AndroidDevicesText+OpenURL.swift`, URL 에서 설치는 `AndroidDevicesText+Download.swift`, 카탈로그에서 설치는
 /// `AndroidDevicesText+Catalog.swift`(시트·버전 설치 실패)와 `AndroidDevicesText+CatalogLoad.swift`(카탈로그 읽기 실패),
-/// 스크린샷·녹화는 `AndroidDevicesText+Capture.swift`.
+/// 스크린샷·녹화는 `AndroidDevicesText+Capture.swift`, 여러 기기 설치는 `AndroidDevicesText+Batch.swift`.
 enum AndroidDevicesText {
   // MARK: - 기기 라벨
 
@@ -40,6 +40,8 @@ enum AndroidDevicesText {
       String(localized: "기기를 만들지 못했습니다", bundle: .module)
     case let .batchBootFinished(report):
       self.batchTitle(for: report)
+    case .batchInstallFailed, .batchInstallFinished:
+      self.batchInstallNoticeTitle(for: notice)
     case .installFailed, .installedButNotLaunched, .launchFailed, .openURLFailed:
       self.appNoticeTitle(for: notice)
     case .screenshotFailed, .screenshotRevealFailed, .recordingFailed, .recordingInterrupted,
@@ -82,6 +84,8 @@ enum AndroidDevicesText {
       return String(localized: "기기 폴더가 예상한 위치가 아니어서 지우지 않고 남겨 두었습니다: \(path)", bundle: .module)
     case let .batchBootFinished(report):
       return self.batchMessage(for: report)
+    case .batchInstallFailed, .batchInstallFinished:
+      return self.batchInstallNoticeMessage(for: notice)
     case .installFailed, .installedButNotLaunched, .launchFailed, .openURLFailed:
       return self.appNoticeMessage(for: notice)
     case .screenshotFailed, .screenshotRevealFailed, .recordingFailed, .recordingInterrupted,
@@ -107,7 +111,7 @@ enum AndroidDevicesText {
     String(localized: "선택한 기기 켜기", bundle: .module)
   }
 
-  /// 고른 기기가 없을 때 켜기 버튼 툴팁: 다중 선택 방법을 안내한다.
+  /// 고른 기기가 없을 때 설치 메뉴 맨 위 글자와 켜기 버튼 툴팁: 다중 선택 방법을 안내한다.
   static var selectionGuide: String {
     String(
       localized: "목록에서 기기를 고르세요. ⌘ 키를 누른 채 클릭하면 여러 대를, ⇧ 키를 누른 채 클릭하면 사이의 기기를 함께 고릅니다.",
