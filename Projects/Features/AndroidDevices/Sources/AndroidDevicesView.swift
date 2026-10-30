@@ -7,10 +7,11 @@ import UniformTypeIdentifiers
 /// 화면 문자열은 `AndroidDevicesText` 가 이 모듈의 `Localizable.xcstrings` 에서 찾는다.
 /// 목록은 ⌘·⇧ 클릭으로 여러 기기를 고를 수 있고(선택은 Model 상태), 툴바의 "선택한 기기 켜기" 가 고른 기기를 함께 켠다.
 /// 행의 버튼·메뉴·드롭은 그 행 한 대에만 동작한다. 사라질 때(`onDisappear`) 자동 다시 읽기를 멈추게 알린다.
-/// 행 "앱 설치" 메뉴의 "URL 에서…"·"카탈로그에서…" 시트는 `downloadModel`(App 소유)의 초안으로 띄운다.
+/// 행의 URL·카탈로그 시트는 `downloadModel`, 앱 실행·링크 열기 시트는 `appSheetsModel`(둘 다 App 소유)의 초안으로 띄운다.
 public struct AndroidDevicesView: View {
   let model: AndroidDevicesModel
   let downloadModel: AndroidDownloadInstallModel
+  let appSheetsModel: AndroidAppSheetsModel
   /// 지금 띄운 알림. 닫히는 동안 Model 의 줄에서 빠져도 글자가 비지 않도록 View 가 들고 있는다.
   @State private var presentedNotice: AndroidDevicesNoticeItem?
   /// 알림을 띄웠는지. 다음 알림을 띄울 때 false → true 전이가 생기도록 Model 의 줄과 따로 둔다.
@@ -21,9 +22,14 @@ public struct AndroidDevicesView: View {
   @State private var importTarget: AndroidVirtualDevice.ID?
   @State private var isImporterPresented = false
 
-  public init(model: AndroidDevicesModel, downloadModel: AndroidDownloadInstallModel) {
+  public init(
+    model: AndroidDevicesModel,
+    downloadModel: AndroidDownloadInstallModel,
+    appSheetsModel: AndroidAppSheetsModel
+  ) {
     self.model = model
     self.downloadModel = downloadModel
+    self.appSheetsModel = appSheetsModel
   }
 
   public var body: some View {
@@ -110,30 +116,30 @@ public struct AndroidDevicesView: View {
       ) {
         AndroidDeviceCreationSheet(model: self.model)
       }
-      // 만들기·앱 실행·링크 시트는 같은 체인에 두고, Model 이 둘 이상 함께 열리지 않게 막는다 (`hasPresentedSheet`).
+      // 만들기·앱 실행·링크 시트는 같은 체인에 두고, 두 Model(App 이 잇는다)이 둘 이상 함께 열리지 않게 막는다.
       .sheet(
         isPresented: Binding(
-          get: { self.model.launchAppDraft != nil },
+          get: { self.appSheetsModel.launchAppDraft != nil },
           set: { isPresented in
             if !isPresented {
-              self.model.launchAppSheetDismissed()
+              self.appSheetsModel.launchAppSheetDismissed()
             }
           }
         )
       ) {
-        AndroidLaunchAppSheet(model: self.model)
+        AndroidLaunchAppSheet(model: self.appSheetsModel)
       }
       .sheet(
         isPresented: Binding(
-          get: { self.model.openURLDraft != nil },
+          get: { self.appSheetsModel.openURLDraft != nil },
           set: { isPresented in
             if !isPresented {
-              self.model.openURLSheetDismissed()
+              self.appSheetsModel.openURLSheetDismissed()
             }
           }
         )
       ) {
-        AndroidOpenURLSheet(model: self.model)
+        AndroidOpenURLSheet(model: self.appSheetsModel)
       }
       .modifier(AndroidDownloadSheets(model: self.downloadModel))
       .confirmationDialog(
@@ -335,10 +341,10 @@ extension AndroidDevicesView {
         Task { await self.model.appDropped(urls, on: device.id) }
       },
       launchAppTapped: {
-        Task { await self.model.launchAppTapped(device.id) }
+        Task { await self.appSheetsModel.launchAppTapped(device.id) }
       },
       openURLTapped: {
-        self.model.openURLTapped(device.id)
+        self.appSheetsModel.openURLTapped(device.id)
       }
     )
   }

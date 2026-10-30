@@ -3,7 +3,7 @@ import SwiftUI
 
 /// 링크 열기 시트: 링크 입력란과 그 아래 안내. 입력은 모두 Model 의 이벤트 메서드로 넘긴다 (iOS `OpenURLSheet` 와 같은 모양).
 struct AndroidOpenURLSheet: View {
-  let model: AndroidDevicesModel
+  let model: AndroidAppSheetsModel
   /// 마지막으로 그린 초안. 닫히는 동안 Model 의 `openURLDraft` 는 이미 nil 이라, 글자가 비지 않도록 View 가 들고 있는다.
   @State private var shownDraft: AndroidOpenURLDraft?
   /// 열릴 때 입력란에 바로 칠 수 있게 포커스를 둔다 (View 일시 상태).

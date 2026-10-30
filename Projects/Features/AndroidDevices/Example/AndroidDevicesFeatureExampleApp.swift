@@ -37,8 +37,12 @@ struct AndroidDevicesFeatureExampleApp: App {
       } detail: {
         VStack(spacing: 0) {
           if let models = self.models[self.scenario] {
-            AndroidDevicesView(model: models.devices, downloadModel: models.downloadInstall)
-              .id(self.scenario)
+            AndroidDevicesView(
+              model: models.devices,
+              downloadModel: models.downloadInstall,
+              appSheetsModel: models.appSheets
+            )
+            .id(self.scenario)
           }
           Divider()
           Text(verbatim: "Android 도구 버튼을 누른 횟수: \(self.setupRequests.count)")
@@ -60,11 +64,18 @@ struct AndroidDevicesFeatureExampleApp: App {
   }
 }
 
-/// 장면 하나의 Model 둘 (App 이 둘을 만들어 `installRequested` 로 잇는 것과 같다).
+/// 장면 하나의 Model 셋 (App 이 셋을 만들어 `installRequested`·`launchRequested` 등으로 잇는 것과 같다).
 @MainActor
 struct DemoModels {
   let devices: AndroidDevicesModel
   let downloadInstall: AndroidDownloadInstallModel
+  let appSheets: AndroidAppSheetsModel
+}
+
+/// 기기 목록 Model 의 `appSheetPresented` 가 뒤에 만든 시트 Model 을 읽게 넘기는 상자 (App 과 같다).
+@MainActor
+final class DemoAppSheetsBox {
+  weak var model: AndroidAppSheetsModel?
 }
 
 /// "Android 도구" 버튼을 누른 횟수 (App 이 도구 화면을 여는 자리).
@@ -134,19 +145,28 @@ enum DemoScenario: String, CaseIterable, Hashable {
     self.configure(fake)
     self.configure(package)
     self.configure(download)
+    let appSheetsBox = DemoAppSheetsBox()
     let devices = AndroidDevicesModel(
       emulator: fake,
       package: package,
       download: download,
-      setupRequested: setupRequested
+      setupRequested: setupRequested,
+      appSheetPresented: { appSheetsBox.model?.hasPresentedSheet ?? false }
     )
+    let appSheets = AndroidAppSheetsModel(
+      emulator: fake,
+      target: { id, task in devices.appSheetTarget(id, for: task) },
+      launchRequested: { request in await devices.launchAppRequested(request) },
+      openURLRequested: { request in await devices.openURLRequested(request) }
+    )
+    appSheetsBox.model = appSheets
     let preferences = PreferencesClientFake(urls: self.catalogURLs, isLocked: self == .catalogLocked)
     let downloadInstall = AndroidDownloadInstallModel(
       preferences: preferences,
       download: download,
       installRequested: { request in await devices.downloadInstallRequested(request) }
     )
-    return DemoModels(devices: devices, downloadInstall: downloadInstall)
+    return DemoModels(devices: devices, downloadInstall: downloadInstall, appSheets: appSheets)
   }
 
   /// 0 → 전체 1 MiB 까지 여덟 번 (행의 진행 막대가 보이도록).
@@ -334,8 +354,12 @@ enum DemoCatalog {
 @MainActor
 private func demoPreview(_ scenario: DemoScenario) -> some View {
   let models = scenario.makeModel {}
-  return AndroidDevicesView(model: models.devices, downloadModel: models.downloadInstall)
-    .frame(width: 720, height: 480)
+  return AndroidDevicesView(
+    model: models.devices,
+    downloadModel: models.downloadInstall,
+    appSheetsModel: models.appSheets
+  )
+  .frame(width: 720, height: 480)
 }
 
 #Preview("정상") {
