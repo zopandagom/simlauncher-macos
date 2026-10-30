@@ -50,9 +50,13 @@ public extension Client {
   /// 설정 창이 고른 폴더 판정. adb·emulator 는 실행하지 않는다.
   static let androidSDK = Client("AndroidSDK")
   /// Android 기기(AVD, `~/.android/avd`. Android Studio 와 함께 쓴다) 목록과 상태(잠금 파일·adb), 켜기(emulator 띄우기·완료 기다리기)·
-  /// 끄기(adb emu kill, 앱이 띄운 프로세스는 SIGINT)·만들기(설정 파일 직접 쓰기, 덮어쓰지 않음)·삭제·초기화.
+  /// 끄기(adb emu kill, 앱이 띄운 프로세스는 SIGINT)·만들기(설정 파일 직접 쓰기, 덮어쓰지 않음)·삭제·초기화,
+  /// 켜진 기기의 API 수준·ABI 읽기와 앱 설치(adb install)·실행(기기에서 launcher 화면을 찾아 am start)·링크 열기·사용자 설치 앱 목록.
   /// SDK 위치는 AndroidSDK 와 같은 provider 를 App 이 준다. 명령은 CommandClient 로 SDK 의 emulator·adb 만 실행한다.
   static let androidEmulator = Client("AndroidEmulator")
+  /// 로컬 .apk 검사: zipinfo 목록·서명 유무·AndroidManifest.xml(AXML) 의 package·minSdk·네이티브 ABI.
+  /// Mac 에 풀지 않는다(`unzip -p` 로 manifest 하나만 메모리로). 명령은 CommandClient 로 실행한다.
+  static let androidPackage = Client("AndroidPackage")
 }
 
 /// 화면 단위 기능 모듈. Feature 끼리는 서로 의존하지 않는다.
