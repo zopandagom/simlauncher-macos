@@ -8,7 +8,7 @@ import Foundation
 /// 리다이렉트는 https 로만 따라간다. 쿠키·캐시·자격 증명을 쓰거나 남기지 않고, 서버의 인증 요구(Basic·Negotiate 등)에
 /// 응하지 않는다.
 public protocol DownloadClient: Sendable {
-  /// 새 임시 폴더 `SimLauncher-Download-<UUID>` 의 `download` 파일로 받는다. 크기 상한은 없고,
+  /// 새 임시 폴더 `SimLauncher-Download-<UUID>` 의 `name` 파일(`download`·`download.apk`)로 받는다. 크기 상한은 없고,
   /// Content-Length 가 있으면 시작 전에 임시 폴더 볼륨의 여유와 비교한다.
   /// - `onProgress`: 응답을 받으면 (0, 전체) 한 번, 받는 중 최대 0.1초마다 한 번, 성공하면 마지막 (받은 전체, 전체) 한 번.
   ///   같은 값을 연속으로 넘기지 않는다 (빈 본문이면 (0, 전체) 한 번뿐). 앞 호출이 끝난 뒤 다음을 부르고, 늦게 처리하면
@@ -18,6 +18,7 @@ public protocol DownloadClient: Sendable {
   ///   폴더를 만들지 않고 요청도 보내지 않는다. 취소된 채로 끝나면 전송 결과(성공·다른 실패)와 관계없이 `.cancelled` 다.
   func download(
     _ url: DownloadURL,
+    savingAs name: DownloadedFileName,
     onProgress: @escaping @Sendable (DownloadProgress) async -> Void
   ) async throws(DownloadError) -> DownloadedFile
 
@@ -32,4 +33,14 @@ public protocol DownloadClient: Sendable {
   /// 남은 `SimLauncher-Download-*` 폴더(앞선 실행이 남겼거나 지우지 못한 것)를 지운다. 이 프로세스가 지금 쓰는 폴더는
   /// 건너뛴다. 실패는 무시한다.
   func removeLeftoverDownloads() async
+}
+
+public extension DownloadClient {
+  /// `download(_:savingAs:onProgress:)` 를 이름 `download` 로 부른다 (빌드 zip·Android SDK 패키지).
+  func download(
+    _ url: DownloadURL,
+    onProgress: @escaping @Sendable (DownloadProgress) async -> Void
+  ) async throws(DownloadError) -> DownloadedFile {
+    try await self.download(url, savingAs: .download, onProgress: onProgress)
+  }
 }

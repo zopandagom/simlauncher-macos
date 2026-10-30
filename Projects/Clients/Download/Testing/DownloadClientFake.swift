@@ -6,7 +6,7 @@ import Synchronization
 /// 테스트·Example 용 `DownloadClient`. 호출을 기록하고, 진행·결과·지연·멈춤을 바꿀 수 있다. 네트워크·파일을 쓰지 않는다.
 /// `download` 는 설정한 진행을 순서대로 알린 뒤 결과로 끝난다. 결과는 `setDownloadResult(_:for:)` 로 정한 주소별 결과가 있으면
 /// 그것, 없으면 `setDownloadScript(progress:result:)` 의 공통 결과, 그것도 정하지 않았으면 k 번째 호출(1부터)에
-/// `.fake(index: k)` 를 돌려준다. 취소 계약은 Impl 과 같다: 시작 전 취소면 기록 뒤 바로, 진행 사이·멈춤 중·결과 전
+/// `.fake(index: k, name: <받기 이름>)` 을 돌려준다. 취소 계약은 Impl 과 같다: 시작 전 취소면 기록 뒤 바로, 진행 사이·멈춤 중·결과 전
 /// (마지막 진행 콜백 안 포함) 취소면 그때 `.cancelled`, 돌아온 뒤에는 `onProgress` 를 부르지 않는다.
 /// 멈춘 받기에 `sendDownloadProgress(_:)` 가 진행을 넘기는 중에 온 취소·재개는 그 콜백이 끝난 뒤 받기를 깨운다.
 /// `fetchData` 는 기록 → 취소 확인 → 멈춤(`suspendFetches()` 뒤거나 그 주소가 `suspendFetches(for:)` 로 멈췄으면 재개나
@@ -19,6 +19,17 @@ public final class DownloadClientFake: DownloadClient {
     case download(URL)
     case fetchData(URL, maxBytes: Int)
     case removeDownloaded(DownloadedFile)
+  }
+
+  /// `download` 한 번의 주소와 받기 이름.
+  public struct DownloadRequest: Hashable, Sendable {
+    public let url: DownloadURL
+    public let name: DownloadedFileName
+
+    public init(url: DownloadURL, name: DownloadedFileName) {
+      self.url = url
+      self.name = name
+    }
   }
 
   /// 멈춘 받기 하나. 진행을 넘기는 중(`deliveries > 0`)에 온 재개·취소는 `pendingWake` 에 두고,
@@ -39,6 +50,7 @@ public final class DownloadClientFake: DownloadClient {
 
   private struct State {
     var calls: [Call] = []
+    var downloadRequests: [DownloadRequest] = []
     var downloadProgress: [DownloadProgress] = DownloadProgress.samples
     var downloadResult: Result<DownloadedFile, DownloadError>?
     /// 주소별 `download` 결과 (키는 `absoluteString`). 없으면 `downloadResult`.
@@ -73,6 +85,11 @@ public final class DownloadClientFake: DownloadClient {
     self.state.withLock { $0.calls }
   }
 
+  /// `download` 호출의 주소·받기 이름을 들어온 순서대로 (`calls` 의 `.download` 와 같은 순서).
+  public var downloadRequests: [DownloadRequest] {
+    self.state.withLock { $0.downloadRequests }
+  }
+
   /// `removeLeftoverDownloads()` 가 불린 횟수.
   public var leftoverCleanupCount: Int {
     self.state.withLock { $0.leftoverCleanupCount }
@@ -89,7 +106,7 @@ public final class DownloadClientFake: DownloadClient {
     }
   }
 
-  /// 이후 `download` 가 `progress` 를 순서대로 알린 뒤 `result` 로 끝난다. `result` 가 nil 이면 `.fake(index: k)`.
+  /// 이후 `download` 가 `progress` 를 순서대로 알린 뒤 `result` 로 끝난다. `result` 가 nil 이면 `.fake(index: k, name:)`.
   /// 결과는 끝날 때의 설정을 쓴다.
   public func setDownloadScript(
     progress: [DownloadProgress],
@@ -188,10 +205,12 @@ public final class DownloadClientFake: DownloadClient {
   /// k 는 기록할 때 같은 lock 안에서 정하므로, 멈춘 호출을 어떤 순서로 깨워도 먼저 들어온 호출이 `.fake(index: 1)` 이다.
   public func download(
     _ url: DownloadURL,
+    savingAs name: DownloadedFileName,
     onProgress: @escaping @Sendable (DownloadProgress) async -> Void
   ) async throws(DownloadError) -> DownloadedFile {
     let (index, script) = self.state.withLock { state in
       state.calls.append(.download(url.url))
+      state.downloadRequests.append(DownloadRequest(url: url, name: name))
       state.downloadCount += 1
       return (state.downloadCount, state.downloadProgress)
     }
@@ -216,7 +235,7 @@ public final class DownloadClientFake: DownloadClient {
     }
     let key = Self.fetchKey(url)
     let result = self.state
-      .withLock { $0.downloadResultsByURL[key] ?? $0.downloadResult } ?? .success(.fake(index: index))
+      .withLock { $0.downloadResultsByURL[key] ?? $0.downloadResult } ?? .success(.fake(index: index, name: name))
     return try result.get()
   }
 
