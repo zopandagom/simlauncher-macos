@@ -31,7 +31,7 @@ struct RecordingFileNameTests {
       timeZone: Self.seoul
     )
     #expect(name.fileName(attempt: 1) == "iPhone 17 Pro Max (iOS 26.5) 2026-10-25 14.21.33.mov")
-    #expect(RecordingFileName.fileExtension == "mov")
+    #expect(name.fileExtension == "mov")
   }
 
   @Test("번호: 1 은 번호 없음, 2…99 는 확장자 앞에 번호, 그 밖은 nil")
@@ -48,5 +48,31 @@ struct RecordingFileNameTests {
     #expect(name.fileName(attempt: 99) == "iPhone (iOS 26.5) 2026-10-25 14.21.33 99.mov")
     #expect(name.fileName(attempt: 0) == nil)
     #expect(name.fileName(attempt: 100) == nil)
+  }
+
+  @Test("Android(mp4): 같은 stem 에 확장자만 mp4, 번호 규칙도 같다")
+  func mpeg4Container() {
+    let name = RecordingFileName(
+      deviceName: "Pixel",
+      runtimeName: "API 37.0",
+      startedAt: Self.startedAt,
+      timeZone: Self.seoul,
+      container: .mpeg4
+    )
+    let quickTime = RecordingFileName(
+      deviceName: "Pixel",
+      runtimeName: "API 37.0",
+      startedAt: Self.startedAt,
+      timeZone: Self.seoul
+    )
+    #expect(name.stem == quickTime.stem)
+    #expect(name.fileExtension == "mp4")
+    #expect(quickTime.fileExtension == "mov")
+    #expect(RecordingContainer.quickTime.fileExtension == "mov")
+    #expect(RecordingContainer.mpeg4.fileExtension == "mp4")
+    #expect(name.fileName(attempt: 1) == "Pixel (API 37.0) 2026-10-25 14.21.33.mp4")
+    #expect(name.fileName(attempt: 2) == "Pixel (API 37.0) 2026-10-25 14.21.33 2.mp4")
+    #expect(name.fileName(attempt: 100) == nil)
+    #expect(name != quickTime)
   }
 }
