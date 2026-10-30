@@ -46,6 +46,24 @@ struct DownloadClientImplTests {
     StubURLProtocol.expectNoUnregisteredRequests()
   }
 
+  @Test("이름 .apk 면 <folder>/download.apk 에 받고 권한 0o600")
+  func successAsAPK() async throws {
+    let tmp = try TemporaryDirectory()
+    defer { tmp.remove() }
+    let url = StubURLProtocol.registerDownload(
+      .respond(status: 200, headers: ["Content-Length": "3000"], chunks: Self.chunks, finish: true)
+    )
+
+    let downloaded = try await tmp.client().download(url, savingAs: .apk) { _ in }
+
+    #expect(try Data(contentsOf: downloaded.file) == Self.body)
+    #expect(downloaded.file.lastPathComponent == "download.apk")
+    #expect(downloaded.file.deletingLastPathComponent().path(percentEncoded: false) == downloaded.folder
+      .path(percentEncoded: false))
+    #expect(mode(downloaded.file) == 0o600)
+    StubURLProtocol.expectNoUnregisteredRequests()
+  }
+
   @Test("Content-Length 가 없으면 진행의 전체가 nil 이고 성공한다")
   func successWithoutContentLength() async throws {
     let tmp = try TemporaryDirectory()

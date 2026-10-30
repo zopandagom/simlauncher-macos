@@ -1,13 +1,11 @@
 import Foundation
 import Synchronization
 
-/// `download(_:onProgress:)` 이 쓰는 `SimLauncher-Download-<UUID>` 임시 폴더의 이름 등록과 삭제.
+/// `download(_:savingAs:onProgress:)` 이 쓰는 `SimLauncher-Download-<UUID>` 임시 폴더의 이름 등록과 삭제.
 /// 폴더를 만들기 전에 이름을 등록하므로, 남은 폴더 정리가 지금 받는 중인 폴더를 지우지 않는다.
 /// 등록은 이 프로세스 안에서만 유효하다.
 final class DownloadFolders: Sendable {
   static let prefix = "SimLauncher-Download-"
-  /// 폴더 안의 받은 파일 이름. 서버가 준 이름을 쓰지 않는다.
-  static let fileName = "download"
 
   private let temporaryDirectory: URL
   private let live = Mutex<Set<String>>([])
