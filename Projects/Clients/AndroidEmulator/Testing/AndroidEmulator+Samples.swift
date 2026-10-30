@@ -90,3 +90,8 @@ public extension AndroidDeviceInventory {
   /// 기기 없음, 선택지 `sample`.
   static let emptySample = AndroidDeviceInventory(devices: [], creationOptions: .sample)
 }
+
+public extension AndroidDeviceTraits {
+  /// 설계 실측 기기: API 37, `arm64-v8a` 만 (32비트 ABI 없음).
+  static let sample = AndroidDeviceTraits(apiLevel: 37, abis: ["arm64-v8a"])
+}
