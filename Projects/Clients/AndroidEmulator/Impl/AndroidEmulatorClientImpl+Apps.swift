@@ -107,7 +107,8 @@ public extension AndroidEmulatorClientImpl {
   }
 
   /// adb 앱 명령 하나 (`ADBCommand` 와 같은 환경). 시작 실패는 `.adbUnavailable`, 취소는 `.cancelled`, 시간 초과는 `timedOut`.
-  private func runApp(
+  /// 화면 캡처(`+Capture`)도 쓴다.
+  internal func runApp(
     _ arguments: [String],
     tools: SDKTools,
     timeout: Duration? = nil,
