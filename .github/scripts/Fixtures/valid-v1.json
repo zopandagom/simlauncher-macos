@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "apps": [
+    {
+      "id": "com.zopandagom.simlauncher.sampleapp",
+      "name": "SimLauncher Sample",
+      "versions": [
+        {
+          "id": "sample-build-300",
+          "name": "1.0.0 (4)",
+          "branch": "feature/login",
+          "tag": "sample-build-300",
+          "buildNumber": "4",
+          "createdAt": "2026-10-23T12:05:00Z",
+          "buildURL": "https://github.com/zopandagom/simlauncher-macos/releases/download/sample-build-300/SampleApp.zip"
+        },
+        {
+          "id": "sample-build-290",
+          "name": "1.0.0 (3)",
+          "branch": "main",
+          "tag": "sample-build-290",
+          "buildNumber": "3",
+          "createdAt": "2026-10-23T11:30:00Z",
+          "buildURL": "https://github.com/zopandagom/simlauncher-macos/releases/download/sample-build-290/SampleApp.zip"
+        },
+        {
+          "id": "sample-build-200",
+          "name": "sample-build-200",
+          "tag": "sample-build-200",
+          "createdAt": "2026-10-22T09:00:00Z",
+          "buildURL": "https://github.com/zopandagom/simlauncher-macos/releases/download/sample-build-200/SampleApp.zip"
+        },
+        {
+          "id": "sample-build-150",
+          "name": "1.0.0 (2)",
+          "tag": "sample-build-150",
+          "buildNumber": "2",
+          "createdAt": "2026-10-21T09:00:00Z",
+          "buildURL": "https://github.com/zopandagom/simlauncher-macos/releases/download/sample-build-150/SampleApp.zip"
+        }
+      ]
+    }
+  ]
+}
