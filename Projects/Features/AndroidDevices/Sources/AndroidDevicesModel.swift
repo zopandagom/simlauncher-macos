@@ -1,6 +1,7 @@
 import AndroidEmulatorInterface
 import AndroidPackageInterface
 import Core
+import DownloadInterface
 import Foundation
 import Observation
 
@@ -11,8 +12,9 @@ import Observation
 /// 상태는 바깥(잠금 파일·adb)에서 정해지므로, 앱 작업 없이 "켜는 중" 인 기기가 있으면 화면이 보이는 동안 2초마다 다시 읽고
 /// (`viewDisappeared()` 면 멈춘다), 앱 활성화 때 다시 읽은 뒤 3초 뒤 한 번 더 읽는다 (창을 닫은 직후 adb 가 아직 켜짐으로 답한 경우).
 /// 모든 다시 읽기는 한 경로로 모아, 읽는 중에 온 요청은 지금 읽기가 끝난 뒤 한 번 더 읽는다.
-/// 켜진 기기에는 로컬 apk 를 설치·실행하고(파일 고르기·드롭), 설치한 앱을 골라 실행하고, 링크를 연다. 설치 흐름은
-/// `AndroidAppInstallFlow` 가 잇는다.
+/// 켜진 기기에는 로컬 apk(파일 고르기·드롭)나 URL·카탈로그에서 받은 apk(`AndroidDownloadInstallModel` 의 요청을 App 이 넘긴다.
+/// 받기는 Model 이 소유하고 행에 진행·취소)를 설치·실행하고, 설치한 앱을 골라 실행하고, 링크를 연다. Client 호출은 흐름 타입이
+/// 맡는다: 기기 명령은 `AndroidDeviceCommandFlow`, 앱 작업은 `AndroidAppInstallFlow`.
 /// Android 도구(SDK) 상태 확인·설치는 여기서 하지 않고, "Android 도구" 버튼으로 App 에 도구 화면을 요청한다.
 /// 상태를 바꾸지 않는 읽기 API(`canCreateDevice` 등)는 `AndroidDevicesModel+Reading.swift` 에 있다.
 @MainActor
@@ -41,8 +43,15 @@ public final class AndroidDevicesModel {
   public private(set) var launchAppDraft: AndroidLaunchAppDraft?
 
   @ObservationIgnored private let emulator: any AndroidEmulatorClient
-  /// 앱 설치·실행·링크 열기 흐름. 진행 기록을 시작한 Model 메서드 안에서만 부른다.
+  /// 받기(흐름 둘과 화면을 열 때 남은 받기 폴더 정리). App 이 Launcher 와 같은 인스턴스를 넣는다.
+  @ObservationIgnored private let download: any DownloadClient
+  /// 기기 명령·앱 작업 흐름. 진행 기록을 시작한 Model 메서드 안에서만 부른다.
+  @ObservationIgnored private let commandFlow: AndroidDeviceCommandFlow
   @ObservationIgnored private let appFlow: AndroidAppInstallFlow
+  /// 기기별 받기 작업. Model 이 소유해 받기 취소(`downloadCancelTapped(_:)`)가 이것만 멈춘다. 결과를 받은 직후 지운다.
+  @ObservationIgnored private var downloadTasks: [
+    AndroidVirtualDevice.ID: Task<Result<DownloadedFile, DownloadError>, Never>
+  ] = [:]
   /// 앱 실행 시트의 목록 불러오기 번호. 늦게 온 앞 결과를 버리는 기준이다.
   @ObservationIgnored private var nextLaunchListRequest = 0
   /// "Android 도구" 버튼(툴바, 빈 화면·안내 줄의 "Android 도구 열기", 목록 읽기 실패 화면)을 눌렀을 때 부른다.
@@ -69,21 +78,26 @@ public final class AndroidDevicesModel {
   public init(
     emulator: any AndroidEmulatorClient,
     package: any AndroidPackageClient,
+    download: any DownloadClient,
     setupRequested: @escaping @MainActor () -> Void = {},
     sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
   ) {
     self.emulator = emulator
-    self.appFlow = AndroidAppInstallFlow(emulator: emulator, package: package)
+    self.download = download
+    self.commandFlow = AndroidDeviceCommandFlow(emulator: emulator)
+    self.appFlow = AndroidAppInstallFlow(emulator: emulator, package: package, download: download)
     self.setupRequested = setupRequested
     self.sleep = sleep
   }
 
   // MARK: - 화면·다시 읽기
 
-  /// 목록을 읽는다. Android 도구 화면에서 돌아올 때마다 새로 만들어진 View 가 부른다.
+  /// 목록을 읽고, 남은 받기 폴더를 지운다 (같은 Download 인스턴스라 지금 받는 폴더는 건너뛴다). Android 도구 화면에서 돌아올
+  /// 때마다 새로 만들어진 View 가 부른다.
   public func onAppear() async {
     self.isVisible = true
     await self.reload()
+    await self.download.removeLeftoverDownloads()
   }
 
   /// View 가 사라졌다 (칸을 옮기거나 Android 도구 화면으로 갔다). 자동 다시 읽기를 멈춘다.
@@ -146,7 +160,7 @@ public extension AndroidDevicesModel {
           self.activity.begin(.boot, on: device)
     else { return }
     defer { self.taskEnded(on: id) }
-    await self.bootAndReport(device)
+    await self.commandFlow.bootAndReport(device, host: self.appHost)
   }
 
   /// 툴바 "선택한 기기 켜기": 고른 기기 중 켤 수 있는 기기를 동시에 켠다 (켜져 있거나 작업 중·쓸 수 없는 기기는 알리지 않고
@@ -156,7 +170,7 @@ public extension AndroidDevicesModel {
     guard start.begun.count > 1 else {
       guard let device = start.begun.first else { return }
       defer { self.taskEnded(on: device.id, owner: start.owner) }
-      return await self.bootAndReport(device)
+      return await self.commandFlow.bootAndReport(device, host: self.appHost)
     }
     let errors = await withTaskGroup(of: (AndroidVirtualDevice.ID, AndroidEmulatorError?).self) { group in
       for device in start.begun {
@@ -184,12 +198,7 @@ public extension AndroidDevicesModel {
           self.activity.begin(.shutdown, on: device)
     else { return }
     defer { self.taskEnded(on: id) }
-    do throws(AndroidEmulatorError) {
-      try await self.emulator.shutdown(id)
-    } catch {
-      self.enqueue(.shutdownFailed(AndroidDeviceLabel(device), error))
-    }
-    await self.reload()
+    await self.commandFlow.shutdown(device, host: self.appHost)
   }
 
   // MARK: - 만들기
@@ -228,12 +237,12 @@ public extension AndroidDevicesModel {
     self.creationDraft = nil
     self.isCreating = true
     defer { self.isCreating = false }
-    do throws(AndroidEmulatorError) {
-      let id = try await self.emulator.create(displayName: name, image: draft.image, profile: draft.profile)
-      // 다시 읽은 목록에 있으면 남는다 (`reload` 가 목록에 없는 선택을 뺀다).
+    let label = AndroidDeviceLabel(name: name, apiLabel: draft.image.apiLabel)
+    if let id = await self.commandFlow.create(
+      name: name, image: draft.image, profile: draft.profile, label: label, host: self.appHost
+    ) {
+      // 다시 읽은 목록에 있으면 남는다 (`reload` 가 목록에 없는 선택을 뺀다). 그래서 고른 뒤에 다시 읽는다.
       self.selection = [id]
-    } catch {
-      self.enqueue(.createFailed(AndroidDeviceLabel(name: name, apiLabel: draft.image.apiLabel), error))
     }
     await self.reload()
   }
@@ -274,19 +283,7 @@ public extension AndroidDevicesModel {
     // 남은 거절은 기다리는 동안 쓸 수 없게 된 경우뿐이다 (드묾). 행이 이유를 보인다.
     guard self.activity.begin(confirmation.action.task, on: device) else { return }
     defer { self.taskEnded(on: device.id) }
-    do throws(AndroidEmulatorError) {
-      switch confirmation.action {
-      case .delete:
-        if case let .folderKept(folder) = try await self.emulator.delete(device.id) {
-          self.enqueue(.folderKept(confirmation.device, folder))
-        }
-      case .erase:
-        try await self.emulator.erase(device.id)
-      }
-    } catch {
-      self.enqueue(confirmation.failedNotice(error))
-    }
-    await self.reload()
+    await self.commandFlow.deleteOrErase(confirmation, device: device, host: self.appHost)
   }
 
   // MARK: - 앱 설치
@@ -300,6 +297,36 @@ public extension AndroidDevicesModel {
   func appDropped(_ urls: [URL], on id: AndroidVirtualDevice.ID) async {
     guard !urls.isEmpty else { return }
     await self.installApp(urls, on: id)
+  }
+
+  /// App 이 `AndroidDownloadInstallModel` 의 요청을 넘긴다. 지금 목록으로 대상을 확인하고(없음·막힘이면 알림, 다른 작업 중이면
+  /// 행이 진행 중을 보여 알림 없이 끝), Model 이 소유한 Task 로 받은 뒤(행에 진행·취소) 검사·설치·실행한다. 받기 시작과 Task 저장
+  /// 사이에 await 를 두지 않는다 (취소가 Task 를 놓치지 않게).
+  func downloadInstallRequested(_ request: AndroidDownloadInstallRequest) async {
+    let host = self.appHost
+    guard let device = self.appFlow.target(request.deviceID, host: host, failed: {
+      .installFailed(request.device, .init($0))
+    }), self.activity.beginDownload(on: device) else { return }
+    let id = device.id
+    defer { self.taskEnded(on: id) }
+    let download = self.download
+    let onProgress: @Sendable (DownloadProgress) async -> Void = { @MainActor progress in
+      self.activity.downloadProgressed(progress, on: id)
+    }
+    let task = Task { await download.downloadResult(request.url, savingAs: .apk, onProgress: onProgress) }
+    self.downloadTasks[id] = task
+    let result = await task.value
+    self.downloadTasks[id] = nil
+    let cancelRequested = self.activity.isDownloadCancelRequested(on: id)
+    self.activity.downloadEnded(on: id)
+    await self.appFlow.installDownloaded(result, cancelRequested: cancelRequested, request: request, host: host)
+  }
+
+  /// 행의 받기 취소: 받는 중일 때만 받기를 멈춘다. 받기가 막 끝났어도(늦은 취소) 받은 파일을 지우고 알림 없이 끝난다.
+  /// 받기가 끝난 뒤(검사·설치 중)에는 아무 일도 하지 않는다.
+  func downloadCancelTapped(_ id: AndroidVirtualDevice.ID) {
+    guard self.activity.requestDownloadCancel(on: id) else { return }
+    self.downloadTasks[id]?.cancel()
   }
 
   // MARK: - 앱 실행
@@ -344,7 +371,9 @@ public extension AndroidDevicesModel {
     guard let draft = self.launchAppDraft, draft.canSubmit, let package = draft.selection else { return }
     // 첫 await 전에 닫아, 연타해도 두 번째 호출은 위에서 끝난다.
     self.launchAppDraft = nil
-    guard let device = self.appTarget(draft.deviceID, failed: { .launchFailed(draft.device, $0) }) else { return }
+    guard let device = self.appFlow.target(draft.deviceID, host: self.appHost, failed: {
+      .launchFailed(draft.device, $0)
+    }) else { return }
     // 남은 거절은 같은 기기의 다른 작업뿐이다. 시트가 창을 막아 드물고, 행의 진행 표시가 이유를 보인다.
     guard self.activity.begin(.launchApp, on: device) else { return }
     defer { self.taskEnded(on: device.id) }
@@ -379,7 +408,9 @@ public extension AndroidDevicesModel {
     // 링크에 문제가 있으면 버튼이 비활성이라 드물다. 시트와 입력은 그대로 둔다.
     guard let draft = self.openURLDraft, let link = draft.link else { return }
     self.openURLDraft = nil
-    guard let device = self.appTarget(draft.deviceID, failed: { .openURLFailed(draft.device, $0) }) else { return }
+    guard let device = self.appFlow.target(draft.deviceID, host: self.appHost, failed: {
+      .openURLFailed(draft.device, $0)
+    }) else { return }
     guard self.activity.begin(.openURL, on: device) else { return }
     defer { self.taskEnded(on: device.id) }
     await self.appFlow.openURL(link, on: device.id, label: draft.device, host: self.appHost)
@@ -426,31 +457,11 @@ extension AndroidDevicesModel {
 
   /// 앱 실행 시트의 목록을 읽어, 그 초안이 아직 이 번호를 기다리면 반영한다 (닫혔거나 다시 불러왔으면 버린다).
   private func loadLaunchPackages(on id: AndroidVirtualDevice.ID, request: Int) async {
-    let result: Result<[AndroidPackageName], AndroidEmulatorError>
-    do throws(AndroidEmulatorError) {
-      result = try await .success(self.emulator.installedPackages(on: id))
-    } catch {
-      result = .failure(error)
-    }
+    let result = await self.appFlow.installedPackages(on: id)
     self.launchAppDraft?.packagesLoaded(result, request: request)
   }
 
-  /// 시트를 연 사이 바뀌었을 수 있는 대상 기기를 지금 목록으로 확인한다. 안 되면 `failed` 로 만든 알림을 쌓고 nil.
-  private func appTarget(
-    _ id: AndroidVirtualDevice.ID,
-    failed: (AndroidAppActionFailure) -> AndroidDevicesNotice
-  ) -> AndroidVirtualDevice? {
-    let target = self.appFlow.target(id, in: self.listState)
-    guard case let .ready(device) = target else {
-      if let failure = target.failure {
-        self.enqueue(failed(failure))
-      }
-      return nil
-    }
-    return device
-  }
-
-  /// 앱 흐름이 Model 상태에 닿는 창구. 부를 때마다 만들어 넘기고 흐름 타입은 저장하지 않는다.
+  /// 흐름(기기 명령·앱 작업)이 Model 상태에 닿는 창구. 부를 때마다 만들어 넘기고 흐름 타입은 저장하지 않는다.
   private var appHost: AndroidAppInstallFlow.Host {
     AndroidAppInstallFlow.Host(
       enqueue: { self.enqueue($0) },
@@ -467,32 +478,15 @@ extension AndroidDevicesModel {
     self.noticeQueue.enqueue(notice)
   }
 
-  /// 켜고, 실패하면 알림을 쌓은 뒤, 결과와 관계없이 다시 읽는다 (행 켜기·한 대 함께 켜기).
-  private func bootAndReport(_ device: AndroidVirtualDevice) async {
-    if let error = await self.boot(device.id) {
-      self.enqueue(.bootFailed(AndroidDeviceLabel(device), error))
-    }
-    await self.reload()
-  }
-
   /// 함께 켜기의 기기 한 대: 켜고 다시 읽은 뒤 그 행을 푼다 (먼저 켜진 행이 꺼짐으로 남지 않게 다시 읽기가 먼저다).
   private func bootMember(_ device: AndroidVirtualDevice, owner: Int) async -> (
     AndroidVirtualDevice.ID,
     AndroidEmulatorError?
   ) {
-    let error = await self.boot(device.id)
+    let error = await self.commandFlow.boot(device.id)
     await self.reload()
     self.taskEnded(on: device.id, owner: owner)
     return (device.id, error)
-  }
-
-  private func boot(_ id: AndroidVirtualDevice.ID) async -> AndroidEmulatorError? {
-    do throws(AndroidEmulatorError) {
-      try await self.emulator.boot(id)
-      return nil
-    } catch {
-      return error
-    }
   }
 
   /// 작업 기록을 지우고, 그 기기가 앱 밖 켜는 중으로 남았으면(켜기 시간 초과 등) 자동 다시 읽기를 시작한다.
@@ -567,27 +561,6 @@ extension AndroidDevicesModel {
       // 다시 읽기가 끝나면 다음 기다림을 새로 정한다.
       self.autoRefreshTask = nil
       await self.reload()
-    }
-  }
-
-  private var hasBootingDeviceWithoutTask: Bool {
-    guard case let .loaded(list) = self.listState else { return false }
-    return list.devices.contains { $0.state == .booting && self.activity.task(on: $0.id) == nil }
-  }
-}
-
-private extension AndroidDevicesNotice {
-  /// 알림에 담긴 에러 (정보 알림·함께 켜기 결과·검사·판정·기기 상태 실패는 nil).
-  var error: AndroidEmulatorError? {
-    switch self {
-    case let .refreshFailed(error), let .bootFailed(_, error), let .shutdownFailed(_, error),
-         let .createFailed(_, error), let .deleteFailed(_, error), let .eraseFailed(_, error):
-      error
-    case let .installedButNotLaunched(_, error), let .installFailed(_, .emulator(error)),
-         let .launchFailed(_, .emulator(error)), let .openURLFailed(_, .emulator(error)):
-      error
-    case .folderKept, .batchBootFinished, .installFailed, .launchFailed, .openURLFailed:
-      nil
     }
   }
 }

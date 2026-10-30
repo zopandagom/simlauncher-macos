@@ -7,8 +7,10 @@ import UniformTypeIdentifiers
 /// 화면 문자열은 `AndroidDevicesText` 가 이 모듈의 `Localizable.xcstrings` 에서 찾는다.
 /// 목록은 ⌘·⇧ 클릭으로 여러 기기를 고를 수 있고(선택은 Model 상태), 툴바의 "선택한 기기 켜기" 가 고른 기기를 함께 켠다.
 /// 행의 버튼·메뉴·드롭은 그 행 한 대에만 동작한다. 사라질 때(`onDisappear`) 자동 다시 읽기를 멈추게 알린다.
+/// 행 "앱 설치" 메뉴의 "URL 에서…"·"카탈로그에서…" 시트는 `downloadModel`(App 소유)의 초안으로 띄운다.
 public struct AndroidDevicesView: View {
   let model: AndroidDevicesModel
+  let downloadModel: AndroidDownloadInstallModel
   /// 지금 띄운 알림. 닫히는 동안 Model 의 줄에서 빠져도 글자가 비지 않도록 View 가 들고 있는다.
   @State private var presentedNotice: AndroidDevicesNoticeItem?
   /// 알림을 띄웠는지. 다음 알림을 띄울 때 false → true 전이가 생기도록 Model 의 줄과 따로 둔다.
@@ -19,8 +21,9 @@ public struct AndroidDevicesView: View {
   @State private var importTarget: AndroidVirtualDevice.ID?
   @State private var isImporterPresented = false
 
-  public init(model: AndroidDevicesModel) {
+  public init(model: AndroidDevicesModel, downloadModel: AndroidDownloadInstallModel) {
     self.model = model
+    self.downloadModel = downloadModel
   }
 
   public var body: some View {
@@ -132,6 +135,7 @@ public struct AndroidDevicesView: View {
       ) {
         AndroidOpenURLSheet(model: self.model)
       }
+      .modifier(AndroidDownloadSheets(model: self.downloadModel))
       .confirmationDialog(
         AndroidDevicesText.confirmationTitle(for: self.model.confirmation ?? self.presentedConfirmation),
         isPresented: Binding(
@@ -301,6 +305,7 @@ extension AndroidDevicesView {
     AndroidDeviceRow(
       device: device,
       task: self.model.activity.task(on: device.id),
+      downloadStage: self.model.activity.downloadStage(on: device.id),
       bootTapped: {
         Task { await self.model.bootTapped(device.id) }
       },
@@ -316,6 +321,15 @@ extension AndroidDevicesView {
       installFromFileTapped: {
         self.importTarget = device.id
         self.isImporterPresented = true
+      },
+      installFromURLTapped: {
+        self.downloadModel.urlMenuTapped(device)
+      },
+      installFromCatalogTapped: {
+        Task { await self.downloadModel.catalogMenuTapped(device) }
+      },
+      cancelDownloadTapped: {
+        self.model.downloadCancelTapped(device.id)
       },
       appDropped: { urls in
         Task { await self.model.appDropped(urls, on: device.id) }
@@ -344,5 +358,39 @@ extension AndroidDevicesView {
         : self.model.canBootSelection
         ? AndroidDevicesText.bootSelectionHelp : AndroidDevicesText.bootSelectionUnavailable
     )
+  }
+}
+
+/// 행 "URL 에서…"·"카탈로그에서…" 시트. `AndroidDownloadInstallModel` 이 둘이 함께 열리지 않게 막고, 기기 목록의 시트·확인
+/// 대화상자와의 겹침은 모달 시트가 막는다. 닫기는 `Binding(get:set:)` 으로 Model 의 이벤트에 잇는다.
+private struct AndroidDownloadSheets: ViewModifier {
+  let model: AndroidDownloadInstallModel
+
+  func body(content: Content) -> some View {
+    content
+      .sheet(
+        isPresented: Binding(
+          get: { self.model.urlDraft != nil },
+          set: { isPresented in
+            if !isPresented {
+              self.model.urlSheetDismissed()
+            }
+          }
+        )
+      ) {
+        AndroidInstallURLSheet(model: self.model)
+      }
+      .sheet(
+        isPresented: Binding(
+          get: { self.model.catalogDraft != nil },
+          set: { isPresented in
+            if !isPresented {
+              self.model.catalogSheetDismissed()
+            }
+          }
+        )
+      ) {
+        AndroidCatalogInstallSheet(model: self.model)
+      }
   }
 }

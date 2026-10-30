@@ -1,6 +1,7 @@
 import AndroidEmulatorInterface
 import AndroidPackageInterface
 import Core
+import DownloadInterface
 import Foundation
 
 /// Android 기기 목록 화면의 상태.
@@ -46,7 +47,7 @@ public enum AndroidDevicesNotice: Hashable, Sendable {
   case folderKept(AndroidDeviceLabel, URL)
   /// 함께 켜기의 기기별 결과. 실패가 하나라도 있을 때만 쌓는다.
   case batchBootFinished(AndroidBatchBootReport)
-  /// apk 를 설치하지 못했다 (검사·판정·기기 상태·설치 명령).
+  /// apk 를 설치하지 못했다 (받기·검사·판정·기기 상태·설치 명령).
   case installFailed(AndroidDeviceLabel, AndroidAppInstallFailure)
   /// 설치는 했지만 실행하지 못했다.
   case installedButNotLaunched(AndroidDeviceLabel, AndroidEmulatorError)
@@ -68,6 +69,49 @@ public enum AndroidAppInstallFailure: Hashable, Sendable {
   case deviceNotReady(AndroidAppActionBlockReason)
   /// 기기 값 읽기·설치 명령 실패. 기기가 목록에서 사라졌으면 `.deviceNotFound`.
   case emulator(AndroidEmulatorError)
+  /// URL·카탈로그에서 받기 실패 (주소·네트워크·저장 공간). 출처가 문구를 고른다.
+  case download(DownloadError, origin: AndroidDownloadOrigin)
+  /// 받은 파일의 apk 검사 실패. `isWebPage` 는 `.unreadable` 이고 응답 형식이 웹 페이지(text/html·application/xhtml+xml)일 때만
+  /// true 다 (iOS 와 같은 판정. apk 인지는 내용으로 정하고, 형식은 문구만 고른다).
+  case downloadedPackage(AndroidPackageError, isWebPage: Bool, origin: AndroidDownloadOrigin)
+}
+
+extension AndroidAppInstallFailure {
+  /// 받은 파일의 검사 실패를 응답 형식과 함께 옮긴다. 웹 페이지 여부는 `.unreadable` 일 때만 본다.
+  init(downloaded error: AndroidPackageError, mimeType: String?, origin: AndroidDownloadOrigin) {
+    let webPageTypes: Set = ["text/html", "application/xhtml+xml"]
+    let isWebPage = error == .unreadable && webPageTypes.contains(mimeType?.lowercased() ?? "")
+    self = .downloadedPackage(error, isWebPage: isWebPage, origin: origin)
+  }
+}
+
+/// 받아서 설치할 주소가 어디서 왔는지. 받기·받은 파일 실패 문구만 고른다 (주소 쪽 다음 할 일이 입력한 사람 / 카탈로그를 만든 사람).
+public enum AndroidDownloadOrigin: Hashable, Sendable {
+  /// "URL 에서…" 시트에 입력한 주소.
+  case enteredURL
+  /// "카탈로그에서…" 시트에서 고른 버전의 빌드 주소.
+  case catalog
+}
+
+/// `AndroidDownloadInstallModel` 이 App 을 거쳐 `AndroidDevicesModel.downloadInstallRequested(_:)` 에 넘기는 설치 요청.
+public struct AndroidDownloadInstallRequest: Hashable, Sendable {
+  public let deviceID: AndroidVirtualDevice.ID
+  /// 시트를 연 시점의 기기 라벨 (알림에 쓴다).
+  public let device: AndroidDeviceLabel
+  public let url: DownloadURL
+  public let origin: AndroidDownloadOrigin
+
+  public init(
+    deviceID: AndroidVirtualDevice.ID,
+    device: AndroidDeviceLabel,
+    url: DownloadURL,
+    origin: AndroidDownloadOrigin
+  ) {
+    self.deviceID = deviceID
+    self.device = device
+    self.url = url
+    self.origin = origin
+  }
 }
 
 /// 앱 실행·링크 열기 실패 원인.
@@ -186,5 +230,21 @@ extension AndroidDeviceList {
   /// 목록에 보이는 모든 기기의 id (선택 정리에 쓴다).
   var deviceIDs: Set<AndroidVirtualDevice.ID> {
     Set(self.devices.map(\.id))
+  }
+}
+
+extension AndroidDevicesNotice {
+  /// 알림에 담긴 기기 명령 에러 (정보 알림·함께 켜기 결과·검사·판정·기기 상태·받기 실패는 nil). Model 이 취소를 거르는 데 쓴다.
+  var error: AndroidEmulatorError? {
+    switch self {
+    case let .refreshFailed(error), let .bootFailed(_, error), let .shutdownFailed(_, error),
+         let .createFailed(_, error), let .deleteFailed(_, error), let .eraseFailed(_, error):
+      error
+    case let .installedButNotLaunched(_, error), let .installFailed(_, .emulator(error)),
+         let .launchFailed(_, .emulator(error)), let .openURLFailed(_, .emulator(error)):
+      error
+    case .folderKept, .batchBootFinished, .installFailed, .launchFailed, .openURLFailed:
+      nil
+    }
   }
 }

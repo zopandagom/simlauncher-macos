@@ -37,3 +37,11 @@ public extension AndroidDevicesModel {
     self.selectedDevices.contains { self.activity.canStart(.boot, on: $0) }
   }
 }
+
+extension AndroidDevicesModel {
+  /// 목록에 앱 작업 없이 켜는 중인 기기가 있다 (자동 다시 읽기를 이어 가는 조건).
+  var hasBootingDeviceWithoutTask: Bool {
+    guard case let .loaded(list) = self.listState else { return false }
+    return list.devices.contains { $0.state == .booting && self.activity.task(on: $0.id) == nil }
+  }
+}
