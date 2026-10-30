@@ -148,6 +148,42 @@ struct AndroidEmulatorClientFakeTests {
     #expect(try await listing.value == [package])
   }
 
+  @Test("기기별 설정(traits·설치·실행 에러, 설치 멈춤)이 전체 설정보다 먼저이고 다른 기기는 전체 설정을 쓴다")
+  func perDeviceSettings() async throws {
+    let fake = AndroidEmulatorClientFake(inventory: .sample)
+    let tablet = AndroidVirtualDevice.bootedTabletSample.id
+    let phone = AndroidVirtualDevice.phoneSample.id
+    let apk = URL(filePath: "/Users/fake/app.apk")
+    let package = try #require(AndroidPackageName("com.example.app"))
+    let older = AndroidDeviceTraits(apiLevel: 30, abis: ["x86_64"])
+    fake.setDeviceTraits(.success(older), for: tablet)
+    fake.setInstallError(.installFailed(.olderSDK), for: tablet)
+    fake.setLaunchError(.launchFailed(.notInstalled), for: tablet)
+    fake.setInstallError(.installTimedOut)
+
+    #expect(try await fake.deviceTraits(tablet) == older)
+    #expect(try await fake.deviceTraits(phone) == .sample)
+    await #expect(throws: AndroidEmulatorError.installFailed(.olderSDK)) { try await fake.install(apk, on: tablet) }
+    await #expect(throws: AndroidEmulatorError.installTimedOut) { try await fake.install(apk, on: phone) }
+    await #expect(throws: AndroidEmulatorError.launchFailed(.notInstalled)) {
+      try await fake.launch(package, on: tablet)
+    }
+    try await fake.launch(package, on: phone)
+
+    fake.setInstallError(nil)
+    fake.setDeviceTraits(nil, for: tablet)
+    #expect(try await fake.deviceTraits(tablet) == .sample)
+    fake.suspendInstall(of: tablet)
+    let installing = Task { try await fake.install(apk, on: tablet) }
+    while !fake.calls.contains(.install(apk, tablet)) {
+      await Task.yield()
+    }
+    try await fake.install(apk, on: phone)
+    fake.setInstallError(nil, for: tablet)
+    fake.resumeInstall(of: tablet)
+    try await installing.value
+  }
+
   @Test("스크린샷: 기록하고 설정한 에러를 던진다, 멈춤은 재개까지 기다린다")
   func screenshot() async throws {
     let fake = AndroidEmulatorClientFake(inventory: .sample)

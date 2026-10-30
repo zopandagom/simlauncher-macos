@@ -12,7 +12,7 @@ import Synchronization
 /// - `delete` 는 성공하면 그 기기를 빼고 설정한 결과(기본 `.deleted`)를 돌려준다. 목록에 없는 기기여도 성공한다.
 /// - `erase` 는 성공해도 목록을 바꾸지 않는다.
 /// - 앱 작업(`deviceTraits`·`install`·`launch`·`openURL`·`installedPackages`·`screenshot`·`recordScreen`)은 설정한 결과만 돌려주고
-///   목록·기기 상태를 보지 않는다. 기본은 `AndroidDeviceTraits.sample`·성공·빈 앱 목록.
+///   목록·기기 상태를 보지 않는다. 기본은 `AndroidDeviceTraits.sample`·성공·빈 앱 목록. 기기별 설정(`…(_:for:)`)이 전체 설정보다 먼저다.
 /// - `screenshot`·`recordScreen` 은 파일을 만들거나 쓰지 않는다. `recordScreen` 은 기본으로 바로 시작 신호를 보내고 호출한 Task 가
 ///   취소될 때까지 기다린 뒤 `.saved` 를 돌려준다 (iOS `SimulatorClientFake.recordVideo` 와 같다).
 /// - 멈춤(`suspend…`) 중인 호출은 기록만 하고 재개까지 기다린다 (취소를 받지 않는다). 결과는 깨어난 뒤의 설정을 쓴다.
@@ -36,6 +36,7 @@ public final class AndroidEmulatorClientFake: AndroidEmulatorClient {
   private enum SuspendableCall: Hashable {
     case fetch, boot, shutdown, create, delete, erase, install, packageList, screenshot, recording
     case bootOf(AndroidVirtualDevice.ID)
+    case installOf(AndroidVirtualDevice.ID)
   }
 
   private struct State {
@@ -49,8 +50,11 @@ public final class AndroidEmulatorClientFake: AndroidEmulatorClient {
     var deleteResult: Result<AndroidDeleteOutcome, AndroidEmulatorError> = .success(.deleted)
     var eraseError: AndroidEmulatorError?
     var deviceTraits: Result<AndroidDeviceTraits, AndroidEmulatorError> = .success(.sample)
+    var deviceTraitsByDevice: [AndroidVirtualDevice.ID: Result<AndroidDeviceTraits, AndroidEmulatorError>] = [:]
     var installError: AndroidEmulatorError?
+    var installErrors: [AndroidVirtualDevice.ID: AndroidEmulatorError] = [:]
     var launchError: AndroidEmulatorError?
+    var launchErrors: [AndroidVirtualDevice.ID: AndroidEmulatorError] = [:]
     var screenshotError: AndroidEmulatorError?
     var recordingResult: Result<AndroidScreenRecordingResult, AndroidEmulatorError>?
     var recordingEndsByItself: Result<AndroidScreenRecordingResult, AndroidEmulatorError>?
@@ -192,14 +196,15 @@ public final class AndroidEmulatorClientFake: AndroidEmulatorClient {
   public func deviceTraits(_ id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError) -> AndroidDeviceTraits {
     self.record(.deviceTraits(id))
     await self.sleepIfNeeded()
-    return try self.state.withLock { $0.deviceTraits }.get()
+    return try self.state.withLock { $0.deviceTraitsByDevice[id] ?? $0.deviceTraits }.get()
   }
 
   public func install(_ apk: URL, on id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError) {
     self.record(.install(apk, id))
     await self.waitIfSuspended(.install)
+    await self.waitIfSuspended(.installOf(id))
     await self.sleepIfNeeded()
-    if let error = self.state.withLock({ $0.installError }) {
+    if let error = self.state.withLock({ $0.installErrors[id] ?? $0.installError }) {
       throw error
     }
   }
@@ -207,7 +212,7 @@ public final class AndroidEmulatorClientFake: AndroidEmulatorClient {
   public func launch(_ package: AndroidPackageName, on id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError) {
     self.record(.launch(package, id))
     await self.sleepIfNeeded()
-    if let error = self.state.withLock({ $0.launchError }) {
+    if let error = self.state.withLock({ $0.launchErrors[id] ?? $0.launchError }) {
       throw error
     }
   }
@@ -463,6 +468,30 @@ public extension AndroidEmulatorClientFake {
 
   func resumeInstalls() {
     self.resume(.install)
+  }
+
+  /// 이 기기의 `deviceTraits` 결과 (여러 기기 설치에서 기기마다 다르게). nil 이면 전체 설정을 쓴다.
+  func setDeviceTraits(_ result: Result<AndroidDeviceTraits, AndroidEmulatorError>?, for id: AndroidVirtualDevice.ID) {
+    self.state.withLock { $0.deviceTraitsByDevice[id] = result }
+  }
+
+  /// 이 기기의 `install` 에러. 전체 에러(`setInstallError(_:)`)보다 먼저다.
+  func setInstallError(_ error: AndroidEmulatorError?, for id: AndroidVirtualDevice.ID) {
+    self.state.withLock { $0.installErrors[id] = error }
+  }
+
+  /// 이 기기의 `launch` 에러. 전체 에러(`setLaunchError(_:)`)보다 먼저다.
+  func setLaunchError(_ error: AndroidEmulatorError?, for id: AndroidVirtualDevice.ID) {
+    self.state.withLock { $0.launchErrors[id] = error }
+  }
+
+  /// 이후 이 기기의 `install(_:on:)` 만 기록하고 `resumeInstall(of:)` 까지 기다린다 (다른 기기는 기다리지 않는다).
+  func suspendInstall(of id: AndroidVirtualDevice.ID) {
+    self.suspend(.installOf(id))
+  }
+
+  func resumeInstall(of id: AndroidVirtualDevice.ID) {
+    self.resume(.installOf(id))
   }
 
   func setScreenshotError(_ error: AndroidEmulatorError?) {
