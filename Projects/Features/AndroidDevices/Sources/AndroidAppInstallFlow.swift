@@ -5,7 +5,8 @@ import DownloadInterface
 import Foundation
 
 /// 앱 설치 흐름: (로컬이면 항목 수 / URL·카탈로그면 받은 결과) → apk 검사 → 지금 목록으로 대상 다시 확인 → 기기 값(API·ABI) →
-/// 판정 → 설치 → 실행 → 다시 읽기. 같은 창구를 쓰는 앱 실행(행 "앱 실행…")·그 목록 읽기와 링크 열기, 앱 작업 대상 확인도 맡는다.
+/// 판정 → 설치 → 실행 → 다시 읽기. 같은 창구를 쓰는 앱 실행(행 "앱 실행…")과 링크 열기, 앱 작업 대상 확인도 맡는다
+/// (그 시트와 앱 실행 시트의 목록 읽기는 `AndroidAppSheetsModel` 이 한다).
 /// `AndroidDevicesModel` 이 `private` 으로 소유하고, 진행 기록(`activity`)을 시작한 Model 메서드 안에서만 부른다.
 /// Client 는 직접 부르고, Model 상태에는 부를 때 넘겨받는 `Host` 창구로만 닿는다 (Model 상태를 직접 바꾸지 않는다).
 /// 모든 실패가 안에서 알림으로 끝나 던지지 않는다. 명령이 기기에 닿기 전의 실패(받기·검사·대상·판정)는 다시 읽지 않는다.
@@ -163,15 +164,6 @@ struct AndroidAppInstallFlow {
       host.enqueue(.openURLFailed(label, .emulator(error)))
     }
     await host.reload()
-  }
-
-  /// 행 "앱 실행…" 시트의 목록: 그 기기의 사용자 설치 앱. 실패도 값으로 돌려준다 (Model 은 결과만 초안에 넣는다).
-  func installedPackages(on id: AndroidVirtualDevice.ID) async -> Result<[AndroidPackageName], AndroidEmulatorError> {
-    do throws(AndroidEmulatorError) {
-      return try await .success(self.emulator.installedPackages(on: id))
-    } catch {
-      return .failure(error)
-    }
   }
 
   /// 시트를 연 사이 바뀌었을 수 있는 대상 기기를 지금 목록으로 확인한다. 안 되면 `failed` 로 만든 알림을 쌓고 nil.

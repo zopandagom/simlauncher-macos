@@ -13,8 +13,9 @@ import Observation
 /// (`viewDisappeared()` 면 멈춘다), 앱 활성화 때 다시 읽은 뒤 3초 뒤 한 번 더 읽는다 (창을 닫은 직후 adb 가 아직 켜짐으로 답한 경우).
 /// 모든 다시 읽기는 한 경로로 모아, 읽는 중에 온 요청은 지금 읽기가 끝난 뒤 한 번 더 읽는다.
 /// 켜진 기기에는 로컬 apk(파일 고르기·드롭)나 URL·카탈로그에서 받은 apk(`AndroidDownloadInstallModel` 의 요청을 App 이 넘긴다.
-/// 받기는 Model 이 소유하고 행에 진행·취소)를 설치·실행하고, 설치한 앱을 골라 실행하고, 링크를 연다. Client 호출은 흐름 타입이
-/// 맡는다: 기기 명령은 `AndroidDeviceCommandFlow`, 앱 작업은 `AndroidAppInstallFlow`.
+/// 받기는 Model 이 소유하고 행에 진행·취소)를 설치·실행하고, 설치한 앱을 골라 실행하고, 링크를 연다 (앱 실행·링크 열기 시트는
+/// `AndroidAppSheetsModel` 에 있고, 확정한 요청을 App 이 넘긴다). Client 호출은 흐름 타입이 맡는다: 기기 명령은
+/// `AndroidDeviceCommandFlow`, 앱 작업은 `AndroidAppInstallFlow`.
 /// Android 도구(SDK) 상태 확인·설치는 여기서 하지 않고, "Android 도구" 버튼으로 App 에 도구 화면을 요청한다.
 /// 상태를 바꾸지 않는 읽기 API(`canCreateDevice` 등)는 `AndroidDevicesModel+Reading.swift` 에 있다.
 @MainActor
@@ -37,10 +38,6 @@ public final class AndroidDevicesModel {
   public private(set) var confirmation: AndroidDeviceConfirmation?
   /// 목록에서 고른 기기 (⌘·⇧ 클릭). 툴바 "선택한 기기 켜기" 의 대상이고, 다시 읽은 목록에 없는 기기는 빠진다.
   public private(set) var selection: Set<AndroidVirtualDevice.ID> = []
-  /// 링크 열기 시트 초안. nil 이면 시트가 닫혀 있다.
-  public private(set) var openURLDraft: AndroidOpenURLDraft?
-  /// 앱 실행 시트 초안(기기에서 읽은 설치 앱 목록 포함). nil 이면 시트가 닫혀 있다.
-  public private(set) var launchAppDraft: AndroidLaunchAppDraft?
 
   @ObservationIgnored private let emulator: any AndroidEmulatorClient
   /// 받기(흐름 둘과 화면을 열 때 남은 받기 폴더 정리). App 이 Launcher 와 같은 인스턴스를 넣는다.
@@ -52,8 +49,8 @@ public final class AndroidDevicesModel {
   @ObservationIgnored private var downloadTasks: [
     AndroidVirtualDevice.ID: Task<Result<DownloadedFile, DownloadError>, Never>
   ] = [:]
-  /// 앱 실행 시트의 목록 불러오기 번호. 늦게 온 앞 결과를 버리는 기준이다.
-  @ObservationIgnored private var nextLaunchListRequest = 0
+  /// 앱 실행·링크 열기 시트(`AndroidAppSheetsModel`)가 떠 있는지. App 이 그 Model 의 `hasPresentedSheet` 로 잇는다.
+  @ObservationIgnored private let appSheetPresented: @MainActor () -> Bool
   /// "Android 도구" 버튼(툴바, 빈 화면·안내 줄의 "Android 도구 열기", 목록 읽기 실패 화면)을 눌렀을 때 부른다.
   /// App 이 Android 도구 화면을 다시 연다 (화면 간 흐름은 App 이 잇는다).
   @ObservationIgnored private let setupRequested: @MainActor () -> Void
@@ -80,6 +77,7 @@ public final class AndroidDevicesModel {
     package: any AndroidPackageClient,
     download: any DownloadClient,
     setupRequested: @escaping @MainActor () -> Void = {},
+    appSheetPresented: @escaping @MainActor () -> Bool = { false },
     sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
   ) {
     self.emulator = emulator
@@ -87,7 +85,14 @@ public final class AndroidDevicesModel {
     self.commandFlow = AndroidDeviceCommandFlow(emulator: emulator)
     self.appFlow = AndroidAppInstallFlow(emulator: emulator, package: package, download: download)
     self.setupRequested = setupRequested
+    self.appSheetPresented = appSheetPresented
     self.sleep = sleep
+  }
+
+  /// 시트(만들기·앱 실행·링크 열기)나 삭제·초기화 확인 대화상자가 떠 있다. 하나가 떠 있으면 다른 것을 열지 않는다.
+  /// 앱 실행·링크 열기 시트는 `AndroidAppSheetsModel` 에 있어 App 이 주입한 클로저로 본다 (클로저가 `private` 이라 이 파일에 둔다).
+  public var hasPresentedSheet: Bool {
+    self.creationDraft != nil || self.confirmation != nil || self.appSheetPresented()
   }
 
   // MARK: - 화면·다시 읽기
@@ -329,91 +334,29 @@ public extension AndroidDevicesModel {
     self.downloadTasks[id]?.cancel()
   }
 
-  // MARK: - 앱 실행
+  // MARK: - 앱 실행·링크 열기
 
-  /// 앱 실행 시트를 열고 그 기기의 사용자 설치 앱 목록을 읽는다. 읽기는 진행 기록 없이 한다 (기기를 바꾸지 않는다).
-  func launchAppTapped(_ id: AndroidVirtualDevice.ID) async {
-    guard case let .loaded(list) = self.listState,
-          let device = list.device(id: id),
-          self.activity.canStart(.launchApp, on: device),
-          !self.hasPresentedSheet
-    else { return }
-    self.nextLaunchListRequest += 1
-    let request = self.nextLaunchListRequest
-    self.launchAppDraft = AndroidLaunchAppDraft(deviceID: id, device: AndroidDeviceLabel(device), request: request)
-    await self.loadLaunchPackages(on: id, request: request)
-  }
-
-  /// 목록 읽기가 실패한 시트의 "다시 시도".
-  func launchAppRetryTapped() async {
-    guard let draft = self.launchAppDraft, case .failed = draft.packages else { return }
-    self.nextLaunchListRequest += 1
-    let request = self.nextLaunchListRequest
-    self.launchAppDraft?.reloadStarted(request: request)
-    await self.loadLaunchPackages(on: draft.deviceID, request: request)
-  }
-
-  func launchAppSelectionChanged(_ package: AndroidPackageName?) {
-    self.launchAppDraft?.selectionChanged(package)
-  }
-
-  func launchAppCancelTapped() {
-    self.launchAppDraft = nil
-  }
-
-  func launchAppSheetDismissed() {
-    self.launchAppDraft = nil
-  }
-
-  /// 시트를 닫고 고른 앱을 실행한 뒤 다시 읽는다. 기기는 시트를 연 사이 바뀌었을 수 있어 지금 목록으로 다시 확인한다
-  /// (명령 전 거절은 다시 읽지 않는다).
-  func launchAppConfirmTapped() async {
-    guard let draft = self.launchAppDraft, draft.canSubmit, let package = draft.selection else { return }
-    // 첫 await 전에 닫아, 연타해도 두 번째 호출은 위에서 끝난다.
-    self.launchAppDraft = nil
-    guard let device = self.appFlow.target(draft.deviceID, host: self.appHost, failed: {
-      .launchFailed(draft.device, $0)
+  /// App 이 `AndroidAppSheetsModel` 의 "실행" 요청을 넘긴다. 고른 앱을 실행한 뒤 다시 읽는다. 기기는 시트를 연 사이 바뀌었을
+  /// 수 있어 지금 목록으로 다시 확인한다 (명령 전 거절은 다시 읽지 않는다).
+  func launchAppRequested(_ request: AndroidLaunchAppRequest) async {
+    guard let device = self.appFlow.target(request.deviceID, host: self.appHost, failed: {
+      .launchFailed(request.device, $0)
     }) else { return }
     // 남은 거절은 같은 기기의 다른 작업뿐이다. 시트가 창을 막아 드물고, 행의 진행 표시가 이유를 보인다.
     guard self.activity.begin(.launchApp, on: device) else { return }
     defer { self.taskEnded(on: device.id) }
-    await self.appFlow.launch(package, on: device.id, label: draft.device, host: self.appHost)
+    await self.appFlow.launch(request.package, on: device.id, label: request.device, host: self.appHost)
   }
 
-  // MARK: - 링크 열기
-
-  func openURLTapped(_ id: AndroidVirtualDevice.ID) {
-    guard case let .loaded(list) = self.listState,
-          let device = list.device(id: id),
-          self.activity.canStart(.openURL, on: device),
-          !self.hasPresentedSheet
-    else { return }
-    self.openURLDraft = AndroidOpenURLDraft(deviceID: id, device: AndroidDeviceLabel(device))
-  }
-
-  func openURLTextChanged(_ text: String) {
-    self.openURLDraft?.textChanged(text)
-  }
-
-  func openURLCancelTapped() {
-    self.openURLDraft = nil
-  }
-
-  func openURLSheetDismissed() {
-    self.openURLDraft = nil
-  }
-
-  /// 시트를 닫고 링크를 연 뒤 다시 읽는다. 기기는 지금 목록으로 다시 확인한다 (명령 전 거절은 다시 읽지 않는다).
-  func openURLConfirmTapped() async {
-    // 링크에 문제가 있으면 버튼이 비활성이라 드물다. 시트와 입력은 그대로 둔다.
-    guard let draft = self.openURLDraft, let link = draft.link else { return }
-    self.openURLDraft = nil
-    guard let device = self.appFlow.target(draft.deviceID, host: self.appHost, failed: {
-      .openURLFailed(draft.device, $0)
+  /// App 이 `AndroidAppSheetsModel` 의 "열기" 요청을 넘긴다. 링크를 연 뒤 다시 읽는다. 기기는 지금 목록으로 다시 확인한다
+  /// (명령 전 거절은 다시 읽지 않는다).
+  func openURLRequested(_ request: AndroidOpenURLRequest) async {
+    guard let device = self.appFlow.target(request.deviceID, host: self.appHost, failed: {
+      .openURLFailed(request.device, $0)
     }) else { return }
     guard self.activity.begin(.openURL, on: device) else { return }
     defer { self.taskEnded(on: device.id) }
-    await self.appFlow.openURL(link, on: device.id, label: draft.device, host: self.appHost)
+    await self.appFlow.openURL(request.link, on: device.id, label: request.device, host: self.appHost)
   }
 
   // MARK: - 알림
@@ -453,12 +396,6 @@ extension AndroidDevicesModel {
     guard self.activity.begin(.installApp, on: device) else { return }
     defer { self.taskEnded(on: id) }
     await self.appFlow.install(items, on: id, label: label, host: self.appHost)
-  }
-
-  /// 앱 실행 시트의 목록을 읽어, 그 초안이 아직 이 번호를 기다리면 반영한다 (닫혔거나 다시 불러왔으면 버린다).
-  private func loadLaunchPackages(on id: AndroidVirtualDevice.ID, request: Int) async {
-    let result = await self.appFlow.installedPackages(on: id)
-    self.launchAppDraft?.packagesLoaded(result, request: request)
   }
 
   /// 흐름(기기 명령·앱 작업)이 Model 상태에 닿는 창구. 부를 때마다 만들어 넘기고 흐름 타입은 저장하지 않는다.

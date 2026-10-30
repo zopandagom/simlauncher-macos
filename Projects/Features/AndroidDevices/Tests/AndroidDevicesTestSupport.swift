@@ -26,6 +26,7 @@ extension AndroidDevicesTesting {
 
   /// 아직 화면이 보이기 전(`onAppear` 전)의 Model. apk 검사 Fake 는 샘플 apk 를 돌려주고, 테스트가 `package` 로 바꾼다.
   /// 받기 Fake 는 기본 진행·결과(`.fake(index:)`)이고, 테스트가 `download` 로 바꾼다.
+  /// 앱 실행·링크 열기 시트 Model(`sheets`)은 App 과 같이 클로저로 잇는다 (`appSheetPresented`·`target`·실행/열기 요청).
   static func fixture(
     _ inventory: AndroidDeviceInventory = .sample,
     _ configure: (AndroidEmulatorClientFake) -> Void = { _ in }
@@ -36,15 +37,25 @@ extension AndroidDevicesTesting {
     let setupRequests = Counter()
     let package = AndroidPackageClientFake()
     let download = DownloadClientFake()
+    let sheetsBox = AppSheetsBox()
     let model = AndroidDevicesModel(
       emulator: fake,
       package: package,
       download: download,
       setupRequested: { setupRequests.increment() },
+      appSheetPresented: { sheetsBox.model?.hasPresentedSheet ?? false },
       sleep: { try await sleeper.sleep(for: $0) }
     )
+    let sheets = AndroidAppSheetsModel(
+      emulator: fake,
+      target: { id, task in model.appSheetTarget(id, for: task) },
+      launchRequested: { request in await model.launchAppRequested(request) },
+      openURLRequested: { request in await model.openURLRequested(request) }
+    )
+    sheetsBox.model = sheets
     return AndroidDevicesFixture(
       model: model,
+      sheets: sheets,
       fake: fake,
       package: package,
       download: download,
@@ -110,6 +121,8 @@ extension AndroidDevicesTesting {
 @MainActor
 struct AndroidDevicesFixture {
   let model: AndroidDevicesModel
+  /// 앱 실행·링크 열기 시트 Model (App 처럼 `model` 과 이어져 있다).
+  let sheets: AndroidAppSheetsModel
   let fake: AndroidEmulatorClientFake
   let package: AndroidPackageClientFake
   let download: DownloadClientFake
@@ -160,6 +173,12 @@ final class ManualSleeper: Sendable {
       waiter.resume()
     }
   }
+}
+
+/// 기기 목록 Model 의 `appSheetPresented` 가 뒤에 만든 시트 Model 을 읽게 넘기는 상자 (App 의 조립과 같다).
+@MainActor
+final class AppSheetsBox {
+  weak var model: AndroidAppSheetsModel?
 }
 
 /// App 이 주입하는 클로저가 몇 번 불렸는지.
