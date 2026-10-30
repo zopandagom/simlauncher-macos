@@ -25,10 +25,13 @@ import WorkspaceImpl
 /// Android 도구 설치)이 있으면 기기 목록(`LauncherModel`)·Setup·Android 도구 화면에 함께 종료를 알리고 모두 끝나기를 기다린다
 /// (녹화 저장과 두 설치의 멈춤·취소를 함께 시작한다).
 /// 기기 행·툴바의 "카탈로그에서…" 시트(`CatalogInstallModel`)가 고른 버전은 `installRequested` 로 기기 목록(`LauncherModel`)이 설치한다.
+/// Android 기기 행의 "URL 에서…"·"카탈로그에서…" 시트(`AndroidDownloadInstallModel`)가 고른 주소·버전도 같은 방식으로 Android 기기
+/// 목록(`AndroidDevicesModel`)이 받아 설치한다.
 /// 설정 창(`Settings` 씬, ⌘,)은 메인 창의 칸·화면과 관계없이 열리고, 설정 창에서 Android SDK 위치를 바꾸면
 /// `androidSDKLocationChanged` 로 Android 도구 화면이 다시 확인하고 Android 기기 목록이 (보이면) 다시 읽는다 (같은 앱의 다른 창이라
 /// 앱 활성화 알림이 오지 않는다). Android 기기(에뮬레이터)는 종료 요청 때 보지 않는다 (켜진 에뮬레이터는 앱이 끝나도 남는다.
-/// apk 설치·실행·링크 열기도 묻지 않는다).
+/// apk 받기·설치·실행·링크 열기도 묻지 않는다. 남은 받기 폴더는 다음에 iOS 기기 목록·Android 기기 목록·Android 도구 화면 중 하나가
+/// 열릴 때 지운다).
 @main
 struct SimLauncherApp: App {
   @NSApplicationDelegateAdaptor private var appDelegate: AppDelegate
@@ -38,12 +41,14 @@ struct SimLauncherApp: App {
   @State private var settingsModel: SettingsModel
   @State private var androidSetupModel: AndroidSetupModel
   @State private var androidDevicesModel: AndroidDevicesModel
+  @State private var androidDownloadInstallModel: AndroidDownloadInstallModel
 
   /// 명령 실행 Client 하나를 개발 환경·시뮬레이터·앱 번들 Client 가 함께 쓰고,
   /// 개발 환경 Client 하나를 Setup 과 시뮬레이터의 개발자 디렉터리가 함께 쓰며,
   /// 시뮬레이터 Client 하나를 Setup(Xcode 가 준비된 뒤 런타임 목록 읽기)과 Launcher 가 함께 쓴다.
   /// 받기 Client 는 하나만 만들어 Launcher 의 URL·카탈로그 설치, 카탈로그에서 설치 시트의 카탈로그 받기,
-  /// 설정 창의 카탈로그 등록 확인이 함께 쓴다 (지금 받는 폴더 목록을 그 안에서 함께 쓴다).
+  /// 설정 창의 카탈로그 등록 확인, Android 기기 목록의 URL·카탈로그 설치와 그 시트의 카탈로그 받기가 함께 쓴다
+  /// (지금 받는 폴더 목록을 그 안에서 함께 써, 한쪽의 남은 폴더 정리가 다른 쪽이 받는 중인 폴더를 지우지 않는다).
   /// 설정 Client 도 하나만 만들어 설정 창(카탈로그 등록·삭제, Android SDK 위치)과 카탈로그에서 설치 시트(읽기만),
   /// Android 도구 화면(라이선스 동의 기록), Android SDK Client 의 위치 provider 가 함께 쓴다
   /// (같은 프로세스의 쓰기를 Impl 안의 `Mutex` 로 묶는다). 앱 번들 Client 하나를 Launcher 와 Android SDK Client 의 호스트
@@ -70,11 +75,11 @@ struct SimLauncherApp: App {
       appBundle: appBundle,
       home: home
     )
-    let androidSDK = android.sdk
     let androidSetup = android.setup
     let androidDevices = android.devices
     self._androidSetupModel = State(initialValue: androidSetup)
     self._androidDevicesModel = State(initialValue: androidDevices)
+    self._androidDownloadInstallModel = State(initialValue: android.downloadInstall)
     let setup = SetupModel(devEnvironment: devEnvironment, simulator: simulator)
     self._setupModel = State(initialValue: setup)
     // 스크린샷·녹화 저장 폴더는 "스크린샷"·"녹화" 를 누를 때 만든다 (Workspace Client 생성자는 파일을 건드리지 않는다).
@@ -97,7 +102,7 @@ struct SimLauncherApp: App {
     self._settingsModel = State(initialValue: SettingsModel(
       preferences: preferences,
       download: download,
-      androidSDK: androidSDK,
+      androidSDK: android.sdk,
       home: home,
       androidSDKLocationChanged: {
         Task { await androidSetup.sdkLocationChanged() }
@@ -118,6 +123,7 @@ struct SimLauncherApp: App {
     let sdk: AndroidSDKClientImpl
     let setup: AndroidSetupModel
     let devices: AndroidDevicesModel
+    let downloadInstall: AndroidDownloadInstallModel
   }
 
   private static func makeAndroid(
@@ -152,12 +158,20 @@ struct SimLauncherApp: App {
       workspace: WorkspaceClientImpl()
     )
     // apk 검사(zipinfo·unzip)는 같은 Command Client 로 실행한다. 생성자는 파일·명령을 건드리지 않는다.
+    // 받기는 Launcher 와 같은 Download 인스턴스다 (화면을 열 때 남은 받기 폴더를 지운다).
     let devices = AndroidDevicesModel(
       emulator: emulator,
       package: AndroidPackageClientImpl(command: command),
+      download: download,
       setupRequested: { setup.reopened() }
     )
-    return AndroidAssembly(sdk: sdk, setup: setup, devices: devices)
+    // URL·카탈로그 시트. 카탈로그는 시트를 열 때와 새로 고칠 때만 받고, 고른 주소·버전은 기기 목록이 받아 설치한다.
+    let downloadInstall = AndroidDownloadInstallModel(
+      preferences: preferences,
+      download: download,
+      installRequested: { request in await devices.downloadInstallRequested(request) }
+    )
+    return AndroidAssembly(sdk: sdk, setup: setup, devices: devices, downloadInstall: downloadInstall)
   }
 
   var body: some Scene {
@@ -167,7 +181,8 @@ struct SimLauncherApp: App {
         launcherModel: self.launcherModel,
         catalogInstallModel: self.catalogInstallModel,
         androidSetupModel: self.androidSetupModel,
-        androidDevicesModel: self.androidDevicesModel
+        androidDevicesModel: self.androidDevicesModel,
+        androidDownloadInstallModel: self.androidDownloadInstallModel
       )
     }
     // 창을 닫으면 진행 중인 등록 확인을 취소한다 (SettingsView 의 onDisappear).
