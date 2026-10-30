@@ -44,6 +44,11 @@ public extension AndroidDevicesModel {
   var canBootSelection: Bool {
     self.selectedDevices.contains { self.activity.canStart(.boot, on: $0) }
   }
+
+  /// 어느 기기든 녹화 중이다 (시작 중·저장 중 포함, `recordings.isActive`). App 의 앱 종료 확인이 읽는다.
+  var isRecording: Bool {
+    self.recordings.isActive
+  }
 }
 
 extension AndroidDevicesModel {

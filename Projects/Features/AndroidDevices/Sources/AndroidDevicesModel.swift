@@ -4,6 +4,7 @@ import Core
 import DownloadInterface
 import Foundation
 import Observation
+import WorkspaceInterface
 
 /// Android 기기(AVD) 목록 화면의 상태와 로직. `~/.android/avd` 의 기기(Android Studio 가 만든 것 포함)를 읽고, 켜고 끄며,
 /// 만들고 지우고 초기화한다. 목록에서 고른 기기(`selection`)를 함께 켜고, 실패가 있으면 결과를 알림 하나에 모은다.
@@ -15,7 +16,8 @@ import Observation
 /// 켜진 기기에는 로컬 apk(파일 고르기·드롭)나 URL·카탈로그에서 받은 apk(`AndroidDownloadInstallModel` 의 요청을 App 이 넘긴다.
 /// 받기는 Model 이 소유하고 행에 진행·취소)를 설치·실행하고, 설치한 앱을 골라 실행하고, 링크를 연다 (앱 실행·링크 열기 시트는
 /// `AndroidAppSheetsModel` 에 있고, 확정한 요청을 App 이 넘긴다). Client 호출은 흐름 타입이 맡는다: 기기 명령은
-/// `AndroidDeviceCommandFlow`, 앱 작업은 `AndroidAppInstallFlow`.
+/// `AndroidDeviceCommandFlow`, 앱 작업은 `AndroidAppInstallFlow`, 스크린샷·녹화(예약·찍기·녹화·보이기)는 `AndroidScreenCaptureFlow`.
+/// 녹화는 Model 이 소유한 Task 로 돌고, 녹화 중인 기기는 끄기·삭제·초기화를 막으며, 다시 읽은 목록에서 없거나 꺼졌으면 멈춘다.
 /// Android 도구(SDK) 상태 확인·설치는 여기서 하지 않고, "Android 도구" 버튼으로 App 에 도구 화면을 요청한다.
 /// 상태를 바꾸지 않는 읽기 API(`canCreateDevice` 등)는 `AndroidDevicesModel+Reading.swift` 에 있다.
 @MainActor
@@ -26,6 +28,10 @@ public final class AndroidDevicesModel {
   public private(set) var isRefreshing = false
   /// 기기별 진행 작업(켜기·끄기·삭제·초기화·앱 설치·앱 실행·링크 열기). 같은 기기의 작업은 겹치지 않는다.
   public private(set) var activity = AndroidDeviceActivity()
+  /// 기기별로 찍고 있는 스크린샷. 기기 작업과 겹칠 수 있다 (앱 설치·실행·링크 열기 중에도 찍는다).
+  public private(set) var screenshots = AndroidScreenshotActivity()
+  /// 기기별 화면 녹화 (시작 중·녹화 중(시작 시각)·저장 중). 기기 작업과 겹칠 수 있다.
+  public private(set) var recordings = AndroidRecordingActivity()
   /// 닫지 않은 알림 줄.
   public private(set) var noticeQueue = AndroidDevicesNotices()
   /// 마지막으로 읽은 목록의 만들기 선택지. 다시 읽기가 실패하면 이전 값을 유지한다.
@@ -45,6 +51,12 @@ public final class AndroidDevicesModel {
   /// 기기 명령·앱 작업 흐름. 진행 기록을 시작한 Model 메서드 안에서만 부른다.
   @ObservationIgnored private let commandFlow: AndroidDeviceCommandFlow
   @ObservationIgnored private let appFlow: AndroidAppInstallFlow
+  /// 화면 캡처 흐름(예약 → 찍기·녹화 → Finder 에서 보이기). Model 상태에는 `captureHost` 창구로만 닿는다.
+  @ObservationIgnored private let captureFlow: AndroidScreenCaptureFlow
+  /// 기기별 녹화 작업. Model 이 소유해 중지·기기 꺼짐·앱 종료가 이것을 취소해 멈춘다 (View 의 Task 취소는 전해지지 않는다).
+  @ObservationIgnored private var recordingTasks: [AndroidVirtualDevice.ID: Task<Void, Never>] = [:]
+  /// 앱 종료를 기다리는 중이다. 새 녹화를 시작하지 않는다 (곧 종료하므로 되돌리지 않는다).
+  @ObservationIgnored private var isTerminating = false
   /// 기기별 받기 작업. Model 이 소유해 받기 취소(`downloadCancelTapped(_:)`)가 이것만 멈춘다. 결과를 받은 직후 지운다.
   @ObservationIgnored private var downloadTasks: [
     AndroidVirtualDevice.ID: Task<Result<DownloadedFile, DownloadError>, Never>
@@ -76,14 +88,17 @@ public final class AndroidDevicesModel {
     emulator: any AndroidEmulatorClient,
     package: any AndroidPackageClient,
     download: any DownloadClient,
+    workspace: any WorkspaceClient,
     setupRequested: @escaping @MainActor () -> Void = {},
     appSheetPresented: @escaping @MainActor () -> Bool = { false },
-    sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
+    sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) },
+    now: @escaping @Sendable () -> Date = { Date() }
   ) {
     self.emulator = emulator
     self.download = download
     self.commandFlow = AndroidDeviceCommandFlow(emulator: emulator)
     self.appFlow = AndroidAppInstallFlow(emulator: emulator, package: package, download: download)
+    self.captureFlow = AndroidScreenCaptureFlow(emulator: emulator, workspace: workspace, now: now)
     self.setupRequested = setupRequested
     self.appSheetPresented = appSheetPresented
     self.sleep = sleep
@@ -181,10 +196,11 @@ public extension AndroidDevicesModel {
   }
 
   /// 켜는 중(앱 밖에서 켜는 중·시간 초과 포함)이거나 켜진 기기를 끄고 목록을 다시 읽는다. 실패하면 알림을 띄우고 다시 읽는다.
-  /// 앱이 켜는 중인 기기는 작업 기록이 막는다.
+  /// 앱이 켜는 중인 기기는 작업 기록이 막는다. 녹화 중이면 끄지 않는다.
   func shutdownTapped(_ id: AndroidVirtualDevice.ID) async {
     guard case let .loaded(list) = self.listState,
           let device = list.device(id: id),
+          !self.recordings.blocks(.shutdown, on: id),
           self.activity.begin(.shutdown, on: device)
     else { return }
     defer { self.taskEnded(on: id) }
@@ -265,7 +281,8 @@ public extension AndroidDevicesModel {
       self.enqueue(confirmation.failedNotice(.deviceNotFound))
       return
     }
-    guard self.activity.task(on: device.id) == nil else { return }
+    guard self.activity.task(on: device.id) == nil, !self.recordings.blocks(confirmation.action.task, on: device.id)
+    else { return }
     if case .blocked(.notShutdown) = confirmation.action.availability(for: device) {
       self.enqueue(confirmation.failedNotice(.deviceRunning))
       return
@@ -344,6 +361,60 @@ public extension AndroidDevicesModel {
     await self.appFlow.openURL(request.link, on: device.id, label: request.device, host: self.appHost)
   }
 
+  // MARK: - 스크린샷·녹화
+
+  /// 행의 "스크린샷": 켜진 기기 화면을 사진 폴더의 SimLauncher 폴더에 PNG 로 저장하고 Finder 에서 선택해 보인다.
+  /// 같은 기기는 한 번에 하나만 찍고, 같은 기기의 앱 설치·실행·링크 열기·녹화 중에도 찍는다 (켜기·끄기·삭제·초기화 중에는 찍지 않는다).
+  func screenshotTapped(_ id: AndroidVirtualDevice.ID) async {
+    // `begin` 은 첫 await 전이라 연타해도 두 번째 호출은 여기서 끝난다.
+    guard case let .loaded(list) = self.listState,
+          let device = list.device(id: id),
+          self.screenshots.begin(on: device, during: self.activity.task(on: id))
+    else { return }
+    defer { self.screenshots.end(on: id) }
+    await self.captureFlow.takeScreenshot(of: device, label: AndroidDeviceLabel(device), host: self.captureHost)
+  }
+
+  /// 행의 "녹화": 켜진 기기 화면을 동영상 폴더의 SimLauncher 폴더에 녹화한다. 같은 기기의 앱 작업 중에도 한다.
+  /// 중지·기기 꺼짐(다시 읽기)·앱 종료로 멈추거나 녹화가 스스로 끝나면 가져와 저장하고 Finder 에서 보이며(실패면 알림), 그때까지
+  /// 돌아오지 않는다. 녹화는 Model 이 소유한 Task 로 돌아 View 의 Task 취소는 전해지지 않는다. 앱 종료를 기다리는 중이면 시작하지 않는다.
+  func recordTapped(_ id: AndroidVirtualDevice.ID) async {
+    // `begin` 과 Task 저장 사이에 await 를 두지 않는다 (연타·중지가 Task 를 놓치지 않게).
+    guard !self.isTerminating,
+          case let .loaded(list) = self.listState,
+          let device = list.device(id: id),
+          self.recordings.begin(on: device, during: self.activity.task(on: id))
+    else { return }
+    let label = AndroidDeviceLabel(device)
+    // 기록은 Task 안에서 지워, 같은 Task 를 기다리는 `appTerminationRequested` 가 어느 쪽이 먼저 깨어나든 끝난 기록을 보게 한다.
+    let task = Task {
+      await self.captureFlow.record(device, label: label, host: self.captureHost)
+      self.recordings.end(on: id)
+      self.recordingTasks[id] = nil
+    }
+    self.recordingTasks[id] = task
+    await task.value
+  }
+
+  /// 행의 "중지": 시작 중·녹화 중이면 녹화 Task 를 취소해 멈춘다 (저장은 `recordTapped` 의 흐름이 이어서 한다).
+  /// 이미 저장 중이면 아무 일도 하지 않는다.
+  func recordingStopTapped(_ id: AndroidVirtualDevice.ID) {
+    guard self.recordings.requestStop(on: id) else { return }
+    self.recordingTasks[id]?.cancel()
+  }
+
+  /// App 전용(앱 종료 요청): 새 녹화를 더 시작하지 않고, 모든 녹화를 멈춘 뒤 흐름(가져오기·저장·Finder 보이기)이 끝나기를
+  /// 기다린다. 이미 저장 중인 녹화도 끝까지 기다린다.
+  func appTerminationRequested() async {
+    self.isTerminating = true
+    for id in self.recordings.requestStopAll() {
+      self.recordingTasks[id]?.cancel()
+    }
+    for task in Array(self.recordingTasks.values) {
+      await task.value
+    }
+  }
+
   // MARK: - 알림
 
   /// id 가 같은 알림만 지운다. 이미 닫았거나 없으면 아무것도 하지 않아, 두 번 불려도 다음 알림을 지우지 않는다.
@@ -360,6 +431,7 @@ extension AndroidDevicesModel {
     guard case let .loaded(list) = self.listState,
           let device = list.device(id: id),
           self.activity.canStart(action.task, on: device),
+          !self.recordings.blocks(action.task, on: id),
           !self.hasPresentedSheet
     else { return }
     self.confirmation = AndroidDeviceConfirmation(action: action, deviceID: id, device: AndroidDeviceLabel(device))
@@ -391,6 +463,16 @@ extension AndroidDevicesModel {
       reload: { await self.reload() },
       listState: { self.listState },
       finished: { self.taskEnded(on: $0, owner: $1) }
+    )
+  }
+
+  /// 캡처 흐름이 Model 상태에 닿는 창구. 부를 때마다 만들어 넘기고 흐름 타입은 저장하지 않는다.
+  private var captureHost: AndroidScreenCaptureFlow.Host {
+    AndroidScreenCaptureFlow.Host(
+      enqueue: { self.enqueue($0) },
+      reload: { await self.reload() },
+      recordingStarted: { id, date in self.recordings.started(at: date, on: id) },
+      recordingStopReason: { self.recordings.stopReason(on: $0) }
     )
   }
 
@@ -432,6 +514,10 @@ extension AndroidDevicesModel {
           let list = AndroidDeviceList(devices: inventory.devices)
           self.listState = .loaded(list)
           self.selection.formIntersection(list.deviceIDs)
+          // 녹화 중인 기기가 목록에 없거나 꺼졌으면 멈춘다 (켜는 중으로 읽힌 것은 멈추지 않는다, `requestStops(shutDownIn:)`).
+          for id in self.recordings.requestStops(shutDownIn: list) {
+            self.recordingTasks[id]?.cancel()
+          }
           self.creationOptions = inventory.creationOptions
         } catch {
           self.loadFailed(error)

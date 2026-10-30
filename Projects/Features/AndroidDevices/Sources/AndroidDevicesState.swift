@@ -3,6 +3,7 @@ import AndroidPackageInterface
 import Core
 import DownloadInterface
 import Foundation
+import WorkspaceInterface
 
 /// Android 기기 목록 화면의 상태.
 public enum AndroidDevicesListState: Hashable, Sendable {
@@ -32,9 +33,9 @@ public struct AndroidDeviceLabel: Hashable, Sendable {
   }
 }
 
-/// 목록 위에 띄우는 알림. 기기 작업(켜기·끄기·만들기·삭제·초기화)과 앱 작업(설치·실행·링크 열기) 실패, 목록이 있을 때의
-/// 새로 고침 실패, 함께 켜기 결과.
-/// 정보 알림은 삭제가 기기 폴더를 남긴 것 하나다. 취소(`.cancelled`)는 알리지 않는다.
+/// 목록 위에 띄우는 알림. 기기 작업(켜기·끄기·만들기·삭제·초기화)과 앱 작업(설치·실행·링크 열기)·화면 캡처(스크린샷·녹화) 실패,
+/// 목록이 있을 때의 새로 고침 실패, 함께 켜기 결과.
+/// 정보 알림은 삭제가 기기 폴더를 남긴 것과 녹화가 기기 꺼짐·3분 제한으로 멈추고 저장된 것이다. 취소(`.cancelled`)는 알리지 않는다.
 public enum AndroidDevicesNotice: Hashable, Sendable {
   case refreshFailed(AndroidEmulatorError)
   case bootFailed(AndroidDeviceLabel, AndroidEmulatorError)
@@ -55,6 +56,28 @@ public enum AndroidDevicesNotice: Hashable, Sendable {
   case launchFailed(AndroidDeviceLabel, AndroidAppActionFailure)
   /// 행 "링크 열기…" 시트의 링크를 열지 못했다.
   case openURLFailed(AndroidDeviceLabel, AndroidAppActionFailure)
+  /// 스크린샷을 저장하지 못했다 (저장 파일 예약·찍기).
+  case screenshotFailed(AndroidDeviceLabel, AndroidCaptureFailure)
+  /// 스크린샷은 저장했지만 Finder 에서 보여 주지 못했다.
+  case screenshotRevealFailed(AndroidDeviceLabel, WorkspaceError)
+  /// 화면을 녹화하지 못했다 (저장 파일 예약·시작·기기 꺼짐·가져오기).
+  case recordingFailed(AndroidDeviceLabel, AndroidCaptureFailure)
+  /// 녹화가 실패로 끝났지만 그때까지의 화면을 가져와 저장했다.
+  case recordingInterrupted(AndroidDeviceLabel)
+  /// 정보 알림: 녹화 중 기기가 꺼져 멈추고 저장했다.
+  case recordingStoppedByDevice(AndroidDeviceLabel)
+  /// 정보 알림: API 33 이하의 3분 제한에 닿아 멈추고 저장했다.
+  case recordingAtTimeLimit(AndroidDeviceLabel)
+  /// 녹화는 저장했지만 Finder 에서 보여 주지 못했다.
+  case recordingRevealFailed(AndroidDeviceLabel, WorkspaceError)
+}
+
+/// 스크린샷·녹화 실패 원인.
+public enum AndroidCaptureFailure: Hashable, Sendable {
+  /// 저장 폴더 준비·파일 이름 예약 실패 (명령 전).
+  case workspace(WorkspaceError)
+  /// 찍기·녹화·가져오기 실패. 기기가 목록에서 사라졌으면 `.deviceNotFound`.
+  case emulator(AndroidEmulatorError)
 }
 
 /// apk 설치 실패 원인.
@@ -234,7 +257,8 @@ extension AndroidDeviceList {
 }
 
 extension AndroidDevicesNotice {
-  /// 알림에 담긴 기기 명령 에러 (정보 알림·함께 켜기 결과·검사·판정·기기 상태·받기 실패는 nil). Model 이 취소를 거르는 데 쓴다.
+  /// 알림에 담긴 기기 명령 에러 (정보 알림·함께 켜기 결과·검사·판정·기기 상태·받기·저장 폴더 실패는 nil). Model 이 취소를 거르는 데
+  /// 쓴다.
   var error: AndroidEmulatorError? {
     switch self {
     case let .refreshFailed(error), let .bootFailed(_, error), let .shutdownFailed(_, error),
@@ -243,7 +267,12 @@ extension AndroidDevicesNotice {
     case let .installedButNotLaunched(_, error), let .installFailed(_, .emulator(error)),
          let .launchFailed(_, .emulator(error)), let .openURLFailed(_, .emulator(error)):
       error
-    case .folderKept, .batchBootFinished, .installFailed, .launchFailed, .openURLFailed:
+    case let .screenshotFailed(_, .emulator(error)), let .recordingFailed(_, .emulator(error)):
+      error
+    case .folderKept, .batchBootFinished, .installFailed, .launchFailed,
+         .openURLFailed, .screenshotFailed,
+         .screenshotRevealFailed, .recordingFailed, .recordingInterrupted, .recordingStoppedByDevice,
+         .recordingAtTimeLimit, .recordingRevealFailed:
       nil
     }
   }
