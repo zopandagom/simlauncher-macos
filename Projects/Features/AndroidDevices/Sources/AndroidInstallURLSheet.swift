@@ -2,7 +2,7 @@ import Core
 import SwiftUI
 
 /// URL 에서 설치 시트: 주소 입력란과 그 아래 안내. 입력은 모두 Model 의 이벤트 메서드로 넘긴다.
-/// iOS `InstallURLSheet` 와 같은 배치이고, 대상은 행 한 대라 제목에만 기기를 보인다.
+/// iOS `InstallURLSheet` 와 같은 배치이고, 대상이 한 대면 제목에 기기를, 여러 대면 제목 아래 대상 줄에 이름을 보인다.
 struct AndroidInstallURLSheet: View {
   let model: AndroidDownloadInstallModel
   /// 마지막으로 그린 초안. 닫히는 동안 Model 의 `urlDraft` 는 이미 nil 이라, 글자가 비지 않도록 View 가 들고 있는다.
@@ -25,10 +25,10 @@ struct AndroidInstallURLSheet: View {
 
   private func form(_ draft: AndroidInstallURLDraft) -> some View {
     VStack(alignment: .leading, spacing: 16) {
-      // 기기 이름이 든 문구라 번역 키로 다시 찾지 않는다.
-      Text(verbatim: AndroidDevicesText.installURLSheetTitle(for: draft.device))
-        .font(.headline)
-        .accessibilityAddTraits(.isHeader)
+      AndroidSheetTitle(
+        title: AndroidDevicesText.installURLSheetTitle(for: draft.targets),
+        targetsLine: AndroidDevicesText.batchTargetsLine(draft.targets)
+      )
       Form {
         TextField(
           AndroidDevicesText.downloadURLField,
@@ -64,5 +64,25 @@ struct AndroidInstallURLSheet: View {
     .padding(20)
     .frame(minWidth: 420)
     .onAppear { self.isURLFocused = true }
+  }
+}
+
+/// 받기 시트의 제목과(여러 대면) 그 아래 대상 줄. 기기 이름이 든 문구라 번역 키로 다시 찾지 않는다. 카탈로그 시트도 쓴다.
+struct AndroidSheetTitle: View {
+  let title: String
+  let targetsLine: String?
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 4) {
+      Text(verbatim: self.title)
+        .font(.headline)
+        .accessibilityAddTraits(.isHeader)
+      if let targetsLine = self.targetsLine {
+        Text(verbatim: targetsLine)
+          .font(.callout)
+          .foregroundStyle(.secondary)
+          .fixedSize(horizontal: false, vertical: true)
+      }
+    }
   }
 }

@@ -6,6 +6,7 @@ import DownloadTesting
 import Foundation
 import Synchronization
 import Testing
+import WorkspaceTesting
 @testable import AndroidDevicesFeature
 
 /// AndroidDevices Model 테스트가 함께 쓰는 도움 함수. 테스트 타입이 채택하면 `Self.loadedFixture()` 처럼 부른다.
@@ -26,6 +27,8 @@ extension AndroidDevicesTesting {
 
   /// 아직 화면이 보이기 전(`onAppear` 전)의 Model. apk 검사 Fake 는 샘플 apk 를 돌려주고, 테스트가 `package` 로 바꾼다.
   /// 받기 Fake 는 기본 진행·결과(`.fake(index:)`)이고, 테스트가 `download` 로 바꾼다.
+  /// 앱 실행·링크 열기 시트 Model(`sheets`)은 App 과 같이 클로저로 잇는다 (`appSheetPresented`·`target`·실행/열기 요청).
+  /// 스크린샷·녹화 저장은 `WorkspaceClientFake`(늘 예약·보이기에 성공, 테스트가 `workspace` 로 바꾼다), 시계는 `fixedNow` 다.
   static func fixture(
     _ inventory: AndroidDeviceInventory = .sample,
     _ configure: (AndroidEmulatorClientFake) -> Void = { _ in }
@@ -36,18 +39,32 @@ extension AndroidDevicesTesting {
     let setupRequests = Counter()
     let package = AndroidPackageClientFake()
     let download = DownloadClientFake()
+    let workspace = WorkspaceClientFake()
+    let sheetsBox = AppSheetsBox()
     let model = AndroidDevicesModel(
       emulator: fake,
       package: package,
       download: download,
+      workspace: workspace,
       setupRequested: { setupRequests.increment() },
-      sleep: { try await sleeper.sleep(for: $0) }
+      appSheetPresented: { sheetsBox.model?.hasPresentedSheet ?? false },
+      sleep: { try await sleeper.sleep(for: $0) },
+      now: { fixedNow }
     )
+    let sheets = AndroidAppSheetsModel(
+      emulator: fake,
+      target: { id, task in model.appSheetTarget(id, for: task) },
+      launchRequested: { request in await model.launchAppRequested(request) },
+      openURLRequested: { request in await model.openURLRequested(request) }
+    )
+    sheetsBox.model = sheets
     return AndroidDevicesFixture(
       model: model,
+      sheets: sheets,
       fake: fake,
       package: package,
       download: download,
+      workspace: workspace,
       sleeper: sleeper,
       setupRequests: setupRequests
     )
@@ -110,12 +127,18 @@ extension AndroidDevicesTesting {
 @MainActor
 struct AndroidDevicesFixture {
   let model: AndroidDevicesModel
+  /// 앱 실행·링크 열기 시트 Model (App 처럼 `model` 과 이어져 있다).
+  let sheets: AndroidAppSheetsModel
   let fake: AndroidEmulatorClientFake
   let package: AndroidPackageClientFake
   let download: DownloadClientFake
+  let workspace: WorkspaceClientFake
   let sleeper: ManualSleeper
   let setupRequests: Counter
 }
+
+/// Model 의 시계 (파일 이름의 시각·녹화 시작 시각). 2026-10-30 03:30:00 UTC.
+let fixedNow = Date(timeIntervalSince1970: 1_793_331_000)
 
 /// 기다리는 조건은 Fake 와 MainActor 의 차례 넘기기만으로 참이 되어 정상이면 수 ms 안에 끝난다.
 /// 느린 CI 에서 거짓 실패가 나지 않게 10초로 둔다.
@@ -160,6 +183,12 @@ final class ManualSleeper: Sendable {
       waiter.resume()
     }
   }
+}
+
+/// 기기 목록 Model 의 `appSheetPresented` 가 뒤에 만든 시트 Model 을 읽게 넘기는 상자 (App 의 조립과 같다).
+@MainActor
+final class AppSheetsBox {
+  weak var model: AndroidAppSheetsModel?
 }
 
 /// App 이 주입하는 클로저가 몇 번 불렸는지.

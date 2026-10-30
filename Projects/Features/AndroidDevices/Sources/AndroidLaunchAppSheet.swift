@@ -4,7 +4,7 @@ import SwiftUI
 /// 앱 실행 시트: 그 기기의 사용자 설치 앱(패키지 이름) 목록에서 하나를 골라 실행한다. 목록을 불러오는 중·빈 목록·실패(이유와
 /// "다시 시도")를 보인다. 선택과 버튼은 모두 Model 의 이벤트 메서드로 넘긴다.
 struct AndroidLaunchAppSheet: View {
-  let model: AndroidDevicesModel
+  let model: AndroidAppSheetsModel
   /// 마지막으로 그린 초안. 닫히는 동안 Model 의 `launchAppDraft` 는 이미 nil 이라, 글자가 비지 않도록 View 가 들고 있는다.
   @State private var shownDraft: AndroidLaunchAppDraft?
 

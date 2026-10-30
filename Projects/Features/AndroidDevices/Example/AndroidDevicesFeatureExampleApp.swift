@@ -9,14 +9,17 @@ import DownloadTesting
 import Foundation
 import PreferencesTesting
 import SwiftUI
+import WorkspaceTesting
 
 /// App 없이 Android 기기 목록 화면만 띄우는 데모 앱. Preview 도 여기에 둔다.
 /// 실제 emulator·adb·`~/.android` 대신 Testing 모듈의 `AndroidEmulatorClientFake`(호출마다 1초 지연)를, apk 검사 대신
 /// `AndroidPackageClientFake`(1초 지연, 고른 파일과 관계없이 샘플 apk 정보)를 주입한다.
 /// URL·카탈로그에서 설치는 네트워크 대신 `DownloadClientFake`(진행 사이 0.3초 지연)를, 등록 카탈로그는 `PreferencesClientFake`
 /// (v2 카탈로그·v1 카탈로그·iOS 앱만 있는 v2 카탈로그, 장면에 따라 받지 못하는 주소)를 주입한다.
+/// "스크린샷"·"녹화" 는 `WorkspaceClientFake`(파일을 만들지 않고 가짜 폴더 이름만 예약한다)와 Fake 의 찍기·녹화(파일을 쓰지 않는다.
+/// 녹화는 "중지" 를 누를 때까지 이어진다)로 돈다. Finder 는 열지 않는다.
 /// 파일·명령·네트워크를 쓰지 않으므로 아무것도 켜거나 만들거나 설치하지 않는다 (Fake 의 목록만 바뀐다).
-/// 앱 설치(파일·URL·카탈로그)·실행·링크 열기는 켜진 기기("Pixel Tablet")에서 해 본다.
+/// 앱 설치(파일·URL·카탈로그)·실행·링크 열기·스크린샷·녹화는 켜진 기기("Pixel Tablet")에서 해 본다.
 /// 왼쪽 목록에서 상태를 고른다. "Android 도구" 버튼은 App 이 도구 화면을 여는 대신 아래 줄에 누른 횟수를 보인다.
 @main
 struct AndroidDevicesFeatureExampleApp: App {
@@ -37,8 +40,12 @@ struct AndroidDevicesFeatureExampleApp: App {
       } detail: {
         VStack(spacing: 0) {
           if let models = self.models[self.scenario] {
-            AndroidDevicesView(model: models.devices, downloadModel: models.downloadInstall)
-              .id(self.scenario)
+            AndroidDevicesView(
+              model: models.devices,
+              downloadModel: models.downloadInstall,
+              appSheetsModel: models.appSheets
+            )
+            .id(self.scenario)
           }
           Divider()
           Text(verbatim: "Android 도구 버튼을 누른 횟수: \(self.setupRequests.count)")
@@ -60,11 +67,18 @@ struct AndroidDevicesFeatureExampleApp: App {
   }
 }
 
-/// 장면 하나의 Model 둘 (App 이 둘을 만들어 `installRequested` 로 잇는 것과 같다).
+/// 장면 하나의 Model 셋 (App 이 셋을 만들어 `installRequested`·`launchRequested` 등으로 잇는 것과 같다).
 @MainActor
 struct DemoModels {
   let devices: AndroidDevicesModel
   let downloadInstall: AndroidDownloadInstallModel
+  let appSheets: AndroidAppSheetsModel
+}
+
+/// 기기 목록 Model 의 `appSheetPresented` 가 뒤에 만든 시트 Model 을 읽게 넘기는 상자 (App 과 같다).
+@MainActor
+final class DemoAppSheetsBox {
+  weak var model: AndroidAppSheetsModel?
 }
 
 /// "Android 도구" 버튼을 누른 횟수 (App 이 도구 화면을 여는 자리).
@@ -105,6 +119,19 @@ enum DemoScenario: String, CaseIterable, Hashable {
   case catalogFailure = "카탈로그: 받지 못한 카탈로그 있음"
   case catalogLocked = "카탈로그: 잠김 (관리자 설정)"
   case catalogEmpty = "카탈로그: 등록 없음"
+  case slowScreenshot = "스크린샷: 찍는 중 유지"
+  case screenshotFailure = "스크린샷 실패: 화면 읽기"
+  case captureFolderFailure = "스크린샷·녹화 실패: 저장 폴더"
+  case revealFailure = "스크린샷·녹화: Finder 보이기 실패"
+  case slowRecordingStart = "녹화: 시작하는 중 유지"
+  case recordingTimeLimit = "녹화: 3분 제한에 닿음 (API 33 이하)"
+  case recordingInterrupted = "녹화: 중간에 끝남"
+  case recordingStartFailure = "녹화 실패: 시작 (기기 저장 공간)"
+  case recordingLost = "녹화 실패: 기기 꺼짐 (가져오지 못함)"
+  case recordingUnwritable = "녹화 실패: Mac 에 쓰지 못함"
+  case multiDevice = "여러 기기: 켜진 기기 둘 (선택한 기기에 앱 설치)"
+  case multiDeviceSlowDownload = "여러 기기: 함께 받는 중 유지 (취소)"
+  case multiDeviceFailure = "여러 기기 결과: 한 기기만 설치 실패"
 
   private static let allDevices = AndroidDeviceInventory(
     devices: [
@@ -132,21 +159,34 @@ enum DemoScenario: String, CaseIterable, Hashable {
     download.setDelay(.milliseconds(300))
     download.setDownloadScript(progress: Self.downloadProgress, result: nil)
     self.configure(fake)
+    DemoMultiDevices.configure(fake, for: self)
     self.configure(package)
     self.configure(download)
+    let workspace = WorkspaceClientFake()
+    self.configure(workspace)
+    let appSheetsBox = DemoAppSheetsBox()
     let devices = AndroidDevicesModel(
       emulator: fake,
       package: package,
       download: download,
-      setupRequested: setupRequested
+      workspace: workspace,
+      setupRequested: setupRequested,
+      appSheetPresented: { appSheetsBox.model?.hasPresentedSheet ?? false }
     )
+    let appSheets = AndroidAppSheetsModel(
+      emulator: fake,
+      target: { id, task in devices.appSheetTarget(id, for: task) },
+      launchRequested: { request in await devices.launchAppRequested(request) },
+      openURLRequested: { request in await devices.openURLRequested(request) }
+    )
+    appSheetsBox.model = appSheets
     let preferences = PreferencesClientFake(urls: self.catalogURLs, isLocked: self == .catalogLocked)
     let downloadInstall = AndroidDownloadInstallModel(
       preferences: preferences,
       download: download,
       installRequested: { request in await devices.downloadInstallRequested(request) }
     )
-    return DemoModels(devices: devices, downloadInstall: downloadInstall)
+    return DemoModels(devices: devices, downloadInstall: downloadInstall, appSheets: appSheets)
   }
 
   /// 0 → 전체 1 MiB 까지 여덟 번 (행의 진행 막대가 보이도록).
@@ -172,7 +212,7 @@ enum DemoScenario: String, CaseIterable, Hashable {
     download.setFetchResult(.success(DemoCatalog.iOSOnly), for: DemoCatalog.iOSOnlyURL)
     download.setFetchResult(.failure(.httpStatus(404)), for: DemoCatalog.missingURL)
     switch self {
-    case .slowDownload:
+    case .slowDownload, .multiDeviceSlowDownload:
       download.setDownloadScript(progress: Array(Self.downloadProgress.prefix(4)), result: nil)
       download.suspendDownloads()
     case .unknownSizeDownload:
@@ -206,6 +246,8 @@ enum DemoScenario: String, CaseIterable, Hashable {
       AndroidDeviceInventory(devices: [.phoneSample], creationOptions: .emptySample)
     case .outsideBooting:
       AndroidDeviceInventory(devices: [.phoneSample, .bootingSample], creationOptions: .sample)
+    case .multiDevice, .multiDeviceSlowDownload, .multiDeviceFailure:
+      DemoMultiDevices.inventory
     default:
       Self.allDevices
     }
@@ -263,6 +305,40 @@ enum DemoScenario: String, CaseIterable, Hashable {
     case .urlNotHandled:
       fake.setOpenURLError(.urlNotHandled)
     default:
+      self.configureCapture(fake)
+    }
+  }
+
+  private func configureCapture(_ fake: AndroidEmulatorClientFake) {
+    switch self {
+    case .slowScreenshot:
+      fake.suspendScreenshots()
+    case .screenshotFailure:
+      fake.setScreenshotError(.captureFailed)
+    case .slowRecordingStart:
+      fake.setRecordingSignalsStart(false)
+    case .recordingTimeLimit:
+      fake.setRecordingEndsByItself(.success(.savedAtTimeLimit))
+    case .recordingInterrupted:
+      fake.setRecordingEndsByItself(.success(.savedAfterFailure))
+    case .recordingStartFailure:
+      fake.setRecordingEndsByItself(.failure(.recordingFailed))
+    case .recordingLost:
+      fake.setRecordingResult(.failure(.recordingLost))
+    case .recordingUnwritable:
+      fake.setRecordingResult(.failure(.captureFileUnwritable))
+    default:
+      break
+    }
+  }
+
+  private func configure(_ workspace: WorkspaceClientFake) {
+    switch self {
+    case .captureFolderFailure:
+      workspace.setReserveError(.folderUnavailable)
+    case .revealFailure:
+      workspace.setRevealError(.fileNotFound)
+    default:
       break
     }
   }
@@ -278,6 +354,31 @@ enum DemoScenario: String, CaseIterable, Hashable {
     default:
       break
     }
+  }
+}
+
+/// 여러 기기 장면의 목록: 켜진 기기 둘(태블릿·"두 번째 폰")과 꺼진·쓸 수 없는 기기. 툴바 "선택한 기기에 앱 설치" 의 대상·건너뜀을
+/// 보인다.
+enum DemoMultiDevices {
+  static let secondBootedPhone = AndroidVirtualDevice(
+    id: AndroidVirtualDevice.ID("Second_Phone"),
+    displayName: "두 번째 폰",
+    systemImage: .sample,
+    formFactor: .phone,
+    state: .booted,
+    availability: .available
+  )
+
+  static let inventory = AndroidDeviceInventory(
+    devices: [.phoneSample, .bootedTabletSample, secondBootedPhone, .unsupportedNameSample],
+    creationOptions: .sample
+  )
+
+  /// "한 기기만 설치 실패" 장면이면 "두 번째 폰" 의 설치만 실패하게 한다.
+  @MainActor
+  static func configure(_ fake: AndroidEmulatorClientFake, for scenario: DemoScenario) {
+    guard scenario == .multiDeviceFailure else { return }
+    fake.setInstallError(.installFailed(.updateIncompatible), for: self.secondBootedPhone.id)
   }
 }
 
@@ -334,8 +435,12 @@ enum DemoCatalog {
 @MainActor
 private func demoPreview(_ scenario: DemoScenario) -> some View {
   let models = scenario.makeModel {}
-  return AndroidDevicesView(model: models.devices, downloadModel: models.downloadInstall)
-    .frame(width: 720, height: 480)
+  return AndroidDevicesView(
+    model: models.devices,
+    downloadModel: models.downloadInstall,
+    appSheetsModel: models.appSheets
+  )
+  .frame(width: 720, height: 480)
 }
 
 #Preview("정상") {
@@ -360,4 +465,8 @@ private func demoPreview(_ scenario: DemoScenario) -> some View {
 
 #Preview("받는 중") {
   demoPreview(.slowDownload)
+}
+
+#Preview("여러 기기") {
+  demoPreview(.multiDevice)
 }

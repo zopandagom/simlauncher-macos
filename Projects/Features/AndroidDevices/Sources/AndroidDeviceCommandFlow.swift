@@ -1,7 +1,7 @@
 import AndroidEmulatorInterface
 import Core
 
-/// 기기 명령 흐름: 켜기·끄기·만들기·삭제·초기화. 명령이 실패하면 알림을 쌓고(취소는 Model 의 창구가 거른다), 끝나면 목록을 다시
+/// 기기 명령 흐름: 켜기(함께 켜기 포함)·끄기·만들기·삭제·초기화. 명령이 실패하면 알림을 쌓고(취소는 Model 의 창구가 거른다), 끝나면 목록을 다시
 /// 읽는다 (만들기만 다시 읽지 않고 Model 에 맡긴다). iOS `DeviceCommandFlow` 와 같은 역할이다.
 /// `AndroidDevicesModel` 이 `private` 으로 소유하고, 진행 기록(`activity`·`isCreating`)을 시작한 Model 메서드 안에서만 부른다.
 /// Model 상태를 직접 바꾸지 않는다 (바꾸는 것은 `AndroidAppInstallFlow.Host` 창구로만, 부를 때 넘겨받는다).
@@ -25,6 +25,40 @@ struct AndroidDeviceCommandFlow {
       host.enqueue(.bootFailed(AndroidDeviceLabel(device), error))
     }
     await host.reload()
+  }
+
+  /// 함께 켜기(여러 대): 시작한 기기를 동시에 켜고, 기기마다 켜기 → 다시 읽기 → `finished` 로 그 행을 푼다 (먼저 켜진 행이
+  /// 꺼짐으로 남지 않게 다시 읽기가 먼저다). 기기별 알림은 쌓지 않고, 실패가 있으면 결과 알림 하나(`.batchBootFinished`).
+  func bootAll(_ start: (begun: [AndroidVirtualDevice], owner: Int), host: AndroidAppInstallFlow.Host) async {
+    let errors = await withTaskGroup(of: (AndroidVirtualDevice.ID, AndroidEmulatorError?).self) { group in
+      let owner = start.owner
+      for device in start.begun {
+        group.addTask { await self.bootMember(device, owner: owner, host: host) }
+      }
+      var errors: [AndroidVirtualDevice.ID: AndroidEmulatorError] = [:]
+      for await (id, error) in group {
+        errors[id] = error
+      }
+      return errors
+    }
+    let report = AndroidBatchBootReport(entries: start.begun.map {
+      AndroidBatchBootReport.Entry(device: AndroidDeviceLabel($0), error: errors[$0.id])
+    })
+    if report.needsNotice {
+      host.enqueue(.batchBootFinished(report))
+    }
+  }
+
+  /// 함께 켜기의 기기 한 대: 켜고 다시 읽은 뒤 그 행을 푼다.
+  private func bootMember(
+    _ device: AndroidVirtualDevice,
+    owner: Int,
+    host: AndroidAppInstallFlow.Host
+  ) async -> (AndroidVirtualDevice.ID, AndroidEmulatorError?) {
+    let error = await self.boot(device.id)
+    await host.reload()
+    host.finished(device.id, owner)
+    return (device.id, error)
   }
 
   func shutdown(_ device: AndroidVirtualDevice, host: AndroidAppInstallFlow.Host) async {

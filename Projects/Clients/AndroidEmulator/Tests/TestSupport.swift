@@ -254,7 +254,7 @@ struct Harness {
   let directory: TemporaryDirectory
   let home: URL
   let sdk: URL
-  let adb = FakeADB()
+  let adb: FakeADB
   let locks = LockHolder()
   let command: CommandClientFake
   let client: AndroidEmulatorClientImpl
@@ -263,11 +263,16 @@ struct Harness {
   /// - Parameters:
   ///   - sdkChoice: nil 이면 `sdk` 폴더. emulator·adb·기본 이미지(`image`)를 설치해 둔다.
   ///   - timing: 기본은 `Harness.timing`.
+  ///   - adb: `cancellableHandler` 가 함께 쓰는 adb 흉내.
+  ///   - cancellableHandler: `runCancellable` 처리기 (녹화처럼 오래 도는 명령). nil 이면 `adb` 의 답을 한 조각씩 넘긴다.
   init(
     sdkChoice: AndroidSDKRootChoice? = nil,
     installSDK: Bool = true,
-    timing: AndroidEmulatorClientImpl.Timing = Harness.timing
+    timing: AndroidEmulatorClientImpl.Timing = Harness.timing,
+    adb: FakeADB = FakeADB(),
+    cancellableHandler: CommandClientFake.CancellableHandler? = nil
   ) throws {
+    self.adb = adb
     let directory = try TemporaryDirectory()
     self.directory = directory
     self.home = directory.url.appending(path: "home", directoryHint: .isDirectory)
@@ -283,6 +288,7 @@ struct Harness {
     let processes = self.processes
     self.command = CommandClientFake(
       handler: { invocation throws(CommandError) in try adb.respond(invocation.arguments) },
+      cancellableHandler: cancellableHandler,
       launchHandler: { _, process, exit throws(CommandError) in
         try processes.launched(process, exit: exit)
       },

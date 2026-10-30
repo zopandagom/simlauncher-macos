@@ -9,9 +9,17 @@ public extension AndroidDevicesModel {
     return !self.creationOptions.isEmpty && !self.isCreating && !self.hasPresentedSheet
   }
 
-  /// 시트(만들기·앱 실행·링크 열기)나 삭제·초기화 확인 대화상자가 떠 있다. 하나가 떠 있으면 다른 것을 열지 않는다.
-  var hasPresentedSheet: Bool {
-    self.creationDraft != nil || self.confirmation != nil || self.launchAppDraft != nil || self.openURLDraft != nil
+  /// 앱 실행·링크 열기 시트를 열 수 있는 기기: 목록에 있고, 그 작업(`.launchApp`·`.openURL`)을 시작할 수 있고(켜짐·쓸 수
+  /// 있음·작업 없음), 만들기 시트·확인 대화상자가 없다. 아니면 nil. App 이 `AndroidAppSheetsModel` 의 `target` 으로 잇는다
+  /// (그 Model 이 자기 두 시트를 따로 본다).
+  func appSheetTarget(_ id: AndroidVirtualDevice.ID, for task: AndroidDeviceTask) -> AndroidVirtualDevice? {
+    guard case let .loaded(list) = self.listState,
+          let device = list.device(id: id),
+          self.activity.canStart(task, on: device),
+          self.creationDraft == nil,
+          self.confirmation == nil
+    else { return nil }
+    return device
   }
 
   /// 목록을 읽었지만 만들 수 있는 시스템 이미지가 없어 + 버튼을 쓸 수 없다. 기기가 있으면 목록 위 안내 줄로 이유와
@@ -35,6 +43,16 @@ public extension AndroidDevicesModel {
   /// 고른 기기 중 하나라도 켤 수 있다 (툴바 "선택한 기기 켜기").
   var canBootSelection: Bool {
     self.selectedDevices.contains { self.activity.canStart(.boot, on: $0) }
+  }
+
+  /// 고른 기기 중 하나라도 앱을 설치할 수 있다 (켜짐·쓸 수 있음·작업 없음). 툴바 "선택한 기기에 앱 설치" 의 세 항목을 켠다.
+  var canInstallOnSelection: Bool {
+    self.selectedDevices.contains { self.activity.canStart(.installApp, on: $0) }
+  }
+
+  /// 어느 기기든 녹화 중이다 (시작 중·저장 중 포함, `recordings.isActive`). App 의 앱 종료 확인이 읽는다.
+  var isRecording: Bool {
+    self.recordings.isActive
   }
 }
 

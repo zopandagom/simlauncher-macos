@@ -23,6 +23,14 @@ public struct AndroidEmulatorClientImpl: AndroidEmulatorClient {
     var adbTimeout: Duration
     /// `adb install` 하나의 한도 (실측 최대 48 MB 11.3초에서 크게 잡았다).
     var installTimeout: Duration
+    /// `screencap` 하나의 한도 (실측 1.0~1.5초, 녹화 중에는 3.0초).
+    var screenshotTimeout: Duration = .seconds(30)
+    /// 기기 안 `kill -2` 뒤 녹화 adb 가 끝나기를 기다리는 한도 (실측 0.82초 이하). 넘으면 호스트에서 대신 멈춘다.
+    var recordingStopLimit: Duration = .seconds(30)
+    /// 호스트에서 대신 멈춘 뒤 기기 쪽 마무리를 기다리는 시간 (실측: 호스트 SIGINT 뒤 약 0.8초에 끝났다).
+    var recordingSettle: Duration = .seconds(2)
+    /// 녹화 파일 `adb pull` 하나의 한도 (실측 7.7 MB 0.07초).
+    var transferTimeout: Duration = .seconds(600)
 
     static let standard = Timing(
       pollInterval: .seconds(1),

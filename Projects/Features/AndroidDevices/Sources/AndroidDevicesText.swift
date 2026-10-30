@@ -7,7 +7,8 @@ import Foundation
 /// 케이스를 기본값 없이 모두 적어, 상태·오류가 늘면 컴파일러가 잡는다. 에러 본문·행 이유는 `AndroidDevicesText+Error.swift`, 확인 대화상자·만들기 시트는
 /// `AndroidDevicesText+Dialogs.swift`, 앱 설치·실행은 `AndroidDevicesText+Install.swift`, 링크 열기는
 /// `AndroidDevicesText+OpenURL.swift`, URL 에서 설치는 `AndroidDevicesText+Download.swift`, 카탈로그에서 설치는
-/// `AndroidDevicesText+Catalog.swift`(시트·버전 설치 실패)와 `AndroidDevicesText+CatalogLoad.swift`(카탈로그 읽기 실패).
+/// `AndroidDevicesText+Catalog.swift`(시트·버전 설치 실패)와 `AndroidDevicesText+CatalogLoad.swift`(카탈로그 읽기 실패),
+/// 스크린샷·녹화는 `AndroidDevicesText+Capture.swift`, 여러 기기 설치는 `AndroidDevicesText+Batch.swift`.
 enum AndroidDevicesText {
   // MARK: - 기기 라벨
 
@@ -30,17 +31,34 @@ enum AndroidDevicesText {
   static func title(for notice: AndroidDevicesNotice?) -> String {
     switch notice {
     case .none:
-      return ""
+      ""
     case .refreshFailed:
-      return String(localized: "기기 목록을 새로 고치지 못했습니다", bundle: .module)
+      String(localized: "기기 목록을 새로 고치지 못했습니다", bundle: .module)
+    case .bootFailed, .shutdownFailed, .deleteFailed, .eraseFailed, .folderKept:
+      self.deviceNoticeTitle(for: notice)
+    case .createFailed:
+      String(localized: "기기를 만들지 못했습니다", bundle: .module)
+    case let .batchBootFinished(report):
+      self.batchTitle(for: report)
+    case .batchInstallFailed, .batchInstallFinished:
+      self.batchInstallNoticeTitle(for: notice)
+    case .installFailed, .installedButNotLaunched, .launchFailed, .openURLFailed:
+      self.appNoticeTitle(for: notice)
+    case .screenshotFailed, .screenshotRevealFailed, .recordingFailed, .recordingInterrupted,
+         .recordingStoppedByDevice, .recordingAtTimeLimit, .recordingRevealFailed:
+      self.captureNoticeTitle(for: notice)
+    }
+  }
+
+  /// 기기 하나에 대한 알림 제목 (켜기·끄기·삭제·초기화 실패, 폴더 남김).
+  private static func deviceNoticeTitle(for notice: AndroidDevicesNotice?) -> String {
+    switch notice {
     case let .bootFailed(device, _):
       let label = self.label(device)
       return String(localized: "\(label) 기기를 켜지 못했습니다", bundle: .module)
     case let .shutdownFailed(device, _):
       let label = self.label(device)
       return String(localized: "\(label) 기기를 끄지 못했습니다", bundle: .module)
-    case .createFailed:
-      return String(localized: "기기를 만들지 못했습니다", bundle: .module)
     case let .deleteFailed(device, _):
       let label = self.label(device)
       return String(localized: "\(label) 기기를 삭제하지 못했습니다", bundle: .module)
@@ -50,10 +68,8 @@ enum AndroidDevicesText {
     case let .folderKept(device, _):
       let label = self.label(device)
       return String(localized: "\(label) 기기를 목록에서 지웠습니다", bundle: .module)
-    case let .batchBootFinished(report):
-      return self.batchTitle(for: report)
-    case .installFailed, .installedButNotLaunched, .launchFailed, .openURLFailed:
-      return self.appNoticeTitle(for: notice)
+    default:
+      return ""
     }
   }
 
@@ -68,8 +84,13 @@ enum AndroidDevicesText {
       return String(localized: "기기 폴더가 예상한 위치가 아니어서 지우지 않고 남겨 두었습니다: \(path)", bundle: .module)
     case let .batchBootFinished(report):
       return self.batchMessage(for: report)
+    case .batchInstallFailed, .batchInstallFinished:
+      return self.batchInstallNoticeMessage(for: notice)
     case .installFailed, .installedButNotLaunched, .launchFailed, .openURLFailed:
       return self.appNoticeMessage(for: notice)
+    case .screenshotFailed, .screenshotRevealFailed, .recordingFailed, .recordingInterrupted,
+         .recordingStoppedByDevice, .recordingAtTimeLimit, .recordingRevealFailed:
+      return self.captureNoticeMessage(for: notice)
     }
   }
 
@@ -90,7 +111,7 @@ enum AndroidDevicesText {
     String(localized: "선택한 기기 켜기", bundle: .module)
   }
 
-  /// 고른 기기가 없을 때 켜기 버튼 툴팁: 다중 선택 방법을 안내한다.
+  /// 고른 기기가 없을 때 설치 메뉴 맨 위 글자와 켜기 버튼 툴팁: 다중 선택 방법을 안내한다.
   static var selectionGuide: String {
     String(
       localized: "목록에서 기기를 고르세요. ⌘ 키를 누른 채 클릭하면 여러 대를, ⇧ 키를 누른 채 클릭하면 사이의 기기를 함께 고릅니다.",

@@ -1,12 +1,12 @@
 import Core
 
-/// URL 에서 설치 시트 초안. 대상 기기는 행 "앱 설치" 메뉴의 "URL 에서…" 를 누른 시점의 값이다 (한 대).
+/// URL 에서 설치 시트 초안. 대상 기기는 "URL 에서…" 를 누른 시점의 값이다 (행 메뉴면 1대, 툴바면 고른 기기 전부).
 /// iOS `InstallURLDraft` 와 같은 주소 규칙(Core `DownloadURL`)이다.
 /// 바꾸는 메서드는 Model 만 부른다 (View 는 `AndroidDownloadInstallModel.urlDraft` 를 읽기만 한다).
 public struct AndroidInstallURLDraft: Hashable, Sendable {
-  public let deviceID: AndroidVirtualDevice.ID
-  /// 시트 제목과 실패 알림에 보일 기기 (누른 시점의 값).
-  public let device: AndroidDeviceLabel
+  /// 시트 제목과 실패 알림에 보일 대상 기기 (1대 이상, 누른 시점의 목록 순서·라벨).
+  /// 설치할 수 없는 기기도 들어 있을 수 있다 (설치를 시작할 때 판정해 이유와 함께 건너뛴다).
+  public let targets: [AndroidTargetDevice]
   public private(set) var text = ""
 
   /// 입력한 주소의 첫 문제. 없으면 nil.

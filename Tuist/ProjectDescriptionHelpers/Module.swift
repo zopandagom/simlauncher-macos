@@ -42,7 +42,8 @@ public extension Client {
   /// 관리자가 구성 프로필로 강제한 키(`objectIsForced`)는 잠김이라 쓰지 않는다.
   static let preferences = Client("Preferences")
   /// 사용자 폴더와 Finder: 스크린샷·녹화 저장 폴더(사진·동영상 폴더의 `SimLauncher`) 준비와 파일 이름 예약(덮어쓰지 않음)·
-  /// 빈 예약 파일 지우기, Finder 에서 파일 선택해 보이기 (FileManager·NSWorkspace).
+  /// 빈 예약 파일 지우기, Finder 에서 파일 선택해 보이기 (FileManager·NSWorkspace). 예약한 파일에 쓰는 것은 Simulator(simctl)·
+  /// AndroidEmulator(screencap 출력 쓰기, 녹화는 adb pull 로 바꿔 넣기) Impl 이다.
   static let workspace = Client("Workspace")
   /// Android SDK 위치(기본 `~/Library/Android/sdk` 또는 설정에서 고른 폴더, App 이 주는 provider)의 상태 확인(파일만 읽는다)과
   /// 없는 구성 요소(platform-tools·emulator·기본 시스템 이미지) 설치: 저장소 XML 받기·해석(DownloadClient) → 라이선스 동의 확인
@@ -51,7 +52,8 @@ public extension Client {
   static let androidSDK = Client("AndroidSDK")
   /// Android 기기(AVD, `~/.android/avd`. Android Studio 와 함께 쓴다) 목록과 상태(잠금 파일·adb), 켜기(emulator 띄우기·완료 기다리기)·
   /// 끄기(adb emu kill, 앱이 띄운 프로세스는 SIGINT)·만들기(설정 파일 직접 쓰기, 덮어쓰지 않음)·삭제·초기화,
-  /// 켜진 기기의 API 수준·ABI 읽기와 앱 설치(adb install)·실행(기기에서 launcher 화면을 찾아 am start)·링크 열기·사용자 설치 앱 목록.
+  /// 켜진 기기의 API 수준·ABI 읽기와 앱 설치(adb install)·실행(기기에서 launcher 화면을 찾아 am start)·링크 열기·사용자 설치 앱 목록,
+  /// 화면 스크린샷(adb exec-out screencap)·녹화(기기 안 screenrecord → kill -2 로 멈춤 → adb pull 로 예약 파일에 가져오기).
   /// SDK 위치는 AndroidSDK 와 같은 provider 를 App 이 준다. 명령은 CommandClient 로 SDK 의 emulator·adb 만 실행한다.
   static let androidEmulator = Client("AndroidEmulator")
   /// 로컬 .apk 검사: zipinfo 목록·서명 유무·AndroidManifest.xml(AXML) 의 package·minSdk·네이티브 ABI.

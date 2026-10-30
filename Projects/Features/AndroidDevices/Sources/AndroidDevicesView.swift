@@ -5,25 +5,32 @@ import UniformTypeIdentifiers
 
 /// 상태를 읽어 그리기만 하고, 사용자 동작은 Model 의 이벤트 메서드로 넘긴다.
 /// 화면 문자열은 `AndroidDevicesText` 가 이 모듈의 `Localizable.xcstrings` 에서 찾는다.
-/// 목록은 ⌘·⇧ 클릭으로 여러 기기를 고를 수 있고(선택은 Model 상태), 툴바의 "선택한 기기 켜기" 가 고른 기기를 함께 켠다.
-/// 행의 버튼·메뉴·드롭은 그 행 한 대에만 동작한다. 사라질 때(`onDisappear`) 자동 다시 읽기를 멈추게 알린다.
-/// 행 "앱 설치" 메뉴의 "URL 에서…"·"카탈로그에서…" 시트는 `downloadModel`(App 소유)의 초안으로 띄운다.
+/// 목록은 ⌘·⇧ 클릭으로 여러 기기를 고를 수 있고(선택은 Model 상태), 툴바의 "선택한 기기 켜기" 가 고른 기기를 함께 켜고,
+/// "선택한 기기에 앱 설치"(파일에서 고르기…·URL 에서…·카탈로그에서…)가 고른 기기 중 켜진 기기에 함께 설치한다.
+/// 행의 버튼·메뉴·드롭(스크린샷·녹화 포함)은 그 행 한 대에만 동작한다. 사라질 때(`onDisappear`) 자동 다시 읽기를 멈추게 알린다.
+/// URL·카탈로그 시트는 `downloadModel`, 앱 실행·링크 열기 시트는 `appSheetsModel`(둘 다 App 소유)의 초안으로 띄운다.
 public struct AndroidDevicesView: View {
   let model: AndroidDevicesModel
   let downloadModel: AndroidDownloadInstallModel
+  let appSheetsModel: AndroidAppSheetsModel
   /// 지금 띄운 알림. 닫히는 동안 Model 의 줄에서 빠져도 글자가 비지 않도록 View 가 들고 있는다.
   @State private var presentedNotice: AndroidDevicesNoticeItem?
   /// 알림을 띄웠는지. 다음 알림을 띄울 때 false → true 전이가 생기도록 Model 의 줄과 따로 둔다.
   @State private var isNoticePresented = false
   /// 마지막으로 띄운 삭제·초기화 확인. 닫히는 동안 Model 값이 nil 이어도 제목이 비지 않도록 View 가 들고 있는다.
   @State private var presentedConfirmation: AndroidDeviceConfirmation?
-  /// "파일에서 고르기…" 를 고른 행의 기기. 파일 패널이 닫힌 뒤 완료 처리에서 읽으므로 패널 표시 여부와 따로 둔다.
-  @State private var importTarget: AndroidVirtualDevice.ID?
+  /// "파일에서 고르기…" 를 고른 곳(행의 기기·툴바의 선택). 파일 패널이 닫힌 뒤 완료 처리에서 읽으므로 패널 표시 여부와 따로 둔다.
+  @State private var importTarget: ImportTarget?
   @State private var isImporterPresented = false
 
-  public init(model: AndroidDevicesModel, downloadModel: AndroidDownloadInstallModel) {
+  public init(
+    model: AndroidDevicesModel,
+    downloadModel: AndroidDownloadInstallModel,
+    appSheetsModel: AndroidAppSheetsModel
+  ) {
     self.model = model
     self.downloadModel = downloadModel
+    self.appSheetsModel = appSheetsModel
   }
 
   public var body: some View {
@@ -39,6 +46,9 @@ public struct AndroidDevicesView: View {
               }
             }
           }
+        }
+        ToolbarItem {
+          self.installOnSelectionMenu
         }
         ToolbarItem {
           self.bootSelectionButton
@@ -110,30 +120,30 @@ public struct AndroidDevicesView: View {
       ) {
         AndroidDeviceCreationSheet(model: self.model)
       }
-      // 만들기·앱 실행·링크 시트는 같은 체인에 두고, Model 이 둘 이상 함께 열리지 않게 막는다 (`hasPresentedSheet`).
+      // 만들기·앱 실행·링크 시트는 같은 체인에 두고, 두 Model(App 이 잇는다)이 둘 이상 함께 열리지 않게 막는다.
       .sheet(
         isPresented: Binding(
-          get: { self.model.launchAppDraft != nil },
+          get: { self.appSheetsModel.launchAppDraft != nil },
           set: { isPresented in
             if !isPresented {
-              self.model.launchAppSheetDismissed()
+              self.appSheetsModel.launchAppSheetDismissed()
             }
           }
         )
       ) {
-        AndroidLaunchAppSheet(model: self.model)
+        AndroidLaunchAppSheet(model: self.appSheetsModel)
       }
       .sheet(
         isPresented: Binding(
-          get: { self.model.openURLDraft != nil },
+          get: { self.appSheetsModel.openURLDraft != nil },
           set: { isPresented in
             if !isPresented {
-              self.model.openURLSheetDismissed()
+              self.appSheetsModel.openURLSheetDismissed()
             }
           }
         )
       ) {
-        AndroidOpenURLSheet(model: self.model)
+        AndroidOpenURLSheet(model: self.appSheetsModel)
       }
       .modifier(AndroidDownloadSheets(model: self.downloadModel))
       .confirmationDialog(
@@ -172,8 +182,15 @@ public struct AndroidDevicesView: View {
         allowedContentTypes: [UTType(filenameExtension: "apk"), UTType(filenameExtension: "aab")].compactMap(\.self)
       ) { result in
         // 취소·실패는 무시한다.
-        guard case let .success(url) = result, let id = self.importTarget else { return }
-        Task { await self.model.appFileSelected(url, for: id) }
+        guard case let .success(url) = result else { return }
+        switch self.importTarget {
+        case let .device(id):
+          Task { await self.model.appFileSelected(url, for: id) }
+        case .selection:
+          Task { await self.model.selectedAppFileChosen(url) }
+        case .none:
+          break
+        }
       }
       .task { await self.model.onAppear() }
       .onDisappear { self.model.viewDisappeared() }
@@ -302,31 +319,25 @@ extension AndroidDevicesView {
   }
 
   private func deviceRow(_ device: AndroidVirtualDevice) -> some View {
-    AndroidDeviceRow(
+    let task = self.model.activity.task(on: device.id)
+    return AndroidDeviceRow(
       device: device,
-      task: self.model.activity.task(on: device.id),
+      task: task,
       downloadStage: self.model.activity.downloadStage(on: device.id),
-      bootTapped: {
-        Task { await self.model.bootTapped(device.id) }
-      },
-      shutdownTapped: {
-        Task { await self.model.shutdownTapped(device.id) }
-      },
-      eraseTapped: {
-        self.model.eraseTapped(device.id)
-      },
-      deleteTapped: {
-        self.model.deleteTapped(device.id)
-      },
+      downloadGroupSize: self.model.activity.downloadGroupSize(on: device.id),
+      bootTapped: { Task { await self.model.bootTapped(device.id) } },
+      shutdownTapped: { Task { await self.model.shutdownTapped(device.id) } },
+      eraseTapped: { self.model.eraseTapped(device.id) },
+      deleteTapped: { self.model.deleteTapped(device.id) },
       installFromFileTapped: {
-        self.importTarget = device.id
+        self.importTarget = .device(device.id)
         self.isImporterPresented = true
       },
       installFromURLTapped: {
-        self.downloadModel.urlMenuTapped(device)
+        self.downloadModel.urlMenuTapped([device])
       },
       installFromCatalogTapped: {
-        Task { await self.downloadModel.catalogMenuTapped(device) }
+        Task { await self.downloadModel.catalogMenuTapped([device]) }
       },
       cancelDownloadTapped: {
         self.model.downloadCancelTapped(device.id)
@@ -335,12 +346,72 @@ extension AndroidDevicesView {
         Task { await self.model.appDropped(urls, on: device.id) }
       },
       launchAppTapped: {
-        Task { await self.model.launchAppTapped(device.id) }
+        Task { await self.appSheetsModel.launchAppTapped(device.id) }
       },
       openURLTapped: {
-        self.model.openURLTapped(device.id)
+        self.appSheetsModel.openURLTapped(device.id)
+      },
+      canTakeScreenshot: self.model.screenshots.canStart(on: device, during: task),
+      isTakingScreenshot: self.model.screenshots.isTaking(on: device.id),
+      screenshotTapped: {
+        Task { await self.model.screenshotTapped(device.id) }
+      },
+      recordingPhase: self.model.recordings.phase(on: device.id),
+      canStartRecording: self.model.recordings.canStart(on: device, during: task),
+      recordTapped: {
+        Task { await self.model.recordTapped(device.id) }
+      },
+      stopRecordingTapped: {
+        self.model.recordingStopTapped(device.id)
       }
     )
+  }
+
+  /// 파일 패널을 연 곳.
+  enum ImportTarget {
+    /// 행 "앱 설치" 메뉴: 그 기기.
+    case device(AndroidVirtualDevice.ID)
+    /// 툴바 "선택한 기기에 앱 설치": 파일을 고른 시점의 선택.
+    case selection
+  }
+
+  /// 늘 열리는 메뉴. 맨 위 글자가 상황(고른 기기 없음 → ⌘·⇧ 안내, 설치할 수 있음 → 대수, 없음 → 이유)을 보이고,
+  /// 설치할 수 있는 기기가 없으면 세 항목이 비활성이다 (행 메뉴가 막힌 이유를 맨 위에 보이는 것과 같다). iOS 와 같은 배치다.
+  private var installOnSelectionMenu: some View {
+    let guide = self.installOnSelectionGuide
+    let isDisabled = !self.model.canInstallOnSelection
+    return Menu {
+      Text(guide)
+      Divider()
+      Button(AndroidDevicesText.installFromFileMenuItem) {
+        self.importTarget = .selection
+        self.isImporterPresented = true
+      }
+      .disabled(isDisabled)
+      Button(AndroidDevicesText.installFromURLMenuItem) {
+        self.downloadModel.urlMenuTapped(self.model.selectedDevices)
+      }
+      .disabled(isDisabled)
+      Button(AndroidDevicesText.installFromCatalogMenuItem) {
+        Task { await self.downloadModel.catalogMenuTapped(self.model.selectedDevices) }
+      }
+      .disabled(isDisabled)
+    } label: {
+      Label(AndroidDevicesText.installOnSelectionMenu, systemImage: "square.and.arrow.down.on.square")
+    }
+    // 비개발자가 찾을 수 있게 글자를 함께 보인다. 대수는 툴바 폭이 바뀌지 않게 이름에 넣지 않고 메뉴 글자·툴팁에 보인다.
+    .labelStyle(.titleAndIcon)
+    .help(guide)
+  }
+
+  private var installOnSelectionGuide: String {
+    let devices = self.model.selectedDevices
+    if devices.isEmpty {
+      return AndroidDevicesText.selectionGuide
+    }
+    return self.model.canInstallOnSelection
+      ? AndroidDevicesText.installOnSelectionHelp(count: devices.count)
+      : AndroidDevicesText.installOnSelectionUnavailable
   }
 
   /// 켤 수 있는 기기가 없으면 비활성이다. 비활성 툴바 버튼에는 툴팁이 잘 뜨지 않아 툴팁은 보조다.
@@ -361,7 +432,7 @@ extension AndroidDevicesView {
   }
 }
 
-/// 행 "URL 에서…"·"카탈로그에서…" 시트. `AndroidDownloadInstallModel` 이 둘이 함께 열리지 않게 막고, 기기 목록의 시트·확인
+/// "URL 에서…"·"카탈로그에서…" 시트 (행·툴바). `AndroidDownloadInstallModel` 이 둘이 함께 열리지 않게 막고, 기기 목록의 시트·확인
 /// 대화상자와의 겹침은 모달 시트가 막는다. 닫기는 `Binding(get:set:)` 으로 Model 의 이벤트에 잇는다.
 private struct AndroidDownloadSheets: ViewModifier {
   let model: AndroidDownloadInstallModel

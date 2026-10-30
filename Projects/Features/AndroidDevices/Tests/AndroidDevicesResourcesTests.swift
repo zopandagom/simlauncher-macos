@@ -26,8 +26,11 @@ struct AndroidDevicesResourcesTests {
       #expect(table[sample.key] == sample.key, "\(sample.key)")
       #expect(String(format: table[sample.key] ?? "", arguments: sample.arguments) == sample.text, "\(sample.key)")
     }
-    // URL·카탈로그에서 설치 문구는 표로 기대 문구를 만드는 확인 목록이다 (`DownloadTextCatalog`).
+    // URL·카탈로그에서 설치 문구와 스크린샷·녹화 문구는 표로 기대 문구를 만드는 확인 목록이다
+    // (`DownloadTextCatalog`·`CaptureTextCatalog`).
     let downloadChecks = DownloadTextCatalog.sharedChecks(table) + DownloadTextCatalog.androidChecks(table)
+      + CaptureTextCatalog.sharedChecks(table) + CaptureTextCatalog.androidChecks(table)
+      + BatchTextCatalog.sharedChecks(table) + BatchTextCatalog.androidChecks(table)
     for check in downloadChecks {
       #expect(table[check.key] == check.key, "\(check.key)")
       #expect(check.actual == check.expected, "\(check.key)")
@@ -205,6 +208,8 @@ enum AndroidDevicesTextCatalog {
     .nameUnavailable, .creationOptionUnavailable, .avdFolderUnavailable, .fileOperationFailed,
     .unsafeDeviceFolder(nil), .unsafeDeviceFolder(URL(filePath: "/x")), .deviceNotBooted, .installTimedOut,
     .launchFailed(.notInstalled), .launchFailed(.noLauncherActivity), .urlNotHandled, .appCommandFailed,
+    .captureFailed, .captureFileUnwritable, .recordingFailed, .recordingEmpty, .recordingLost,
+    .recordingTransferTimedOut,
   ] + installFailures.map { .installFailed($0) }
 
   static let installFailures: [AndroidInstallFailure] = [
@@ -225,6 +230,10 @@ enum AndroidDevicesTextCatalog {
       .createFailed(label, .nameUnavailable), .deleteFailed(label, .deviceRunning),
       .eraseFailed(label, .fileOperationFailed), .folderKept(label, URL(filePath: "/x")),
       .batchBootFinished(AndroidBatchBootReport(entries: [.init(device: label, error: .bootTimedOut)])),
+      .batchInstallFailed([label, label], .package(.unsigned)),
+      .batchInstallFinished(AndroidBatchInstallReport(entries: [
+        .init(device: label, result: .installFailed(.deviceBusy)),
+      ])),
       .installFailed(label, .multipleItems), .installFailed(label, .package(.unsigned)),
       .installFailed(label, .rejected(.requiresNewerAPI(required: 99, device: 37))),
       .installFailed(label, .deviceNotReady(.notBooted)), .installFailed(label, .emulator(.installTimedOut)),
@@ -235,6 +244,11 @@ enum AndroidDevicesTextCatalog {
       .installFailed(label, .download(.httpStatus(404), origin: .catalog)),
       .installFailed(label, .downloadedPackage(.unreadable, isWebPage: true, origin: .enteredURL)),
       .installFailed(label, .downloadedPackage(.appBundle, isWebPage: false, origin: .catalog)),
+      .screenshotFailed(label, .workspace(.folderUnavailable)), .screenshotFailed(label, .emulator(.captureFailed)),
+      .screenshotRevealFailed(label, .fileNotFound), .recordingFailed(label, .workspace(.fileNameUnavailable)),
+      .recordingFailed(label, .emulator(.recordingLost)), .recordingFailed(label, .emulator(.captureFileUnwritable)),
+      .recordingInterrupted(label), .recordingStoppedByDevice(label), .recordingAtTimeLimit(label),
+      .recordingRevealFailed(label, .fileNotFound),
     ]
   }()
 
