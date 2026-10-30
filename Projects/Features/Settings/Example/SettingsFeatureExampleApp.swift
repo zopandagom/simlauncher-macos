@@ -76,7 +76,7 @@ enum ExampleScenario: CaseIterable, Hashable {
     case .locked: "관리자 잠금"
     case .checking: "확인 중 (취소할 때까지 끝나지 않음)"
     case .notCatalog: "등록 실패: 로그인 페이지(HTML)"
-    case .newerSchema: "등록 실패: 새 규격 (schemaVersion 2)"
+    case .newerSchema: "등록 실패: 새 규격 (schemaVersion 3)"
     case .versionProblem: "등록 실패: 버전 항목의 날짜 형식"
     case .notFound: "등록 실패: HTTP 404"
     case .hostNotFound: "등록 실패: 서버 주소를 찾지 못함"
@@ -180,7 +180,7 @@ enum ExampleCatalog {
 
   static let loginPage = Data("<!doctype html><html><body>Sign in</body></html>".utf8)
 
-  static let newerSchema = Data(#"{ "schemaVersion": 2, "apps": [] }"#.utf8)
+  static let newerSchema = Data(#"{ "schemaVersion": 3, "apps": [] }"#.utf8)
 
   /// 첫 앱의 첫 버전 날짜에 시간대가 없다.
   static let badCreatedAt = Data("""

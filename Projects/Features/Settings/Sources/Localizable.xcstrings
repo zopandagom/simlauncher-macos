@@ -91,6 +91,16 @@
         }
       }
     },
+    "%@의 platform 이 ios 나 android 가 아닙니다 (소문자로 씁니다)." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@의 platform 이 ios 나 android 가 아닙니다 (소문자로 씁니다)."
+          }
+        }
+      }
+    },
     "%@이 객체가 아닙니다 (%@ 배열의 항목은 객체여야 합니다)." : {
       "localizations" : {
         "ko" : {
@@ -711,12 +721,12 @@
         }
       }
     },
-    "카탈로그의 schemaVersion %lld 은 없는 규격입니다 (지원: %lld)." : {
+    "카탈로그의 schemaVersion %lld 은 없는 규격입니다 (지원: 1~%lld)." : {
       "localizations" : {
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "카탈로그의 schemaVersion %lld 은 없는 규격입니다 (지원: %lld)."
+            "value" : "카탈로그의 schemaVersion %lld 은 없는 규격입니다 (지원: 1~%lld)."
           }
         }
       }

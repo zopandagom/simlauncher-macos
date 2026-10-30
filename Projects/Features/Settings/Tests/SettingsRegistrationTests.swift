@@ -30,6 +30,20 @@ struct SettingsRegistrationTests: SettingsModelTesting {
     #expect(model.checkingURL == nil)
   }
 
+  @Test("schemaVersion 2 카탈로그도 등록하고, 앱 수는 iOS·Android 를 합친 수다")
+  func successSchemaVersion2() async {
+    let preferences = PreferencesClientFake()
+    let download = DownloadClientFake()
+    download.setFetchResult(.success(CatalogData.v2ThreeApps))
+    let model = Self.openedModel(preferences: preferences, download: download)
+    model.catalogURLTextChanged(Self.typed)
+
+    await model.addButtonTapped()
+
+    #expect(preferences.calls.last == .addCatalogURL(Self.stored))
+    #expect(model.result == .added(raw: Self.stored, appCount: 3))
+  }
+
   @Test(
     "받기 실패는 그 이유를 결과 줄에 두고, 글자를 남기고, 저장하지 않는다",
     arguments: [
@@ -58,7 +72,13 @@ struct SettingsRegistrationTests: SettingsModelTesting {
     "형식 문제는 그 문제를 결과 줄에 두고, 글자를 남기고, 저장하지 않는다",
     arguments: [
       (CatalogData.loginHTML, BuildCatalogProblem.notJSONObject),
-      (CatalogData.newerSchema, .unsupportedSchemaVersion(2)),
+      (CatalogData.newerSchema, .unsupportedSchemaVersion(3)),
+      (
+        CatalogData.v2UppercasePlatform,
+        .unsupportedPlatform(
+          position: BuildCatalogProblem.Position(appIndex: 0, appID: "app-a", versionIndex: nil, versionID: nil)
+        )
+      ),
       (
         CatalogData.missingCreatedAt,
         .missingField(
