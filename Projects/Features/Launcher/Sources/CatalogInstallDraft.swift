@@ -103,7 +103,8 @@ public struct CatalogInstallDraft: Hashable, Sendable {
     guard let source = self.sources.first(where: { $0.id == key.sourceID }),
           case let .loaded(catalog) = source.state
     else { return nil }
-    return catalog.apps.first { $0.id == key.appID }
+    // iOS 기기 시트라 iOS 앱만 찾는다. 새로 고침 뒤 Android 앱이 된 앱은 사라진 앱처럼 선택이 비워진다.
+    return catalog.app(key.appID, for: .ios)
   }
 }
 
@@ -144,6 +145,12 @@ public extension CatalogInstallDraft {
     }
   }
 
+  /// 읽힌 구역에 iOS 앱이 없는 이유. 앱이 있거나 읽는 중·실패면 nil. View 는 이것으로만 고른다.
+  func emptyReason(for source: CatalogSource) -> CatalogEmptyReason? {
+    guard case let .loaded(catalog) = source.state, catalog.apps(for: .ios).isEmpty else { return nil }
+    return catalog.apps.isEmpty ? .noApps : .noIOSApps
+  }
+
   /// 읽는 중인 구역이 있다 (새로 고침 버튼 옆 진행 표시).
   var isLoading: Bool {
     self.sources.contains { $0.state == .loading }
@@ -163,6 +170,14 @@ public extension CatalogInstallDraft {
     guard !app.versions.isEmpty else { return .noVersions }
     return .versions(app.versions)
   }
+}
+
+/// 읽힌 구역에 iOS 앱이 없는 이유.
+public enum CatalogEmptyReason: Hashable, Sendable {
+  /// 앱이 하나도 없다.
+  case noApps
+  /// Android 앱만 있다.
+  case noIOSApps
 }
 
 /// 시트의 카탈로그 구역 하나.

@@ -86,7 +86,7 @@ struct CatalogInstallSheet: View {
   private func appList(_ draft: CatalogInstallDraft) -> some View {
     List(selection: Binding(get: { draft.selectedApp }, set: { self.model.appSelected($0) })) {
       ForEach(draft.sources) { (source: CatalogSource) in
-        CatalogSourceSection(source: source, note: draft.note(for: source))
+        CatalogSourceSection(source: source, note: draft.note(for: source), emptyReason: draft.emptyReason(for: source))
       }
     }
   }
@@ -154,6 +154,8 @@ private struct CatalogSourceSection: View {
   let source: CatalogSource
   /// 상태 줄(실패 이유·쓸 수 없는 주소)과 그 잠김. 읽는 중·읽힌 구역이면 nil.
   let note: CatalogSourceNote?
+  /// 읽힌 구역에 iOS 앱이 없는 이유. 앱이 있거나 읽는 중·실패면 nil.
+  let emptyReason: CatalogEmptyReason?
 
   var body: some View {
     Section {
@@ -178,10 +180,15 @@ private struct CatalogSourceSection: View {
       }
       .selectionDisabled()
     case let .loaded(catalog):
-      if catalog.apps.isEmpty {
-        self.statusText(LauncherText.catalogNoApps)
+      if let reason = self.emptyReason {
+        switch reason {
+        case .noApps:
+          self.statusText(LauncherText.catalogNoApps)
+        case .noIOSApps:
+          self.statusText(LauncherText.catalogNoIOSApps)
+        }
       } else {
-        ForEach(catalog.apps) { (app: BuildCatalog.App) in
+        ForEach(catalog.apps(for: .ios)) { (app: BuildCatalog.App) in
           Text(verbatim: app.name)
             .tag(CatalogAppKey(sourceID: self.source.id, appID: app.id))
         }

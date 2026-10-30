@@ -78,7 +78,7 @@ struct CatalogInstallModelTests: CatalogInstallModelTesting {
     await model.menuTapped(Self.sampleDevice(SampleID.iPhoneOn))
 
     #expect(Self.sourceStates(model) == [
-      .failed(.catalog(.unsupportedSchemaVersion(2))), .failed(.catalog(.notJSONObject)),
+      .failed(.catalog(.unsupportedSchemaVersion(3))), .failed(.catalog(.notJSONObject)),
     ])
   }
 

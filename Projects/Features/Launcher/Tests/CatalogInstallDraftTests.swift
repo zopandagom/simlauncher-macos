@@ -69,6 +69,35 @@ struct CatalogInstallDraftTests {
     #expect(!draft.isLoading)
   }
 
+  @Test("v2 카탈로그는 iOS 앱만 고를 수 있다: 같은 id 면 iOS 앱을 고르고, Android 앱만 있는 id 는 선택을 비운다")
+  func schemaVersion2SelectsIOSAppsOnly() throws {
+    let (draft, _) = try Self.loadedWithAlpha(CatalogData.v2Mixed)
+
+    #expect(draft.selectedApp == Self.alphaKey)
+    #expect(draft.selectedAppValue?.platform == .ios)
+    #expect(draft.selectedAppValue?.name == "Alpha")
+    #expect(draft.selectedVersionID == CatalogData.alphaV1)
+
+    var androidOnly = draft
+    androidOnly.appSelected(Self.betaKey)
+    #expect(androidOnly.selectedApp == nil)
+    #expect(androidOnly.selectedVersionID == nil)
+  }
+
+  @Test("새로 고침 뒤 고른 앱이 Android 앱이 되면 사라진 앱처럼 선택을 비운다")
+  func refreshClearsSelectionWhenAppBecomesAndroid() throws {
+    var (draft, _) = try Self.loadedWithAlpha()
+    let refresh = UUID()
+
+    _ = draft.beginLoad(Self.setting([CatalogData.firstRaw]), id: refresh)
+    let android = try CatalogData.catalog(CatalogData.v2AlphaAndroidOnly)
+    draft.loaded(.success(android), for: CatalogData.firstKey, id: refresh)
+
+    #expect(draft.selectedApp == nil)
+    #expect(draft.selectedVersionID == nil)
+    #expect(draft.selectedVersion == nil)
+  }
+
   @Test("새로 고침 뒤 같은 카탈로그·앱·버전이 다시 오면 선택을 유지하고, 읽는 동안은 고른 버전이 없다")
   func refreshKeepsSelection() throws {
     var (draft, _) = try Self.loadedWithAlpha()
@@ -243,6 +272,23 @@ struct CatalogInstallDraftTests {
 
     let (noVersions, _) = try Self.loadedWithAlpha(CatalogData.alphaWithoutVersions)
     #expect(noVersions.versionPane == .noVersions)
+  }
+
+  @Test("emptyReason: 읽힌 구역에 앱이 없으면 noApps, Android 앱만 있으면 noIOSApps, iOS 앱이 있거나 읽는 중·실패면 nil")
+  func emptyReasons() throws {
+    var draft = Self.draft()
+    let id = UUID()
+    let urls = [CatalogData.firstRaw, CatalogData.secondRaw, CatalogData.httpRaw]
+    _ = draft.beginLoad(Self.setting(urls), id: id)
+    #expect(draft.sources.map { draft.emptyReason(for: $0) } == [nil, nil, nil])
+
+    try draft.loaded(.success(CatalogData.catalog(CatalogData.emptyApps)), for: CatalogData.firstKey, id: id)
+    try draft.loaded(.success(CatalogData.catalog(CatalogData.v2AlphaAndroidOnly)), for: CatalogData.secondKey, id: id)
+    #expect(draft.sources.map { draft.emptyReason(for: $0) } == [.noApps, .noIOSApps, nil])
+
+    try draft.loaded(.success(CatalogData.catalog(CatalogData.v2Mixed)), for: CatalogData.firstKey, id: id)
+    draft.loaded(.failure(.download(.httpStatus(404))), for: CatalogData.secondKey, id: id)
+    #expect(draft.sources.map { draft.emptyReason(for: $0) } == [nil, nil, nil])
   }
 
   @Test("구역 상태 줄은 실패 이유·쓸 수 없는 주소와 마지막으로 읽은 설정의 잠김을 담고, 읽는 중·읽힌 구역은 없다", arguments: [true, false])

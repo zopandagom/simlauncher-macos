@@ -17,15 +17,16 @@ enum CatalogTextCatalog {
 
   static let device = LauncherNotice.Device(name: "iPhone 17", runtimeName: "iOS 26.0")
 
-  /// Settings 와 같은 키·값으로 둔 문맥 없는 조각 (24개). `fragmentChecks` 의 키와 같은 순서다.
+  /// Settings 와 같은 키·값으로 둔 문맥 없는 조각 (25개). `fragmentChecks` 의 키와 같은 순서다.
   static let fragmentKeys: [String] = [
     "카탈로그 최상위", "%lld번째 앱", "%lld번째 앱(id: %@)", "%lld번째 버전", "%lld번째 버전(id: %@)", "%@의 %@",
     "%@에 필수 필드 %@ 가 없거나 null 입니다.", "%@의 %@ 값의 형식(타입)이 다릅니다.", "%@의 %@ 가 비어 있습니다.",
     "%@이 객체가 아닙니다 (%@ 배열의 항목은 객체여야 합니다).",
     "%@의 id 가 형식에 맞지 않습니다 (영문·숫자로 시작하고 영문·숫자·. _ - 만, 128자까지).",
+    "%@의 platform 이 ios 나 android 가 아닙니다 (소문자로 씁니다).",
     "%@의 id 가 앞의 앱과 같습니다 (대소문자 무시).", "%@의 id 가 같은 앱의 앞 버전과 같습니다 (대소문자 무시).",
     "%@의 createdAt 이 날짜 형식(예: 2026-10-21T04:08:49Z)이 아니거나 없는 날짜·시각입니다.",
-    "%@의 buildURL 을 쓸 수 없습니다: %@.", "카탈로그의 schemaVersion %lld 은 없는 규격입니다 (지원: %lld).",
+    "%@의 buildURL 을 쓸 수 없습니다: %@.", "카탈로그의 schemaVersion %lld 은 없는 규격입니다 (지원: 1~%lld).",
     "카탈로그를 만든 사람에게 알려 주세요.", "빈 주소입니다", "주소로 읽을 수 없습니다", "https:// 로 시작하는 주소가 아닙니다",
     "서버 주소(예: example.com)가 없습니다", "사용자 이름이나 비밀번호가 들어 있습니다",
     "카탈로그를 60초 안에 받지 못해 멈췄습니다. 연결을 확인한 뒤 다시 시도하세요.", "받는 중 연결이 끊겼습니다. 다시 시도하세요.",
@@ -33,15 +34,16 @@ enum CatalogTextCatalog {
 
   static let urlProblems: [DownloadURLProblem] = [.empty, .malformed, .notHTTPS, .missingHost, .hasCredentials]
 
-  /// 조각 24개 (Settings 와 같다).
+  /// 조각 25개 (Settings 와 같다).
   static func fragmentChecks(_ table: [String: String]) -> [Check] {
     var checks = self.locationChecks(table)
     checks += self.problemChecks(table)
+    checks += self.laterProblemChecks(table)
     checks += self.reasonChecks(table)
     return checks
   }
 
-  /// 조각이 아닌 새 키 52개 (보간 없음 36, 보간 16. 잠긴 목록의 카탈로그 읽기 실패 9개 포함).
+  /// 조각이 아닌 새 키 53개 (보간 없음 37, 보간 16. 잠긴 목록의 카탈로그 읽기 실패 9개 포함).
   static func checks(_ table: [String: String]) -> [Check] {
     var checks = self.sheetChecks(table)
     checks += self.sheetFormatChecks(table)
@@ -130,12 +132,8 @@ extension CatalogTextCatalog {
     let app1 = self.format(table, "%lld번째 앱", 1)
     let appA = self.format(table, "%lld번째 앱(id: %@)", 2, "app-a")
     let item = self.format(table, "%@의 %@", app1, self.format(table, "%lld번째 버전", 2))
-    let versionV = self.format(table, "%@의 %@", appA, self.format(table, "%lld번째 버전(id: %@)", 2, "v1"))
-    let notHTTPS = table["https:// 로 시작하는 주소가 아닙니다"] ?? ""
     let app = self.position(app: 0)
     let appWithID = self.position(app: 1, appID: "app-a")
-    let version = self.position(app: 1, appID: "app-a", version: 1, versionID: "v1")
-    let report = LauncherText.catalogLoadMessage(for: .catalog(.invalidID(position: app)), isLocked: false)
     return [
       self.check(
         table, "%@에 필수 필드 %@ 가 없거나 null 입니다.", self.detail(.missingField(.name, position: app)), app1, "name"
@@ -155,7 +153,25 @@ extension CatalogTextCatalog {
         self.detail(.invalidID(position: app)),
         app1
       ),
+      self.check(
+        table,
+        "%@의 platform 이 ios 나 android 가 아닙니다 (소문자로 씁니다).",
+        self.detail(.unsupportedPlatform(position: appWithID)),
+        appA
+      ),
       self.check(table, "%@의 id 가 앞의 앱과 같습니다 (대소문자 무시).", self.detail(.duplicateAppID(position: appWithID)), appA),
+    ]
+  }
+
+  /// 버전 문제·규격 문제·끝 줄 조각 (`problemChecks` 다음 순서).
+  private static func laterProblemChecks(_ table: [String: String]) -> [Check] {
+    let appA = self.format(table, "%lld번째 앱(id: %@)", 2, "app-a")
+    let versionV = self.format(table, "%@의 %@", appA, self.format(table, "%lld번째 버전(id: %@)", 2, "v1"))
+    let notHTTPS = table["https:// 로 시작하는 주소가 아닙니다"] ?? ""
+    let version = self.position(app: 1, appID: "app-a", version: 1, versionID: "v1")
+    let invalidID = BuildCatalogProblem.invalidID(position: self.position(app: 0))
+    let report = LauncherText.catalogLoadMessage(for: .catalog(invalidID), isLocked: false)
+    return [
       self.check(
         table, "%@의 id 가 같은 앱의 앞 버전과 같습니다 (대소문자 무시).", self.detail(.duplicateVersionID(position: version)), versionV
       ),
@@ -173,7 +189,11 @@ extension CatalogTextCatalog {
         notHTTPS
       ),
       self.check(
-        table, "카탈로그의 schemaVersion %lld 은 없는 규격입니다 (지원: %lld).", self.detail(.unsupportedSchemaVersion(0)), 0, 1
+        table,
+        "카탈로그의 schemaVersion %lld 은 없는 규격입니다 (지원: 1~%lld).",
+        self.detail(.unsupportedSchemaVersion(0)),
+        0,
+        BuildCatalog.latestSchemaVersion
       ),
       self.check(table, "카탈로그를 만든 사람에게 알려 주세요.", self.line(report, 2)),
     ]
@@ -209,6 +229,7 @@ extension CatalogTextCatalog {
       self.check(table, "버전", LauncherText.catalogVersionsHeader),
       self.check(table, "카탈로그를 읽는 중…", LauncherText.catalogLoading),
       self.check(table, "이 카탈로그에는 앱이 없습니다.", LauncherText.catalogNoApps),
+      self.check(table, "이 카탈로그에는 iOS 앱이 없습니다.", LauncherText.catalogNoIOSApps),
       self.check(table, "이 앱에는 버전이 없습니다.", LauncherText.catalogNoVersions),
       self.check(table, "왼쪽에서 앱을 고르세요.", LauncherText.catalogNoSelection),
       self.check(table, "설정 열기", LauncherText.openSettingsButton),
@@ -269,7 +290,7 @@ extension CatalogTextCatalog {
 
   private static func loadChecks(_ table: [String: String]) -> [Check] {
     let notJSON = LauncherText.catalogLoadMessage(for: .catalog(.notJSONObject), isLocked: false)
-    let newer = LauncherText.catalogLoadMessage(for: .catalog(.unsupportedSchemaVersion(2)), isLocked: false)
+    let newer = LauncherText.catalogLoadMessage(for: .catalog(.unsupportedSchemaVersion(3)), isLocked: false)
     let tooLarge = [
       "파일이 5 MiB 를 넘어 받지 않았습니다. 설정(⌘,)에서 주소가 catalog.json 파일을 바로 가리키는지 확인하고, ",
       "맞다면 오래된 버전 항목을 지워 달라고 카탈로그를 만든 사람에게 알려 주세요.",
@@ -287,7 +308,7 @@ extension CatalogTextCatalog {
         self.line(notJSON, 2)
       ),
       self.check(
-        table, "이 카탈로그는 이 앱보다 새 규격(schemaVersion %lld)입니다. SimLauncher 를 업데이트하세요.", self.line(newer, 1), 2
+        table, "이 카탈로그는 이 앱보다 새 규격(schemaVersion %lld)입니다. SimLauncher 를 업데이트하세요.", self.line(newer, 1), 3
       ),
       self.check(
         table,

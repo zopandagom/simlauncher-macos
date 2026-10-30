@@ -33,6 +33,11 @@ extension LauncherText {
     String(localized: "이 카탈로그에는 앱이 없습니다.", bundle: .module)
   }
 
+  /// schemaVersion 2 카탈로그에 Android 앱만 있다 (iOS 기기 시트는 iOS 앱만 보인다).
+  static var catalogNoIOSApps: String {
+    String(localized: "이 카탈로그에는 iOS 앱이 없습니다.", bundle: .module)
+  }
+
   static var catalogNoVersions: String {
     String(localized: "이 앱에는 버전이 없습니다.", bundle: .module)
   }

@@ -30,14 +30,14 @@ struct CatalogFragmentSyncTests {
     return table
   }
 
-  @Test("Settings 와 같은 키로 둔 조각 24개가 Settings 원본에 있고, Launcher 문구 함수의 결과가 그 값으로 만든 문구와 같다")
+  @Test("Settings 와 같은 키로 둔 조각 25개가 Settings 원본에 있고, Launcher 문구 함수의 결과가 그 값으로 만든 문구와 같다")
   func fragmentsMatchSettingsCatalog() throws {
     let table = try Self.koreanTable(at: Self.settingsCatalog)
     #expect(!table.isEmpty)
     let checks = CatalogTextCatalog.fragmentChecks(table)
 
     #expect(checks.map(\.key) == CatalogTextCatalog.fragmentKeys)
-    #expect(Set(CatalogTextCatalog.fragmentKeys).count == 24)
+    #expect(Set(CatalogTextCatalog.fragmentKeys).count == 25)
     for check in checks {
       #expect(table[check.key] != nil, "Settings 에 없는 키: \(check.key)")
       #expect(check.actual == check.expected, "\(check.key)")
