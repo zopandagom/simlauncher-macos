@@ -39,7 +39,7 @@ SimLauncher 배포본을 만드는 방법이다. `make release` 가 [`scripts/re
    gh release create <버전> build/release/SimLauncher-<버전>.dmg --verify-tag --latest \
      --title "SimLauncher <버전>" --notes-file <노트 파일>
    ```
-   README 설치 링크(`releases/latest`)는 Pre-release 가 아닌 가장 최근 Release 를 가리킨다. 샘플 카탈로그 워크플로의 Release(`sample-catalog`·`sample-build-…`)는 Pre-release 라 겹치지 않는다. `--latest` 로 이 Release 를 최신으로 지정한다.
+   README 설치 링크(`releases/latest`)는 Pre-release 가 아닌 가장 최근 Release 를 가리킨다. 샘플 카탈로그 워크플로의 Release(`sample-catalog`·`sample-catalog-v2`·`sample-build-…`)는 Pre-release 라 겹치지 않는다. `--latest` 로 이 Release 를 최신으로 지정한다.
 8. **게시 확인**: `gh api repos/<소유자>/<레포>/releases/latest -q .tag_name` 이 `<버전>` 이고, 첨부 파일의 `digest` 에서 `sha256:` 접두어를 뺀 값(`… -q '.assets[].digest | ltrimstr("sha256:")'`)이 5번의 SHA-256 과 같은지 본다.
 9. **내려받은 게시본 확인**: README 설치 링크에서 브라우저로 dmg 를 받는다(quarantine 이 붙는다). `xattr -p com.apple.quarantine`·`shasum -a 256`·5절의 dmg `spctl` 을 확인하고, 앱을 응용 프로그램 폴더로 옮겨(이미 있으면 대치) 실행해 Gatekeeper 차단 없이 열리고 "SimLauncher에 관하여" 버전이 맞는지 본다. 이 Mac 에서 만든 앱이 응용 프로그램 폴더에 이미 있으면 quarantine 이 없으므로 받은 앱으로 대치해야 확인이 된다. 이 확인은 받은 파일의 Gatekeeper 판정과 실행 허용을 본다. 로드맵 단계 목표의 "다른 Mac" 확인(이 Mac 의 인증서·이전 실행 허용이 없는 환경)은 6절대로 다른 Mac 이나 새 사용자 계정에서 같은 방법으로 한다.
 
