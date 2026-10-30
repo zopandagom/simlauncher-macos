@@ -6,7 +6,7 @@ import UniformTypeIdentifiers
 /// 상태를 읽어 그리기만 하고, 사용자 동작은 Model 의 이벤트 메서드로 넘긴다.
 /// 화면 문자열은 `AndroidDevicesText` 가 이 모듈의 `Localizable.xcstrings` 에서 찾는다.
 /// 목록은 ⌘·⇧ 클릭으로 여러 기기를 고를 수 있고(선택은 Model 상태), 툴바의 "선택한 기기 켜기" 가 고른 기기를 함께 켠다.
-/// 행의 버튼·메뉴·드롭은 그 행 한 대에만 동작한다. 사라질 때(`onDisappear`) 자동 다시 읽기를 멈추게 알린다.
+/// 행의 버튼·메뉴·드롭(스크린샷·녹화 포함)은 그 행 한 대에만 동작한다. 사라질 때(`onDisappear`) 자동 다시 읽기를 멈추게 알린다.
 /// 행의 URL·카탈로그 시트는 `downloadModel`, 앱 실행·링크 열기 시트는 `appSheetsModel`(둘 다 App 소유)의 초안으로 띄운다.
 public struct AndroidDevicesView: View {
   let model: AndroidDevicesModel
@@ -308,22 +308,15 @@ extension AndroidDevicesView {
   }
 
   private func deviceRow(_ device: AndroidVirtualDevice) -> some View {
-    AndroidDeviceRow(
+    let task = self.model.activity.task(on: device.id)
+    return AndroidDeviceRow(
       device: device,
-      task: self.model.activity.task(on: device.id),
+      task: task,
       downloadStage: self.model.activity.downloadStage(on: device.id),
-      bootTapped: {
-        Task { await self.model.bootTapped(device.id) }
-      },
-      shutdownTapped: {
-        Task { await self.model.shutdownTapped(device.id) }
-      },
-      eraseTapped: {
-        self.model.eraseTapped(device.id)
-      },
-      deleteTapped: {
-        self.model.deleteTapped(device.id)
-      },
+      bootTapped: { Task { await self.model.bootTapped(device.id) } },
+      shutdownTapped: { Task { await self.model.shutdownTapped(device.id) } },
+      eraseTapped: { self.model.eraseTapped(device.id) },
+      deleteTapped: { self.model.deleteTapped(device.id) },
       installFromFileTapped: {
         self.importTarget = device.id
         self.isImporterPresented = true
@@ -345,6 +338,19 @@ extension AndroidDevicesView {
       },
       openURLTapped: {
         self.appSheetsModel.openURLTapped(device.id)
+      },
+      canTakeScreenshot: self.model.screenshots.canStart(on: device, during: task),
+      isTakingScreenshot: self.model.screenshots.isTaking(on: device.id),
+      screenshotTapped: {
+        Task { await self.model.screenshotTapped(device.id) }
+      },
+      recordingPhase: self.model.recordings.phase(on: device.id),
+      canStartRecording: self.model.recordings.canStart(on: device, during: task),
+      recordTapped: {
+        Task { await self.model.recordTapped(device.id) }
+      },
+      stopRecordingTapped: {
+        self.model.recordingStopTapped(device.id)
       }
     )
   }

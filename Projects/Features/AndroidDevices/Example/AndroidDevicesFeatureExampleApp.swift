@@ -9,14 +9,17 @@ import DownloadTesting
 import Foundation
 import PreferencesTesting
 import SwiftUI
+import WorkspaceTesting
 
 /// App 없이 Android 기기 목록 화면만 띄우는 데모 앱. Preview 도 여기에 둔다.
 /// 실제 emulator·adb·`~/.android` 대신 Testing 모듈의 `AndroidEmulatorClientFake`(호출마다 1초 지연)를, apk 검사 대신
 /// `AndroidPackageClientFake`(1초 지연, 고른 파일과 관계없이 샘플 apk 정보)를 주입한다.
 /// URL·카탈로그에서 설치는 네트워크 대신 `DownloadClientFake`(진행 사이 0.3초 지연)를, 등록 카탈로그는 `PreferencesClientFake`
 /// (v2 카탈로그·v1 카탈로그·iOS 앱만 있는 v2 카탈로그, 장면에 따라 받지 못하는 주소)를 주입한다.
+/// "스크린샷"·"녹화" 는 `WorkspaceClientFake`(파일을 만들지 않고 가짜 폴더 이름만 예약한다)와 Fake 의 찍기·녹화(파일을 쓰지 않는다.
+/// 녹화는 "중지" 를 누를 때까지 이어진다)로 돈다. Finder 는 열지 않는다.
 /// 파일·명령·네트워크를 쓰지 않으므로 아무것도 켜거나 만들거나 설치하지 않는다 (Fake 의 목록만 바뀐다).
-/// 앱 설치(파일·URL·카탈로그)·실행·링크 열기는 켜진 기기("Pixel Tablet")에서 해 본다.
+/// 앱 설치(파일·URL·카탈로그)·실행·링크 열기·스크린샷·녹화는 켜진 기기("Pixel Tablet")에서 해 본다.
 /// 왼쪽 목록에서 상태를 고른다. "Android 도구" 버튼은 App 이 도구 화면을 여는 대신 아래 줄에 누른 횟수를 보인다.
 @main
 struct AndroidDevicesFeatureExampleApp: App {
@@ -116,6 +119,16 @@ enum DemoScenario: String, CaseIterable, Hashable {
   case catalogFailure = "카탈로그: 받지 못한 카탈로그 있음"
   case catalogLocked = "카탈로그: 잠김 (관리자 설정)"
   case catalogEmpty = "카탈로그: 등록 없음"
+  case slowScreenshot = "스크린샷: 찍는 중 유지"
+  case screenshotFailure = "스크린샷 실패: 화면 읽기"
+  case captureFolderFailure = "스크린샷·녹화 실패: 저장 폴더"
+  case revealFailure = "스크린샷·녹화: Finder 보이기 실패"
+  case slowRecordingStart = "녹화: 시작하는 중 유지"
+  case recordingTimeLimit = "녹화: 3분 제한에 닿음 (API 33 이하)"
+  case recordingInterrupted = "녹화: 중간에 끝남"
+  case recordingStartFailure = "녹화 실패: 시작 (기기 저장 공간)"
+  case recordingLost = "녹화 실패: 기기 꺼짐 (가져오지 못함)"
+  case recordingUnwritable = "녹화 실패: Mac 에 쓰지 못함"
 
   private static let allDevices = AndroidDeviceInventory(
     devices: [
@@ -145,11 +158,14 @@ enum DemoScenario: String, CaseIterable, Hashable {
     self.configure(fake)
     self.configure(package)
     self.configure(download)
+    let workspace = WorkspaceClientFake()
+    self.configure(workspace)
     let appSheetsBox = DemoAppSheetsBox()
     let devices = AndroidDevicesModel(
       emulator: fake,
       package: package,
       download: download,
+      workspace: workspace,
       setupRequested: setupRequested,
       appSheetPresented: { appSheetsBox.model?.hasPresentedSheet ?? false }
     )
@@ -282,6 +298,40 @@ enum DemoScenario: String, CaseIterable, Hashable {
       fake.setLaunchError(.launchFailed(.notInstalled))
     case .urlNotHandled:
       fake.setOpenURLError(.urlNotHandled)
+    default:
+      self.configureCapture(fake)
+    }
+  }
+
+  private func configureCapture(_ fake: AndroidEmulatorClientFake) {
+    switch self {
+    case .slowScreenshot:
+      fake.suspendScreenshots()
+    case .screenshotFailure:
+      fake.setScreenshotError(.captureFailed)
+    case .slowRecordingStart:
+      fake.setRecordingSignalsStart(false)
+    case .recordingTimeLimit:
+      fake.setRecordingEndsByItself(.success(.savedAtTimeLimit))
+    case .recordingInterrupted:
+      fake.setRecordingEndsByItself(.success(.savedAfterFailure))
+    case .recordingStartFailure:
+      fake.setRecordingEndsByItself(.failure(.recordingFailed))
+    case .recordingLost:
+      fake.setRecordingResult(.failure(.recordingLost))
+    case .recordingUnwritable:
+      fake.setRecordingResult(.failure(.captureFileUnwritable))
+    default:
+      break
+    }
+  }
+
+  private func configure(_ workspace: WorkspaceClientFake) {
+    switch self {
+    case .captureFolderFailure:
+      workspace.setReserveError(.folderUnavailable)
+    case .revealFailure:
+      workspace.setRevealError(.fileNotFound)
     default:
       break
     }
