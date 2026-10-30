@@ -3,6 +3,6 @@ import ProjectDescriptionHelpers
 
 let project = Project.feature(
   .androidDevices,
-  clients: [.androidEmulator, .androidPackage, .download, .preferences],
+  clients: [.androidEmulator, .androidPackage, .download, .preferences, .workspace],
   shared: [.core]
 )
