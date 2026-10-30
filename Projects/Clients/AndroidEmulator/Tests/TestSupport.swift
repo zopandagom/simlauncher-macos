@@ -116,6 +116,7 @@ final class FakeADB: Sendable {
     var killFails = false
     var onDevices: (@Sendable () -> Void)?
     var onKill: (@Sendable (String) -> Void)?
+    var onApp: (@Sendable ([String]) throws(CommandError) -> CommandResult)?
   }
 
   private let state = Mutex(State())
@@ -143,7 +144,12 @@ final class FakeADB: Sendable {
     self.state.withLock { $0.onKill = handler }
   }
 
-  func respond(_ arguments: [String]) -> CommandResult {
+  /// 위 목록에 없는 `-s <serial> …` 명령(앱 작업)을 받으면 전체 인자로 부른다. nil 이면 종료 코드 1.
+  func onApp(_ handler: (@Sendable ([String]) throws(CommandError) -> CommandResult)?) {
+    self.state.withLock { $0.onApp = handler }
+  }
+
+  func respond(_ arguments: [String]) throws(CommandError) -> CommandResult {
     if arguments == ["devices"] {
       let (fail, handler) = self.state.withLock { ($0.devicesFail, $0.onDevices) }
       handler?()
@@ -170,7 +176,10 @@ final class FakeADB: Sendable {
       handler?(serial)
       return Self.result(fails || emulator == nil ? 1 : 0, "OK: killing emulator, bye bye\r\nOK\r\n")
     default:
-      return Self.result(1, "")
+      guard let handler = self.state.withLock({ $0.onApp }) else {
+        return Self.result(1, "")
+      }
+      return try handler(arguments)
     }
   }
 
@@ -227,7 +236,8 @@ struct Harness {
     shutdownPollInterval: .milliseconds(10),
     shutdownLimit: .milliseconds(400),
     serialSearchLimit: .milliseconds(150),
-    adbTimeout: .seconds(10)
+    adbTimeout: .seconds(10),
+    installTimeout: .seconds(600)
   )
   /// 기다림 단계에서 잠금을 푸는 테스트용: 끄기 기다림만 넉넉히 둔다.
   static let longShutdownTiming = AndroidEmulatorClientImpl.Timing(
@@ -236,7 +246,8 @@ struct Harness {
     shutdownPollInterval: .milliseconds(10),
     shutdownLimit: .seconds(10),
     serialSearchLimit: .milliseconds(150),
-    adbTimeout: .seconds(10)
+    adbTimeout: .seconds(10),
+    installTimeout: .seconds(600)
   )
   static let image = AndroidSystemImageRef(apiFolder: "android-37.0", tag: "google_apis", abi: "arm64-v8a")!
 
@@ -271,7 +282,7 @@ struct Harness {
     let adb = self.adb
     let processes = self.processes
     self.command = CommandClientFake(
-      handler: { invocation throws(CommandError) in adb.respond(invocation.arguments) },
+      handler: { invocation throws(CommandError) in try adb.respond(invocation.arguments) },
       launchHandler: { _, process, exit throws(CommandError) in
         try processes.launched(process, exit: exit)
       },

@@ -21,6 +21,8 @@ public struct AndroidEmulatorClientImpl: AndroidEmulatorClient {
     var serialSearchLimit: Duration
     /// adb 명령 하나의 한도.
     var adbTimeout: Duration
+    /// `adb install` 하나의 한도 (실측 최대 48 MB 11.3초에서 크게 잡았다).
+    var installTimeout: Duration
 
     static let standard = Timing(
       pollInterval: .seconds(1),
@@ -28,7 +30,8 @@ public struct AndroidEmulatorClientImpl: AndroidEmulatorClient {
       shutdownPollInterval: .milliseconds(500),
       shutdownLimit: .seconds(150),
       serialSearchLimit: .seconds(10),
-      adbTimeout: .seconds(10)
+      adbTimeout: .seconds(10),
+      installTimeout: .seconds(600)
     )
   }
 
