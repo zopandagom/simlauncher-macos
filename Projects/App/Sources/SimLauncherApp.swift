@@ -1,5 +1,6 @@
 import AndroidDevicesFeature
 import AndroidEmulatorImpl
+import AndroidPackageImpl
 import AndroidSDKImpl
 import AndroidSetupFeature
 import AppBundleImpl
@@ -26,7 +27,8 @@ import WorkspaceImpl
 /// 기기 행·툴바의 "카탈로그에서…" 시트(`CatalogInstallModel`)가 고른 버전은 `installRequested` 로 기기 목록(`LauncherModel`)이 설치한다.
 /// 설정 창(`Settings` 씬, ⌘,)은 메인 창의 칸·화면과 관계없이 열리고, 설정 창에서 Android SDK 위치를 바꾸면
 /// `androidSDKLocationChanged` 로 Android 도구 화면이 다시 확인하고 Android 기기 목록이 (보이면) 다시 읽는다 (같은 앱의 다른 창이라
-/// 앱 활성화 알림이 오지 않는다). Android 기기(에뮬레이터)는 종료 요청 때 보지 않는다 (켜진 에뮬레이터는 앱이 끝나도 남는다).
+/// 앱 활성화 알림이 오지 않는다). Android 기기(에뮬레이터)는 종료 요청 때 보지 않는다 (켜진 에뮬레이터는 앱이 끝나도 남는다.
+/// apk 설치·실행·링크 열기도 묻지 않는다).
 @main
 struct SimLauncherApp: App {
   @NSApplicationDelegateAdaptor private var appDelegate: AppDelegate
@@ -149,8 +151,10 @@ struct SimLauncherApp: App {
       preferences: preferences,
       workspace: WorkspaceClientImpl()
     )
+    // apk 검사(zipinfo·unzip)는 같은 Command Client 로 실행한다. 생성자는 파일·명령을 건드리지 않는다.
     let devices = AndroidDevicesModel(
       emulator: emulator,
+      package: AndroidPackageClientImpl(command: command),
       setupRequested: { setup.reopened() }
     )
     return AndroidAssembly(sdk: sdk, setup: setup, devices: devices)
