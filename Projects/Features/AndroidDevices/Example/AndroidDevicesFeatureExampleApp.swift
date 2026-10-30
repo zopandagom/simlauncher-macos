@@ -1,13 +1,17 @@
 import AndroidDevicesFeature
 import AndroidEmulatorInterface
 import AndroidEmulatorTesting
+import AndroidPackageInterface
+import AndroidPackageTesting
 import Core
 import Foundation
 import SwiftUI
 
 /// App 없이 Android 기기 목록 화면만 띄우는 데모 앱. Preview 도 여기에 둔다.
-/// 실제 emulator·adb·`~/.android` 대신 Testing 모듈의 `AndroidEmulatorClientFake`(호출마다 1초 지연)를 주입한다.
-/// 파일·명령을 쓰지 않으므로 아무것도 켜거나 만들지 않는다 (Fake 의 목록만 바뀐다).
+/// 실제 emulator·adb·`~/.android` 대신 Testing 모듈의 `AndroidEmulatorClientFake`(호출마다 1초 지연)를, apk 검사 대신
+/// `AndroidPackageClientFake`(1초 지연, 고른 파일과 관계없이 샘플 apk 정보)를 주입한다.
+/// 파일·명령을 쓰지 않으므로 아무것도 켜거나 만들거나 설치하지 않는다 (Fake 의 목록만 바뀐다).
+/// 앱 설치·실행·링크 열기는 켜진 기기("Pixel Tablet")에서 해 본다.
 /// 왼쪽 목록에서 상태를 고른다. "Android 도구" 버튼은 App 이 도구 화면을 여는 대신 아래 줄에 누른 횟수를 보인다.
 @main
 struct AndroidDevicesFeatureExampleApp: App {
@@ -73,6 +77,15 @@ enum DemoScenario: String, CaseIterable, Hashable {
   case eraseUnsafe = "실패: 초기화 (기기 폴더 위치)"
   case sdkUnavailable = "목록 실패: Android 도구 없음"
   case avdFolderUnavailable = "목록 실패: 기기 폴더 읽기"
+  case slowInstall = "앱 설치 오래 걸림 (설치 중 유지)"
+  case inspectFailure = "설치 실패: 검사 (.aab)"
+  case rejected = "설치 실패: 판정 (API 낮음)"
+  case installFailure = "설치 실패: 서명이 다른 같은 앱"
+  case launchAfterInstallFailure = "설치 후 실행 실패: 화면 없음"
+  case noInstalledPackages = "앱 실행: 설치한 앱 없음"
+  case packageListFailure = "앱 실행: 목록 읽기 실패"
+  case launchFailure = "앱 실행 실패: 설치 안 됨"
+  case urlNotHandled = "링크 열기 실패: 받을 앱 없음"
 
   private static let allDevices = AndroidDeviceInventory(
     devices: [
@@ -93,9 +106,16 @@ enum DemoScenario: String, CaseIterable, Hashable {
   func makeModel(setupRequested: @escaping @MainActor () -> Void) -> AndroidDevicesModel {
     let fake = AndroidEmulatorClientFake(inventory: self.inventory)
     fake.setDelay(.seconds(1))
+    fake.setInstalledPackages(.success(Self.samplePackages))
+    let package = AndroidPackageClientFake()
+    package.setDelay(.seconds(1))
     self.configure(fake)
-    return AndroidDevicesModel(emulator: fake, setupRequested: setupRequested)
+    self.configure(package)
+    return AndroidDevicesModel(emulator: fake, package: package, setupRequested: setupRequested)
   }
+
+  /// 앱 실행 시트에 보일 설치 앱 (이름순).
+  private static let samplePackages = ["com.example.sample", "org.example.shop"].compactMap(AndroidPackageName.init)
 
   private var inventory: AndroidDeviceInventory {
     switch self {
@@ -114,6 +134,19 @@ enum DemoScenario: String, CaseIterable, Hashable {
 
   private func configure(_ fake: AndroidEmulatorClientFake) {
     switch self {
+    case .slowBoot, .bootFailure, .shutdownFailure, .createFailure, .folderKept, .eraseUnsafe:
+      self.configureDeviceOperations(fake)
+    case .sdkUnavailable:
+      fake.setFetchError(.sdkUnavailable)
+    case .avdFolderUnavailable:
+      fake.setFetchError(.avdFolderUnavailable)
+    default:
+      self.configureAppOperations(fake)
+    }
+  }
+
+  private func configureDeviceOperations(_ fake: AndroidEmulatorClientFake) {
+    switch self {
     case .slowBoot:
       fake.suspendBoots()
     case .bootFailure:
@@ -129,11 +162,39 @@ enum DemoScenario: String, CaseIterable, Hashable {
       ))))
     case .eraseUnsafe:
       fake.setEraseError(.unsafeDeviceFolder(URL(filePath: "/Users/me/avd-link", directoryHint: .isDirectory)))
-    case .sdkUnavailable:
-      fake.setFetchError(.sdkUnavailable)
-    case .avdFolderUnavailable:
-      fake.setFetchError(.avdFolderUnavailable)
-    case .normal, .empty, .noImage, .noImageWithDevices, .outsideBooting:
+    default:
+      break
+    }
+  }
+
+  private func configureAppOperations(_ fake: AndroidEmulatorClientFake) {
+    switch self {
+    case .slowInstall:
+      fake.suspendInstalls()
+    case .installFailure:
+      fake.setInstallError(.installFailed(.updateIncompatible))
+    case .launchAfterInstallFailure:
+      fake.setLaunchError(.launchFailed(.noLauncherActivity))
+    case .noInstalledPackages:
+      fake.setInstalledPackages(.success([]))
+    case .packageListFailure:
+      fake.setInstalledPackages(.failure(.deviceNotBooted))
+    case .launchFailure:
+      fake.setLaunchError(.launchFailed(.notInstalled))
+    case .urlNotHandled:
+      fake.setOpenURLError(.urlNotHandled)
+    default:
+      break
+    }
+  }
+
+  private func configure(_ package: AndroidPackageClientFake) {
+    switch self {
+    case .inspectFailure:
+      package.setResult(.failure(.appBundle))
+    case .rejected:
+      package.setResult(.success(.sample(minSDK: .level(99))))
+    default:
       break
     }
   }

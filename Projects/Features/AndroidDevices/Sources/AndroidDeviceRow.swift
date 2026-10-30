@@ -1,8 +1,9 @@
 import Core
 import SwiftUI
 
-/// 기기 한 줄: 모양 아이콘, 표시 이름, "API · 상태" 글자(쓸 수 없으면 이유 줄), 켜기·끄기 버튼(앱 작업 중이면 진행 표시),
-/// 기기 작업 메뉴(… 버튼과 컨텍스트 메뉴: 초기화·삭제).
+/// 기기 한 줄: 모양 아이콘, 표시 이름, "API · 상태" 글자(쓸 수 없으면 이유 줄), 앱 설치 메뉴(파일에서 고르기…)와 드롭,
+/// "앱 실행…"·"링크 열기…" 버튼(시트), 켜기·끄기 버튼(앱 작업 중이면 진행 표시), 기기 작업 메뉴(… 버튼과 컨텍스트 메뉴: 초기화·삭제).
+/// 앱 설치·실행·링크 열기는 켜진 기기만 된다 (꺼진·켜는 중·쓸 수 없는 행은 비활성이고 도움말에 이유를 보이며, 드롭을 거절한다).
 /// 앱이 켜는 중인 행은 끄기를 포함한 모든 동작을 막는다. 앱 밖에서 켜는 중인 행은 끌 수 있다.
 /// 쓸 수 없는 기기는 흐리게 그리고 이유를 보인다. 실행 중이면 상태도 함께 보이고 끌 수 있다.
 /// 막힌 메뉴 항목은 비활성으로 두고 이유를 메뉴 맨 위에 보인다.
@@ -14,6 +15,12 @@ struct AndroidDeviceRow: View {
   let shutdownTapped: () -> Void
   let eraseTapped: () -> Void
   let deleteTapped: () -> Void
+  let installFromFileTapped: () -> Void
+  let appDropped: ([URL]) -> Void
+  let launchAppTapped: () -> Void
+  let openURLTapped: () -> Void
+  /// 끌어다 놓는 항목이 이 줄 위에 있고 설치할 수 있다 (줄을 강조한다).
+  @State private var isDropTargeted = false
 
   var body: some View {
     HStack(spacing: 12) {
@@ -33,6 +40,19 @@ struct AndroidDeviceRow: View {
         }
       }
       Spacer()
+      Menu(AndroidDevicesText.installAppButton) {
+        Button(AndroidDevicesText.installFromFileMenuItem, action: self.installFromFileTapped)
+      }
+      .menuStyle(.button)
+      .fixedSize()
+      .disabled(!self.canAct)
+      .help(self.appActionBlockReason ?? AndroidDevicesText.installAppHelp)
+      Button(AndroidDevicesText.launchAppButton, action: self.launchAppTapped)
+        .disabled(!self.canAct)
+        .help(self.appActionBlockReason ?? AndroidDevicesText.launchAppHelp)
+      Button(AndroidDevicesText.openURLButton, action: self.openURLTapped)
+        .disabled(!self.canAct)
+        .help(self.appActionBlockReason ?? AndroidDevicesText.openURLHelp)
       self.action
       Menu {
         self.menuItems
@@ -48,6 +68,14 @@ struct AndroidDeviceRow: View {
     }
     .padding(.vertical, 4)
     .foregroundStyle(self.isAvailable ? .primary : .secondary)
+    .listRowBackground(self.isDropTargeted ? Color.accentColor.opacity(0.15) : nil)
+    .dropDestination(for: URL.self) { urls, _ in
+      guard self.canAct else { return false }
+      self.appDropped(urls)
+      return true
+    } isTargeted: { isTargeted in
+      self.isDropTargeted = isTargeted && self.canAct
+    }
     .contextMenu {
       if !self.isBusy {
         self.menuItems
@@ -95,6 +123,17 @@ struct AndroidDeviceRow: View {
 
   private var isBusy: Bool {
     self.task != nil
+  }
+
+  /// 앱 설치 메뉴·드롭과 앱 실행·링크 열기 버튼을 받을 수 있다: 진행 중인 작업이 없고 켜진·쓸 수 있는 기기다.
+  private var canAct: Bool {
+    !self.isBusy && self.device.appActionAvailability == .allowed
+  }
+
+  /// 앱 설치·실행·링크 열기 도움말에 보일 막힌 이유. 진행 중이면 행의 진행 표시가 이유라 따로 보이지 않는다.
+  private var appActionBlockReason: String? {
+    guard case let .blocked(reason) = self.device.appActionAvailability else { return nil }
+    return AndroidDevicesText.appActionBlockReason(reason)
   }
 
   private var isAvailable: Bool {

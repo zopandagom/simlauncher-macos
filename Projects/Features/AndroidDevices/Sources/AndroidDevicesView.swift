@@ -1,11 +1,12 @@
 import AppKit
 import Core
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// 상태를 읽어 그리기만 하고, 사용자 동작은 Model 의 이벤트 메서드로 넘긴다.
 /// 화면 문자열은 `AndroidDevicesText` 가 이 모듈의 `Localizable.xcstrings` 에서 찾는다.
 /// 목록은 ⌘·⇧ 클릭으로 여러 기기를 고를 수 있고(선택은 Model 상태), 툴바의 "선택한 기기 켜기" 가 고른 기기를 함께 켠다.
-/// 행의 버튼·메뉴는 그 행 한 대에만 동작한다. 사라질 때(`onDisappear`) 자동 다시 읽기를 멈추게 알린다.
+/// 행의 버튼·메뉴·드롭은 그 행 한 대에만 동작한다. 사라질 때(`onDisappear`) 자동 다시 읽기를 멈추게 알린다.
 public struct AndroidDevicesView: View {
   let model: AndroidDevicesModel
   /// 지금 띄운 알림. 닫히는 동안 Model 의 줄에서 빠져도 글자가 비지 않도록 View 가 들고 있는다.
@@ -14,6 +15,9 @@ public struct AndroidDevicesView: View {
   @State private var isNoticePresented = false
   /// 마지막으로 띄운 삭제·초기화 확인. 닫히는 동안 Model 값이 nil 이어도 제목이 비지 않도록 View 가 들고 있는다.
   @State private var presentedConfirmation: AndroidDeviceConfirmation?
+  /// "파일에서 고르기…" 를 고른 행의 기기. 파일 패널이 닫힌 뒤 완료 처리에서 읽으므로 패널 표시 여부와 따로 둔다.
+  @State private var importTarget: AndroidVirtualDevice.ID?
+  @State private var isImporterPresented = false
 
   public init(model: AndroidDevicesModel) {
     self.model = model
@@ -103,6 +107,31 @@ public struct AndroidDevicesView: View {
       ) {
         AndroidDeviceCreationSheet(model: self.model)
       }
+      // 만들기·앱 실행·링크 시트는 같은 체인에 두고, Model 이 둘 이상 함께 열리지 않게 막는다 (`hasPresentedSheet`).
+      .sheet(
+        isPresented: Binding(
+          get: { self.model.launchAppDraft != nil },
+          set: { isPresented in
+            if !isPresented {
+              self.model.launchAppSheetDismissed()
+            }
+          }
+        )
+      ) {
+        AndroidLaunchAppSheet(model: self.model)
+      }
+      .sheet(
+        isPresented: Binding(
+          get: { self.model.openURLDraft != nil },
+          set: { isPresented in
+            if !isPresented {
+              self.model.openURLSheetDismissed()
+            }
+          }
+        )
+      ) {
+        AndroidOpenURLSheet(model: self.model)
+      }
       .confirmationDialog(
         AndroidDevicesText.confirmationTitle(for: self.model.confirmation ?? self.presentedConfirmation),
         isPresented: Binding(
@@ -131,6 +160,16 @@ public struct AndroidDevicesView: View {
         if let new {
           self.presentedConfirmation = new
         }
+      }
+      // 목록 단위에 하나만 둔다 (같은 계층에 여러 fileImporter 를 두면 서로 충돌한다).
+      // .aab 도 고를 수 있게 한다: 골라야 설치할 수 없는 이유를 보일 수 있다.
+      .fileImporter(
+        isPresented: self.$isImporterPresented,
+        allowedContentTypes: [UTType(filenameExtension: "apk"), UTType(filenameExtension: "aab")].compactMap(\.self)
+      ) { result in
+        // 취소·실패는 무시한다.
+        guard case let .success(url) = result, let id = self.importTarget else { return }
+        Task { await self.model.appFileSelected(url, for: id) }
       }
       .task { await self.model.onAppear() }
       .onDisappear { self.model.viewDisappeared() }
@@ -273,6 +312,19 @@ extension AndroidDevicesView {
       },
       deleteTapped: {
         self.model.deleteTapped(device.id)
+      },
+      installFromFileTapped: {
+        self.importTarget = device.id
+        self.isImporterPresented = true
+      },
+      appDropped: { urls in
+        Task { await self.model.appDropped(urls, on: device.id) }
+      },
+      launchAppTapped: {
+        Task { await self.model.launchAppTapped(device.id) }
+      },
+      openURLTapped: {
+        self.model.openURLTapped(device.id)
       }
     )
   }
