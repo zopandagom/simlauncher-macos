@@ -5,7 +5,8 @@ import Foundation
 /// 화면 문구. 모두 이 모듈의 `Localizable.xcstrings` 에서 찾는다 (`bundle: .module`).
 /// 기기 표시 이름·API 값·시스템 이미지 태그·경로는 번역하지 않는 값이라 `%@` 자리에 그대로 넣는다.
 /// 케이스를 기본값 없이 모두 적어, 상태·오류가 늘면 컴파일러가 잡는다. 에러 본문·행 이유는 `AndroidDevicesText+Error.swift`, 확인 대화상자·만들기 시트는
-/// `AndroidDevicesText+Dialogs.swift`.
+/// `AndroidDevicesText+Dialogs.swift`, 앱 설치·실행은 `AndroidDevicesText+Install.swift`, 링크 열기는
+/// `AndroidDevicesText+OpenURL.swift`.
 enum AndroidDevicesText {
   // MARK: - 기기 라벨
 
@@ -50,6 +51,8 @@ enum AndroidDevicesText {
       return String(localized: "\(label) 기기를 목록에서 지웠습니다", bundle: .module)
     case let .batchBootFinished(report):
       return self.batchTitle(for: report)
+    case .installFailed, .installedButNotLaunched, .launchFailed, .openURLFailed:
+      return self.appNoticeTitle(for: notice)
     }
   }
 
@@ -64,6 +67,8 @@ enum AndroidDevicesText {
       return String(localized: "기기 폴더가 예상한 위치가 아니어서 지우지 않고 남겨 두었습니다: \(path)", bundle: .module)
     case let .batchBootFinished(report):
       return self.batchMessage(for: report)
+    case .installFailed, .installedButNotLaunched, .launchFailed, .openURLFailed:
+      return self.appNoticeMessage(for: notice)
     }
   }
 
@@ -223,6 +228,12 @@ enum AndroidDevicesText {
       String(localized: "삭제하는 중", bundle: .module)
     case .erase:
       String(localized: "초기화하는 중", bundle: .module)
+    case .installApp:
+      String(localized: "앱을 설치하는 중…", bundle: .module)
+    case .launchApp:
+      String(localized: "앱을 실행하는 중…", bundle: .module)
+    case .openURL:
+      String(localized: "링크를 여는 중…", bundle: .module)
     }
   }
 

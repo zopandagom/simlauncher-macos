@@ -1,4 +1,5 @@
 import AndroidEmulatorInterface
+import AndroidPackageInterface
 import Core
 import Foundation
 import Observation
@@ -10,6 +11,8 @@ import Observation
 /// 상태는 바깥(잠금 파일·adb)에서 정해지므로, 앱 작업 없이 "켜는 중" 인 기기가 있으면 화면이 보이는 동안 2초마다 다시 읽고
 /// (`viewDisappeared()` 면 멈춘다), 앱 활성화 때 다시 읽은 뒤 3초 뒤 한 번 더 읽는다 (창을 닫은 직후 adb 가 아직 켜짐으로 답한 경우).
 /// 모든 다시 읽기는 한 경로로 모아, 읽는 중에 온 요청은 지금 읽기가 끝난 뒤 한 번 더 읽는다.
+/// 켜진 기기에는 로컬 apk 를 설치·실행하고(파일 고르기·드롭), 설치한 앱을 골라 실행하고, 링크를 연다. 설치 흐름은
+/// `AndroidAppInstallFlow` 가 잇는다.
 /// Android 도구(SDK) 상태 확인·설치는 여기서 하지 않고, "Android 도구" 버튼으로 App 에 도구 화면을 요청한다.
 /// 상태를 바꾸지 않는 읽기 API(`canCreateDevice` 등)는 `AndroidDevicesModel+Reading.swift` 에 있다.
 @MainActor
@@ -18,7 +21,7 @@ public final class AndroidDevicesModel {
   public private(set) var listState: AndroidDevicesListState = .loading
   /// 목록을 읽는 중이다 (첫 로딩 포함).
   public private(set) var isRefreshing = false
-  /// 기기별 진행 작업(켜기·끄기·삭제·초기화). 같은 기기의 작업은 겹치지 않는다.
+  /// 기기별 진행 작업(켜기·끄기·삭제·초기화·앱 설치·앱 실행·링크 열기). 같은 기기의 작업은 겹치지 않는다.
   public private(set) var activity = AndroidDeviceActivity()
   /// 닫지 않은 알림 줄.
   public private(set) var noticeQueue = AndroidDevicesNotices()
@@ -32,8 +35,16 @@ public final class AndroidDevicesModel {
   public private(set) var confirmation: AndroidDeviceConfirmation?
   /// 목록에서 고른 기기 (⌘·⇧ 클릭). 툴바 "선택한 기기 켜기" 의 대상이고, 다시 읽은 목록에 없는 기기는 빠진다.
   public private(set) var selection: Set<AndroidVirtualDevice.ID> = []
+  /// 링크 열기 시트 초안. nil 이면 시트가 닫혀 있다.
+  public private(set) var openURLDraft: AndroidOpenURLDraft?
+  /// 앱 실행 시트 초안(기기에서 읽은 설치 앱 목록 포함). nil 이면 시트가 닫혀 있다.
+  public private(set) var launchAppDraft: AndroidLaunchAppDraft?
 
   @ObservationIgnored private let emulator: any AndroidEmulatorClient
+  /// 앱 설치·실행·링크 열기 흐름. 진행 기록을 시작한 Model 메서드 안에서만 부른다.
+  @ObservationIgnored private let appFlow: AndroidAppInstallFlow
+  /// 앱 실행 시트의 목록 불러오기 번호. 늦게 온 앞 결과를 버리는 기준이다.
+  @ObservationIgnored private var nextLaunchListRequest = 0
   /// "Android 도구" 버튼(툴바, 빈 화면·안내 줄의 "Android 도구 열기", 목록 읽기 실패 화면)을 눌렀을 때 부른다.
   /// App 이 Android 도구 화면을 다시 연다 (화면 간 흐름은 App 이 잇는다).
   @ObservationIgnored private let setupRequested: @MainActor () -> Void
@@ -57,10 +68,12 @@ public final class AndroidDevicesModel {
 
   public init(
     emulator: any AndroidEmulatorClient,
+    package: any AndroidPackageClient,
     setupRequested: @escaping @MainActor () -> Void = {},
     sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
   ) {
     self.emulator = emulator
+    self.appFlow = AndroidAppInstallFlow(emulator: emulator, package: package)
     self.setupRequested = setupRequested
     self.sleep = sleep
   }
@@ -276,6 +289,102 @@ public extension AndroidDevicesModel {
     await self.reload()
   }
 
+  // MARK: - 앱 설치
+
+  /// 행 "앱 설치" 메뉴의 "파일에서 고르기…" 로 고른 파일.
+  func appFileSelected(_ url: URL, for id: AndroidVirtualDevice.ID) async {
+    await self.installApp([url], on: id)
+  }
+
+  /// 행에 끌어다 놓은 항목. 정확히 하나여야 하고, 둘 이상이면 이유를 알린다. 빈 배열은 무시한다.
+  func appDropped(_ urls: [URL], on id: AndroidVirtualDevice.ID) async {
+    guard !urls.isEmpty else { return }
+    await self.installApp(urls, on: id)
+  }
+
+  // MARK: - 앱 실행
+
+  /// 앱 실행 시트를 열고 그 기기의 사용자 설치 앱 목록을 읽는다. 읽기는 진행 기록 없이 한다 (기기를 바꾸지 않는다).
+  func launchAppTapped(_ id: AndroidVirtualDevice.ID) async {
+    guard case let .loaded(list) = self.listState,
+          let device = list.device(id: id),
+          self.activity.canStart(.launchApp, on: device),
+          !self.hasPresentedSheet
+    else { return }
+    self.nextLaunchListRequest += 1
+    let request = self.nextLaunchListRequest
+    self.launchAppDraft = AndroidLaunchAppDraft(deviceID: id, device: AndroidDeviceLabel(device), request: request)
+    await self.loadLaunchPackages(on: id, request: request)
+  }
+
+  /// 목록 읽기가 실패한 시트의 "다시 시도".
+  func launchAppRetryTapped() async {
+    guard let draft = self.launchAppDraft, case .failed = draft.packages else { return }
+    self.nextLaunchListRequest += 1
+    let request = self.nextLaunchListRequest
+    self.launchAppDraft?.reloadStarted(request: request)
+    await self.loadLaunchPackages(on: draft.deviceID, request: request)
+  }
+
+  func launchAppSelectionChanged(_ package: AndroidPackageName?) {
+    self.launchAppDraft?.selectionChanged(package)
+  }
+
+  func launchAppCancelTapped() {
+    self.launchAppDraft = nil
+  }
+
+  func launchAppSheetDismissed() {
+    self.launchAppDraft = nil
+  }
+
+  /// 시트를 닫고 고른 앱을 실행한 뒤 다시 읽는다. 기기는 시트를 연 사이 바뀌었을 수 있어 지금 목록으로 다시 확인한다
+  /// (명령 전 거절은 다시 읽지 않는다).
+  func launchAppConfirmTapped() async {
+    guard let draft = self.launchAppDraft, draft.canSubmit, let package = draft.selection else { return }
+    // 첫 await 전에 닫아, 연타해도 두 번째 호출은 위에서 끝난다.
+    self.launchAppDraft = nil
+    guard let device = self.appTarget(draft.deviceID, failed: { .launchFailed(draft.device, $0) }) else { return }
+    // 남은 거절은 같은 기기의 다른 작업뿐이다. 시트가 창을 막아 드물고, 행의 진행 표시가 이유를 보인다.
+    guard self.activity.begin(.launchApp, on: device) else { return }
+    defer { self.taskEnded(on: device.id) }
+    await self.appFlow.launch(package, on: device.id, label: draft.device, host: self.appHost)
+  }
+
+  // MARK: - 링크 열기
+
+  func openURLTapped(_ id: AndroidVirtualDevice.ID) {
+    guard case let .loaded(list) = self.listState,
+          let device = list.device(id: id),
+          self.activity.canStart(.openURL, on: device),
+          !self.hasPresentedSheet
+    else { return }
+    self.openURLDraft = AndroidOpenURLDraft(deviceID: id, device: AndroidDeviceLabel(device))
+  }
+
+  func openURLTextChanged(_ text: String) {
+    self.openURLDraft?.textChanged(text)
+  }
+
+  func openURLCancelTapped() {
+    self.openURLDraft = nil
+  }
+
+  func openURLSheetDismissed() {
+    self.openURLDraft = nil
+  }
+
+  /// 시트를 닫고 링크를 연 뒤 다시 읽는다. 기기는 지금 목록으로 다시 확인한다 (명령 전 거절은 다시 읽지 않는다).
+  func openURLConfirmTapped() async {
+    // 링크에 문제가 있으면 버튼이 비활성이라 드물다. 시트와 입력은 그대로 둔다.
+    guard let draft = self.openURLDraft, let link = draft.link else { return }
+    self.openURLDraft = nil
+    guard let device = self.appTarget(draft.deviceID, failed: { .openURLFailed(draft.device, $0) }) else { return }
+    guard self.activity.begin(.openURL, on: device) else { return }
+    defer { self.taskEnded(on: device.id) }
+    await self.appFlow.openURL(link, on: device.id, label: draft.device, host: self.appHost)
+  }
+
   // MARK: - 알림
 
   /// id 가 같은 알림만 지운다. 이미 닫았거나 없으면 아무것도 하지 않아, 두 번 불려도 다음 알림을 지우지 않는다.
@@ -292,10 +401,62 @@ extension AndroidDevicesModel {
     guard case let .loaded(list) = self.listState,
           let device = list.device(id: id),
           self.activity.canStart(action.task, on: device),
-          self.confirmation == nil,
-          self.creationDraft == nil
+          !self.hasPresentedSheet
     else { return }
     self.confirmation = AndroidDeviceConfirmation(action: action, deviceID: id, device: AndroidDeviceLabel(device))
+  }
+
+  /// 진행 기록은 여기서만 시작하고 끝낸다. 작업 중인 기기는 행이 진행 중을 보여 알리지 않고, 켜짐이 아니거나 쓸 수 없으면
+  /// (파일을 고르는 사이 꺼진 경우. 드롭은 View 가 먼저 거절한다) 이유를 알린다. 목록에 없는 기기는 알리지 않는다
+  /// (파일을 고르는 사이 지워진 경우뿐이고 라벨을 만들 수 없다. iOS 와 같다).
+  private func installApp(_ items: [URL], on id: AndroidVirtualDevice.ID) async {
+    guard case let .loaded(list) = self.listState,
+          let device = list.device(id: id),
+          self.activity.task(on: id) == nil
+    else { return }
+    let label = AndroidDeviceLabel(device)
+    if case let .blocked(reason) = device.appActionAvailability {
+      self.enqueue(.installFailed(label, .deviceNotReady(reason)))
+      return
+    }
+    guard self.activity.begin(.installApp, on: device) else { return }
+    defer { self.taskEnded(on: id) }
+    await self.appFlow.install(items, on: id, label: label, host: self.appHost)
+  }
+
+  /// 앱 실행 시트의 목록을 읽어, 그 초안이 아직 이 번호를 기다리면 반영한다 (닫혔거나 다시 불러왔으면 버린다).
+  private func loadLaunchPackages(on id: AndroidVirtualDevice.ID, request: Int) async {
+    let result: Result<[AndroidPackageName], AndroidEmulatorError>
+    do throws(AndroidEmulatorError) {
+      result = try await .success(self.emulator.installedPackages(on: id))
+    } catch {
+      result = .failure(error)
+    }
+    self.launchAppDraft?.packagesLoaded(result, request: request)
+  }
+
+  /// 시트를 연 사이 바뀌었을 수 있는 대상 기기를 지금 목록으로 확인한다. 안 되면 `failed` 로 만든 알림을 쌓고 nil.
+  private func appTarget(
+    _ id: AndroidVirtualDevice.ID,
+    failed: (AndroidAppActionFailure) -> AndroidDevicesNotice
+  ) -> AndroidVirtualDevice? {
+    let target = self.appFlow.target(id, in: self.listState)
+    guard case let .ready(device) = target else {
+      if let failure = target.failure {
+        self.enqueue(failed(failure))
+      }
+      return nil
+    }
+    return device
+  }
+
+  /// 앱 흐름이 Model 상태에 닿는 창구. 부를 때마다 만들어 넘기고 흐름 타입은 저장하지 않는다.
+  private var appHost: AndroidAppInstallFlow.Host {
+    AndroidAppInstallFlow.Host(
+      enqueue: { self.enqueue($0) },
+      reload: { await self.reload() },
+      listState: { self.listState }
+    )
   }
 
   /// 취소(`.cancelled`)는 알리지 않는다. 그 밖의 실패는 늘 쌓고, 새로 고침 실패는 같은 원인이 이미 줄에 있으면 쌓지 않는다.
@@ -416,13 +577,16 @@ extension AndroidDevicesModel {
 }
 
 private extension AndroidDevicesNotice {
-  /// 알림에 담긴 에러 (정보 알림·함께 켜기 결과는 nil).
+  /// 알림에 담긴 에러 (정보 알림·함께 켜기 결과·검사·판정·기기 상태 실패는 nil).
   var error: AndroidEmulatorError? {
     switch self {
     case let .refreshFailed(error), let .bootFailed(_, error), let .shutdownFailed(_, error),
          let .createFailed(_, error), let .deleteFailed(_, error), let .eraseFailed(_, error):
       error
-    case .folderKept, .batchBootFinished:
+    case let .installedButNotLaunched(_, error), let .installFailed(_, .emulator(error)),
+         let .launchFailed(_, .emulator(error)), let .openURLFailed(_, .emulator(error)):
+      error
+    case .folderKept, .batchBootFinished, .installFailed, .launchFailed, .openURLFailed:
       nil
     }
   }

@@ -4,6 +4,7 @@ import Foundation
 
 /// 에러 본문(원인 + 다음 할 일)과 행의 "사용할 수 없음" 이유. emulator·adb 출력 원문은 보이지 않는다
 /// (emulator 의 실패 문구는 원인과 맞지 않는다, 실측. Client 가 켜기 전에 파일로 원인을 정한다).
+/// 앱 설치·실행·링크 열기 명령의 실패 본문은 `AndroidDevicesText+Install.swift` 의 `appMessage(for:)`.
 extension AndroidDevicesText {
   /// 에러 본문. 취소(`.cancelled`)는 알리지 않으므로 nil.
   static func message(for error: AndroidEmulatorError) -> String? {
@@ -24,6 +25,8 @@ extension AndroidDevicesText {
     case .invalidDeviceName, .nameUnavailable, .creationOptionUnavailable, .avdFolderUnavailable,
          .fileOperationFailed, .unsafeDeviceFolder:
       self.fileMessage(for: error)
+    case .deviceNotBooted, .installFailed, .installTimedOut, .launchFailed, .urlNotHandled, .appCommandFailed:
+      self.appMessage(for: error)
     case .cancelled:
       nil
     }
