@@ -30,7 +30,8 @@ public protocol AndroidEmulatorClient: Sendable {
   func shutdown(_ id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError)
 
   /// 새 AVD 를 만들고 그 이름을 돌려준다. 표시 이름에 `DeviceName.problem` 이 있으면 `.invalidDeviceName`.
-  /// 실행 직전에 다시 읽은 선택지에 이미지·프로필이 없으면 `.creationOptionUnavailable`.
+  /// 실행 직전에 다시 읽은 선택지에 이미지·프로필이 없거나, 폴더블인데 그 이미지에 접기 설정 파일이 없으면
+  /// `.creationOptionUnavailable`.
   /// AVD 이름은 `AndroidAVDName.make` (다시 읽은 목록 기준). 폴더·ini 를 덮어쓰지 않는다(독점 생성).
   func create(
     displayName: String,
@@ -75,7 +76,7 @@ public protocol AndroidEmulatorClient: Sendable {
   /// 켜진 기기 화면을 PNG 로 `file`(Workspace 가 예약한 빈 파일)에 쓴다 (`adb -s <serial> exec-out 'screencap -p 2>/dev/null'`,
   /// 30초 제한). 화면이 여럿인 기기(폴더블)는 지금 보이는 화면을 찍는다(실측). 사전 확인은 앱 작업과 같다. 종료 코드 ≠ 0·출력이 PNG 가 아님·시간 초과는 `.captureFailed`,
   /// 파일에 쓰지 못하면(파일 없음·링크·일반 파일 아님·디스크) `.captureFileUnwritable` (일부만 썼으면 0바이트로 자른다).
-  /// 화면이 꺼져 있으면 검은 화면이 저장된다(휴대전화 실측. 화면이 꺼진 폴더블은 확인하지 못했다).
+  /// 화면이 꺼져 있으면 검은 화면이 저장된다(휴대전화·폴더블 실측. 폴더블은 대개 지금 보이는 쪽 크기의 검은 화면이고, 접힌 직후에는 펼친 크기인 경우가 있었다).
   func screenshot(on id: AndroidVirtualDevice.ID, to file: URL) async throws(AndroidEmulatorError)
 
   /// 켜진 기기 화면을 H.264 mp4 로 기기 임시 파일(`/data/local/tmp/simlauncher-recording-<UUID>.mp4`)에 녹화한 뒤

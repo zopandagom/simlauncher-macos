@@ -97,6 +97,19 @@ struct AndroidDevicesTextTests {
     #expect(AndroidDevicesText.studioDownloadURL == URL(string: "https://developer.android.com/studio"))
   }
 
+  @Test("만들기 시트 안내: 그 밖의 기기는 Studio 로, 폴더블 설정이 없는 이미지면 폴더블을 만들 수 있는 이미지를 알려 준다")
+  func creationGuides() {
+    #expect(AndroidDevicesText.studioDevicesGuide
+      == "다른 크기·모양의 기기는 Android Studio 의 기기 관리자(Device Manager)에서 만들면 이 목록에 보입니다.")
+    #expect(AndroidDevicesText.foldableImageUnsupported(foldableImages: [.sample])
+      == "이 시스템 이미지에는 폴더블 설정이 없어 폴더블을 만들 수 없습니다. 폴더블은 API 37.0 · google_apis 로 만들 수 있습니다.")
+    #expect(AndroidDevicesText.foldableImageUnsupported(foldableImages: [.sample, .olderSample])
+      == "이 시스템 이미지에는 폴더블 설정이 없어 폴더블을 만들 수 없습니다. "
+      + "폴더블은 API 37.0 · google_apis, API 36 · google_apis_playstore 로 만들 수 있습니다.")
+    #expect(AndroidDevicesText.foldableImageUnsupported(foldableImages: []) == AndroidDevicesText.foldableNoImage)
+    #expect(AndroidDevicesText.foldableNoImage == "설치된 시스템 이미지 중 폴더블 설정이 있는 것이 없어 폴더블을 만들 수 없습니다.")
+  }
+
   @Test("함께 켜기 결과: 같은 결과끼리 한 줄로 묶고, 켠 기기가 있으면 몇 대 중 몇 대다")
   func batchMessage() {
     let phone = AndroidDeviceLabel(.phoneSample)
@@ -165,6 +178,40 @@ struct NameProblemSyncTests {
       let localizations = entry?["localizations"] as? [String: Any]
       let unit = (localizations?["ko"] as? [String: Any])?["stringUnit"] as? [String: Any]
       #expect(unit?["value"] as? String == text, "Launcher 에 없거나 다른 값: \(text)")
+    }
+  }
+}
+
+/// 화면 문구에는 기기 상표명을 쓰지 않는다 (ARCHITECTURE §4 Android 기기 행). 폴더블의 `hw.device.name` 은 config 에만 쓰는
+/// 화면에 보이지 않는 값이다. 원본 String Catalog 를 소스 경로로 읽어 모든 키·ko 값도 본다.
+struct BrandNameTests {
+  static let catalog = URL(filePath: #filePath)
+    .deletingLastPathComponent()
+    .appending(path: "../Sources/Localizable.xcstrings")
+    .standardized
+  static let brands = ["pixel", "samsung", "galaxy"]
+
+  @Test("화면 모양·만들기 안내 문구와 String Catalog 에 기기 상표명이 없다")
+  func noBrandNames() throws {
+    let texts = AndroidDeviceProfile.all.map(AndroidDevicesText.profileOption)
+      + [
+        AndroidDevicesText.studioDevicesGuide, AndroidDevicesText.foldableImageUnsupported(foldableImages: [.sample]),
+        AndroidDevicesText.foldableNoImage,
+      ]
+    let data = try Data(contentsOf: Self.catalog)
+    let root = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+    let strings = try #require(root["strings"] as? [String: Any])
+    let catalogTexts = strings.flatMap { key, entry in
+      let localizations = (entry as? [String: Any])?["localizations"] as? [String: Any]
+      let unit = (localizations?["ko"] as? [String: Any])?["stringUnit"] as? [String: Any]
+      return [key, unit?["value"] as? String ?? ""]
+    }
+    #expect(!strings.isEmpty)
+    for text in texts + catalogTexts {
+      let lowered = text.lowercased()
+      for brand in Self.brands {
+        #expect(!lowered.contains(brand), "\(text)")
+      }
     }
   }
 }
@@ -272,6 +319,7 @@ enum AndroidDevicesTextCatalog {
       AndroidDevicesText.deleteMenuItem, AndroidDevicesText.cancelButton, AndroidDevicesText.createSheetTitle,
       AndroidDevicesText.nameField, AndroidDevicesText.imagePicker, AndroidDevicesText.profilePicker,
       AndroidDevicesText.createConfirmButton, AndroidDevicesText.studioDevicesGuide, AndroidDevicesText.studioLinkTitle,
+      AndroidDevicesText.foldableNoImage,
       AndroidDevicesText.title(for: .refreshFailed(.adbUnavailable)),
       AndroidDevicesText.title(for: .createFailed(AndroidDeviceLabel(.phoneSample), .nameUnavailable)),
       AndroidDevicesText.installAppButton, AndroidDevicesText.installFromFileMenuItem,
@@ -339,6 +387,11 @@ enum AndroidDevicesTextCatalog {
       ),
       Formatted(key: "“%@” (API %@)", arguments: ["테스트 폰", "37.0"], text: labelText),
       Formatted(key: "API %@", arguments: ["37.0"], text: AndroidDevicesText.apiLabel(.sample)),
+      Formatted(
+        key: "이 시스템 이미지에는 폴더블 설정이 없어 폴더블을 만들 수 없습니다. 폴더블은 %@ 로 만들 수 있습니다.",
+        arguments: ["API 37.0 · google_apis"],
+        text: AndroidDevicesText.foldableImageUnsupported(foldableImages: [.sample])
+      ),
       Formatted(key: "API %@ · %@", arguments: ["37.0", "google_apis"], text: AndroidDevicesText.imageOption(.sample)),
       Formatted(
         key: "%@ 기기를 켜지 못했습니다",
@@ -420,6 +473,7 @@ enum AndroidDevicesTextCatalog {
       Formatted(key: "휴대전화 (%@)", arguments: ["1080×2400"], text: AndroidDevicesText.profileOption(profiles[0])),
       Formatted(key: "작은 휴대전화 (%@)", arguments: ["720×1280"], text: AndroidDevicesText.profileOption(profiles[1])),
       Formatted(key: "태블릿 (%@)", arguments: ["2560×1600"], text: AndroidDevicesText.profileOption(profiles[2])),
+      Formatted(key: "폴더블 (%@)", arguments: ["2076×2152"], text: AndroidDevicesText.profileOption(profiles[3])),
     ] + self.appFormatted(label: label, labelText: labelText)
   }
 }

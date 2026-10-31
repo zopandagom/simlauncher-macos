@@ -123,6 +123,41 @@ struct AndroidEmulatorClientImplFileTests {
     #expect(!FileTree.exists(harness.home, ".android"))
   }
 
+  @Test("만들기: 폴더블을 만들면 폴더블 config 를 쓰고 목록에 폴더블 한 대")
+  func createFoldable() async throws {
+    let harness = try Harness()
+    defer { harness.cleanUp() }
+    try Harness.installFoldFiles(Harness.image, in: harness.sdk)
+    let profile = try #require(AndroidDeviceProfile.profile(.foldable))
+
+    let id = try await harness.client.create(displayName: "테스트 폴더블", image: Harness.image, profile: .foldable)
+
+    let config = try Data(contentsOf: harness.deviceFolder(id.rawValue).appending(path: "config.ini"))
+    #expect(config == AndroidAVDConfig.configFile(
+      displayName: "테스트 폴더블",
+      image: Harness.image,
+      profile: profile,
+      host: .aarch64
+    ))
+    let devices = try await harness.client.fetchDevices().devices
+    #expect(devices.count == 1)
+    #expect(devices.first?.formFactor == .foldable)
+    #expect(devices.first?.availability == .available)
+  }
+
+  @Test("만들기: 접기 설정이 없는 이미지로 폴더블을 만들면 아무것도 쓰지 않고 거절")
+  func createFoldableRejectsImageWithoutFoldFiles() async throws {
+    let harness = try Harness()
+    defer { harness.cleanUp() }
+
+    let error = await thrownError {
+      _ = try await harness.client.create(displayName: "테스트 폴더블", image: Harness.image, profile: .foldable)
+    }
+
+    #expect(error == .creationOptionUnavailable)
+    #expect(!FileTree.exists(harness.home, ".android"))
+  }
+
   @Test("만들기: ~/.android 가 파일이면 avdFolderUnavailable, SDK 를 쓸 수 없으면 sdkUnavailable")
   func createFolderAndSDKFailures() async throws {
     let harness = try Harness()

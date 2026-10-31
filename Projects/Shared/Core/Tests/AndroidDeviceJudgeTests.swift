@@ -251,9 +251,20 @@ extension AndroidDeviceJudgeTests {
     #expect(AndroidDeviceJudge.formFactor(config) == nil)
   }
 
-  @Test("내장 프로필의 기기 모양은 휴대전화 둘·태블릿 하나")
+  @Test("내장 프로필의 기기 모양은 휴대전화 둘·태블릿 하나·폴더블 하나")
   func profileFormFactors() {
-    #expect(AndroidDeviceProfile.all.map(\.formFactor) == [.phone, .phone, .tablet])
+    // 폴더블 2076x2152@390 은 크기 규칙으로는 태블릿이라 접기 값으로 정한다.
+    #expect(AndroidDeviceProfile.all.map(\.formFactor) == [.phone, .phone, .tablet, .foldable])
+  }
+
+  @Test("emulator 가 다시 쓴 앱 폴더블 config(실측)도 쓸 수 있고 폴더블")
+  func appFoldableRewritten() throws {
+    let config = try #require(AVDIniFile.parse(Data(Self.appFoldableRewrittenConfig.utf8)))
+
+    let device = AndroidDeviceJudge.device(Self.facts(name: "SL_FoldE2b_8", config: config), host: .aarch64, adb: nil)
+
+    #expect(device.availability == .available)
+    #expect(device.formFactor == .foldable)
   }
 
   // MARK: - 도우미
@@ -320,6 +331,36 @@ extension AndroidDeviceJudgeTests {
   hw.displayRegion.0.1.width=1080
   hw.displayRegion.0.1.height=2424
   hw.sensor.hinge.fold_to_displayRegion.0.1_at_posture=1
+
+  """
+
+  /// 앱 규칙대로 쓴 폴더블 config 를 켠 뒤 emulator 가 다시 쓴 것 (7-E2 실측: `key = value`, `disk.dataPartition.size` 한 줄 추가).
+  static let appFoldableRewrittenConfig = """
+  avd.ini.encoding = UTF-8
+  avd.ini.displayname = SL_FoldE2b_8
+  image.sysdir.1 = system-images/android-37.0/google_apis/arm64-v8a/
+  abi.type = arm64-v8a
+  hw.cpu.arch = arm64
+  tag.id = google_apis
+  hw.lcd.width = 2076
+  hw.lcd.height = 2152
+  hw.lcd.density = 390
+  hw.keyboard = yes
+  hw.device.name = pixel_9_pro_fold
+  hw.sensor.hinge = yes
+  hw.sensor.hinge.count = 1
+  hw.sensor.hinge.type = 1
+  hw.sensor.hinge.sub_type = 1
+  hw.sensor.hinge.ranges = 0-180
+  hw.sensor.hinge.defaults = 180
+  hw.sensor.hinge.areas = 1038-0-0-2152
+  hw.sensor.posture_list = 1, 2, 3
+  hw.sensor.hinge_angles_posture_definitions = 0-30, 30-150, 150-180
+  hw.displayRegion.0.1.xOffset = 0
+  hw.displayRegion.0.1.yOffset = 0
+  hw.displayRegion.0.1.width = 1080
+  hw.displayRegion.0.1.height = 2424
+  disk.dataPartition.size = 6442450944
 
   """
 

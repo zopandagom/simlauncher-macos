@@ -80,13 +80,34 @@ extension AndroidDevicesText {
       String(localized: "작은 휴대전화 (\(size))", bundle: .module)
     case .tablet:
       String(localized: "태블릿 (\(size))", bundle: .module)
+    case .foldable:
+      String(localized: "폴더블 (\(size))", bundle: .module)
     }
   }
 
-  /// 화면 모양 아래 안내. 앱이 만드는 화면 모양은 셋뿐이고, Android Studio 가 만든 기기(폴더블 포함)도 이 목록에서 켠다.
+  /// 폴더블을 골랐는데 고른 시스템 이미지에 접기 설정 파일이 없을 때 화면 모양 아래에 보인다.
+  /// 폴더블을 만들 수 있는 이미지를 이미지 선택 항목과 같은 표기로 알려 주고(하나씩 바꿔 보지 않게), 하나도 없으면 `foldableNoImage`.
+  static func foldableImageUnsupported(foldableImages: [AndroidSystemImageRef]) -> String {
+    guard !foldableImages.isEmpty else { return self.foldableNoImage }
+    let images = foldableImages.map(self.imageOption).joined(separator: ", ")
+    return String(
+      localized: "이 시스템 이미지에는 폴더블 설정이 없어 폴더블을 만들 수 없습니다. 폴더블은 \(images) 로 만들 수 있습니다.",
+      bundle: .module
+    )
+  }
+
+  /// 폴더블을 골랐는데 설치된 어느 시스템 이미지에도 접기 설정 파일이 없을 때 (고를 다른 이미지가 없다).
+  static var foldableNoImage: String {
+    String(
+      localized: "설치된 시스템 이미지 중 폴더블 설정이 있는 것이 없어 폴더블을 만들 수 없습니다.",
+      bundle: .module
+    )
+  }
+
+  /// 화면 모양 아래 안내. 앱이 만드는 화면 모양은 넷(폴더블 하나 포함)이고, 그 밖의 기기는 Android Studio 로 만들어 이 목록에서 켠다.
   static var studioDevicesGuide: String {
     String(
-      localized: "폴더블 등 더 많은 기기는 Android Studio 의 기기 관리자(Device Manager)에서 만들면 이 목록에 보입니다.",
+      localized: "다른 크기·모양의 기기는 Android Studio 의 기기 관리자(Device Manager)에서 만들면 이 목록에 보입니다.",
       bundle: .module
     )
   }

@@ -33,13 +33,14 @@ public struct AndroidVirtualDevice: Identifiable, Hashable, Sendable {
     case unavailable(UnavailableReason)
   }
 
-  /// 짧은 변이 600dp 이상이면 tablet. foldable 은 기존 기기의 config(`hw.sensor.hinge`)로만 정한다 (`AndroidDeviceJudge`).
+  /// 짧은 변이 600dp 이상이면 tablet. 목록의 foldable 은 config 의 `hw.sensor.hinge` 로(`AndroidDeviceJudge`),
+  /// 만들기 프로필의 foldable 은 `AndroidDeviceProfile.fold` 로 정한다.
   public enum FormFactor: Hashable, Sendable {
     case phone, tablet, foldable
 
     public static let tabletMinimumDP = 600
 
-    /// 픽셀 크기와 dpi 로 정한다 (dp = 픽셀 × 160 / dpi). foldable 은 만들지 않는다.
+    /// 픽셀 크기와 dpi 로 정한다 (dp = 픽셀 × 160 / dpi). 이 init 은 foldable 을 내지 않는다.
     public init(width: Int, height: Int, density: Int) {
       let shortSide = min(width, height)
       let isTablet = density > 0 && shortSide * 160 >= Self.tabletMinimumDP * density

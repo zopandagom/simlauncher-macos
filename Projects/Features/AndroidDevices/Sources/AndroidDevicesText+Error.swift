@@ -74,7 +74,8 @@ extension AndroidDevicesText {
     case .nameUnavailable:
       String(localized: "같은 이름의 기기가 너무 많습니다. 다른 이름으로 만드세요.", bundle: .module)
     case .creationOptionUnavailable:
-      String(localized: "고른 시스템 이미지를 더 이상 찾을 수 없습니다. 목록을 새로 고친 뒤 다시 만드세요.", bundle: .module)
+      // 이미지가 사라진 경우와 폴더블 접기 설정 파일만 사라진 경우를 함께 덮는다 (새로 고치면 시트가 정확한 이유를 보인다).
+      String(localized: "고른 시스템 이미지로 이 기기를 만들 수 없습니다. 목록을 새로 고친 뒤 다시 만드세요.", bundle: .module)
     case .avdFolderUnavailable:
       String(localized: "기기 폴더(~/.android/avd)를 읽거나 쓰지 못했습니다. 폴더 권한과 저장 공간을 확인하세요.", bundle: .module)
     case .fileOperationFailed:

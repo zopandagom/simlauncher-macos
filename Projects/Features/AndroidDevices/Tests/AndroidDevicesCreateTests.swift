@@ -72,6 +72,79 @@ struct AndroidDevicesCreateTests: AndroidDevicesTesting {
     #expect(setup.model.notices.isEmpty)
   }
 
+  @Test("폴더블: 접기 설정이 있는 이미지로만 만들 수 있다")
+  func foldableNeedsFoldSettings() async {
+    let setup = await Self.loadedFixture(.emptySample)
+    setup.model.createButtonTapped()
+    setup.model.creationNameChanged("내 폴더블")
+    setup.model.creationProfileChanged(.foldable)
+    #expect(setup.model.creationDraft?.profile == .foldable)
+    #expect(setup.model.creationDraft?.isProfileUnsupportedByImage == false)
+    #expect(setup.model.creationDraft?.canSubmit == true)
+    // 접기 설정이 없는 이미지로 바꿔도 받아 두고(고른 것을 바꾸지 않는다) 만들기만 막는다.
+    setup.model.creationImageChanged(.olderSample)
+    let unsupported = setup.model.creationDraft
+    #expect(unsupported?.image == .olderSample)
+    #expect(unsupported?.isProfileUnsupportedByImage == true)
+    #expect(
+      unsupported?.isProfileUnsupportedByImage
+        == unsupported?.options.lacksFoldSettings(image: .olderSample, profile: .foldable)
+    )
+    #expect(unsupported?.canSubmit == false)
+    await setup.model.creationConfirmTapped()
+    #expect(setup.fake.calls == [.fetchDevices])
+    #expect(setup.model.creationDraft == unsupported)
+    setup.model.creationImageChanged(.sample)
+    #expect(setup.model.creationDraft?.isProfileUnsupportedByImage == false)
+    #expect(setup.model.creationDraft?.canSubmit == true)
+    await setup.model.creationConfirmTapped()
+    #expect(setup.fake.calls == [
+      .fetchDevices, .create(displayName: "내 폴더블", image: .sample, profile: .foldable), .fetchDevices,
+    ])
+    let created = Self.list(setup.model)?.devices.first
+    #expect(created?.formFactor == .foldable)
+  }
+
+  @Test("시트 이유의 폴더블 이미지: 하나도 없으면 고를 이미지가 없다고 하고, 있으면 이미지 선택지 순서(API 내림차순)로 알린다")
+  func noFoldableImage() throws {
+    let none = AndroidDeviceCreationOptions(
+      installedImages: [.sample, .olderSample],
+      foldableImages: [],
+      host: .aarch64
+    )
+    var draft = try #require(AndroidDeviceCreationDraft(options: none))
+    draft.profileChanged(.foldable)
+    #expect(draft.isProfileUnsupportedByImage)
+    #expect(!draft.canSubmit)
+    draft.imageChanged(.olderSample)
+    #expect(draft.isProfileUnsupportedByImage)
+    #expect(!draft.canSubmit)
+    #expect(draft.foldableImageChoices.isEmpty)
+    #expect(AndroidDevicesText.foldableImageUnsupported(foldableImages: draft.foldableImageChoices)
+      == AndroidDevicesText.foldableNoImage)
+    let some = try #require(AndroidDeviceCreationDraft(options: .sample))
+    #expect(some.foldableImageChoices == [.sample])
+    // 원본 foldableImages 는 Set 이라 순서가 없다. 이유 문구는 이미지 선택지 순서(API 내림차순)로 늘 같다.
+    let both = AndroidDeviceCreationOptions(
+      installedImages: [.olderSample, .sample],
+      foldableImages: [.olderSample, .sample],
+      host: .aarch64
+    )
+    let twoChoices = try #require(AndroidDeviceCreationDraft(options: both))
+    #expect(twoChoices.foldableImageChoices == [.sample, .olderSample])
+  }
+
+  @Test("폴더블이 아니면 접기 설정이 없는 이미지여도 이유를 보이지 않는다")
+  func nonFoldableIgnoresFoldSettings() async {
+    let setup = await Self.loadedFixture()
+    setup.model.createButtonTapped()
+    #expect(setup.model.creationDraft?.profile == .phone)
+    #expect(setup.model.creationDraft?.isProfileUnsupportedByImage == false)
+    setup.model.creationImageChanged(.olderSample)
+    #expect(setup.model.creationDraft?.image == .olderSample)
+    #expect(setup.model.creationDraft?.isProfileUnsupportedByImage == false)
+  }
+
   @Test("만드는 중에는 + 를 누를 수 없고 시트가 다시 열리지 않는다")
   func creatingBlocksCreate() async {
     let setup = await Self.loadedFixture { $0.suspendCreates() }
