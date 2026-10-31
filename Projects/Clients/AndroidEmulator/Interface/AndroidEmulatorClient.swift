@@ -87,6 +87,7 @@ public protocol AndroidEmulatorClient: Sendable {
   /// 파일은 가져왔거나 화면이 없을 때만 지우고, 화면이 담긴 파일을 가져오지 못했으면(`.captureFileUnwritable`·`.recordingLost`·
   /// `.recordingTransferTimedOut`) 기기에 남긴다(그 기기에서 다음 녹화를 시작할 때 지운다).
   /// 가져오지 못하면 `file` 은 0바이트로 남긴다(호출한 쪽이 지운다).
+  /// 화면이 꺼진(잠든) 기기에서 스스로 실패로 끝나 화면이 없으면 `.recordingDisplayOff` (화면이 여럿인 기기 실측).
   func recordScreen(
     on id: AndroidVirtualDevice.ID,
     to file: URL,
@@ -173,6 +174,8 @@ public enum AndroidEmulatorError: Error, Hashable, Sendable {
   case recordingFailed
   /// 녹화가 끝났는데 가져온 파일이 0바이트이거나 없다.
   case recordingEmpty
+  /// 녹화를 시작하지 못했다: 기기 화면이 꺼져 있다 (화면이 여럿인 기기에서 screenrecord 가 `UNASSIGNED_LAYER_STACK` 로 끝남, 실측).
+  case recordingDisplayOff
   /// 녹화가 끝났지만 기기가 꺼지거나 adb 가 끊겨 가져오지 못했다 (기기 임시 파일은 남는다).
   case recordingLost
   /// 녹화 파일 가져오기가 시간 제한(600초) 안에 끝나지 않았다 (기기 임시 파일은 남는다).
