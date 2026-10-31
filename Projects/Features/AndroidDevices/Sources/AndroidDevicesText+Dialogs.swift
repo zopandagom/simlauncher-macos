@@ -86,9 +86,12 @@ extension AndroidDevicesText {
   }
 
   /// 폴더블을 골랐는데 고른 시스템 이미지에 접기 설정 파일이 없을 때 화면 모양 아래에 보인다.
-  static var foldableImageUnsupported: String {
-    String(
-      localized: "이 시스템 이미지에는 폴더블 설정이 없어 폴더블을 만들 수 없습니다. 다른 시스템 이미지를 고르세요.",
+  /// 폴더블을 만들 수 있는 이미지를 이미지 선택 항목과 같은 표기로 알려 주고(하나씩 바꿔 보지 않게), 하나도 없으면 `foldableNoImage`.
+  static func foldableImageUnsupported(foldableImages: [AndroidSystemImageRef]) -> String {
+    guard !foldableImages.isEmpty else { return self.foldableNoImage }
+    let images = foldableImages.map(self.imageOption).joined(separator: ", ")
+    return String(
+      localized: "이 시스템 이미지에는 폴더블 설정이 없어 폴더블을 만들 수 없습니다. 폴더블은 \(images) 로 만들 수 있습니다.",
       bundle: .module
     )
   }

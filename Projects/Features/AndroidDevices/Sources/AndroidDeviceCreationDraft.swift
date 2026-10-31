@@ -33,9 +33,9 @@ public struct AndroidDeviceCreationDraft: Hashable, Sendable {
     self.options.lacksFoldSettings(image: self.image, profile: self.profile)
   }
 
-  /// 선택지에 폴더블을 만들 수 있는 이미지가 하나라도 있는지. 없으면 "다른 이미지를 고르세요" 대신 다른 이유를 보인다.
-  public var hasFoldableImage: Bool {
-    !self.options.foldableImages.isEmpty
+  /// 폴더블을 만들 수 있는 이미지를 이미지 선택지 순서(API 내림차순)로. 시트 이유 문구가 고를 이미지로 알려 준다.
+  public var foldableImageChoices: [AndroidSystemImageRef] {
+    self.options.images.filter { self.options.foldableImages.contains($0) }
   }
 
   mutating func nameChanged(_ name: String) {

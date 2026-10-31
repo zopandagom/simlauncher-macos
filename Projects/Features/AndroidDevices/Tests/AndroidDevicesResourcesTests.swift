@@ -97,12 +97,16 @@ struct AndroidDevicesTextTests {
     #expect(AndroidDevicesText.studioDownloadURL == URL(string: "https://developer.android.com/studio"))
   }
 
-  @Test("만들기 시트 안내: 그 밖의 기기는 Studio 로, 폴더블 설정이 없는 이미지는 다른 이미지를 고르게 한다")
+  @Test("만들기 시트 안내: 그 밖의 기기는 Studio 로, 폴더블 설정이 없는 이미지면 폴더블을 만들 수 있는 이미지를 알려 준다")
   func creationGuides() {
     #expect(AndroidDevicesText.studioDevicesGuide
       == "다른 크기·모양의 기기는 Android Studio 의 기기 관리자(Device Manager)에서 만들면 이 목록에 보입니다.")
-    #expect(AndroidDevicesText.foldableImageUnsupported
-      == "이 시스템 이미지에는 폴더블 설정이 없어 폴더블을 만들 수 없습니다. 다른 시스템 이미지를 고르세요.")
+    #expect(AndroidDevicesText.foldableImageUnsupported(foldableImages: [.sample])
+      == "이 시스템 이미지에는 폴더블 설정이 없어 폴더블을 만들 수 없습니다. 폴더블은 API 37.0 · google_apis 로 만들 수 있습니다.")
+    #expect(AndroidDevicesText.foldableImageUnsupported(foldableImages: [.sample, .olderSample])
+      == "이 시스템 이미지에는 폴더블 설정이 없어 폴더블을 만들 수 없습니다. "
+      + "폴더블은 API 37.0 · google_apis, API 36 · google_apis_playstore 로 만들 수 있습니다.")
+    #expect(AndroidDevicesText.foldableImageUnsupported(foldableImages: []) == AndroidDevicesText.foldableNoImage)
     #expect(AndroidDevicesText.foldableNoImage == "설치된 시스템 이미지 중 폴더블 설정이 있는 것이 없어 폴더블을 만들 수 없습니다.")
   }
 
@@ -191,7 +195,7 @@ struct BrandNameTests {
   func noBrandNames() throws {
     let texts = AndroidDeviceProfile.all.map(AndroidDevicesText.profileOption)
       + [
-        AndroidDevicesText.studioDevicesGuide, AndroidDevicesText.foldableImageUnsupported,
+        AndroidDevicesText.studioDevicesGuide, AndroidDevicesText.foldableImageUnsupported(foldableImages: [.sample]),
         AndroidDevicesText.foldableNoImage,
       ]
     let data = try Data(contentsOf: Self.catalog)
@@ -315,7 +319,7 @@ enum AndroidDevicesTextCatalog {
       AndroidDevicesText.deleteMenuItem, AndroidDevicesText.cancelButton, AndroidDevicesText.createSheetTitle,
       AndroidDevicesText.nameField, AndroidDevicesText.imagePicker, AndroidDevicesText.profilePicker,
       AndroidDevicesText.createConfirmButton, AndroidDevicesText.studioDevicesGuide, AndroidDevicesText.studioLinkTitle,
-      AndroidDevicesText.foldableImageUnsupported, AndroidDevicesText.foldableNoImage,
+      AndroidDevicesText.foldableNoImage,
       AndroidDevicesText.title(for: .refreshFailed(.adbUnavailable)),
       AndroidDevicesText.title(for: .createFailed(AndroidDeviceLabel(.phoneSample), .nameUnavailable)),
       AndroidDevicesText.installAppButton, AndroidDevicesText.installFromFileMenuItem,
@@ -383,6 +387,11 @@ enum AndroidDevicesTextCatalog {
       ),
       Formatted(key: "“%@” (API %@)", arguments: ["테스트 폰", "37.0"], text: labelText),
       Formatted(key: "API %@", arguments: ["37.0"], text: AndroidDevicesText.apiLabel(.sample)),
+      Formatted(
+        key: "이 시스템 이미지에는 폴더블 설정이 없어 폴더블을 만들 수 없습니다. 폴더블은 %@ 로 만들 수 있습니다.",
+        arguments: ["API 37.0 · google_apis"],
+        text: AndroidDevicesText.foldableImageUnsupported(foldableImages: [.sample])
+      ),
       Formatted(key: "API %@ · %@", arguments: ["37.0", "google_apis"], text: AndroidDevicesText.imageOption(.sample)),
       Formatted(
         key: "%@ 기기를 켜지 못했습니다",
