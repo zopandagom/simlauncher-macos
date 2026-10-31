@@ -105,7 +105,7 @@ struct AndroidDevicesCreateTests: AndroidDevicesTesting {
     #expect(created?.formFactor == .foldable)
   }
 
-  @Test("폴더블을 만들 수 있는 이미지가 하나도 없으면 어느 이미지로도 폴더블을 만들 수 없고, 시트 이유는 고를 이미지가 없다고 한다")
+  @Test("시트 이유의 폴더블 이미지: 하나도 없으면 고를 이미지가 없다고 하고, 있으면 이미지 선택지 순서(API 내림차순)로 알린다")
   func noFoldableImage() throws {
     let none = AndroidDeviceCreationOptions(
       installedImages: [.sample, .olderSample],
@@ -124,6 +124,14 @@ struct AndroidDevicesCreateTests: AndroidDevicesTesting {
       == AndroidDevicesText.foldableNoImage)
     let some = try #require(AndroidDeviceCreationDraft(options: .sample))
     #expect(some.foldableImageChoices == [.sample])
+    // 원본 foldableImages 는 Set 이라 순서가 없다. 이유 문구는 이미지 선택지 순서(API 내림차순)로 늘 같다.
+    let both = AndroidDeviceCreationOptions(
+      installedImages: [.olderSample, .sample],
+      foldableImages: [.olderSample, .sample],
+      host: .aarch64
+    )
+    let twoChoices = try #require(AndroidDeviceCreationDraft(options: both))
+    #expect(twoChoices.foldableImageChoices == [.sample, .olderSample])
   }
 
   @Test("폴더블이 아니면 접기 설정이 없는 이미지여도 이유를 보이지 않는다")
