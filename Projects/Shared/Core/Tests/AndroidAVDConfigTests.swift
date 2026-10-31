@@ -50,6 +50,56 @@ struct AndroidAVDConfigTests {
     """)
   }
 
+  @Test("폴더블 config 는 앱 키 10개 뒤에 폴더블 키 14개를 이 순서로 쓴다")
+  func foldableConfigFile() throws {
+    let profile = try #require(AndroidDeviceProfile.profile(.foldable))
+
+    let data = AndroidAVDConfig.configFile(displayName: "테스트 폴더블", image: Self.image, profile: profile, host: .aarch64)
+
+    #expect(String(bytes: data, encoding: .utf8) == """
+    avd.ini.encoding=UTF-8
+    avd.ini.displayname=테스트 폴더블
+    image.sysdir.1=system-images/android-37.0/google_apis/arm64-v8a/
+    abi.type=arm64-v8a
+    hw.cpu.arch=arm64
+    tag.id=google_apis
+    hw.lcd.width=2076
+    hw.lcd.height=2152
+    hw.lcd.density=390
+    hw.keyboard=yes
+    hw.device.name=pixel_9_pro_fold
+    hw.sensor.hinge=yes
+    hw.sensor.hinge.count=1
+    hw.sensor.hinge.type=1
+    hw.sensor.hinge.sub_type=1
+    hw.sensor.hinge.ranges=0-180
+    hw.sensor.hinge.defaults=180
+    hw.sensor.hinge.areas=1038-0-0-2152
+    hw.sensor.posture_list=1, 2, 3
+    hw.sensor.hinge_angles_posture_definitions=0-30, 30-150, 150-180
+    hw.displayRegion.0.1.xOffset=0
+    hw.displayRegion.0.1.yOffset=0
+    hw.displayRegion.0.1.width=1080
+    hw.displayRegion.0.1.height=2424
+
+    """)
+  }
+
+  @Test("폴더블이 아닌 프로필의 config 는 키 10개 그대로", arguments: [
+    AndroidDeviceProfile.ID.phone, .smallPhone, .tablet,
+  ])
+  func nonFoldableConfigKeys(id: AndroidDeviceProfile.ID) throws {
+    let profile = try #require(AndroidDeviceProfile.profile(id))
+
+    let data = AndroidAVDConfig.configFile(displayName: "a", image: Self.image, profile: profile, host: .aarch64)
+    let pairs = try #require(AVDIniFile.parse(data))
+
+    #expect(pairs.count == 10)
+    #expect(!pairs.contains { pair in
+      ["hw.device.", "hw.sensor.", "hw.displayRegion."].contains { pair.key.hasPrefix($0) }
+    })
+  }
+
   @Test("DeviceName 규칙을 통과한 표시 이름은 줄을 더하지 않고 그대로 다시 읽힌다", arguments: [
     "테스트 폰", "a=b", " # 주석 아님", "👩‍💻 폰", String(repeating: "가", count: DeviceName.maxLength),
   ])
