@@ -2,7 +2,8 @@ import Core
 import SwiftUI
 
 /// 새 Android 기기 만들기 시트: 이름(표시 이름, 한글 가능), 시스템 이미지, 화면 모양. 입력은 모두 Model 의 이벤트 메서드로 넘긴다.
-/// 화면 모양 아래에 Android Studio 로 더 많은 기기(폴더블 등)를 만드는 안내와 내려받기 페이지 링크를 둔다.
+/// 화면 모양 아래에는 고른 이미지에 폴더블 설정이 없을 때의 이유(이때 "만들기" 는 꺼진다)와,
+/// 그 밖의 크기·모양의 기기를 Android Studio 로 만드는 안내와 내려받기 페이지 링크를 둔다.
 struct AndroidDeviceCreationSheet: View {
   let model: AndroidDevicesModel
   /// 마지막으로 그린 초안. 닫히는 동안 Model 의 `creationDraft` 는 이미 nil 이라, 글자가 비지 않도록 View 가 들고 있는다.
@@ -50,6 +51,11 @@ struct AndroidDeviceCreationSheet: View {
           ForEach(draft.options.profiles) { profile in
             Text(AndroidDevicesText.profileOption(profile)).tag(profile.id)
           }
+        }
+        if draft.isProfileUnsupportedByImage {
+          Text(AndroidDevicesText.foldableImageUnsupported)
+            .font(.caption)
+            .foregroundStyle(.red)
         }
         VStack(alignment: .leading, spacing: 4) {
           Text(AndroidDevicesText.studioDevicesGuide)

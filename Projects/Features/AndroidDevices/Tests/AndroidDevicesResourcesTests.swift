@@ -272,6 +272,7 @@ enum AndroidDevicesTextCatalog {
       AndroidDevicesText.deleteMenuItem, AndroidDevicesText.cancelButton, AndroidDevicesText.createSheetTitle,
       AndroidDevicesText.nameField, AndroidDevicesText.imagePicker, AndroidDevicesText.profilePicker,
       AndroidDevicesText.createConfirmButton, AndroidDevicesText.studioDevicesGuide, AndroidDevicesText.studioLinkTitle,
+      AndroidDevicesText.foldableImageUnsupported,
       AndroidDevicesText.title(for: .refreshFailed(.adbUnavailable)),
       AndroidDevicesText.title(for: .createFailed(AndroidDeviceLabel(.phoneSample), .nameUnavailable)),
       AndroidDevicesText.installAppButton, AndroidDevicesText.installFromFileMenuItem,
@@ -420,6 +421,7 @@ enum AndroidDevicesTextCatalog {
       Formatted(key: "휴대전화 (%@)", arguments: ["1080×2400"], text: AndroidDevicesText.profileOption(profiles[0])),
       Formatted(key: "작은 휴대전화 (%@)", arguments: ["720×1280"], text: AndroidDevicesText.profileOption(profiles[1])),
       Formatted(key: "태블릿 (%@)", arguments: ["2560×1600"], text: AndroidDevicesText.profileOption(profiles[2])),
+      Formatted(key: "폴더블 (%@)", arguments: ["2076×2152"], text: AndroidDevicesText.profileOption(profiles[3])),
     ] + self.appFormatted(label: label, labelText: labelText)
   }
 }

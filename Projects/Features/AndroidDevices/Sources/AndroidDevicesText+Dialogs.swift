@@ -80,7 +80,17 @@ extension AndroidDevicesText {
       String(localized: "작은 휴대전화 (\(size))", bundle: .module)
     case .tablet:
       String(localized: "태블릿 (\(size))", bundle: .module)
+    case .foldable:
+      String(localized: "폴더블 (\(size))", bundle: .module)
     }
+  }
+
+  /// 폴더블을 골랐는데 고른 시스템 이미지에 접기 설정 파일이 없을 때 화면 모양 아래에 보인다.
+  static var foldableImageUnsupported: String {
+    String(
+      localized: "이 시스템 이미지에는 폴더블 설정이 없어 폴더블을 만들 수 없습니다. 다른 시스템 이미지를 고르세요.",
+      bundle: .module
+    )
   }
 
   /// 화면 모양 아래 안내. 앱이 만드는 화면 모양은 셋뿐이고, Android Studio 가 만든 기기(폴더블 포함)도 이 목록에서 켠다.

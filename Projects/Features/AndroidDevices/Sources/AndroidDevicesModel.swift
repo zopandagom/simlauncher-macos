@@ -36,7 +36,11 @@ public final class AndroidDevicesModel {
   /// 닫지 않은 알림 줄.
   public private(set) var noticeQueue = AndroidDevicesNotices()
   /// 마지막으로 읽은 목록의 만들기 선택지. 다시 읽기가 실패하면 이전 값을 유지한다.
-  public private(set) var creationOptions = AndroidDeviceCreationOptions(installedImages: [], host: .aarch64)
+  public private(set) var creationOptions = AndroidDeviceCreationOptions(
+    installedImages: [],
+    foldableImages: [],
+    host: .aarch64
+  )
   /// 만들기 시트 초안. nil 이면 시트가 닫혀 있다.
   public private(set) var creationDraft: AndroidDeviceCreationDraft?
   /// 기기를 만드는 중이다. 한 번에 하나만 만든다.

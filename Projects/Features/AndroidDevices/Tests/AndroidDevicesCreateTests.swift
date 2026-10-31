@@ -72,6 +72,50 @@ struct AndroidDevicesCreateTests: AndroidDevicesTesting {
     #expect(setup.model.notices.isEmpty)
   }
 
+  @Test("폴더블: 접기 설정이 있는 이미지로만 만들 수 있다")
+  func foldableNeedsFoldSettings() async {
+    let setup = await Self.loadedFixture(.emptySample)
+    setup.model.createButtonTapped()
+    setup.model.creationNameChanged("내 폴더블")
+    setup.model.creationProfileChanged(.foldable)
+    #expect(setup.model.creationDraft?.profile == .foldable)
+    #expect(setup.model.creationDraft?.isProfileUnsupportedByImage == false)
+    #expect(setup.model.creationDraft?.canSubmit == true)
+    // 접기 설정이 없는 이미지로 바꿔도 받아 두고(고른 것을 바꾸지 않는다) 만들기만 막는다.
+    setup.model.creationImageChanged(.olderSample)
+    let unsupported = setup.model.creationDraft
+    #expect(unsupported?.image == .olderSample)
+    #expect(unsupported?.isProfileUnsupportedByImage == true)
+    #expect(
+      unsupported?.isProfileUnsupportedByImage
+        == unsupported?.options.lacksFoldSettings(image: .olderSample, profile: .foldable)
+    )
+    #expect(unsupported?.canSubmit == false)
+    await setup.model.creationConfirmTapped()
+    #expect(setup.fake.calls == [.fetchDevices])
+    #expect(setup.model.creationDraft == unsupported)
+    setup.model.creationImageChanged(.sample)
+    #expect(setup.model.creationDraft?.isProfileUnsupportedByImage == false)
+    #expect(setup.model.creationDraft?.canSubmit == true)
+    await setup.model.creationConfirmTapped()
+    #expect(setup.fake.calls == [
+      .fetchDevices, .create(displayName: "내 폴더블", image: .sample, profile: .foldable), .fetchDevices,
+    ])
+    let created = Self.list(setup.model)?.devices.first
+    #expect(created?.formFactor == .foldable)
+  }
+
+  @Test("폴더블이 아니면 접기 설정이 없는 이미지여도 이유를 보이지 않는다")
+  func nonFoldableIgnoresFoldSettings() async {
+    let setup = await Self.loadedFixture()
+    setup.model.createButtonTapped()
+    #expect(setup.model.creationDraft?.profile == .phone)
+    #expect(setup.model.creationDraft?.isProfileUnsupportedByImage == false)
+    setup.model.creationImageChanged(.olderSample)
+    #expect(setup.model.creationDraft?.image == .olderSample)
+    #expect(setup.model.creationDraft?.isProfileUnsupportedByImage == false)
+  }
+
   @Test("만드는 중에는 + 를 누를 수 없고 시트가 다시 열리지 않는다")
   func creatingBlocksCreate() async {
     let setup = await Self.loadedFixture { $0.suspendCreates() }

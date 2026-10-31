@@ -2601,6 +2601,16 @@
         }
       }
     },
+    "이 시스템 이미지에는 폴더블 설정이 없어 폴더블을 만들 수 없습니다. 다른 시스템 이미지를 고르세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 시스템 이미지에는 폴더블 설정이 없어 폴더블을 만들 수 없습니다. 다른 시스템 이미지를 고르세요."
+          }
+        }
+      }
+    },
     "이 앱에는 버전이 없습니다." : {
       "localizations" : {
         "ko" : {
@@ -3137,6 +3147,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "폴더블 등 더 많은 기기는 Android Studio 의 기기 관리자(Device Manager)에서 만들면 이 목록에 보입니다."
+          }
+        }
+      }
+    },
+    "폴더블 (%@)" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "폴더블 (%@)"
           }
         }
       }

@@ -27,6 +27,12 @@ public struct AndroidDeviceCreationDraft: Hashable, Sendable {
     self.nameProblem == nil && self.options.contains(image: self.image, profile: self.profile)
   }
 
+  /// 고른 이미지에 고른 화면 모양(폴더블)의 접기 설정이 없는지. 규칙은 Core 선택지에 있고 여기서는 넘기기만 한다.
+  /// 이 조합도 초안에 받아 두고(고른 것을 몰래 바꾸지 않는다) 시트가 이유를 보인다. `canSubmit` 은 false 다.
+  public var isProfileUnsupportedByImage: Bool {
+    self.options.lacksFoldSettings(image: self.image, profile: self.profile)
+  }
+
   mutating func nameChanged(_ name: String) {
     self.name = name
     self.isNameEdited = true
