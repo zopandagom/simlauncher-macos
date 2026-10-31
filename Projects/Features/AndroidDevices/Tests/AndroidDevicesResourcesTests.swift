@@ -209,7 +209,7 @@ enum AndroidDevicesTextCatalog {
     .unsafeDeviceFolder(nil), .unsafeDeviceFolder(URL(filePath: "/x")), .deviceNotBooted, .installTimedOut,
     .launchFailed(.notInstalled), .launchFailed(.noLauncherActivity), .urlNotHandled, .appCommandFailed,
     .captureFailed, .captureFileUnwritable, .recordingFailed, .recordingEmpty, .recordingLost,
-    .recordingTransferTimedOut,
+    .recordingTransferTimedOut, .recordingDisplayOff,
   ] + installFailures.map { .installFailed($0) }
 
   static let installFailures: [AndroidInstallFailure] = [
