@@ -178,6 +178,32 @@ extension AndroidEmulatorClientImplListTests {
     #expect(try await harness.client.fetchDevices().creationOptions.images == [Harness.image, older])
   }
 
+  @Test("만들기 선택지: 접기 설정 파일 두 개가 모두 일반 파일인 이미지만 폴더블")
+  func creationOptionsFoldableImages() async throws {
+    let harness = try Harness()
+    defer { harness.cleanUp() }
+    let fold = try #require(AndroidDeviceProfile.profile(.foldable)?.fold)
+    try Harness.installFoldFiles(Harness.image, in: harness.sdk)
+    let playStore = try #require(
+      AndroidSystemImageRef(apiFolder: "android-37.0", tag: "google_apis_playstore", abi: "arm64-v8a")
+    )
+    try Harness.installImage(playStore, in: harness.sdk)
+    let playStoreFolder = "system-images/android-37.0/google_apis_playstore/arm64-v8a"
+    try FileTree.file(harness.sdk, "\(playStoreFolder)/\(fold.requiredImageFiles[0])")
+    let older = try #require(AndroidSystemImageRef(apiFolder: "android-35", tag: "google_apis", abi: "arm64-v8a"))
+    try Harness.installImage(older, in: harness.sdk)
+    let folders = try #require(AndroidSystemImageRef(apiFolder: "android-36", tag: "google_apis", abi: "arm64-v8a"))
+    try Harness.installImage(folders, in: harness.sdk)
+    for file in fold.requiredImageFiles {
+      try FileTree.directory(harness.sdk, "system-images/android-36/google_apis/arm64-v8a/\(file)")
+    }
+
+    let options = try await harness.client.fetchDevices().creationOptions
+
+    #expect(options.images == [Harness.image, playStore, folders, older])
+    #expect(options.foldableImages == [Harness.image])
+  }
+
   // MARK: - 실행 중 판정
 
   @Test("잠금 파일이 없거나 잡혀 있지 않으면 꺼짐이고 adb 를 부르지 않는다")

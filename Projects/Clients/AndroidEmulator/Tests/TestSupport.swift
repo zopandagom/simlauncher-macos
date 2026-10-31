@@ -325,6 +325,14 @@ struct Harness {
     try FileTree.file(sdk, "system-images/\(image.apiFolder)/\(image.tag)/\(image.abi)/system.img")
   }
 
+  /// 이미지 폴더에 폴더블 접기 설정 파일(`Fold.requiredImageFiles`)을 둔다.
+  static func installFoldFiles(_ image: AndroidSystemImageRef, in sdk: URL) throws {
+    let fold = try #require(AndroidDeviceProfile.profile(.foldable)?.fold)
+    for file in fold.requiredImageFiles {
+      try FileTree.file(sdk, "system-images/\(image.apiFolder)/\(image.tag)/\(image.abi)/\(file)")
+    }
+  }
+
   /// Studio 형식 `<이름>.ini`(path·path.rel·target)와 `<이름>.avd/config.ini` (기본: 앱이 쓰는 내용, 휴대전화, 기본 이미지).
   /// `pointer`·`config` 를 주면 그 내용을 그대로 쓴다 (`config` 가 빈 문자열이면 config.ini 를 쓰지 않는다).
   @discardableResult

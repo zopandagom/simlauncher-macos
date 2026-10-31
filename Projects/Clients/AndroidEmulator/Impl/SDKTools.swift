@@ -46,13 +46,27 @@ struct SDKTools: Sendable {
 
   /// `<SDK>/system-images/<api>/<tag>/<abi>/system.img` 가 일반 파일이다 (링크는 따라간다).
   func isInstalled(_ image: AndroidSystemImageRef) -> Bool {
-    let url = self.root
+    let url = self.imageFolder(image).appending(path: Self.systemImageFileName, directoryHint: .notDirectory)
+    return FileFacts.isRegularFile(url)
+  }
+
+  /// 접히는 프로필의 `Fold.requiredImageFiles` 가 이미지 폴더 아래 모두 일반 파일인 이미지 (링크는 따라간다).
+  /// 읽지 못하면 없는 것으로 본다. 접히는 프로필이 하나라 집합 하나로 충분하다 (둘 이상이 되면 프로필별 집합이 필요하다).
+  func foldableImages(_ images: [AndroidSystemImageRef]) -> Set<AndroidSystemImageRef> {
+    let files = AndroidDeviceProfile.all.compactMap(\.fold).flatMap(\.requiredImageFiles)
+    return Set(images.filter { image in
+      let folder = self.imageFolder(image)
+      return files.allSatisfy { FileFacts.isRegularFile(folder.appending(path: $0, directoryHint: .notDirectory)) }
+    })
+  }
+
+  /// `<SDK>/system-images/<api>/<tag>/<abi>/`.
+  private func imageFolder(_ image: AndroidSystemImageRef) -> URL {
+    self.root
       .appending(path: AndroidSDKComponent.systemImage.folderName, directoryHint: .isDirectory)
       .appending(path: image.apiFolder, directoryHint: .isDirectory)
       .appending(path: image.tag, directoryHint: .isDirectory)
       .appending(path: image.abi, directoryHint: .isDirectory)
-      .appending(path: Self.systemImageFileName, directoryHint: .notDirectory)
-    return FileFacts.isRegularFile(url)
   }
 }
 

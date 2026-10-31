@@ -16,14 +16,15 @@ public extension AndroidSystemImageRef {
 }
 
 public extension AndroidDeviceCreationOptions {
-  /// Apple 실리콘, 이미지 두 개 (`sample`·`olderSample`).
+  /// Apple 실리콘, 이미지 두 개 (`sample`·`olderSample`). 폴더블은 `sample` 로만 만들 수 있다 (`olderSample` 은 접기 설정이 없다).
   static let sample = AndroidDeviceCreationOptions(
     installedImages: [.sample, .olderSample],
+    foldableImages: [.sample],
     host: .aarch64
   )
 
   /// 만들 수 있는 이미지가 없다.
-  static let emptySample = AndroidDeviceCreationOptions(installedImages: [], host: .aarch64)
+  static let emptySample = AndroidDeviceCreationOptions(installedImages: [], foldableImages: [], host: .aarch64)
 }
 
 public extension AndroidVirtualDevice {

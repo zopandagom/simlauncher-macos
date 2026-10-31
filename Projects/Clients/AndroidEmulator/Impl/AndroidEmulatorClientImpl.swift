@@ -95,7 +95,7 @@ public struct AndroidEmulatorClientImpl: AndroidEmulatorClient {
     let devices = try await self.readDevices(tools: tools)
     return AndroidDeviceInventory(
       devices: devices.map(\.device),
-      creationOptions: AndroidDeviceCreationOptions(installedImages: tools.installedImages(), host: self.host)
+      creationOptions: self.creationOptions(tools)
     )
   }
 
@@ -188,7 +188,7 @@ public struct AndroidEmulatorClientImpl: AndroidEmulatorClient {
       throw .invalidDeviceName(problem)
     }
     let tools = try await SDKTools.resolve(self.sdkRoot())
-    let options = AndroidDeviceCreationOptions(installedImages: tools.installedImages(), host: self.host)
+    let options = self.creationOptions(tools)
     guard options.contains(image: image, profile: profile), let chosen = AndroidDeviceProfile.profile(profile) else {
       throw .creationOptionUnavailable
     }
@@ -231,6 +231,16 @@ public struct AndroidEmulatorClientImpl: AndroidEmulatorClient {
 // MARK: - 읽기
 
 extension AndroidEmulatorClientImpl {
+  /// 지금 SDK 의 만들기 선택지. 이미지 목록을 한 번만 읽고 그 이미지들의 접기 설정 파일을 확인한다.
+  func creationOptions(_ tools: SDKTools) -> AndroidDeviceCreationOptions {
+    let images = tools.installedImages()
+    return AndroidDeviceCreationOptions(
+      installedImages: images,
+      foldableImages: tools.foldableImages(images),
+      host: self.host
+    )
+  }
+
   /// 폴더를 읽어 기기마다 사실을 모으고, 잠금이 있는 기기가 하나라도 있을 때만 adb 를 부른다.
   /// adb 가 실패하면 adb 상태 없이(잠금만으로) 판정한다. adb 가 성공했는데 잠금 있는 기기의 serial 이 없으면 `.offline`.
   func readDevices(tools: SDKTools) async throws(AndroidEmulatorError) -> [ReadDevice] {

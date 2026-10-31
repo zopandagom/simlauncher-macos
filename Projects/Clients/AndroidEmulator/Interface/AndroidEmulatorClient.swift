@@ -30,7 +30,8 @@ public protocol AndroidEmulatorClient: Sendable {
   func shutdown(_ id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError)
 
   /// 새 AVD 를 만들고 그 이름을 돌려준다. 표시 이름에 `DeviceName.problem` 이 있으면 `.invalidDeviceName`.
-  /// 실행 직전에 다시 읽은 선택지에 이미지·프로필이 없으면 `.creationOptionUnavailable`.
+  /// 실행 직전에 다시 읽은 선택지에 이미지·프로필이 없거나, 폴더블인데 그 이미지에 접기 설정 파일이 없으면
+  /// `.creationOptionUnavailable`.
   /// AVD 이름은 `AndroidAVDName.make` (다시 읽은 목록 기준). 폴더·ini 를 덮어쓰지 않는다(독점 생성).
   func create(
     displayName: String,
