@@ -2,6 +2,7 @@ import Core
 import SwiftUI
 
 /// 새 Android 기기 만들기 시트: 이름(표시 이름, 한글 가능), 시스템 이미지, 화면 모양. 입력은 모두 Model 의 이벤트 메서드로 넘긴다.
+/// 화면 모양 아래에 Android Studio 로 더 많은 기기(폴더블 등)를 만드는 안내와 내려받기 페이지 링크를 둔다.
 struct AndroidDeviceCreationSheet: View {
   let model: AndroidDevicesModel
   /// 마지막으로 그린 초안. 닫히는 동안 Model 의 `creationDraft` 는 이미 nil 이라, 글자가 비지 않도록 View 가 들고 있는다.
@@ -50,21 +51,33 @@ struct AndroidDeviceCreationSheet: View {
             Text(AndroidDevicesText.profileOption(profile)).tag(profile.id)
           }
         }
-      }
-      HStack {
-        Spacer()
-        Button(AndroidDevicesText.cancelButton) {
-          self.model.creationCancelTapped()
+        VStack(alignment: .leading, spacing: 4) {
+          Text(AndroidDevicesText.studioDevicesGuide)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+          // 고정 공개 페이지만 시스템 브라우저로 연다. Model 상태·이벤트가 없는 View 전용 요소다 (ARCHITECTURE §1 규칙 8).
+          Link(AndroidDevicesText.studioLinkTitle, destination: AndroidDevicesText.studioDownloadURL)
         }
-        .keyboardShortcut(.cancelAction)
-        Button(AndroidDevicesText.createConfirmButton) {
-          Task { await self.model.creationConfirmTapped() }
-        }
-        .keyboardShortcut(.defaultAction)
-        .disabled(!draft.canSubmit)
+        .font(.caption)
       }
+      self.buttons(draft)
     }
     .padding(20)
     .frame(minWidth: 380)
+  }
+
+  private func buttons(_ draft: AndroidDeviceCreationDraft) -> some View {
+    HStack {
+      Spacer()
+      Button(AndroidDevicesText.cancelButton) {
+        self.model.creationCancelTapped()
+      }
+      .keyboardShortcut(.cancelAction)
+      Button(AndroidDevicesText.createConfirmButton) {
+        Task { await self.model.creationConfirmTapped() }
+      }
+      .keyboardShortcut(.defaultAction)
+      .disabled(!draft.canSubmit)
+    }
   }
 }

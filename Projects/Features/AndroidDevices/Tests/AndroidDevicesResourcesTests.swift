@@ -92,6 +92,11 @@ struct AndroidDevicesTextTests {
       == "“테스트 폰” (API 37.0) 기기를 켜지 못했습니다")
   }
 
+  @Test("만들기 시트의 Android Studio 링크는 공개 내려받기 페이지다")
+  func studioDownloadURL() {
+    #expect(AndroidDevicesText.studioDownloadURL == URL(string: "https://developer.android.com/studio"))
+  }
+
   @Test("함께 켜기 결과: 같은 결과끼리 한 줄로 묶고, 켠 기기가 있으면 몇 대 중 몇 대다")
   func batchMessage() {
     let phone = AndroidDeviceLabel(.phoneSample)
@@ -266,7 +271,8 @@ enum AndroidDevicesTextCatalog {
       AndroidDevicesText.shutdownButton, AndroidDevicesText.deviceActionsMenu, AndroidDevicesText.eraseMenuItem,
       AndroidDevicesText.deleteMenuItem, AndroidDevicesText.cancelButton, AndroidDevicesText.createSheetTitle,
       AndroidDevicesText.nameField, AndroidDevicesText.imagePicker, AndroidDevicesText.profilePicker,
-      AndroidDevicesText.createConfirmButton, AndroidDevicesText.title(for: .refreshFailed(.adbUnavailable)),
+      AndroidDevicesText.createConfirmButton, AndroidDevicesText.studioDevicesGuide, AndroidDevicesText.studioLinkTitle,
+      AndroidDevicesText.title(for: .refreshFailed(.adbUnavailable)),
       AndroidDevicesText.title(for: .createFailed(AndroidDeviceLabel(.phoneSample), .nameUnavailable)),
       AndroidDevicesText.installAppButton, AndroidDevicesText.installFromFileMenuItem,
       AndroidDevicesText.installAppHelp,
