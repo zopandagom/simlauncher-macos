@@ -30,6 +30,25 @@ struct AndroidEmulatorClientImplListTests {
     #expect(harness.command.invocations.isEmpty)
   }
 
+  @Test("Studio 의 Pixel 9 Pro Fold(ini·config 원본 형식): 한 대, 쓸 수 있음·폴더블")
+  func studioFoldable() async throws {
+    let harness = try Harness()
+    defer { harness.cleanUp() }
+    try harness.addDevice("Pixel_9_Pro_Fold", config: Self.studioFoldableConfig)
+
+    let devices = try await harness.client.fetchDevices().devices
+    #expect(devices == [
+      AndroidVirtualDevice(
+        id: AndroidVirtualDevice.ID("Pixel_9_Pro_Fold"),
+        displayName: "Pixel 9 Pro Fold",
+        systemImage: Harness.image,
+        formFactor: .foldable,
+        state: .shutdown,
+        availability: .available
+      ),
+    ])
+  }
+
   @Test("path 없이 path.rel 만 있으면 ~/.android/<path.rel>")
   func pathRelOnly() async throws {
     let harness = try Harness()
@@ -140,7 +159,9 @@ struct AndroidEmulatorClientImplListTests {
     try FileTree.file(empty.sdk, "platform-tools/adb", mode: 0o644)
     #expect(await thrownError { _ = try await empty.client.fetchDevices() } == .sdkUnavailable)
   }
+}
 
+extension AndroidEmulatorClientImplListTests {
   @Test("만들기 선택지: system.img 가 있는 호스트 abi 이미지만, API 내림차순")
   func creationOptions() async throws {
     let harness = try Harness()
@@ -252,6 +273,50 @@ struct AndroidEmulatorClientImplListTests {
       #expect(invocation.timeout == Harness.timing.adbTimeout)
     }
   }
+
+  /// Android Studio 의 `pixel_9_pro_fold` 정의대로 쓴 config.ini (7-E2 실측 AVD, 이미지만 google_apis, `skin.path` 줄은 뺐다).
+  static let studioFoldableConfig = """
+  AvdId=Pixel_9_Pro_Fold
+  PlayStore.enabled=false
+  abi.type=arm64-v8a
+  avd.ini.displayname=Pixel 9 Pro Fold
+  avd.ini.encoding=UTF-8
+  disk.dataPartition.size=6G
+  fastboot.forceColdBoot=no
+  fastboot.forceFastBoot=yes
+  hw.cpu.arch=arm64
+  hw.cpu.ncore=4
+  hw.device.manufacturer=Google
+  hw.device.name=pixel_9_pro_fold
+  hw.gpu.enabled=yes
+  hw.gpu.mode=auto
+  hw.keyboard=yes
+  hw.lcd.density=390
+  hw.lcd.height=2152
+  hw.lcd.width=2076
+  hw.ramSize=2048
+  hw.sensor.hinge=yes
+  hw.sensor.hinge.areas=1038-0-0-2152
+  hw.sensor.hinge.count=1
+  hw.sensor.hinge.defaults=180
+  hw.sensor.hinge.ranges=0-180
+  hw.sensor.hinge.sub_type=1
+  hw.sensor.hinge.type=1
+  hw.sensor.hinge_angles_posture_definitions=0-30, 30-150, 150-180
+  hw.sensor.posture_list=1, 2, 3
+  image.sysdir.1=system-images/android-37.0/google_apis/arm64-v8a/
+  showDeviceFrame=yes
+  skin.dynamic=yes
+  skin.name=pixel_9_pro_fold
+  tag.display=Google APIs
+  tag.id=google_apis
+  hw.displayRegion.0.1.xOffset=0
+  hw.displayRegion.0.1.yOffset=0
+  hw.displayRegion.0.1.width=1080
+  hw.displayRegion.0.1.height=2424
+  hw.sensor.hinge.fold_to_displayRegion.0.1_at_posture=1
+
+  """
 
   static func states(_ harness: Harness) async throws -> [String: AndroidVirtualDevice.State] {
     let devices = try await harness.client.fetchDevices().devices
