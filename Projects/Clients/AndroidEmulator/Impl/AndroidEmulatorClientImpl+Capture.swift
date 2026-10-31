@@ -6,7 +6,7 @@ import Foundation
 // MARK: - 켜진 기기의 화면 캡처
 
 public extension AndroidEmulatorClientImpl {
-  /// 사전 확인(앱 작업과 같다) → `exec-out screencap -p` → PNG 확인 → 예약 파일에 쓰기.
+  /// 사전 확인(앱 작업과 같다) → `exec-out 'screencap -p 2>/dev/null'` → PNG 확인 → 예약 파일에 쓰기.
   @concurrent
   func screenshot(on id: AndroidVirtualDevice.ID, to file: URL) async throws(AndroidEmulatorError) {
     let tools = try await SDKTools.resolve(self.sdkRoot())
@@ -172,6 +172,8 @@ extension AndroidEmulatorClientImpl {
     case let .success(result):
       if stopped {
         .stopped(exitCode: result.exitCode)
+      } else if ADBCaptureCommands.isDisplayOff(result) {
+        .displayOff(code: result.exitCode)
       } else {
         .exited(code: result.exitCode)
       }

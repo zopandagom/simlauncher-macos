@@ -21,6 +21,10 @@ final class FakeScreenRecord: Sendable {
     var pidLine: String? = "4242\n"
     /// 시작 뒤 곧바로 이 종료 코드로 스스로 끝난다.
     var exitsByItself: Int32?
+    /// 스스로 끝날 때의 stderr. nil 이면 종료 코드 ≠ 0 일 때 저장 공간 문구.
+    var exitStderr: String?
+    /// `kill -2` 뒤 녹화 adb 가 끝나는 종료 코드와 stderr.
+    var killedExit: (code: Int32, stderr: String) = (0, "")
     var ignoresKill = false
     /// 끝난 뒤 기기 임시 파일 크기. nil 이면 없음.
     var remoteSize: Int? = 1000
@@ -86,11 +90,12 @@ final class FakeScreenRecord: Sendable {
       await emit(.stdout(Data(pidLine.utf8)))
     }
     if let code = config.exitsByItself {
-      return Self.result(code, stderr: code == 0 ? "" : "Unable to open '/data/local/tmp/x.mp4': No space left\n")
+      let stderr = config.exitStderr ?? (code == 0 ? "" : "Unable to open '/data/local/tmp/x.mp4': No space left\n")
+      return Self.result(code, stderr: stderr)
     }
     while true {
       if !config.ignoresKill, self.state.withLock({ $0.killed }) {
-        return Self.result(0)
+        return Self.result(config.killedExit.code, stderr: config.killedExit.stderr)
       }
       if Task.isCancelled {
         self.state.withLock { $0.hostStopped = true }
@@ -170,6 +175,9 @@ struct AndroidEmulatorClientImplCaptureTests {
     0x52,
   ])
 
+  /// 화면이 꺼진 폴더블에서 screenrecord 가 찍은 stderr (실측).
+  static let displayOffStderr = "ERROR: UNASSIGNED_LAYER_STACK, please check your display state.\n"
+
   static var timing: AndroidEmulatorClientImpl.Timing {
     var timing = Harness.timing
     timing.recordingStopLimit = .milliseconds(200)
@@ -206,7 +214,7 @@ struct AndroidEmulatorClientImplCaptureTests {
 
   // MARK: - 스크린샷
 
-  @Test("스크린샷: exec-out screencap 출력(PNG)을 예약 파일에 쓴다 (30초 한도)")
+  @Test("스크린샷: exec-out 'screencap -p 2>/dev/null' 출력(PNG)을 예약 파일에 쓴다 (30초 한도)")
   func screenshot() async throws {
     let harness = try AndroidEmulatorClientImplAppTests.booted()
     defer { harness.cleanUp() }
@@ -217,7 +225,7 @@ struct AndroidEmulatorClientImplCaptureTests {
 
     #expect(try Data(contentsOf: file) == Self.png)
     let call = try #require(harness.command.invocations.last)
-    #expect(call.arguments == ["-s", Self.serial, "exec-out", "screencap", "-p"])
+    #expect(call.arguments == ["-s", Self.serial, "exec-out", "screencap -p 2>/dev/null"])
     #expect(call.timeout == .seconds(30))
   }
 
@@ -443,6 +451,51 @@ extension AndroidEmulatorClientImplCaptureTests {
     #expect(error == .recordingFailed)
     #expect(Self.size(file) == 0)
     #expect(Self.captureCalls(harness).filter { $0.contains("rm") }.count == 1)
+  }
+
+  @Test("녹화: 화면이 꺼져 실패로 끝나면(UNASSIGNED_LAYER_STACK) recordingDisplayOff, 0바이트 기기 파일은 지운다")
+  func displayOff() async throws {
+    let (harness, recorder) = try Self.booted()
+    defer { harness.cleanUp() }
+    recorder.configure {
+      $0.pidLine = "2750\n"
+      $0.exitsByItself = 218
+      $0.exitStderr = Self.displayOffStderr
+      $0.remoteSize = 0
+    }
+    let file = try Self.reserved(harness, "rec.mp4")
+    let started = StartCounter()
+
+    let error = await thrownError {
+      _ = try await harness.client.recordScreen(on: Self.pixel, to: file) { started.increment() }
+    }
+    #expect(error == .recordingDisplayOff)
+    #expect(started.value == 1)
+    #expect(Self.size(file) == 0)
+    let calls = Self.captureCalls(harness)
+    #expect(calls.count == 5)
+    guard calls.count == 5 else { return }
+    let remote = String(calls[2][3].dropFirst("echo $$; exec screenrecord --time-limit 0 ".count))
+    #expect(calls[3] == ["-s", Self.serial, "pull", remote, FileFacts.path(file)])
+    #expect(calls[4] == ["-s", Self.serial, "shell", "rm", "-f", remote])
+  }
+
+  @Test("녹화: 멈춤 요청 뒤에는 화면 꺼짐 문구를 보지 않는다 (화면이 없으면 알림 없이 끝)")
+  func displayOffAfterStop() async throws {
+    let (harness, recorder) = try Self.booted()
+    defer { harness.cleanUp() }
+    recorder.configure {
+      $0.killedExit = (218, Self.displayOffStderr)
+      $0.remoteSize = 0
+    }
+    let file = try Self.reserved(harness, "rec.mp4")
+    let started = StartCounter()
+
+    let task = Task { try await harness.client.recordScreen(on: Self.pixel, to: file) { started.increment() } }
+    #expect(try await waitUntil { started.value == 1 })
+    task.cancel()
+
+    #expect(try await task.value == .stoppedBeforeStart)
   }
 
   @Test("녹화: 가져오기 실패 → 기기가 사라졌으면 recordingLost, online 이면 captureFileUnwritable. 둘 다 기기 파일을 남기고 로컬은 0바이트")

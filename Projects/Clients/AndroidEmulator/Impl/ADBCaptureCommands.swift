@@ -11,10 +11,14 @@ enum ADBCaptureCommands {
   /// `--time-limit 0`(제한 없음)을 받는 가장 낮은 API. 그 아래는 기본 180초에 스스로 끝난다 (API 37 실측, 34 경계는 미확인).
   static let unlimitedAPILevel = 34
   static let pngSignature: [UInt8] = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
+  /// 화면이 꺼진(잠든) 기기에서 screenrecord 가 시작하자마자 stderr 에 찍는 문구 (화면이 여럿인 AVD, 종료 코드 218, 실측).
+  static let displayOffMarker = "UNASSIGNED_LAYER_STACK"
 
   /// `exec-out` 은 stdout 을 변환 없이 넘긴다 (`shell` 은 옛 adb·pty 에서 `\n`→`\r\n` 변환이 알려져 있다).
+  /// 다만 기기 stderr 도 stdout 에 합치므로, 화면이 여럿인 AVD(폴더블)에서 screencap 이 찍는 경고가 PNG 앞에 붙는다(실측).
+  /// 그래서 원격 셸에서 stderr 를 버린다 (원격 셸 문자열 하나, 고정 값이라 인용하지 않는다).
   static func screenshotArguments(serial: String) -> [String] {
-    ["-s", serial, "exec-out", "screencap", "-p"]
+    ["-s", serial, "exec-out", "screencap -p 2>/dev/null"]
   }
 
   /// 앞 8바이트가 PNG 시그니처다.
@@ -35,6 +39,13 @@ enum ADBCaptureCommands {
   static func recordArguments(serial: String, path: String, apiLevel: Int) -> [String] {
     let limit = apiLevel >= self.unlimitedAPILevel ? " --time-limit 0" : ""
     return ["-s", serial, "shell", "echo $$; exec screenrecord\(limit) \(path)"]
+  }
+
+  /// 녹화 adb 가 실패로 끝났고(종료 코드 ≠ 0) stderr 에 화면 꺼짐 문구가 있다.
+  static func isDisplayOff(_ result: CommandResult) -> Bool {
+    guard result.exitCode != 0 else { return false }
+    let stderr = String(bytes: result.stderr, encoding: .utf8) ?? ""
+    return stderr.contains(self.displayOffMarker)
   }
 
   /// 기기 안 screenrecord 에 SIGINT: 파일을 마무리하고 녹화 adb 가 종료 코드 0 으로 끝난다 (실측 0.27~0.82초).
@@ -124,6 +135,8 @@ enum ADBRecordingOutcome {
     case stoppedByHost
     /// 요청 없이 스스로 끝났다.
     case exited(code: Int32)
+    /// 요청 없이 실패로 끝났고 화면 꺼짐 문구가 있었다 (`ADBCaptureCommands.isDisplayOff`).
+    case displayOff(code: Int32)
     /// 녹화 adb 를 실행하지 못했다 (가져오지 않는다).
     case launchFailed
   }
@@ -171,6 +184,12 @@ enum ADBRecordingOutcome {
       result = .success(size == 0 ? .stoppedBeforeStart : self.stoppedResult(ending))
     case let .exited(code) where size > 0:
       result = .success(code == 0 && timeLimited ? .savedAtTimeLimit : .savedAfterFailure)
+    case .displayOff where size > 0:
+      // 녹화 도중 잠들어 끝난 경우: 담긴 화면은 지금 규칙대로 저장한다.
+      result = .success(.savedAfterFailure)
+    case .displayOff:
+      // 원인이 확정된 문구가 앞선다. 기기 파일이 없으면 지울 것도 없다.
+      return Decision(result: .failure(.recordingDisplayOff), removesRemote: pull != .remoteMissing)
     case let .exited(code) where code != 0 && pull == .remoteMissing:
       return Decision(result: .failure(.recordingFailed), removesRemote: false)
     case .exited, .launchFailed:
