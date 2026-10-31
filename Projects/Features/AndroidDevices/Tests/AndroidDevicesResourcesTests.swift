@@ -177,6 +177,37 @@ struct NameProblemSyncTests {
   }
 }
 
+/// 화면 문구에는 기기 상표명을 쓰지 않는다 (ARCHITECTURE §4 Android 기기 행). 폴더블의 `hw.device.name` 은 config 에만 쓰는
+/// 화면에 보이지 않는 값이다. 원본 String Catalog 를 소스 경로로 읽어 모든 키·ko 값도 본다.
+struct BrandNameTests {
+  static let catalog = URL(filePath: #filePath)
+    .deletingLastPathComponent()
+    .appending(path: "../Sources/Localizable.xcstrings")
+    .standardized
+  static let brands = ["pixel", "samsung", "galaxy"]
+
+  @Test("화면 모양·만들기 안내 문구와 String Catalog 에 기기 상표명이 없다")
+  func noBrandNames() throws {
+    let texts = AndroidDeviceProfile.all.map(AndroidDevicesText.profileOption)
+      + [AndroidDevicesText.studioDevicesGuide, AndroidDevicesText.foldableImageUnsupported]
+    let data = try Data(contentsOf: Self.catalog)
+    let root = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+    let strings = try #require(root["strings"] as? [String: Any])
+    let catalogTexts = strings.flatMap { key, entry in
+      let localizations = (entry as? [String: Any])?["localizations"] as? [String: Any]
+      let unit = (localizations?["ko"] as? [String: Any])?["stringUnit"] as? [String: Any]
+      return [key, unit?["value"] as? String ?? ""]
+    }
+    #expect(!strings.isEmpty)
+    for text in texts + catalogTexts {
+      let lowered = text.lowercased()
+      for brand in Self.brands {
+        #expect(!lowered.contains(brand), "\(text)")
+      }
+    }
+  }
+}
+
 /// iOS 링크 열기와 같은 키·값으로 둔 링크 문구 (이름 문제와 같은 방식).
 struct LinkProblemSyncTests {
   @Test("링크 열기 문구 8개가 Launcher 원본에 같은 키·값으로 있다")
