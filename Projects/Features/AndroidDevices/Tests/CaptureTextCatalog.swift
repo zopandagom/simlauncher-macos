@@ -106,7 +106,7 @@ enum CaptureTextCatalog {
   static func androidChecks(_ table: [String: String]) -> [Check] {
     let displayOff = [
       "기기 화면이 꺼져 있어 녹화를 시작하지 못했습니다. ",
-      "에뮬레이터 창에서 전원 버튼으로 화면을 켜거나, 접힌 기기는 펼친 뒤 다시 녹화하세요.",
+      "에뮬레이터 창에서 전원 버튼으로 화면을 켠 뒤 다시 녹화하세요.",
     ].joined()
     let unwritable = [
       "동영상 폴더의 SimLauncher 폴더에 녹화 파일을 쓰지 못했습니다. Mac 의 디스크 공간이 남아 있는지 확인한 뒤 다시 녹화하세요. ",
