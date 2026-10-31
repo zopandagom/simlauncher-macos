@@ -274,6 +274,8 @@ struct AndroidDeviceRow: View {
     switch self.device.formFactor {
     case .phone: "smartphone"
     case .tablet: "ipad.landscape"
+    // 펼친 두 면 (macOS 11 이상). 기기 모양 SF Symbol 중 폴더블 전용은 없다.
+    case .foldable: "rectangle.split.2x1"
     case .none: "questionmark.square.dashed"
     }
   }
