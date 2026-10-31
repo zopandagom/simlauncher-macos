@@ -43,6 +43,7 @@ public enum AndroidDeviceJudge {
   static let displayNameKey = "avd.ini.displayname"
   static let sysdirKey = "image.sysdir.1"
   static let cpuArchKey = "hw.cpu.arch"
+  static let hingeKey = "hw.sensor.hinge"
 
   /// 우선순위: 이름(`AndroidAVDName.isValid`) → 폴더 없음 → config 읽지 못함 → 이미지 경로 키 없음·형식 틀림 →
   /// 이미지 abi 가 호스트와 다름 → `hw.cpu.arch` 없음(configUnreadable)·호스트 값과 다름(unsupportedABI) → 이미지 미설치 → available.
@@ -89,7 +90,8 @@ public enum AndroidDeviceJudge {
   }
 
   /// 사실과 adb 상태로 기기 하나를 만든다. 표시 이름은 `avd.ini.displayname`(비면 AVD 이름), 이미지는 `image.sysdir.1`,
-  /// 기기 모양은 `hw.lcd.width`·`hw.lcd.height`·`hw.lcd.density` (하나라도 없거나 양의 정수가 아니면 nil).
+  /// 기기 모양은 `hw.lcd.width`·`hw.lcd.height`·`hw.lcd.density` (하나라도 없거나 양의 정수가 아니면 nil),
+  /// 셋이 유효하고 `hw.sensor.hinge` 가 `yes`·`true`(대소문자 무시)이면 폴더블.
   public static func device(
     _ facts: AndroidAVDFacts,
     host: AndroidHostArchitecture,
@@ -117,6 +119,11 @@ public enum AndroidDeviceJudge {
     }
     guard values.count == 3 else {
       return nil
+    }
+    // Studio·앱 config 는 `yes`, emulator 가 쓰는 hardware-qemu.ini 는 `true` (실측).
+    let hinge = AVDIniFile.value(for: self.hingeKey, in: config)?.lowercased()
+    if hinge == "yes" || hinge == "true" {
+      return .foldable
     }
     return AndroidVirtualDevice.FormFactor(width: values[0], height: values[1], density: values[2])
   }

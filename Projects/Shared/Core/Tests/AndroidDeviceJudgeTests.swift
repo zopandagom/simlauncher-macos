@@ -127,7 +127,9 @@ struct AndroidDeviceJudgeTests {
     #expect(AndroidDeviceJudge.state(lockHeld: lockHeld, adb: .booting) == .booting)
     #expect(AndroidDeviceJudge.state(lockHeld: lockHeld, adb: .booted) == .booted)
   }
+}
 
+extension AndroidDeviceJudgeTests {
   // MARK: - device
 
   @Test("표시 이름·이미지·기기 모양·상태·쓸 수 있는지를 모아 기기를 만든다")
@@ -186,12 +188,140 @@ struct AndroidDeviceJudgeTests {
     #expect(formFactor("wide", "2400", "420") == nil)
   }
 
+  @Test("Studio 의 Pixel 9 Pro Fold config 는 쓸 수 있고 폴더블, 이미지는 image.sysdir.1")
+  func studioFoldable() throws {
+    let config = try #require(AVDIniFile.parse(Data(Self.studioFoldableConfig.utf8)))
+
+    let device = AndroidDeviceJudge.device(
+      Self.facts(name: "Pixel_9_Pro_Fold", config: config),
+      host: .aarch64,
+      adb: nil
+    )
+
+    #expect(device.displayName == "Pixel 9 Pro Fold")
+    #expect(device.availability == .available)
+    #expect(device.systemImage == AndroidSystemImageRef(
+      apiFolder: "android-37.0",
+      tag: "google_apis",
+      abi: "arm64-v8a"
+    ))
+    #expect(device.formFactor == .foldable)
+  }
+
+  @Test("hw.sensor.hinge 가 yes·true(대소문자 무시)면 크기와 상관없이 폴더블, 그 밖은 크기 규칙", arguments: [
+    ("yes", AndroidVirtualDevice.FormFactor.foldable),
+    ("true", .foldable),
+    ("YES", .foldable),
+    ("True", .foldable),
+    ("no", .tablet),
+    ("false", .tablet),
+    ("", .tablet),
+  ])
+  func hinge(value: String, expected: AndroidVirtualDevice.FormFactor) {
+    let config: [(key: String, value: String)] = [
+      ("hw.lcd.width", "2076"),
+      ("hw.lcd.height", "2152"),
+      ("hw.lcd.density", "390"),
+      ("hw.sensor.hinge", value),
+    ]
+    #expect(AndroidDeviceJudge.formFactor(config) == expected)
+  }
+
+  @Test("hw.sensor.hinge 가 없으면 지금 규칙대로 휴대전화·태블릿")
+  func noHinge() {
+    #expect(AndroidDeviceJudge.formFactor(Self.config()) == .phone)
+    let tablet: [(key: String, value: String)] = [
+      ("hw.lcd.width", "2076"),
+      ("hw.lcd.height", "2152"),
+      ("hw.lcd.density", "390"),
+    ]
+    #expect(AndroidDeviceJudge.formFactor(tablet) == .tablet)
+  }
+
+  @Test("hw.sensor.hinge=yes 여도 화면 키가 하나라도 없거나 양의 정수가 아니면 nil", arguments: [
+    ["hw.lcd.height": "2152", "hw.lcd.density": "390"],
+    ["hw.lcd.width": "2076", "hw.lcd.density": "390"],
+    ["hw.lcd.width": "2076", "hw.lcd.height": "2152"],
+    ["hw.lcd.width": "2076", "hw.lcd.height": "2152", "hw.lcd.density": "0"],
+    ["hw.lcd.width": "wide", "hw.lcd.height": "2152", "hw.lcd.density": "390"],
+  ])
+  func hingeWithoutSize(sizes: [String: String]) {
+    var config: [(key: String, value: String)] = sizes.sorted { $0.key < $1.key }.map { ($0.key, $0.value) }
+    config.append(("hw.sensor.hinge", "yes"))
+    #expect(AndroidDeviceJudge.formFactor(config) == nil)
+  }
+
   @Test("내장 프로필의 기기 모양은 휴대전화 둘·태블릿 하나")
   func profileFormFactors() {
     #expect(AndroidDeviceProfile.all.map(\.formFactor) == [.phone, .phone, .tablet])
   }
 
   // MARK: - 도우미
+
+  /// Android Studio 의 `pixel_9_pro_fold` 정의대로 쓴 config.ini (7-E2 실측 AVD, 이미지만 google_apis, `skin.path` 줄은 뺐다).
+  static let studioFoldableConfig = """
+  AvdId=Pixel_9_Pro_Fold
+  PlayStore.enabled=false
+  abi.type=arm64-v8a
+  avd.ini.displayname=Pixel 9 Pro Fold
+  avd.ini.encoding=UTF-8
+  disk.dataPartition.size=6G
+  fastboot.chosenSnapshotFile=
+  fastboot.forceChosenSnapshotBoot=no
+  fastboot.forceColdBoot=no
+  fastboot.forceFastBoot=yes
+  hw.accelerometer=yes
+  hw.arc=false
+  hw.audioInput=yes
+  hw.battery=yes
+  hw.camera.back=virtualscene
+  hw.camera.front=emulated
+  hw.cpu.arch=arm64
+  hw.cpu.ncore=4
+  hw.dPad=no
+  hw.device.manufacturer=Google
+  hw.device.name=pixel_9_pro_fold
+  hw.gps=yes
+  hw.gpu.enabled=yes
+  hw.gpu.mode=auto
+  hw.initialOrientation=portrait
+  hw.keyboard=yes
+  hw.lcd.density=390
+  hw.lcd.height=2152
+  hw.lcd.width=2076
+  hw.mainKeys=no
+  hw.ramSize=2048
+  hw.sdCard=yes
+  hw.sensor.hinge=yes
+  hw.sensor.hinge.areas=1038-0-0-2152
+  hw.sensor.hinge.count=1
+  hw.sensor.hinge.defaults=180
+  hw.sensor.hinge.ranges=0-180
+  hw.sensor.hinge.sub_type=1
+  hw.sensor.hinge.type=1
+  hw.sensor.hinge_angles_posture_definitions=0-30, 30-150, 150-180
+  hw.sensor.posture_list=1, 2, 3
+  hw.sensors.light=yes
+  hw.sensors.magnetic_field=yes
+  hw.sensors.orientation=yes
+  hw.sensors.pressure=yes
+  hw.sensors.proximity=yes
+  hw.trackBall=no
+  image.sysdir.1=system-images/android-37.0/google_apis/arm64-v8a/
+  runtime.network.latency=none
+  runtime.network.speed=full
+  showDeviceFrame=yes
+  skin.dynamic=yes
+  skin.name=pixel_9_pro_fold
+  tag.display=Google APIs
+  tag.id=google_apis
+  hw.displayRegion.0.1.xOffset=0
+  hw.displayRegion.0.1.yOffset=0
+  hw.displayRegion.0.1.width=1080
+  hw.displayRegion.0.1.height=2424
+  hw.sensor.hinge.fold_to_displayRegion.0.1_at_posture=1
+
+  """
 
   static func config(
     sysdir: String? = "system-images/android-37.0/google_apis/arm64-v8a/",
