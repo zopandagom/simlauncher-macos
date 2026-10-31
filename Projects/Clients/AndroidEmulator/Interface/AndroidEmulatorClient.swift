@@ -76,7 +76,7 @@ public protocol AndroidEmulatorClient: Sendable {
   /// 켜진 기기 화면을 PNG 로 `file`(Workspace 가 예약한 빈 파일)에 쓴다 (`adb -s <serial> exec-out 'screencap -p 2>/dev/null'`,
   /// 30초 제한). 화면이 여럿인 기기(폴더블)는 지금 보이는 화면을 찍는다(실측). 사전 확인은 앱 작업과 같다. 종료 코드 ≠ 0·출력이 PNG 가 아님·시간 초과는 `.captureFailed`,
   /// 파일에 쓰지 못하면(파일 없음·링크·일반 파일 아님·디스크) `.captureFileUnwritable` (일부만 썼으면 0바이트로 자른다).
-  /// 화면이 꺼져 있으면 검은 화면이 저장된다(휴대전화·폴더블 실측. 폴더블은 지금 보이는 쪽 크기의 검은 화면).
+  /// 화면이 꺼져 있으면 검은 화면이 저장된다(휴대전화·폴더블 실측. 폴더블은 대개 지금 보이는 쪽 크기의 검은 화면이고, 접힌 직후에는 펼친 크기인 경우가 있었다).
   func screenshot(on id: AndroidVirtualDevice.ID, to file: URL) async throws(AndroidEmulatorError)
 
   /// 켜진 기기 화면을 H.264 mp4 로 기기 임시 파일(`/data/local/tmp/simlauncher-recording-<UUID>.mp4`)에 녹화한 뒤
