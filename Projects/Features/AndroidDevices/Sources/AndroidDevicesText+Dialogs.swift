@@ -93,6 +93,14 @@ extension AndroidDevicesText {
     )
   }
 
+  /// 폴더블을 골랐는데 설치된 어느 시스템 이미지에도 접기 설정 파일이 없을 때 (고를 다른 이미지가 없다).
+  static var foldableNoImage: String {
+    String(
+      localized: "설치된 시스템 이미지 중 폴더블 설정이 있는 것이 없어 폴더블을 만들 수 없습니다.",
+      bundle: .module
+    )
+  }
+
   /// 화면 모양 아래 안내. 앱이 만드는 화면 모양은 넷(폴더블 하나 포함)이고, 그 밖의 기기는 Android Studio 로 만들어 이 목록에서 켠다.
   static var studioDevicesGuide: String {
     String(

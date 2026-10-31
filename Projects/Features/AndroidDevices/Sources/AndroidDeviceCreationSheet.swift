@@ -53,7 +53,8 @@ struct AndroidDeviceCreationSheet: View {
           }
         }
         if draft.isProfileUnsupportedByImage {
-          Text(AndroidDevicesText.foldableImageUnsupported)
+          Text(draft.hasFoldableImage ? AndroidDevicesText.foldableImageUnsupported : AndroidDevicesText
+            .foldableNoImage)
             .font(.caption)
             .foregroundStyle(.red)
         }

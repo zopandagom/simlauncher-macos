@@ -105,6 +105,22 @@ struct AndroidDevicesCreateTests: AndroidDevicesTesting {
     #expect(created?.formFactor == .foldable)
   }
 
+  @Test("폴더블을 만들 수 있는 이미지가 하나도 없으면 초안이 그것을 알린다 (시트는 다른 이미지를 고르라는 안내 대신 다른 이유를 보인다)")
+  func noFoldableImage() throws {
+    let none = AndroidDeviceCreationOptions(
+      installedImages: [.sample, .olderSample],
+      foldableImages: [],
+      host: .aarch64
+    )
+    var draft = try #require(AndroidDeviceCreationDraft(options: none))
+    draft.profileChanged(.foldable)
+    #expect(draft.isProfileUnsupportedByImage)
+    #expect(!draft.hasFoldableImage)
+    #expect(!draft.canSubmit)
+    let some = try #require(AndroidDeviceCreationDraft(options: .sample))
+    #expect(some.hasFoldableImage)
+  }
+
   @Test("폴더블이 아니면 접기 설정이 없는 이미지여도 이유를 보이지 않는다")
   func nonFoldableIgnoresFoldSettings() async {
     let setup = await Self.loadedFixture()

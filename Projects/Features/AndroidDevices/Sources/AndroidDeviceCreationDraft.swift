@@ -33,6 +33,11 @@ public struct AndroidDeviceCreationDraft: Hashable, Sendable {
     self.options.lacksFoldSettings(image: self.image, profile: self.profile)
   }
 
+  /// 선택지에 폴더블을 만들 수 있는 이미지가 하나라도 있는지. 없으면 "다른 이미지를 고르세요" 대신 다른 이유를 보인다.
+  public var hasFoldableImage: Bool {
+    !self.options.foldableImages.isEmpty
+  }
+
   mutating func nameChanged(_ name: String) {
     self.name = name
     self.isNameEdited = true

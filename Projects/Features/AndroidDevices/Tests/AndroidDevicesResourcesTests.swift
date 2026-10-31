@@ -103,6 +103,7 @@ struct AndroidDevicesTextTests {
       == "다른 크기·모양의 기기는 Android Studio 의 기기 관리자(Device Manager)에서 만들면 이 목록에 보입니다.")
     #expect(AndroidDevicesText.foldableImageUnsupported
       == "이 시스템 이미지에는 폴더블 설정이 없어 폴더블을 만들 수 없습니다. 다른 시스템 이미지를 고르세요.")
+    #expect(AndroidDevicesText.foldableNoImage == "설치된 시스템 이미지 중 폴더블 설정이 있는 것이 없어 폴더블을 만들 수 없습니다.")
   }
 
   @Test("함께 켜기 결과: 같은 결과끼리 한 줄로 묶고, 켠 기기가 있으면 몇 대 중 몇 대다")
@@ -189,7 +190,10 @@ struct BrandNameTests {
   @Test("화면 모양·만들기 안내 문구와 String Catalog 에 기기 상표명이 없다")
   func noBrandNames() throws {
     let texts = AndroidDeviceProfile.all.map(AndroidDevicesText.profileOption)
-      + [AndroidDevicesText.studioDevicesGuide, AndroidDevicesText.foldableImageUnsupported]
+      + [
+        AndroidDevicesText.studioDevicesGuide, AndroidDevicesText.foldableImageUnsupported,
+        AndroidDevicesText.foldableNoImage,
+      ]
     let data = try Data(contentsOf: Self.catalog)
     let root = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
     let strings = try #require(root["strings"] as? [String: Any])
@@ -311,7 +315,7 @@ enum AndroidDevicesTextCatalog {
       AndroidDevicesText.deleteMenuItem, AndroidDevicesText.cancelButton, AndroidDevicesText.createSheetTitle,
       AndroidDevicesText.nameField, AndroidDevicesText.imagePicker, AndroidDevicesText.profilePicker,
       AndroidDevicesText.createConfirmButton, AndroidDevicesText.studioDevicesGuide, AndroidDevicesText.studioLinkTitle,
-      AndroidDevicesText.foldableImageUnsupported,
+      AndroidDevicesText.foldableImageUnsupported, AndroidDevicesText.foldableNoImage,
       AndroidDevicesText.title(for: .refreshFailed(.adbUnavailable)),
       AndroidDevicesText.title(for: .createFailed(AndroidDeviceLabel(.phoneSample), .nameUnavailable)),
       AndroidDevicesText.installAppButton, AndroidDevicesText.installFromFileMenuItem,
