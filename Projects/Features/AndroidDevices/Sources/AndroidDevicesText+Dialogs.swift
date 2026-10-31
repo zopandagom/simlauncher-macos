@@ -93,10 +93,10 @@ extension AndroidDevicesText {
     )
   }
 
-  /// 화면 모양 아래 안내. 앱이 만드는 화면 모양은 셋뿐이고, Android Studio 가 만든 기기(폴더블 포함)도 이 목록에서 켠다.
+  /// 화면 모양 아래 안내. 앱이 만드는 화면 모양은 넷(폴더블 하나 포함)이고, 그 밖의 기기는 Android Studio 로 만들어 이 목록에서 켠다.
   static var studioDevicesGuide: String {
     String(
-      localized: "폴더블 등 더 많은 기기는 Android Studio 의 기기 관리자(Device Manager)에서 만들면 이 목록에 보입니다.",
+      localized: "다른 크기·모양의 기기는 Android Studio 의 기기 관리자(Device Manager)에서 만들면 이 목록에 보입니다.",
       bundle: .module
     )
   }

@@ -97,6 +97,14 @@ struct AndroidDevicesTextTests {
     #expect(AndroidDevicesText.studioDownloadURL == URL(string: "https://developer.android.com/studio"))
   }
 
+  @Test("만들기 시트 안내: 그 밖의 기기는 Studio 로, 폴더블 설정이 없는 이미지는 다른 이미지를 고르게 한다")
+  func creationGuides() {
+    #expect(AndroidDevicesText.studioDevicesGuide
+      == "다른 크기·모양의 기기는 Android Studio 의 기기 관리자(Device Manager)에서 만들면 이 목록에 보입니다.")
+    #expect(AndroidDevicesText.foldableImageUnsupported
+      == "이 시스템 이미지에는 폴더블 설정이 없어 폴더블을 만들 수 없습니다. 다른 시스템 이미지를 고르세요.")
+  }
+
   @Test("함께 켜기 결과: 같은 결과끼리 한 줄로 묶고, 켠 기기가 있으면 몇 대 중 몇 대다")
   func batchMessage() {
     let phone = AndroidDeviceLabel(.phoneSample)
