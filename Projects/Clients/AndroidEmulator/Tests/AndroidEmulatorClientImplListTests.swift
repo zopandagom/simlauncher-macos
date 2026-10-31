@@ -30,7 +30,7 @@ struct AndroidEmulatorClientImplListTests {
     #expect(harness.command.invocations.isEmpty)
   }
 
-  @Test("Studio 의 Pixel 9 Pro Fold(ini·config 원본 형식): 한 대, 쓸 수 있음·폴더블")
+  @Test("Studio 의 pixel_9_pro_fold 정의대로 쓴 AVD(ini·config 일부 키): 한 대, 쓸 수 있음·폴더블")
   func studioFoldable() async throws {
     let harness = try Harness()
     defer { harness.cleanUp() }
@@ -274,7 +274,8 @@ extension AndroidEmulatorClientImplListTests {
     }
   }
 
-  /// Android Studio 의 `pixel_9_pro_fold` 정의대로 쓴 config.ini (7-E2 실측 AVD, 이미지만 google_apis, `skin.path` 줄은 뺐다).
+  /// Android Studio 의 `pixel_9_pro_fold` 정의대로 쓴 실측 AVD config.ini 의 일부 키
+  /// (전체는 Core `AndroidDeviceJudgeTests.studioFoldableConfig`).
   static let studioFoldableConfig = """
   AvdId=Pixel_9_Pro_Fold
   PlayStore.enabled=false

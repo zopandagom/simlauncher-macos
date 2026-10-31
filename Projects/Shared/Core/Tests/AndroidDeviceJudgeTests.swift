@@ -188,7 +188,7 @@ extension AndroidDeviceJudgeTests {
     #expect(formFactor("wide", "2400", "420") == nil)
   }
 
-  @Test("Studio 의 Pixel 9 Pro Fold config 는 쓸 수 있고 폴더블, 이미지는 image.sysdir.1")
+  @Test("Studio 의 pixel_9_pro_fold 정의대로 쓴 AVD config(실측)는 쓸 수 있고 폴더블, 이미지는 image.sysdir.1")
   func studioFoldable() throws {
     let config = try #require(AVDIniFile.parse(Data(Self.studioFoldableConfig.utf8)))
 
