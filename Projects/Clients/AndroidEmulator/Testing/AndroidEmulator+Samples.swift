@@ -57,6 +57,16 @@ public extension AndroidVirtualDevice {
     availability: .available
   )
 
+  /// Studio 로 만든 꺼진 폴더블 "Pixel 9 Pro Fold" (`Pixel_9_Pro_Fold`).
+  static let foldableSample = AndroidVirtualDevice(
+    id: ID("Pixel_9_Pro_Fold"),
+    displayName: "Pixel 9 Pro Fold",
+    systemImage: .sample,
+    formFactor: .foldable,
+    state: .shutdown,
+    availability: .available
+  )
+
   /// 이름에 공백이 있어 켤 수 없는 Studio 기기 "My Phone" (`My Phone`).
   static let unsupportedNameSample = AndroidVirtualDevice(
     id: ID("My Phone"),

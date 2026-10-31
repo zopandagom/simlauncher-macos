@@ -72,10 +72,10 @@ public protocol AndroidEmulatorClient: Sendable {
   /// 사용자가 설치한 앱(`pm list packages -3`)의 패키지 이름, 이름순. 형식에 맞지 않는 줄은 건너뛴다.
   func installedPackages(on id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError) -> [AndroidPackageName]
 
-  /// 켜진 기기 화면을 PNG 로 `file`(Workspace 가 예약한 빈 파일)에 쓴다 (`adb -s <serial> exec-out screencap -p`, 30초 제한).
-  /// 사전 확인은 앱 작업과 같다. 종료 코드 ≠ 0·출력이 PNG 가 아님·시간 초과는 `.captureFailed`,
+  /// 켜진 기기 화면을 PNG 로 `file`(Workspace 가 예약한 빈 파일)에 쓴다 (`adb -s <serial> exec-out 'screencap -p 2>/dev/null'`,
+  /// 30초 제한). 화면이 여럿인 기기(폴더블)는 지금 보이는 화면을 찍는다(실측). 사전 확인은 앱 작업과 같다. 종료 코드 ≠ 0·출력이 PNG 가 아님·시간 초과는 `.captureFailed`,
   /// 파일에 쓰지 못하면(파일 없음·링크·일반 파일 아님·디스크) `.captureFileUnwritable` (일부만 썼으면 0바이트로 자른다).
-  /// 화면이 꺼져 있으면 검은 화면이 저장된다(실측).
+  /// 화면이 꺼져 있으면 검은 화면이 저장된다(휴대전화 실측. 화면이 꺼진 폴더블은 확인하지 못했다).
   func screenshot(on id: AndroidVirtualDevice.ID, to file: URL) async throws(AndroidEmulatorError)
 
   /// 켜진 기기 화면을 H.264 mp4 로 기기 임시 파일(`/data/local/tmp/simlauncher-recording-<UUID>.mp4`)에 녹화한 뒤
@@ -87,6 +87,7 @@ public protocol AndroidEmulatorClient: Sendable {
   /// 파일은 가져왔거나 화면이 없을 때만 지우고, 화면이 담긴 파일을 가져오지 못했으면(`.captureFileUnwritable`·`.recordingLost`·
   /// `.recordingTransferTimedOut`) 기기에 남긴다(그 기기에서 다음 녹화를 시작할 때 지운다).
   /// 가져오지 못하면 `file` 은 0바이트로 남긴다(호출한 쪽이 지운다).
+  /// 화면이 꺼진(잠든) 기기에서 스스로 실패로 끝나 화면이 없으면 `.recordingDisplayOff` (화면이 여럿인 기기 실측).
   func recordScreen(
     on id: AndroidVirtualDevice.ID,
     to file: URL,
@@ -173,6 +174,8 @@ public enum AndroidEmulatorError: Error, Hashable, Sendable {
   case recordingFailed
   /// 녹화가 끝났는데 가져온 파일이 0바이트이거나 없다.
   case recordingEmpty
+  /// 녹화를 시작하지 못했다: 기기 화면이 꺼져 있다 (화면이 여럿인 기기에서 screenrecord 가 `UNASSIGNED_LAYER_STACK` 로 끝남, 실측).
+  case recordingDisplayOff
   /// 녹화가 끝났지만 기기가 꺼지거나 adb 가 끊겨 가져오지 못했다 (기기 임시 파일은 남는다).
   case recordingLost
   /// 녹화 파일 가져오기가 시간 제한(600초) 안에 끝나지 않았다 (기기 임시 파일은 남는다).

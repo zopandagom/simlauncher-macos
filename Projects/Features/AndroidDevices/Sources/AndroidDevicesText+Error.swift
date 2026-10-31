@@ -28,8 +28,8 @@ extension AndroidDevicesText {
       self.fileMessage(for: error)
     case .deviceNotBooted, .installFailed, .installTimedOut, .launchFailed, .urlNotHandled, .appCommandFailed:
       self.appMessage(for: error)
-    case .captureFailed, .captureFileUnwritable, .recordingFailed, .recordingEmpty, .recordingLost,
-         .recordingTransferTimedOut:
+    case .captureFailed, .captureFileUnwritable, .recordingFailed, .recordingEmpty, .recordingDisplayOff,
+         .recordingLost, .recordingTransferTimedOut:
       self.captureMessage(for: error)
     case .cancelled:
       nil

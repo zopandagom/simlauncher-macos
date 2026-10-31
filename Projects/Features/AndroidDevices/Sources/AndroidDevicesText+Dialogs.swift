@@ -83,6 +83,27 @@ extension AndroidDevicesText {
     }
   }
 
+  /// 화면 모양 아래 안내. 앱이 만드는 화면 모양은 셋뿐이고, Android Studio 가 만든 기기(폴더블 포함)도 이 목록에서 켠다.
+  static var studioDevicesGuide: String {
+    String(
+      localized: "폴더블 등 더 많은 기기는 Android Studio 의 기기 관리자(Device Manager)에서 만들면 이 목록에 보입니다.",
+      bundle: .module
+    )
+  }
+
+  static var studioLinkTitle: String {
+    String(localized: "Android Studio 내려받기 페이지", bundle: .module)
+  }
+
+  /// Android Studio 내려받기 공개 페이지. 시트의 `Link` 가 시스템 기본 브라우저로 연다 (앱이 받는 것이 아니다).
+  static let studioDownloadURL: URL = {
+    let raw = "https://developer.android.com/studio"
+    guard let url = URL(string: raw) else {
+      preconditionFailure("고정 주소가 URL 이 아니다: \(raw)")
+    }
+    return url
+  }()
+
   /// 이름 입력란 아래에 보이는 문제. iOS 기기 만들기(Launcher)와 같은 키·값이다 (`NameProblemSyncTests` 가 묶는다).
   /// 100 은 `DeviceName.maxLength` 와 맞춘 고정 문구다 (바꾸면 함께).
   static func nameProblem(_ problem: DeviceNameProblem) -> String {

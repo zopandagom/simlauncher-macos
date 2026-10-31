@@ -212,6 +212,15 @@ extension AndroidDevicesText {
         """,
         bundle: .module
       )
+    case .recordingDisplayOff:
+      // 화면이 여럿인 기기(폴더블)에서 화면이 꺼진 채 시작하면 생긴다 (AndroidEmulator Client). 앱은 기기를 깨우지 않는다.
+      String(
+        localized: """
+        기기 화면이 꺼져 있어 녹화를 시작하지 못했습니다. \
+        에뮬레이터 창에서 전원 버튼으로 화면을 켠 뒤 다시 녹화하세요.
+        """,
+        bundle: .module
+      )
     case .recordingLost:
       String(
         localized: "녹화 중에 기기가 꺼지거나 연결이 끊겨 녹화한 화면을 가져오지 못했습니다. 다시 녹화하려면 기기를 켠 뒤 녹화를 누르세요.",

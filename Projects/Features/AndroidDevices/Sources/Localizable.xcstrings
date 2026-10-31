@@ -501,6 +501,16 @@
         }
       }
     },
+    "Android Studio 내려받기 페이지" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Android Studio 내려받기 페이지"
+          }
+        }
+      }
+    },
     "Android 기기가 없습니다" : {
       "localizations" : {
         "ko" : {
@@ -1007,6 +1017,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "기기 화면을 읽지 못했습니다. 기기가 켜져 있는지 확인하고, 계속 실패하면 기기를 껐다 켠 뒤 다시 시도하세요."
+          }
+        }
+      }
+    },
+    "기기 화면이 꺼져 있어 녹화를 시작하지 못했습니다. 에뮬레이터 창에서 전원 버튼으로 화면을 켠 뒤 다시 녹화하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기기 화면이 꺼져 있어 녹화를 시작하지 못했습니다. 에뮬레이터 창에서 전원 버튼으로 화면을 켠 뒤 다시 녹화하세요."
           }
         }
       }
@@ -3107,6 +3127,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "파일이 5 MiB 를 넘어 받지 않았습니다. 설정(⌘,)에서 주소가 catalog.json 파일을 바로 가리키는지 확인하고, 맞다면 오래된 버전 항목을 지워 달라고 카탈로그를 만든 사람에게 알려 주세요."
+          }
+        }
+      }
+    },
+    "폴더블 등 더 많은 기기는 Android Studio 의 기기 관리자(Device Manager)에서 만들면 이 목록에 보입니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "폴더블 등 더 많은 기기는 Android Studio 의 기기 관리자(Device Manager)에서 만들면 이 목록에 보입니다."
           }
         }
       }

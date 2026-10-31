@@ -14,7 +14,10 @@ struct ADBCaptureCommandsTests {
   @Test("스크린샷·정리·녹화·멈춤·가져오기·지우기 인자")
   func arguments() throws {
     let serial = Self.serial
-    #expect(ADBCaptureCommands.screenshotArguments(serial: serial) == ["-s", serial, "exec-out", "screencap", "-p"])
+    // 화면이 여럿인 AVD 의 경고(기기 stderr)가 PNG 앞에 붙지 않게 원격 셸에서 버린다.
+    #expect(ADBCaptureCommands.screenshotArguments(serial: "emulator-5556") == [
+      "-s", "emulator-5556", "exec-out", "screencap -p 2>/dev/null",
+    ])
     let id = try #require(UUID(uuidString: "0e5b0b4c-1c1f-4b9a-9f4e-2d3c4b5a6978"))
     #expect(ADBCaptureCommands.recordingPath(id: id) == Self.remote)
     #expect(ADBCaptureCommands.cleanupArguments(serial: serial) == [
@@ -149,7 +152,7 @@ struct ADBCaptureCommandsTests {
       .exited(code: 0),
       .exited(code: 1),
     ]
-    for ending in endings {
+    for ending in endings + [.displayOff(code: 218)] {
       #expect(Self.decide(ending, .deviceGone) == Self.kept(.recordingLost), "\(ending)")
       #expect(Self.decide(ending, .localWriteFailed) == Self.kept(.captureFileUnwritable), "\(ending)")
       #expect(Self.decide(ending, .timedOut) == Self.kept(.recordingTransferTimedOut), "\(ending)")
@@ -193,5 +196,37 @@ struct ADBCaptureCommandsTests {
       result: .failure(.recordingEmpty),
       removesRemote: true
     ))
+  }
+
+  @Test("화면 꺼짐: 실패로 끝났고 stderr 에 UNASSIGNED_LAYER_STACK 이 있을 때만")
+  func isDisplayOff() {
+    func result(_ code: Int32, stdout: String = "", stderr: String = "") -> CommandResult {
+      CommandResult(exitCode: code, stdout: Data(stdout.utf8), stderr: Data(stderr.utf8))
+    }
+    let message = "ERROR: UNASSIGNED_LAYER_STACK, please check your display state.\n"
+    #expect(ADBCaptureCommands.isDisplayOff(result(218, stdout: "2750\n", stderr: message)))
+    #expect(ADBCaptureCommands.isDisplayOff(result(1, stderr: message)))
+    #expect(!ADBCaptureCommands.isDisplayOff(result(0, stderr: message)))
+    #expect(!ADBCaptureCommands.isDisplayOff(result(218, stdout: message)))
+    #expect(!ADBCaptureCommands.isDisplayOff(result(218, stderr: "Unable to open '/data/local/tmp/x.mp4'\n")))
+    #expect(!ADBCaptureCommands.isDisplayOff(result(218)))
+  }
+
+  @Test("화면 꺼짐으로 끝남: 화면 없음·기기 파일 없음은 recordingDisplayOff, 화면이 담겼으면 savedAfterFailure")
+  func decideDisplayOff() {
+    let ending = ADBRecordingOutcome.Ending.displayOff(code: 218)
+    #expect(Self.decide(ending, .pulled(localSize: 0)) == .init(
+      result: .failure(.recordingDisplayOff),
+      removesRemote: true
+    ))
+    #expect(Self.decide(ending, .remoteMissing) == Self.kept(.recordingDisplayOff))
+    #expect(Self.decide(ending, .pulled(localSize: 10)) == Self.removed(.savedAfterFailure))
+    #expect(Self.decide(ending, .pulled(localSize: 10), timeLimited: true) == Self.removed(.savedAfterFailure))
+    // 문구 없이 같은 종료 코드면 지금 규칙 그대로.
+    #expect(Self.decide(.exited(code: 218), .pulled(localSize: 0)) == .init(
+      result: .failure(.recordingEmpty),
+      removesRemote: true
+    ))
+    #expect(Self.decide(.exited(code: 218), .remoteMissing) == Self.kept(.recordingFailed))
   }
 }

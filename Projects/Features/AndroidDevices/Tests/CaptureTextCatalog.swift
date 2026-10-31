@@ -104,17 +104,10 @@ enum CaptureTextCatalog {
 
   /// Android 문장 (기기 라벨을 넣는 알림 제목 여덟, 기기 안에서 녹화해 가져오는 데서 생기는 실패·정보 본문).
   static func androidChecks(_ table: [String: String]) -> [Check] {
-    let label = AndroidDevicesText.label(self.device)
-    let titles: [(String, AndroidDevicesNotice)] = [
-      ("%@ 기기의 스크린샷을 저장하지 못했습니다", .screenshotFailed(self.device, .emulator(.captureFailed))),
-      ("%@ 기기의 스크린샷을 저장했지만 Finder 에서 보여 주지 못했습니다", .screenshotRevealFailed(self.device, .fileNotFound)),
-      ("%@ 기기가 꺼지거나 연결이 끊겨 녹화를 저장하지 못했습니다", .recordingFailed(self.device, .emulator(.recordingLost))),
-      ("%@ 기기의 화면을 녹화하지 못했습니다", .recordingFailed(self.device, .emulator(.recordingFailed))),
-      ("%@ 기기의 녹화가 중간에 끝났습니다", .recordingInterrupted(self.device)),
-      ("%@ 기기가 꺼져 녹화를 멈추고 저장했습니다", .recordingStoppedByDevice(self.device)),
-      ("%@ 기기의 녹화가 3분 제한에 닿아 멈추고 저장했습니다", .recordingAtTimeLimit(self.device)),
-      ("%@ 기기의 녹화를 저장했지만 Finder 에서 보여 주지 못했습니다", .recordingRevealFailed(self.device, .fileNotFound)),
-    ]
+    let displayOff = [
+      "기기 화면이 꺼져 있어 녹화를 시작하지 못했습니다. ",
+      "에뮬레이터 창에서 전원 버튼으로 화면을 켠 뒤 다시 녹화하세요.",
+    ].joined()
     let unwritable = [
       "동영상 폴더의 SimLauncher 폴더에 녹화 파일을 쓰지 못했습니다. Mac 의 디스크 공간이 남아 있는지 확인한 뒤 다시 녹화하세요. ",
       "이번 녹화는 기기 안에 남아 있다가 이 기기에서 다음에 녹화를 시작할 때 지워집니다.",
@@ -144,6 +137,7 @@ enum CaptureTextCatalog {
         "녹화 중에 기기가 꺼지거나 연결이 끊겨 녹화한 화면을 가져오지 못했습니다. 다시 녹화하려면 기기를 켠 뒤 녹화를 누르세요.",
         AndroidDevicesText.recordingMessage(for: .emulator(.recordingLost))
       ),
+      (displayOff, AndroidDevicesText.recordingMessage(for: .emulator(.recordingDisplayOff))),
       (unwritable, AndroidDevicesText.recordingMessage(for: .emulator(.captureFileUnwritable))),
       (timedOut, AndroidDevicesText.recordingMessage(for: .emulator(.recordingTransferTimedOut))),
       (timeLimit, AndroidDevicesText.message(for: .recordingAtTimeLimit(self.device))),
@@ -152,7 +146,22 @@ enum CaptureTextCatalog {
         AndroidDevicesText.message(for: .recordingInterrupted(self.device))
       ),
     ]
+    return self.androidTitleChecks(table) + bodies.map { DownloadTextCatalog.check(table, $0.0, $0.1) }
+  }
+
+  /// Android 알림 제목 여덟 (기기 라벨을 넣는다).
+  private static func androidTitleChecks(_ table: [String: String]) -> [Check] {
+    let label = AndroidDevicesText.label(self.device)
+    let titles: [(String, AndroidDevicesNotice)] = [
+      ("%@ 기기의 스크린샷을 저장하지 못했습니다", .screenshotFailed(self.device, .emulator(.captureFailed))),
+      ("%@ 기기의 스크린샷을 저장했지만 Finder 에서 보여 주지 못했습니다", .screenshotRevealFailed(self.device, .fileNotFound)),
+      ("%@ 기기가 꺼지거나 연결이 끊겨 녹화를 저장하지 못했습니다", .recordingFailed(self.device, .emulator(.recordingLost))),
+      ("%@ 기기의 화면을 녹화하지 못했습니다", .recordingFailed(self.device, .emulator(.recordingFailed))),
+      ("%@ 기기의 녹화가 중간에 끝났습니다", .recordingInterrupted(self.device)),
+      ("%@ 기기가 꺼져 녹화를 멈추고 저장했습니다", .recordingStoppedByDevice(self.device)),
+      ("%@ 기기의 녹화가 3분 제한에 닿아 멈추고 저장했습니다", .recordingAtTimeLimit(self.device)),
+      ("%@ 기기의 녹화를 저장했지만 Finder 에서 보여 주지 못했습니다", .recordingRevealFailed(self.device, .fileNotFound)),
+    ]
     return titles.map { DownloadTextCatalog.check(table, $0.0, AndroidDevicesText.title(for: $0.1), label) }
-      + bodies.map { DownloadTextCatalog.check(table, $0.0, $0.1) }
   }
 }

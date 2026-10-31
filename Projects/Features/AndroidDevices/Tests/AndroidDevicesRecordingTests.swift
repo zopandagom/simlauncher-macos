@@ -166,9 +166,10 @@ struct AndroidDevicesRecordingTests: AndroidRecordingTesting {
   }
 
   @Test(
-    "녹화 실패(시작·빈 녹화·가져오기): 예약 파일을 지우고 알림 뒤 한 번 다시 읽는다",
+    "녹화 실패(시작·빈 녹화·화면 꺼짐·가져오기): 예약 파일을 지우고 알림 뒤 한 번 다시 읽는다",
     arguments: [
-      AndroidEmulatorError.recordingFailed, .recordingEmpty, .deviceNotBooted, .adbUnavailable, .recordingLost,
+      AndroidEmulatorError.recordingFailed, .recordingEmpty, .recordingDisplayOff, .deviceNotBooted, .adbUnavailable,
+      .recordingLost,
     ]
   )
   func endsWithError(_ error: AndroidEmulatorError) async {

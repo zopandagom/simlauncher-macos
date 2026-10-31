@@ -127,6 +127,7 @@ enum DemoScenario: String, CaseIterable, Hashable {
   case recordingTimeLimit = "녹화: 3분 제한에 닿음 (API 33 이하)"
   case recordingInterrupted = "녹화: 중간에 끝남"
   case recordingStartFailure = "녹화 실패: 시작 (기기 저장 공간)"
+  case recordingDisplayOff = "녹화 실패: 화면 꺼짐 (폴더블)"
   case recordingLost = "녹화 실패: 기기 꺼짐 (가져오지 못함)"
   case recordingUnwritable = "녹화 실패: Mac 에 쓰지 못함"
   case multiDevice = "여러 기기: 켜진 기기 둘 (선택한 기기에 앱 설치)"
@@ -135,7 +136,7 @@ enum DemoScenario: String, CaseIterable, Hashable {
 
   private static let allDevices = AndroidDeviceInventory(
     devices: [
-      .phoneSample, .bootedTabletSample, .unsupportedNameSample, .missingImageSample,
+      .phoneSample, .bootedTabletSample, .foldableSample, .unsupportedNameSample, .missingImageSample,
       AndroidVirtualDevice(
         id: AndroidVirtualDevice.ID("Intel_Phone"),
         displayName: "Intel Phone",
@@ -323,6 +324,8 @@ enum DemoScenario: String, CaseIterable, Hashable {
       fake.setRecordingEndsByItself(.success(.savedAfterFailure))
     case .recordingStartFailure:
       fake.setRecordingEndsByItself(.failure(.recordingFailed))
+    case .recordingDisplayOff:
+      fake.setRecordingEndsByItself(.failure(.recordingDisplayOff))
     case .recordingLost:
       fake.setRecordingResult(.failure(.recordingLost))
     case .recordingUnwritable:
@@ -331,7 +334,9 @@ enum DemoScenario: String, CaseIterable, Hashable {
       break
     }
   }
+}
 
+extension DemoScenario {
   private func configure(_ workspace: WorkspaceClientFake) {
     switch self {
     case .captureFolderFailure:
