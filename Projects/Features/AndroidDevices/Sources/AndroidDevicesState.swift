@@ -11,7 +11,8 @@ public enum AndroidDevicesListState: Hashable, Sendable {
   case loading
   /// 읽은 목록. 다시 읽는 동안에도 마지막 목록을 유지한다.
   case loaded(AndroidDeviceList)
-  /// 목록을 읽지 못했다 (전체 화면 오류). 한 번도 읽지 못했거나, Android 도구를 찾지 못했다(`.sdkUnavailable`, 이전 목록을 버린다).
+  /// 목록을 읽지 못했다 (전체 화면 오류). 한 번도 읽지 못했다 (Android 도구를 찾지 못한 경우는 실패가 아니라
+  /// `isSDKUnavailable` 인 목록).
   case failed(AndroidEmulatorError)
 }
 

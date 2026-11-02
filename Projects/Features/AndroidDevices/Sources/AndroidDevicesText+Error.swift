@@ -90,6 +90,15 @@ extension AndroidDevicesText {
   /// 행의 "사용할 수 없음" 이유. 켜기 실패(`.deviceUnavailable`)의 본문도 같다.
   static func reason(for reason: AndroidVirtualDevice.UnavailableReason) -> String {
     switch reason {
+    case .sdkUnavailable:
+      // 꺼진·켜진 행 모두에 맞게 쓴다. 켜진 행은 삭제·끄기가 모두 막힌다.
+      return String(
+        localized: """
+        Android 도구를 찾지 못해 켜거나 끌 수 없습니다. 꺼진 기기는 삭제할 수 있습니다 \
+        (켜진 기기는 에뮬레이터 창을 닫아 끄세요).
+        """,
+        bundle: .module
+      )
     case .unsupportedName:
       return String(
         localized: "이름에 영문·숫자·. _ - 밖의 문자가 있어 에뮬레이터로 켤 수 없는 기기입니다. 삭제만 할 수 있습니다.",

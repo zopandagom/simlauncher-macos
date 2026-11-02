@@ -48,15 +48,51 @@ struct AndroidDevicesListTests: AndroidDevicesTesting {
     #expect(Self.notices(setup.model) == [.refreshFailed(.adbUnavailable)])
   }
 
-  @Test("Android 도구를 찾지 못하면 목록이 있어도 실패 화면으로 바꾸고 선택을 지운다")
-  func sdkUnavailableReplacesList() async {
+  @Test("Android 도구를 찾지 못한 목록이 오면 실패 화면이 아니라 그 목록을 보이고, 도구가 돌아오면 원래대로 보인다")
+  func sdkUnavailableKeepsList() async {
+    let setup = await Self.loadedFixture()
+    let phone = AndroidVirtualDevice.phoneSample.id
+    let removed = AndroidVirtualDevice.unsupportedNameSample.id
+    setup.model.selectionChanged([phone, removed])
+    #expect(!setup.model.isSDKUnavailable)
+    let inventory = AndroidDeviceInventory.sdkUnavailableSample(
+      devices: [.sdkUnavailableShutdownSample, .sdkUnavailableBootedSample]
+    )
+    setup.fake.setInventory(inventory)
+    await setup.model.refreshButtonTapped()
+    #expect(setup.model.listState == .loaded(AndroidDeviceList(devices: inventory.devices)))
+    #expect(setup.model.isSDKUnavailable)
+    #expect(setup.model.selection == [phone])
+    #expect(setup.model.notices.isEmpty)
+    #expect(!setup.model.canCreateDevice)
+
+    setup.fake.setInventory(.sample)
+    await setup.model.refreshButtonTapped()
+    #expect(!setup.model.isSDKUnavailable)
+    #expect(setup.model.canCreateDevice)
+  }
+
+  @Test("목록 읽기가 실패하면 Android 도구를 찾지 못했는지(isSDKUnavailable)는 이전 값을 유지한다")
+  func sdkUnavailableSurvivesFailure() async {
+    let setup = await Self.loadedFixture(.sdkUnavailableSample(devices: [.sdkUnavailableShutdownSample]))
+    #expect(setup.model.isSDKUnavailable)
+    setup.fake.setFetchError(.avdFolderUnavailable)
+    await setup.model.refreshButtonTapped()
+    #expect(setup.model.isSDKUnavailable)
+    #expect(Self.list(setup.model) != nil)
+    #expect(Self.notices(setup.model) == [.refreshFailed(.avdFolderUnavailable)])
+  }
+
+  @Test("목록 읽기가 .sdkUnavailable 로 실패해도(Client 는 던지지 않는다) 목록이 있으면 다른 실패처럼 알림만 띄운다")
+  func sdkUnavailableErrorIsOrdinaryFailure() async {
     let setup = await Self.loadedFixture()
     setup.model.selectionChanged([AndroidVirtualDevice.phoneSample.id])
     setup.fake.setFetchError(.sdkUnavailable)
     await setup.model.refreshButtonTapped()
-    #expect(setup.model.listState == .failed(.sdkUnavailable))
-    #expect(setup.model.selection.isEmpty)
-    #expect(setup.model.notices.isEmpty)
+    #expect(Self.list(setup.model) == AndroidDeviceList(devices: AndroidDeviceInventory.sample.devices))
+    #expect(setup.model.selection == [AndroidVirtualDevice.phoneSample.id])
+    #expect(Self.notices(setup.model) == [.refreshFailed(.sdkUnavailable)])
+    #expect(!setup.model.isSDKUnavailable)
   }
 
   @Test("읽는 중에 온 요청은 모아서 지금 읽기가 끝난 뒤 한 번 더 읽는다")

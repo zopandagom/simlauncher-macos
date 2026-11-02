@@ -73,7 +73,18 @@ struct AndroidDevicesTextTests {
     for reason in AndroidDevicesTextCatalog.reasons {
       #expect(AndroidDevicesText.message(for: .deviceUnavailable(reason)) == AndroidDevicesText.reason(for: reason))
     }
-    #expect(Set(AndroidDevicesTextCatalog.reasons.map { AndroidDevicesText.reason(for: $0) }).count == 6)
+    #expect(Set(AndroidDevicesTextCatalog.reasons.map { AndroidDevicesText.reason(for: $0) }).count == 7)
+  }
+
+  @Test("Android 도구를 찾지 못한 목록: 행 이유는 꺼짐·켜짐 모두에 맞고, 안내 줄·빈 화면은 도구 화면으로 이끈다")
+  func sdkUnavailableTexts() {
+    #expect(AndroidDevicesText.reason(for: .sdkUnavailable)
+      == "Android 도구를 찾지 못해 켜거나 끌 수 없습니다. 꺼진 기기는 삭제할 수 있습니다 (켜진 기기는 에뮬레이터 창을 닫아 끄세요).")
+    #expect(AndroidDevicesText.sdkUnavailableNotice
+      == "Android 도구(emulator·platform-tools)를 찾지 못해 기기를 켜거나 끄거나 만들 수 없습니다. "
+      + "꺼진 기기는 삭제할 수 있고, 켜진 기기는 에뮬레이터 창을 닫아 끌 수 있습니다.")
+    #expect(AndroidDevicesText.sdkUnavailableTitle == "Android 도구를 찾지 못했습니다")
+    #expect(AndroidDevicesText.sdkUnavailableMessage == "오른쪽 위 Android 도구에서 상태를 확인하세요.")
   }
 
   @Test("모든 알림에 제목과 본문이 있다")
@@ -250,7 +261,7 @@ enum AndroidDevicesTextCatalog {
 
   static let reasons: [AndroidVirtualDevice.UnavailableReason] = [
     .unsupportedName, .folderMissing, .configUnreadable, .systemImageMissing(nil),
-    .systemImageMissing(.sample), .unsupportedABI("x86_64"),
+    .systemImageMissing(.sample), .unsupportedABI("x86_64"), .sdkUnavailable,
   ]
 
   /// 취소 밖의 모든 에러 (`.deviceUnavailable` 은 행 이유와 같아 하나만, 이름 문제도 하나만).
@@ -314,6 +325,8 @@ enum AndroidDevicesTextCatalog {
       AndroidDevicesText.loading, AndroidDevicesText.loadFailedTitle, AndroidDevicesText.retryButton,
       AndroidDevicesText.emptyTitle, AndroidDevicesText.emptyMessage, AndroidDevicesText.noImageTitle,
       AndroidDevicesText.noImageMessage, AndroidDevicesText.createUnavailableNotice,
+      AndroidDevicesText.sdkUnavailableNotice, AndroidDevicesText.sdkUnavailableTitle,
+      AndroidDevicesText.sdkUnavailableMessage,
       AndroidDevicesText.unavailableLabel, AndroidDevicesText.bootingHelp, AndroidDevicesText.bootButton,
       AndroidDevicesText.shutdownButton, AndroidDevicesText.deviceActionsMenu, AndroidDevicesText.eraseMenuItem,
       AndroidDevicesText.deleteMenuItem, AndroidDevicesText.cancelButton, AndroidDevicesText.createSheetTitle,
