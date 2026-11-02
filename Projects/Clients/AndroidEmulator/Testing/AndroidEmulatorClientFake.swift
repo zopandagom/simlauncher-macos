@@ -161,7 +161,8 @@ public final class AndroidEmulatorClientFake: AndroidEmulatorClient {
       )
       state.inventory = AndroidDeviceInventory(
         devices: inventory.devices + [device],
-        creationOptions: inventory.creationOptions
+        creationOptions: inventory.creationOptions,
+        sdkAvailable: inventory.sdkAvailable
       )
       return .success(device.id)
     }
@@ -176,7 +177,8 @@ public final class AndroidEmulatorClientFake: AndroidEmulatorClient {
       if case .success = state.deleteResult {
         state.inventory = AndroidDeviceInventory(
           devices: state.inventory.devices.filter { $0.id != id },
-          creationOptions: state.inventory.creationOptions
+          creationOptions: state.inventory.creationOptions,
+          sdkAvailable: state.inventory.sdkAvailable
         )
       }
       return state.deleteResult
@@ -279,7 +281,11 @@ public final class AndroidEmulatorClientFake: AndroidEmulatorClient {
         availability: device.availability
       )
     }
-    return AndroidDeviceInventory(devices: devices, creationOptions: inventory.creationOptions)
+    return AndroidDeviceInventory(
+      devices: devices,
+      creationOptions: inventory.creationOptions,
+      sdkAvailable: inventory.sdkAvailable
+    )
   }
 }
 

@@ -89,6 +89,26 @@ public extension AndroidVirtualDevice {
       .systemImageMissing(AndroidSystemImageRef(apiFolder: "android-35", tag: "google_apis", abi: "arm64-v8a"))
     )
   )
+
+  /// Android 도구를 쓸 수 없을 때 읽은 꺼진 휴대전화 "테스트 폰" (`Android_Device`, 잠금 없음). 삭제만 할 수 있다.
+  static let sdkUnavailableShutdownSample = AndroidVirtualDevice(
+    id: ID("Android_Device"),
+    displayName: "테스트 폰",
+    systemImage: .sample,
+    formFactor: .phone,
+    state: .shutdown,
+    availability: .unavailable(.sdkUnavailable)
+  )
+
+  /// Android 도구를 쓸 수 없을 때 잠금으로 켜짐으로 읽은 태블릿 "Pixel Tablet" (`Pixel_Tablet`). 끄기·삭제 모두 막힌다.
+  static let sdkUnavailableBootedSample = AndroidVirtualDevice(
+    id: ID("Pixel_Tablet"),
+    displayName: "Pixel Tablet",
+    systemImage: .sample,
+    formFactor: .tablet,
+    state: .booted,
+    availability: .unavailable(.sdkUnavailable)
+  )
 }
 
 public extension AndroidDeviceInventory {
@@ -100,6 +120,12 @@ public extension AndroidDeviceInventory {
 
   /// 기기 없음, 선택지 `sample`.
   static let emptySample = AndroidDeviceInventory(devices: [], creationOptions: .sample)
+
+  /// Android 도구를 쓸 수 없을 때의 목록 (`sdkAvailable == false`, 선택지 비어 있음).
+  /// 기기는 `.unavailable(.sdkUnavailable)` 인 것을 넘긴다 (예: `sdkUnavailableShutdownSample`·`sdkUnavailableBootedSample`).
+  static func sdkUnavailableSample(devices: [AndroidVirtualDevice]) -> AndroidDeviceInventory {
+    AndroidDeviceInventory(devices: devices, creationOptions: .emptySample, sdkAvailable: false)
+  }
 }
 
 public extension AndroidDeviceTraits {

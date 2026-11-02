@@ -8,7 +8,9 @@ import Foundation
 /// (에뮬레이터 자체의 Google 접속은 ARCHITECTURE §4 네트워크 행).
 public protocol AndroidEmulatorClient: Sendable {
   /// AVD 목록과 만들기 선택지. 파일을 읽고, 실행 중인 AVD 가 있을 때만 adb 를 부른다 (없으면 명령 없음).
-  /// 메인 밖에서 돈다. SDK 위치가 쓸 수 없거나 emulator·platform-tools 실행 파일이 없으면 `.sdkUnavailable`.
+  /// 메인 밖에서 돈다. SDK 위치를 쓸 수 없거나 emulator·platform-tools 실행 파일이 없으면 실패하지 않고 `sdkAvailable == false` 인
+  /// 목록을 돌려준다: adb 를 부르지 않고 잠금만으로 상태를 정하며(잠금 = 켜짐), 모든 기기는 `.unavailable(.sdkUnavailable)`,
+  /// 만들기 선택지는 비어 있다. `.sdkUnavailable` 을 던지지 않는다.
   /// `avd` 폴더가 없으면 빈 목록(만들지 않는다), 있는데 읽지 못하면 `.avdFolderUnavailable`.
   /// adb 가 실패하면 실행 중인 기기를 켜짐으로 보고 실패로 돌려주지 않는다.
   func fetchDevices() async throws(AndroidEmulatorError) -> AndroidDeviceInventory
@@ -39,15 +41,15 @@ public protocol AndroidEmulatorClient: Sendable {
     profile: AndroidDeviceProfile.ID
   ) async throws(AndroidEmulatorError) -> AndroidVirtualDevice.ID
 
-  /// 꺼진 AVD 를 지운다. 목록 읽기와 같이 SDK 를 쓸 수 없으면 `.sdkUnavailable` (SDK 없이 지우기는 후속).
+  /// 꺼진 AVD 를 지운다. SDK 를 쓸 수 없으면 adb 없이 잠금만으로 실행 중을 확인해 지운다 (목록 읽기와 같다).
   /// 실행 직전에 다시 읽은 폴더 목록에서 `<id>.ini` 항목을 찾아(이름으로 경로를 만들지 않는다)
   /// 없으면 `.deviceNotFound`, 잠금·adb 로 다시 확인해 실행 중이면 `.deviceRunning`.
   /// `path` 가 `.avd` 로 끝나는 실제 디렉터리(링크 아님)일 때만 폴더를 지우고, 아니면 ini 만 지운 뒤 `.folderKept(path)` 를 돌려준다.
   func delete(_ id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError) -> AndroidDeleteOutcome
 
   /// 꺼진 AVD 의 사용자 데이터·스냅샷을 지운다 (`AndroidAVDReset`, 링크는 따라가지 않고 링크만 지운다). 켜지 않는다.
-  /// 사전 확인(SDK 확인 포함)은 `delete` 와 같다. 쓸 수 없는 기기는 `.deviceUnavailable`. 기기 폴더가 링크이거나 `.avd` 로 끝나지 않으면
-  /// `.unsafeDeviceFolder` (아무것도 지우지 않는다).
+  /// 사전 확인은 `delete` 와 같고, SDK 를 쓸 수 없으면 `.sdkUnavailable`. 쓸 수 없는 기기는 `.deviceUnavailable`.
+  /// 기기 폴더가 링크이거나 `.avd` 로 끝나지 않으면 `.unsafeDeviceFolder` (아무것도 지우지 않는다).
   func erase(_ id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError)
 
   /// 켜진 기기의 API 수준·ABI (`getprop ro.build.version.sdk`·`ro.product.cpu.abilist`). 메인 밖에서 돈다.
@@ -114,10 +116,17 @@ public struct AndroidDeviceInventory: Hashable, Sendable {
   public let devices: [AndroidVirtualDevice]
   /// 지금 SDK 에 설치된 이미지로 만든 선택지.
   public let creationOptions: AndroidDeviceCreationOptions
+  /// false 면 SDK 를 쓸 수 없어 잠금 파일만으로 읽은 목록 (모든 기기 `.sdkUnavailable`, 선택지 비어 있음).
+  public let sdkAvailable: Bool
 
-  public init(devices: [AndroidVirtualDevice], creationOptions: AndroidDeviceCreationOptions) {
+  public init(
+    devices: [AndroidVirtualDevice],
+    creationOptions: AndroidDeviceCreationOptions,
+    sdkAvailable: Bool = true
+  ) {
     self.devices = devices
     self.creationOptions = creationOptions
+    self.sdkAvailable = sdkAvailable
   }
 }
 
@@ -130,7 +139,7 @@ public enum AndroidDeleteOutcome: Hashable, Sendable {
 
 /// 기기 작업 실패. 화면 문구는 Feature 가 정한다.
 public enum AndroidEmulatorError: Error, Hashable, Sendable {
-  /// SDK 위치 문제, emulator·adb 실행 파일 없음·실행 권한 없음.
+  /// SDK 위치 문제, emulator·adb 실행 파일 없음·실행 권한 없음. 목록 읽기·삭제에서는 나오지 않는다 (잠금만으로 읽는다).
   case sdkUnavailable
   case deviceNotFound
   case deviceUnavailable(AndroidVirtualDevice.UnavailableReason)

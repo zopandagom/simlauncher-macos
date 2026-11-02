@@ -67,6 +67,19 @@ struct AndroidEmulatorClientFakeTests {
     #expect(fake.inventory.devices.contains { $0.id == AndroidVirtualDevice.bootedTabletSample.id })
   }
 
+  @Test("SDK 없음 목록은 삭제·켜기 뒤에도 sdkAvailable false 를 유지한다")
+  func keepsSDKUnavailable() async throws {
+    let fake = AndroidEmulatorClientFake(inventory: .sdkUnavailableSample(devices: [
+      .sdkUnavailableShutdownSample, .sdkUnavailableBootedSample,
+    ]))
+
+    #expect(try await fake.delete(AndroidVirtualDevice.sdkUnavailableShutdownSample.id) == .deleted)
+    #expect(!fake.inventory.sdkAvailable)
+    #expect(fake.inventory.devices == [.sdkUnavailableBootedSample])
+    try await fake.shutdown(AndroidVirtualDevice.sdkUnavailableBootedSample.id)
+    #expect(!fake.inventory.sdkAvailable)
+  }
+
   @Test("멈춘 기기의 켜기는 재개까지 기다리고 다른 기기는 기다리지 않는다")
   func suspendBootOfDevice() async throws {
     let fake = AndroidEmulatorClientFake(inventory: .sample)
