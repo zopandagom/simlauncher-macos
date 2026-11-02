@@ -7,7 +7,7 @@ SimLauncher 배포본을 만드는 방법이다. `make release` 가 [`scripts/re
 - 안에 `SimLauncher.app`(Developer ID Application 서명·Hardened Runtime·공증·티켓 staple)과 `Applications` 바로가기(`/Applications` 를 가리키는 심볼릭 링크)가 있다. 배경·창 배치 같은 꾸밈은 없다.
 - dmg 자체도 Developer ID 로 서명하고 공증·staple 한다.
 
-`build/` 는 git 에 올리지 않는다. 같은 폴더의 `export/SimLauncher.app`(내보낸 앱)·`notary/`(공증 제출 결과 JSON·로그)·`archive.log`·`export.log` 는 원인 확인용으로 남는다. dmg 는 작업 이름 `unfinished-SimLauncher-<버전>.dmg` 로 만들어 서명·공증·staple·최종 검사를 하고, 모두 통과한 뒤에만 `SimLauncher-<버전>.dmg` 로 이름을 바꾼다. 실패하면 배포 이름 파일은 없고 작업 dmg 와 `notary/app-submit.zip`(앱 공증·staple 단계에서 실패했을 때)이 남을 수 있다 — 배포하지 않는다.
+`build/` 는 git 에 올리지 않는다. 같은 폴더의 `export/SimLauncher.app`(내보낸 앱)·`notary/`(공증 제출 결과 JSON·로그)·`archive.log`·`export.log` 는 원인 확인용으로 남는다. dmg 는 작업 이름 `unfinished-SimLauncher-<버전>.dmg` 로 만들어 서명·공증·staple·최종 검사를 하고, 모두 통과한 뒤에만 `SimLauncher-<버전>.dmg` 로 이름을 바꾼다. 실패하면 배포 이름 파일은 없고 작업 dmg 와 `notary/app-submit.zip`(앱 공증·staple 단계에서 실패했을 때)이 남을 수 있다 — 배포하지 않는다. 성공한 실행에도 지우지 못했다는 `경고:` 가 보였으면 `notary/app-submit.zip`·`dmg-root/` 가, 분리하지 못했다는 `경고:` 가 보였으면 `mnt/` 에 마운트된 dmg 가 남을 수 있다(스크립트가 끝날 때 한 번 더 분리를 시도한다. 배포 dmg 를 읽기 전용으로 마운트한 것이라 배포 dmg 에는 영향이 없고, 다음 실행이 0단계에서 정리한다).
 
 ## 2. 한 번만 할 준비
 이 Mac 에서 배포하는 사람이 한 번 한다. 비밀 값(앱 암호)은 키체인에만 두고 레포·명령줄·대화에 넣지 않는다.
@@ -24,11 +24,11 @@ SimLauncher 배포본을 만드는 방법이다. `make release` 가 [`scripts/re
 준비가 덜 되었으면 `make release` 가 빌드 전에 멈추고 빠진 항목을 모두 알린다 (4절 사전 확인).
 
 ## 3. 배포 순서
-1. 버전을 올린다: `Env.marketingVersion`(dmg 이름에 쓰인다)과 `Env.buildNumber`(같은 버전을 다시 배포하면 올린다). 두 값은 앱 타깃의 `MARKETING_VERSION`·`CURRENT_PROJECT_VERSION` 을 거쳐 Info.plist 의 `CFBundleShortVersionString`·`CFBundleVersion` 이 된다.
+1. 버전을 올린다: `Env.marketingVersion`(dmg 이름에 쓰인다)과 `Env.buildNumber`(배포할 때마다 1씩 올린다. 버전이 바뀌어도 되돌리지 않는다). 두 값은 앱 타깃의 `MARKETING_VERSION`·`CURRENT_PROJECT_VERSION` 을 거쳐 Info.plist 의 `CFBundleShortVersionString`·`CFBundleVersion` 이 된다.
 2. 버전 변경을 PR 로 main 에 머지하고, main 최신을 받는다 (깨끗한 작업 트리에서 만드는 것을 권장).
 3. **Terminal 에서** `make release` 를 실행한다. 확인 질문은 터미널(`/dev/tty`)에서만 답을 받는다.
 4. 5단계 요약(앱·버전·서명·dmg 서명 인증서·커밋·공증 프로필·배포 dmg 경로·제출할 파일)을 확인하고 `y` 를 입력한다. 커밋되지 않은 변경이 있으면 그 목록이 다시 보이고 `dirty` 를 입력해야 계속한다.
-5. 공증은 보통 몇 분 걸린다(최대 1시간 기다린다). 끝에 최종 검사가 모두 통과하고 `완료: build/release/SimLauncher-<버전>.dmg` 와 SHA-256 이 보이면 끝이다.
+5. 공증은 보통 몇 분 걸린다(최대 1시간 기다린다). 끝에 최종 검사가 모두 통과하고 `완료: build/release/SimLauncher-<버전>.dmg` 와 SHA-256 이 보이면 끝이다. SHA-256 을 구하지 못했다는 `경고:` 가 보이면 `shasum -a 256 build/release/SimLauncher-<버전>.dmg` 로 직접 구한다.
 6. **태그**: dmg 를 만든 main 커밋에 주석 태그 `<버전>`(예 `1.0.0`, `v` 없음)을 붙여 push 한다. pre-push 훅과 GitHub 룰셋은 main 브랜치만 막으므로 태그 push 는 막히지 않고, 태그 push 로 도는 워크플로도 없다.
    ```sh
    git tag -a <버전> <커밋> -m "SimLauncher <버전>"
@@ -40,33 +40,33 @@ SimLauncher 배포본을 만드는 방법이다. `make release` 가 [`scripts/re
      --title "SimLauncher <버전>" --notes-file <노트 파일>
    ```
    README 설치 링크(`releases/latest`)는 Pre-release 가 아닌 가장 최근 Release 를 가리킨다. 샘플 카탈로그 워크플로의 Release(`sample-catalog`·`sample-catalog-v2`·`sample-build-…`)는 Pre-release 라 겹치지 않는다. `--latest` 로 이 Release 를 최신으로 지정한다.
-8. **게시 확인**: `gh api repos/<소유자>/<레포>/releases/latest -q .tag_name` 이 `<버전>` 이고, 첨부 파일의 `digest` 에서 `sha256:` 접두어를 뺀 값(`… -q '.assets[].digest | ltrimstr("sha256:")'`)이 5번의 SHA-256 과 같은지 본다.
+8. **게시 확인**: `gh api repos/<소유자>/<레포>/releases/latest -q .tag_name` 이 `<버전>` 이고, 첨부 파일의 `digest` 에서 `sha256:` 접두어를 뺀 값(`… -q '.assets[].digest | ltrimstr("sha256:")'`)이 5번의 SHA-256(직접 구했으면 그 값)과 같은지 본다.
 9. **내려받은 게시본 확인**: README 설치 링크에서 브라우저로 dmg 를 받는다(quarantine 이 붙는다). `xattr -p com.apple.quarantine`·`shasum -a 256`·5절의 dmg `spctl` 을 확인하고, 앱을 응용 프로그램 폴더로 옮겨(이미 있으면 대치) 실행해 Gatekeeper 차단 없이 열리고 "SimLauncher에 관하여" 버전이 맞는지 본다. 이 Mac 에서 만든 앱이 응용 프로그램 폴더에 이미 있으면 quarantine 이 없으므로 받은 앱으로 대치해야 확인이 된다. 이 확인은 받은 파일의 Gatekeeper 판정과 실행 허용을 본다. 로드맵 단계 목표의 "다른 Mac" 확인(이 Mac 의 인증서·이전 실행 허용이 없는 환경)은 6절대로 다른 Mac 이나 새 사용자 계정에서 같은 방법으로 한다.
 
 ## 4. 단계와 실패 시 할 일
-진행 중에는 `==> [n/12] <단계>` 가, 실패하면 `실패 [n/12] <단계>: <이유>` 와 다음 할 일이 보인다. 실패해도 산출물·로그는 지우지 않는다(다음 실행이 처음에 `build/release` 를 지운다). 배포 이름 dmg 는 12단계를 통과해야만 생긴다.
+진행 중에는 `==> [n/12] <단계>` 가, 실패하면 `실패 [n/12] <단계>: <이유>` 와 다음 할 일이 보인다. 실패해도 산출물·로그는 지우지 않는다(다음 실행이 처음에 `build/release` 를 지운다). 배포 이름 dmg 는 12단계를 통과해야만 생긴다. 산출물에 영향이 없는 정리(임시 파일 지우기)·검사용 마운트 분리·SHA-256 계산이 실패하면 `경고:` 줄과 할 일만 보이고 계속한다.
 
 | # | 단계 | 하는 일 | 실패하면 |
 |---|---|---|---|
-| 0 | 이전 산출물 정리 | 남은 마운트(`build/release/mnt`)를 분리 시도하고 `build/release` 를 지운다. `build/` 의 다른 내용은 건드리지 않는다 | 지우지 못하면 `hdiutil detach <레포>/build/release/mnt` 뒤 다시 실행 |
-| 1 | 사전 확인 | P1 앱 타깃 빌드 설정(팀·버전·Hardened Runtime), P2 작업 트리(경고만), P3 dmg 서명 인증서, P4 공증 프로필(`notarytool history` 로 읽기만, 제출 아님)을 모두 검사하고 빠진 것을 한꺼번에 알린다 | 안내대로 2절 준비를 마친다. P1 은 `make project` 와 `Env` 값을 확인 |
+| 0 | 이전 산출물 정리 | 남은 마운트(`build/release/mnt`)를 분리 시도하고 `build/release` 를 지운다. `build/` 의 다른 내용은 건드리지 않는다 | 지우지 못하면 `hdiutil detach <레포>/build/release/mnt` 뒤 다시 실행. `build/release` 를 만들지 못하면 디스크 공간·쓰기 권한 확인 뒤 다시 실행 |
+| 1 | 사전 확인 | P1 앱 타깃 빌드 설정(팀·버전·Hardened Runtime), P2 작업 트리(변경은 경고만, git 으로 읽지 못하면 오류), P3 dmg 서명 인증서, P4 공증 프로필(`notarytool history` 로 읽기만, 제출 아님)을 모두 검사하고 빠진 것을 한꺼번에 알린다 | 안내대로 2절 준비를 마친다. P1 은 `make project` 와 `Env` 값을 확인 |
 | 2 | archive | Release 구성으로 archive (`build/release/DerivedData` 에서 매번 전체 빌드). 앱 타깃 서명 인증서가 `-` 라 여기서는 ad-hoc 이다 | `build/release/archive.log` 의 `error:` 줄 |
-| 3 | Developer ID 내보내기 | `method developer-id`, `signingStyle automatic` 으로 export (`-allowProvisioningUpdates`). Xcode 가 Developer ID 로 다시 서명한다 | `build/release/export.log`. Xcode 계정 로그인 확인 |
+| 3 | Developer ID 내보내기 | `method developer-id`, `signingStyle automatic` 으로 export (`-allowProvisioningUpdates`). Xcode 가 Developer ID 로 다시 서명한다 | `build/release/export.log`. Xcode 계정 로그인 확인. 설정 파일(`ExportOptions.plist`)을 쓰지 못하면 디스크 공간·쓰기 권한 |
 | 4 | 앱 서명 검사 | `codesign --verify --strict --deep`, Authority 가 `Developer ID Application: … (<팀>)`, TeamIdentifier, Hardened Runtime(`flags` 에 `runtime`), 보안 타임스탬프, `get-task-allow` 없음, Info.plist 버전이 빌드 설정과 같음 | 어긋난 항목과 기대값·실제값이 보인다 |
 | 5 | 확인 | 요약을 보이고 터미널에서 답을 받는다. 여기 전에는 공증 서비스로 파일을 보내지 않는다 (1단계 P4 의 자격 증명 확인과 3단계 내보내기 서명은 Apple 서버와 통신한다) | 거절(빈 답·터미널 없음 포함)이면 제출하지 않고 끝난다 |
-| 6 | 앱 공증 | 앱을 zip 으로 묶어 `notarytool submit` → `wait` → `info` 의 `status` 가 `Accepted` 인지 본다 | 거절이면 `build/release/notary/app-log.json` 의 `issues`. 시간 초과면 안내된 `notarytool info` 로 확인 뒤 다시 실행 |
+| 6 | 앱 공증 | 앱을 zip 으로 묶어 `notarytool submit` → `wait` → `info` 의 `status` 가 `Accepted` 인지 본다 | 거절(`Invalid`·`Rejected`)이면 `build/release/notary/app-log.json` 의 `issues`. 시간 초과(`In Progress`)면 안내된 `notarytool info` 로 확인 뒤 다시 실행. 상태를 조회하지 못했거나(`notarytool info` 실패, `status` 없음) 모르는 상태면 거절로 보지 않고 제출 ID 와 확인 명령을 알린다: `Accepted` 면 다시 실행, `Invalid`·`Rejected` 면 `notarytool log` 로 이유를 본다. 앱 zip 을 만들지 못하면(제출 전) 디스크 공간 확인 뒤 다시 실행 |
 | 7 | 앱 staple | `stapler staple` → `stapler validate` | 공증 직후 티켓 배포가 늦을 수 있다. 잠시 뒤 다시 실행 |
-| 8 | dmg 만들기 | 앱 + `Applications` 바로가기로 작업 이름 `unfinished-SimLauncher-<버전>.dmg` 로 `hdiutil create -format UDZO -fs APFS` | hdiutil 출력 |
+| 8 | dmg 만들기 | 앱 + `Applications` 바로가기로 작업 이름 `unfinished-SimLauncher-<버전>.dmg` 로 `hdiutil create -format UDZO -fs APFS` | 앱·바로가기를 담을 폴더를 준비하지 못하면 디스크 공간 확인 뒤 다시 실행. 이미지를 만들지 못하면 hdiutil 출력 |
 | 9 | dmg 서명 | 로컬 Developer ID Application 인증서(SHA-1 로 지정)로 `codesign --timestamp`. 작업 이름이 서명에 남지 않게 식별자를 `-i SimLauncher-<버전>` 으로 준다 | 키체인 접근 대화상자에서 거절했으면 다시 실행해 "항상 허용" |
 | 10 | dmg 공증 | 6단계와 같다 (`dmg-submit.json`·`dmg-info.json`·`dmg-log.json`) | 6단계와 같다 |
 | 11 | dmg staple | 7단계와 같다 | 7단계와 같다 |
-| 12 | 최종 검사 | 5절의 검사를 모두 돌리고 종료 코드로 판정. dmg 를 `build/release/mnt` 에 읽기 전용으로 마운트해 안의 앱과 `Applications` 바로가기도 본다. 모두 통과하면 `SimLauncher-<버전>.dmg` 로 이름을 바꾼다 | 실패한 검사 이름이 보인다. 작업 dmg 는 배포 이름으로 옮기지 않는다 |
+| 12 | 최종 검사 | 5절의 검사를 모두 돌리고 종료 코드로 판정. dmg 를 `build/release/mnt` 에 읽기 전용으로 마운트해 안의 앱과 `Applications` 바로가기도 본다. 모두 통과하면 `SimLauncher-<버전>.dmg` 로 이름을 바꾼다 | 실패한 검사 이름이 보인다. 작업 dmg 는 배포 이름으로 옮기지 않는다. 마운트 폴더를 만들지 못하거나 마운트하지 못하면 검사하지 못한 것으로 멈춘다. 검사 뒤 분리하지 못하거나 SHA-256 을 구하지 못하면 경고만 하고 끝까지 간다(배포 dmg 는 그대로 유효) |
 
-스크립트 종료 코드: 0 성공, 1 단계 실패, 2 사전 확인 실패, 3 공증 제출을 거절함, 130 중단(Ctrl-C). `make release` 로 실행하면 make 자신은 실패를 모두 종료 2 로 돌려주고, 스크립트의 종료 코드는 마지막 줄 `make: *** [release] Error <코드>` 에 보인다.
+스크립트 종료 코드: 0 성공, 1 단계 실패, 2 사전 확인 실패, 3 공증 제출을 거절함, 130 중단(Ctrl-C). `경고:` 만 나온 실행은 종료 0 이다. `make release` 로 실행하면 make 자신은 실패를 모두 종료 2 로 돌려주고, 스크립트의 종료 코드는 마지막 줄 `make: *** [release] Error <코드>` 에 보인다.
 
 - **재실행**: 언제나 0단계부터 처음부터 한다. 중간부터 이어 하지 않는다. 앞선 실행에서 앱 공증이 끝났어도 새 archive 로 다시 제출한다.
 - **중단(Ctrl-C)**: 공증을 기다리던 중이면 제출 ID 와 확인 명령(`xcrun notarytool info <ID> --keychain-profile <프로필>`)을 알린다. 제출한 공증은 Apple 쪽에서 계속 처리된다(취소 명령이 없다). 검사용 마운트는 스크립트가 끝날 때 분리한다.
-- **공증 거절 이유 보기**: `build/release/notary/<app|dmg>-log.json` 의 `issues` 에 파일 경로와 이유가 있다. 다시 받으려면 `xcrun notarytool log <제출 ID> --keychain-profile simlauncher-notary`.
+- **공증 거절 이유 보기**: `build/release/notary/<app|dmg>-log.json` 의 `issues` 에 파일 경로와 이유가 있다. 다시 받으려면 `xcrun notarytool log <제출 ID> --keychain-profile simlauncher-notary`. 상태를 조회하지 못했거나 status 가 없거나 모르는 상태로 멈춘 경우에는 `log.json` 을 받지 않는다. 안내된 `xcrun notarytool info`·`log` 를 직접 실행한다.
 
 ## 5. 검사 명령 직접 돌리기
 레포 루트에서:

@@ -5,6 +5,7 @@
 # 입력 환경 변수: NOTARY_PROFILE(공증 키체인 프로필 이름, 필수), WORKSPACE(기본 SimLauncher.xcworkspace).
 # 비밀 값(앱 암호)은 다루지 않는다: 프로필 이름만 notarytool 에 넘기고 환경 변수를 출력하지 않는다.
 # 종료 코드: 0 성공, 1 단계 실패, 2 사전 확인 실패(준비 안 됨), 3 공증 제출을 거절함, 130 중단.
+# 산출물에 영향이 없는 정리(rm)·검사용 마운트 분리·SHA-256 계산이 실패하면 "경고:" 만 보이고 계속한다.
 # 외부 출력은 codesign -dvv 의 영어 줄·security find-identity 줄·-showBuildSettings JSON·notarytool JSON 만 해석한다.
 # hdiutil(출력이 현지화됨)·spctl·stapler 는 종료 코드로만 판정하고 출력은 그대로 보여 준다.
 set -euo pipefail
@@ -76,7 +77,8 @@ if [[ -d $MOUNT_POINT ]]; then
 fi
 rm -rf "$OUT" 2>/dev/null || fail 1 "build/release 를 지우지 못했습니다." \
   "마운트된 디스크 이미지를 분리(hdiutil detach $MOUNT_POINT)한 뒤 다시 실행하세요."
-mkdir -p "$OUT" "$NOTARY_DIR"
+mkdir -p "$OUT" "$NOTARY_DIR" || fail 1 "build/release 를 만들지 못했습니다 (위 mkdir 출력)." \
+  "디스크 공간과 레포 폴더의 쓰기 권한을 확인한 뒤 다시 실행하세요."
 
 # --- 1. 사전 확인: P1~P4 를 모두 검사하고 실패를 한꺼번에 보인다 ---------------------
 step 1 "사전 확인"
@@ -102,11 +104,15 @@ else
   PREFLIGHT_ERRORS+=("P1 $SCHEME 타깃의 빌드 설정을 읽지 못했습니다. make project 가 성공하는지 확인하세요.")
 fi
 
-# P2 작업 트리 (경고만)
-COMMIT=$(git rev-parse --short HEAD)
-DIRTY=$(git status --porcelain)
-if [[ -n $DIRTY ]]; then
-  echo "경고: 커밋되지 않은 변경이 있습니다. 확인 질문에서 다시 묻습니다."
+# P2 작업 트리: 변경은 경고만. git 을 읽지 못하면 확인 요약의 커밋·변경 확인을 할 수 없어 오류다
+COMMIT=""
+DIRTY=""
+if COMMIT=$(git rev-parse --short HEAD) && DIRTY=$(git status --porcelain); then
+  if [[ -n $DIRTY ]]; then
+    echo "경고: 커밋되지 않은 변경이 있습니다. 확인 질문에서 다시 묻습니다."
+  fi
+else
+  PREFLIGHT_ERRORS+=("P2 git 으로 커밋·작업 트리를 읽지 못했습니다(위 git 출력). 레포 폴더에서 git status 가 되는지 확인하세요.")
 fi
 
 # P3 dmg 서명용 로컬 Developer ID Application 인증서
@@ -150,7 +156,8 @@ xcodebuild archive -workspace "$WORKSPACE" -scheme "$SCHEME" -configuration "$CO
 
 # --- 3. Developer ID 내보내기: Xcode 자동 서명(클라우드 관리 인증서) ----------------------
 step 3 "Developer ID 내보내기"
-cat >"$EXPORT_OPTIONS" <<PLIST
+cat >"$EXPORT_OPTIONS" <<PLIST || fail 1 "내보내기 설정 파일을 쓰지 못했습니다: $EXPORT_OPTIONS" \
+  "디스크 공간과 build/release 의 쓰기 권한을 확인한 뒤 다시 실행하세요."
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -217,7 +224,7 @@ expected_answer="y"
 if [[ -n $DIRTY ]]; then
   echo
   echo "경고: 커밋되지 않은 변경이 있습니다"
-  git status --short
+  git status --short || echo "(변경 목록을 보이지 못했습니다. 터미널에서 git status 로 확인하세요)"
   expected_answer="dirty"
   prompt="그래도 공증에 제출하려면 dirty 를 입력하세요: "
 else
@@ -254,46 +261,69 @@ notarize() {
   echo "제출 ID: $NOTARY_ID (Apple 처리를 기다립니다. 보통 몇 분 걸립니다)"
   # wait 의 종료 코드는 판정에 쓰지 않는다. 판정은 아래 info 의 status 로만 한다
   xcrun notarytool wait "$NOTARY_ID" --keychain-profile "$NOTARY_PROFILE" --timeout 1h || true
-  local status="" message=""
+  local status="" info_read=0
   if xcrun notarytool info "$NOTARY_ID" --keychain-profile "$NOTARY_PROFILE" --output-format json \
     >"$info_json"; then
+    info_read=1
     status=$(jq -r '.status // empty' "$info_json" 2>/dev/null || true)
-    message=$(jq -r '.message // empty' "$info_json" 2>/dev/null || true)
   fi
-  if [[ $status == Accepted ]]; then
-    echo "공증 통과: $NOTARY_ID"
-    NOTARY_ID=""
-    return
-  fi
-  if [[ $status == "In Progress" ]]; then
-    fail 1 "Apple 이 아직 처리 중입니다(제출 ID $NOTARY_ID)." \
-      "xcrun notarytool info $NOTARY_ID --keychain-profile $NOTARY_PROFILE 로 확인한 뒤 다시 실행하세요."
-  fi
-  xcrun notarytool log "$NOTARY_ID" --keychain-profile "$NOTARY_PROFILE" "$log_json" || true
-  fail 1 "공증 거절: ${status:-상태 없음} ${message}" \
-    "이유는 $log_json 의 issues 를 보세요. info: $info_json"
+  # 상태를 모를 때(조회 실패·status 없음·모르는 값)는 거절로 보지 않고 직접 확인할 명령을 알린다
+  local check_lines=(
+    "제출 ID: $NOTARY_ID"
+    "확인: xcrun notarytool info $NOTARY_ID --keychain-profile $NOTARY_PROFILE"
+    "결과가 Accepted 면 다시 실행하세요(처음부터 새로 제출합니다). Invalid·Rejected 면 xcrun notarytool log $NOTARY_ID --keychain-profile $NOTARY_PROFILE 로 이유를 보세요."
+  )
+  case $status in
+    Accepted)
+      echo "공증 통과: $NOTARY_ID"
+      NOTARY_ID=""
+      return
+      ;;
+    "In Progress")
+      fail 1 "Apple 이 아직 처리 중입니다(제출 ID $NOTARY_ID)." \
+        "xcrun notarytool info $NOTARY_ID --keychain-profile $NOTARY_PROFILE 로 확인한 뒤 다시 실행하세요."
+      ;;
+    Invalid | Rejected)
+      xcrun notarytool log "$NOTARY_ID" --keychain-profile "$NOTARY_PROFILE" "$log_json" || true
+      fail 1 "공증 거절: $status (제출 ID $NOTARY_ID)" \
+        "이유는 $log_json 의 issues 를 보세요. info: $info_json"
+      ;;
+    "")
+      if [[ $info_read == 0 ]]; then
+        fail 1 "공증 상태를 조회하지 못했습니다(notarytool info 실패, 위 출력). 거절인지 아직 모릅니다. 네트워크나 위 오류를 확인하세요." \
+          "${check_lines[@]}"
+      fi
+      fail 1 "공증 상태를 읽지 못했습니다: $info_json 에 status 가 없습니다. 거절인지 아직 모릅니다." "${check_lines[@]}"
+      ;;
+    *)
+      fail 1 "공증 상태를 알 수 없습니다: '$status'. Accepted 가 아니라 멈췄습니다. info: $info_json" "${check_lines[@]}"
+      ;;
+  esac
 }
 
 # --- 6. 앱 공증 ---------------------------------------------------------------------
 step 6 "앱 공증"
 APP_ZIP="$NOTARY_DIR/app-submit.zip"
-ditto -c -k --keepParent "$APP" "$APP_ZIP"
+ditto -c -k --keepParent "$APP" "$APP_ZIP" \
+  || fail 1 "공증에 올릴 앱 zip 을 만들지 못했습니다 (위 ditto 출력). 공증에는 아무것도 제출하지 않았습니다." \
+    "디스크 공간을 확인한 뒤 다시 실행하세요."
 notarize app "$APP_ZIP"
 
 # --- 7. 앱 staple -------------------------------------------------------------------
 step 7 "앱 staple"
 xcrun stapler staple "$APP" && xcrun stapler validate "$APP" \
   || fail 1 "앱에 공증 티켓을 붙이지 못했습니다." "공증 직후에는 티켓 배포가 늦을 수 있습니다. 잠시 뒤 다시 실행하세요."
-rm -f "$APP_ZIP"
+rm -f "$APP_ZIP" \
+  || echo "경고: 공증에 올린 앱 zip 을 지우지 못했습니다: $APP_ZIP (배포에는 영향이 없고, 다음 실행이 0단계에서 지웁니다)." >&2
 
 # --- 8. dmg 만들기: 앱 + Applications 바로가기 ------------------------------------------
 step 8 "dmg 만들기"
-mkdir -p "$DMG_ROOT"
-ditto "$APP" "$DMG_ROOT/$APP_NAME.app"
-ln -s /Applications "$DMG_ROOT/Applications"
+{ mkdir -p "$DMG_ROOT" && ditto "$APP" "$DMG_ROOT/$APP_NAME.app" && ln -s /Applications "$DMG_ROOT/Applications"; } \
+  || fail 1 "dmg 에 담을 폴더를 준비하지 못했습니다: $DMG_ROOT (위 출력)." "디스크 공간을 확인한 뒤 다시 실행하세요."
 hdiutil create -volname "$APP_NAME" -srcfolder "$DMG_ROOT" -format UDZO -fs APFS "$WORK_DMG" \
   || fail 1 "디스크 이미지를 만들지 못했습니다 (위 hdiutil 출력)."
-rm -rf "$DMG_ROOT"
+rm -rf "$DMG_ROOT" \
+  || echo "경고: dmg 를 만든 임시 폴더를 지우지 못했습니다: $DMG_ROOT (배포에는 영향이 없고, 다음 실행이 0단계에서 지웁니다)." >&2
 
 # --- 9. dmg 서명: 클라우드 관리 인증서로는 dmg 를 서명할 수 없어 로컬 인증서를 SHA-1 로 지정한다 ----
 # 작업 이름이 서명에 남지 않게 식별자를 배포 이름으로 준다
@@ -324,7 +354,9 @@ check() {
 check "dmg 서명" codesign --verify --strict -v "$WORK_DMG"
 check "dmg Gatekeeper" spctl -a -vv -t open --context context:primary-signature "$WORK_DMG"
 check "dmg 공증 티켓" xcrun stapler validate "$WORK_DMG"
-mkdir -p "$MOUNT_POINT"
+mkdir -p "$MOUNT_POINT" \
+  || fail 1 "검사용 마운트 폴더를 만들지 못했습니다: $MOUNT_POINT" \
+    "배포 이름($DMG)으로 옮기지 않았습니다. 검사하지 못한 dmg 는 $WORK_DMG 에 남습니다(배포하지 마세요)."
 hdiutil attach -nobrowse -readonly -noautoopen -mountpoint "$MOUNT_POINT" "$WORK_DMG" \
   || fail 1 "검사하려고 dmg 를 마운트하지 못했습니다 (위 hdiutil 출력)." \
     "배포 이름($DMG)으로 옮기지 않았습니다. 검사하지 못한 dmg 는 $WORK_DMG 에 남습니다(배포하지 마세요)."
@@ -335,7 +367,12 @@ check "앱 공증 티켓" xcrun stapler validate "$MOUNT_POINT/$APP_NAME.app"
 applications_link=$(readlink "$MOUNT_POINT/Applications" || true)
 echo "--- Applications 바로가기: $applications_link"
 [[ $applications_link == /Applications ]] || FAILED_CHECKS+=("Applications 바로가기")
-hdiutil detach "$MOUNT_POINT" && MOUNTED=0
+# 분리 실패는 검사 결과·dmg 에 영향이 없어 경고만 한다 (MOUNTED=1 로 두어 끝날 때 on_exit 이 한 번 더 시도한다)
+if hdiutil detach "$MOUNT_POINT"; then
+  MOUNTED=0
+else
+  echo "경고: 검사용 마운트를 분리하지 못했습니다: $MOUNT_POINT (위 hdiutil 출력). 스크립트가 끝날 때 한 번 더 시도합니다. 끝난 뒤에도 남아 있으면 hdiutil detach $MOUNT_POINT 로 분리하세요." >&2
+fi
 if ((${#FAILED_CHECKS[@]} > 0)); then
   fail 1 "최종 검사가 실패했습니다: ${FAILED_CHECKS[*]}" \
     "배포 이름($DMG)으로 옮기지 않았습니다. 검사한 dmg 는 $WORK_DMG 에 남습니다(배포하지 마세요)."
@@ -348,5 +385,6 @@ mv "$WORK_DMG" "$DMG" \
 
 STEP=""
 echo
-shasum -a 256 "$DMG"
+shasum -a 256 "$DMG" \
+  || echo "경고: SHA-256 을 구하지 못했습니다. shasum -a 256 $DMG 로 직접 구하세요 (Release 노트·게시 확인에 씁니다)." >&2
 echo "완료: $DMG"
