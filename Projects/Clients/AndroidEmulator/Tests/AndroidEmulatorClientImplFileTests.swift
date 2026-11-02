@@ -241,6 +241,25 @@ struct AndroidEmulatorClientImplFileTests {
     #expect(await thrownError { _ = try await harness.client.delete(AndroidVirtualDevice.ID("한글")) } == .deviceNotFound)
   }
 
+  @Test("삭제: SDK 를 쓸 수 없으면 잠금만으로 확인해 꺼진 기기를 지우고, 켜진 기기는 deviceRunning, 없는 기기는 deviceNotFound (명령 없음)")
+  func deleteWithoutSDK() async throws {
+    let harness = try Harness(sdkChoice: .invalidSetting)
+    defer { harness.cleanUp() }
+    try harness.addDevice("Idle")
+    let running = try harness.addDevice("Running")
+    harness.locks.hold(running)
+
+    #expect(try await harness.client.delete(AndroidVirtualDevice.ID("Idle")) == .deleted)
+    #expect(await thrownError { _ = try await harness.client.delete(AndroidVirtualDevice.ID("Running")) } ==
+      .deviceRunning)
+    #expect(await thrownError { _ = try await harness.client.delete(AndroidVirtualDevice.ID("Gone")) } ==
+      .deviceNotFound)
+
+    #expect(FileTree.names(harness.avdFolder) == ["Running.avd", "Running.ini"])
+    #expect(FileTree.exists(running, "config.ini"))
+    #expect(harness.command.invocations.isEmpty)
+  }
+
   /// 낡은 이름 집합으로 `AVDFiles.create` 를 불러 EEXIST 경로를 일으킨다.
   static func createFiles(_ harness: Harness, taken: Set<String>) throws(AndroidEmulatorError) -> AndroidVirtualDevice
     .ID
