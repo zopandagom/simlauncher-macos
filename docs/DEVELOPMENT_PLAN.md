@@ -45,7 +45,7 @@
 | 5 | 스크린샷·녹화, 여러 기기 동시 실행 | `simctl io screenshot`/`recordVideo` 결과가 저장되고 Finder 에서 열린다. 한 빌드를 여러 기기에 설치한다 |
 | 6 | Developer ID 서명·공증 dmg 배포(`make release`, [RELEASING.md](RELEASING.md)), README 보강, 1.0.0 릴리스 | 다른 Mac 에서 브라우저로 내려받은 dmg 의 앱이 Gatekeeper 차단 없이 실행된다 |
 | 7 | Android 에뮬레이터 (Android Studio·Java 없이 앱이 SDK 를 직접 설치, 사이드바로 iOS / Android 분리, iOS 와 같은 기능). 7-A 사이드바 + Android SDK 확인·설치(라이선스 동의, 진행률·취소) + SDK 위치 설정 (`AndroidSDK` Client, `AndroidSetup` Feature) / 7-B AVD 목록·켜기·끄기·만들기·삭제·초기화·함께 켜기 (`AndroidEmulator` Client, `AndroidDevices` Feature) / 7-C 로컬 apk 설치·실행·딥링크·드래그 앤 드롭 / 7-D URL 설치 + 카탈로그 schemaVersion 2 (앱마다 platform, 1·2 둘 다 읽는다) / 7-E 스크린샷·녹화·여러 기기 설치 / 7-E2 다양한 기기: Android Studio 로 만든 기기(폴더블 등)의 스크린샷·녹화 호환과 목록의 폴더블 표시, 만들기 시트의 Studio 안내, 내장 폴더블 화면 모양(앱이 접히는 폴더블을 만든다) / 7-F README 보강·1.1.0 릴리스 + `release.sh` 후속 | SDK 가 없는 Mac 에서 앱 화면만으로 Android 도구를 설치하고, Android 기기를 켜 apk 를 설치·실행하며, iOS 와 같은 테스트 편의 기능을 쓴다. 1.1.0 dmg 를 게시한다 |
-| 이후 | 업데이트 알림(새 버전 알리고 다운로드 페이지 열기), 비공개 저장소 인증, 업데이트 자동 교체(서명·팀 ID 검증 필수), 설치된 앱 관리(`listapps`·`uninstall`), 테스트 조건 바꾸기(외관·언어·위치·푸시·권한), 앱 로그 보기, 영어 지원 | — |
+| 이후 | 업데이트 알림(새 버전 알리고 다운로드 페이지 열기), 비공개 저장소 인증, 업데이트 자동 교체(서명·팀 ID 검증 필수), 설치된 앱 관리(`listapps`·`uninstall`), 테스트 조건 바꾸기(외관·언어·위치·푸시·권한), 앱 로그 보기(시뮬레이터 디버그 로그), 화면 레이아웃 보기(디자이너용, iOS·Android: 실행 중인 앱의 뷰마다 테두리를 그리고, 뷰를 클릭하면 x·y·너비·높이 등을 보인다), 영어 지원 | — |
 
 0~6단계는 끝났다 (1.0.0 게시, 2026-10-27). 7단계(Android 에뮬레이터)를 진행 중이고(7-A·7-B·7-C·7-D·7-E 머지, 7-E2 진행 중), 7-A~7-F 를 PR 하나씩 머지한 뒤 1.1.0 을 낸다. 그다음 작업은 "이후" 행에서 고른다.
 
