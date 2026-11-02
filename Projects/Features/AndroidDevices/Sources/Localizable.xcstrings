@@ -541,6 +541,16 @@
         }
       }
     },
+    "Android 도구(emulator·platform-tools)를 찾지 못해 기기를 켜거나 끄거나 만들 수 없습니다. 꺼진 기기는 삭제할 수 있고, 켜진 기기는 에뮬레이터 창을 닫아 끌 수 있습니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Android 도구(emulator·platform-tools)를 찾지 못해 기기를 켜거나 끄거나 만들 수 없습니다. 꺼진 기기는 삭제할 수 있고, 켜진 기기는 에뮬레이터 창을 닫아 끌 수 있습니다."
+          }
+        }
+      }
+    },
     "Android 도구(emulator·platform-tools)를 찾지 못했습니다. 오른쪽 위 Android 도구에서 상태를 확인하세요." : {
       "localizations" : {
         "ko" : {
@@ -557,6 +567,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Android 도구(platform-tools·emulator·시스템 이미지) 상태와 설치를 확인합니다"
+          }
+        }
+      }
+    },
+    "Android 도구를 찾지 못해 켜거나 끌 수 없습니다. 꺼진 기기는 삭제할 수 있습니다 (켜진 기기는 에뮬레이터 창을 닫아 끄세요)." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Android 도구를 찾지 못해 켜거나 끌 수 없습니다. 꺼진 기기는 삭제할 수 있습니다 (켜진 기기는 에뮬레이터 창을 닫아 끄세요)."
+          }
+        }
+      }
+    },
+    "Android 도구를 찾지 못했습니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Android 도구를 찾지 못했습니다"
           }
         }
       }
@@ -2467,6 +2497,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "오른쪽 위 + 로 기기를 만드세요."
+          }
+        }
+      }
+    },
+    "오른쪽 위 Android 도구에서 상태를 확인하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "오른쪽 위 Android 도구에서 상태를 확인하세요."
           }
         }
       }

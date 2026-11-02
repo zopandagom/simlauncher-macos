@@ -1,6 +1,8 @@
 import Core
 import DevEnvironmentInterface
 import DevEnvironmentTesting
+import Observation
+import Synchronization
 import Testing
 @testable import SetupFeature
 
@@ -119,5 +121,31 @@ struct SetupTerminationTests: SetupModelTesting {
     let checks = Self.checkCount(in: fake)
     await model.recheckButtonTapped()
     #expect(Self.checkCount(in: fake) == checks)
+  }
+
+  @Test("종료 중 상태 변경은 관찰된다 (설치 중이 아니어도 화면이 설치 버튼을 다시 그린다)")
+  func terminationIsObserved() async {
+    let model = await Self.notInstalledModel().model
+    let changed = ObservationChange()
+    withObservationTracking {
+      _ = model.canInstallRuntime
+    } onChange: {
+      changed.mark()
+    }
+    await model.appTerminationRequested()
+    #expect(changed.isMarked)
+  }
+}
+
+/// `withObservationTracking` 의 `onChange`(Sendable 클로저)가 바뀜을 기록하는 상자.
+private final class ObservationChange: Sendable {
+  private let changed = Mutex(false)
+
+  var isMarked: Bool {
+    self.changed.withLock { $0 }
+  }
+
+  func mark() {
+    self.changed.withLock { $0 = true }
   }
 }

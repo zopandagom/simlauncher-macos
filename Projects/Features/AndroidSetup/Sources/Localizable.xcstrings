@@ -21,6 +21,16 @@
         }
       }
     },
+    "%@ 폴더(또는 그 안의 폴더)가 SDK 폴더와 다른 디스크에 있어 설치할 수 없습니다. 그 폴더를 같은 디스크로 옮기거나 설정에서 다른 SDK 폴더를 고르세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 폴더(또는 그 안의 폴더)가 SDK 폴더와 다른 디스크에 있어 설치할 수 없습니다. 그 폴더를 같은 디스크로 옮기거나 설정에서 다른 SDK 폴더를 고르세요."
+          }
+        }
+      }
+    },
     "Android SDK 라이선스에 동의하세요" : {
       "localizations" : {
         "ko" : {
@@ -67,6 +77,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Android 도구 설치를 멈추고 종료할까요?"
+          }
+        }
+      }
+    },
+    "Android 도구가 없어도 기기 목록에서 기기를 삭제할 수 있습니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Android 도구가 없어도 기기 목록에서 기기를 삭제할 수 있습니다."
           }
         }
       }

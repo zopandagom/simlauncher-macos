@@ -89,13 +89,16 @@ public struct AndroidEmulatorClientImpl: AndroidEmulatorClient {
     self.timing = timing
   }
 
+  /// SDK 를 쓸 수 없으면 잠금만으로 읽고 선택지는 비운다 (실패로 돌려주지 않는다).
   @concurrent
   public func fetchDevices() async throws(AndroidEmulatorError) -> AndroidDeviceInventory {
-    let tools = try await SDKTools.resolve(self.sdkRoot())
+    let tools = try? await SDKTools.resolve(self.sdkRoot())
     let devices = try await self.readDevices(tools: tools)
     return AndroidDeviceInventory(
       devices: devices.map(\.device),
-      creationOptions: self.creationOptions(tools)
+      creationOptions: tools.map(self.creationOptions)
+        ?? AndroidDeviceCreationOptions(installedImages: [], foldableImages: [], host: self.host),
+      sdkAvailable: tools != nil
     )
   }
 
@@ -205,9 +208,10 @@ public struct AndroidEmulatorClientImpl: AndroidEmulatorClient {
     )
   }
 
+  /// SDK 를 쓸 수 없으면 adb 없이 잠금만으로 실행 중을 확인한다 (목록 읽기와 같다).
   @concurrent
   public func delete(_ id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError) -> AndroidDeleteOutcome {
-    let tools = try await SDKTools.resolve(self.sdkRoot())
+    let tools = try? await SDKTools.resolve(self.sdkRoot())
     let target = try await self.read(id, tools: tools)
     try Self.rejectRunning(target)
     return try AVDFiles.remove(target.entry)
@@ -243,13 +247,19 @@ extension AndroidEmulatorClientImpl {
 
   /// 폴더를 읽어 기기마다 사실을 모으고, 잠금이 있는 기기가 하나라도 있을 때만 adb 를 부른다.
   /// adb 가 실패하면 adb 상태 없이(잠금만으로) 판정한다. adb 가 성공했는데 잠금 있는 기기의 serial 이 없으면 `.offline`.
-  func readDevices(tools: SDKTools) async throws(AndroidEmulatorError) -> [ReadDevice] {
+  /// `tools` 가 nil(SDK 를 쓸 수 없음)이면 adb 를 부르지 않고 adb 실패와 같이 잠금만으로 판정한다 (잠금 = 켜짐).
+  /// 빈 adb 결과로 두면 잠금 있는 기기가 `.offline` → 켜는 중으로 읽혀 Feature 의 자동 다시 읽기가 멈추지 않는다.
+  func readDevices(tools: SDKTools?) async throws(AndroidEmulatorError) -> [ReadDevice] {
     let entries = try AVDFolderScan.entries(home: self.home)
     let facts = entries.map { AVDFolderScan.facts($0, tools: tools) }
-    let emulators: [String: ADBEmulator]? = if facts.contains(where: { $0.lockHeld == true }) {
-      await self.adb(tools).emulators(names: Set(entries.map(\.name)))
+    let emulators: [String: ADBEmulator]? = if let tools {
+      if facts.contains(where: { $0.lockHeld == true }) {
+        await self.adb(tools).emulators(names: Set(entries.map(\.name)))
+      } else {
+        [:]
+      }
     } else {
-      [:]
+      nil
     }
     return zip(entries, facts).map { entry, facts in
       let emulator = emulators?[entry.name]
@@ -268,7 +278,7 @@ extension AndroidEmulatorClientImpl {
   }
 
   /// 파일 이름이 정확히 `<id>.ini` 인 항목. 없으면 `.deviceNotFound`.
-  func read(_ id: AndroidVirtualDevice.ID, tools: SDKTools) async throws(AndroidEmulatorError) -> ReadDevice {
+  func read(_ id: AndroidVirtualDevice.ID, tools: SDKTools?) async throws(AndroidEmulatorError) -> ReadDevice {
     guard let found = try await self.readDevices(tools: tools).first(where: { $0.entry.name == id.rawValue }) else {
       throw .deviceNotFound
     }

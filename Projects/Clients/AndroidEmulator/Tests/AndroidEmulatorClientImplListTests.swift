@@ -145,19 +145,49 @@ struct AndroidEmulatorClientImplListTests {
     #expect(await thrownError { _ = try await harness.client.fetchDevices() } == .avdFolderUnavailable)
   }
 
-  @Test("SDK 위치가 쓸 수 없거나 emulator·adb 가 없으면 sdkUnavailable")
+  @Test("SDK 위치가 쓸 수 없거나 emulator·adb 가 없으면 실패하지 않고 잠금만으로 읽은 목록 (sdkAvailable false, 명령 없음)")
   func sdkUnavailable() async throws {
     let invalid = try Harness(sdkChoice: .invalidSetting)
     defer { invalid.cleanUp() }
-    #expect(await thrownError { _ = try await invalid.client.fetchDevices() } == .sdkUnavailable)
+    try await Self.expectLockOnlyList(invalid)
 
-    let empty = try Harness(installSDK: false)
-    defer { empty.cleanUp() }
-    try FileTree.file(empty.sdk, "emulator/emulator", mode: 0o755)
-    #expect(await thrownError { _ = try await empty.client.fetchDevices() } == .sdkUnavailable)
+    let noAdb = try Harness(installSDK: false)
+    defer { noAdb.cleanUp() }
+    try FileTree.file(noAdb.sdk, "emulator/emulator", mode: 0o755)
+    try await Self.expectLockOnlyList(noAdb)
 
-    try FileTree.file(empty.sdk, "platform-tools/adb", mode: 0o644)
-    #expect(await thrownError { _ = try await empty.client.fetchDevices() } == .sdkUnavailable)
+    let notExecutable = try Harness(installSDK: false)
+    defer { notExecutable.cleanUp() }
+    try FileTree.file(notExecutable.sdk, "emulator/emulator", mode: 0o755)
+    try FileTree.file(notExecutable.sdk, "platform-tools/adb", mode: 0o644)
+    try Harness.installImage(Harness.image, in: notExecutable.sdk)
+    try await Self.expectLockOnlyList(notExecutable)
+  }
+
+  /// 잠금을 잡은 기기 "Running" 과 잠금 없는 "Idle" 을 두고 읽는다. 잠금 = 켜짐(켜는 중이 아니다: adb 결과가 없는 것으로 판정),
+  /// 모두 `.sdkUnavailable`, 선택지 비어 있음, adb 를 부르지 않는다.
+  static func expectLockOnlyList(_ harness: Harness) async throws {
+    let running = try harness.addDevice("Running")
+    try harness.addDevice("Idle")
+    harness.locks.hold(running)
+
+    let inventory = try await harness.client.fetchDevices()
+
+    #expect(!inventory.sdkAvailable)
+    #expect(inventory.creationOptions.images.isEmpty)
+    #expect(inventory.devices.map(\.id.rawValue) == ["Idle", "Running"])
+    #expect(inventory.devices.allSatisfy { $0.availability == .unavailable(.sdkUnavailable) })
+    #expect(inventory.devices.map(\.state) == [.shutdown, .booted])
+    #expect(harness.command.invocations.isEmpty)
+  }
+
+  @Test("SDK 를 쓸 수 있으면 sdkAvailable true")
+  func sdkAvailable() async throws {
+    let harness = try Harness()
+    defer { harness.cleanUp() }
+    try harness.addDevice("Pixel")
+
+    #expect(try await harness.client.fetchDevices().sdkAvailable)
   }
 }
 

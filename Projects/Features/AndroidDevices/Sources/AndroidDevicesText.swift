@@ -181,7 +181,7 @@ enum AndroidDevicesText {
     String(localized: "Android 도구(platform-tools·emulator·시스템 이미지) 상태와 설치를 확인합니다", bundle: .module)
   }
 
-  /// 빈 화면·안내 줄·목록 읽기 실패 화면의 Android 도구 화면 버튼.
+  /// 빈 화면·안내 줄(Android 도구를 쓸 수 없음·만들 이미지 없음)·목록 읽기 실패 화면의 Android 도구 화면 버튼.
   static var openSetupButton: String {
     String(localized: "Android 도구 열기", bundle: .module)
   }
@@ -216,6 +216,26 @@ enum AndroidDevicesText {
 
   static var noImageMessage: String {
     String(localized: "오른쪽 위 Android 도구에서 시스템 이미지를 설치하세요.", bundle: .module)
+  }
+
+  /// Android 도구(SDK)를 쓸 수 없어 잠금 파일만으로 읽은 목록 위 안내 줄 (켜기·끄기·만들기가 막힌 이유). 툴바 + 의 툴팁도 같다.
+  static var sdkUnavailableNotice: String {
+    String(
+      localized: """
+      Android 도구(emulator·platform-tools)를 찾지 못해 기기를 켜거나 끄거나 만들 수 없습니다. \
+      꺼진 기기는 삭제할 수 있고, 켜진 기기는 에뮬레이터 창을 닫아 끌 수 있습니다.
+      """,
+      bundle: .module
+    )
+  }
+
+  /// Android 도구를 쓸 수 없고 기기도 없을 때 빈 화면 제목.
+  static var sdkUnavailableTitle: String {
+    String(localized: "Android 도구를 찾지 못했습니다", bundle: .module)
+  }
+
+  static var sdkUnavailableMessage: String {
+    String(localized: "오른쪽 위 Android 도구에서 상태를 확인하세요.", bundle: .module)
   }
 
   /// 기기는 있지만 만들 이미지가 없을 때 목록 위 안내 줄 (툴바 + 가 비활성인 이유).

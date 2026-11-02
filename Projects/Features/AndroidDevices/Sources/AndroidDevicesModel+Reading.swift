@@ -23,7 +23,8 @@ public extension AndroidDevicesModel {
   }
 
   /// 목록을 읽었지만 만들 수 있는 시스템 이미지가 없어 + 버튼을 쓸 수 없다. 기기가 있으면 목록 위 안내 줄로 이유와
-  /// "Android 도구 열기" 버튼을 보인다 (목록이 비면 빈 화면 안내가 보인다).
+  /// "Android 도구 열기" 버튼을 보인다 (목록이 비면 빈 화면 안내가 보인다). Android 도구를 쓸 수 없으면(`isSDKUnavailable`)
+  /// 선택지가 비어 이 값도 true 지만, 화면은 그 안내를 먼저 보인다.
   var isCreationUnavailable: Bool {
     guard case .loaded = self.listState else { return false }
     return self.creationOptions.isEmpty

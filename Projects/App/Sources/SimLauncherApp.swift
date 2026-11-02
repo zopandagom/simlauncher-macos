@@ -20,7 +20,8 @@ import WorkspaceImpl
 /// 조립 지점. Client Impl 을 만들어 Feature Model 에 주입하는 곳은 여기뿐이다.
 /// 메인 창(`MainWindow`)은 사이드바로 iOS / Android 칸을 나눈다. 화면 간 흐름도 여기서 잇는다: iOS 칸은 Setup 이 끝나면
 /// (`SetupModel.isFinished`) 기기 목록, 기기 목록의 Setup 진입 버튼("개발 환경", 빈 화면의 iOS 설치 등)이면 다시 Setup.
-/// Android 칸도 같다: Android 도구가 준비되면(`AndroidSetupModel.isFinished`) Android 기기 목록(`AndroidDevicesModel`),
+/// Android 칸도 같다: 도구 화면에서 기기 목록으로 넘어가면(`AndroidSetupModel.isFinished`: 첫 확인이 셋 다 설치됨이거나
+/// "기기 목록 열기") Android 기기 목록(`AndroidDevicesModel`),
 /// 기기 목록의 "Android 도구" 버튼이면 다시 Android 도구 화면. 앱 종료 요청은 `AppDelegate` 가 받아, 기다릴 것(iOS·Android
 /// 녹화·런타임 설치·Android 도구 설치)이 있으면 두 기기 목록(`LauncherModel`·`AndroidDevicesModel`)·Setup·Android 도구 화면에
 /// 함께 종료를 알리고 모두 끝나기를 기다린다 (녹화 저장과 두 설치의 멈춤·취소를 함께 시작한다).

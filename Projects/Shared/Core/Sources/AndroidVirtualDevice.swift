@@ -16,6 +16,8 @@ public struct AndroidVirtualDevice: Identifiable, Hashable, Sendable {
 
   /// 쓸 수 없는 이유. emulator 의 실패 문구는 원인과 맞지 않아(실측) 켜기 전에 파일로 정한다.
   public enum UnavailableReason: Hashable, Sendable {
+    /// Android 도구(SDK 의 emulator·platform-tools)를 쓸 수 없다. 켜기·끄기·초기화·앱 작업을 막고 삭제만 남긴다.
+    case sdkUnavailable
     /// emulator 가 죽는 이름 (공백·한글 등, 실측 SIGSEGV).
     case unsupportedName
     /// `path` 의 폴더가 없다.

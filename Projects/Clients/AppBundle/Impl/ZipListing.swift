@@ -77,10 +77,11 @@ struct ZipListing: Equatable {
     guard !name.isEmpty else {
       return nil
     }
+    // 링크(`l`)는 이름 끝 `/` 보다 먼저 본다: `Evil.app/` 인 링크를 폴더로 보면 "맨 위 .app 이 링크" 검사를 빠져나간다.
     let kind: Kind = switch columns[0].first {
     case "d": .directory
-    case _ where name.hasSuffix("/"): .directory
     case "l": .symlink
+    case _ where name.hasSuffix("/"): .directory
     case "-": .file
     default: .other
     }

@@ -90,4 +90,16 @@ struct AndroidEmulatorClientImplEraseTests {
     #expect(FileTree.exists(running, "cache.img"))
     #expect(FileTree.exists(missing, "cache.img"))
   }
+
+  @Test("초기화: SDK 를 쓸 수 없으면 sdkUnavailable 이고 아무것도 지우지 않는다 (삭제와 달리 SDK 가 필요하다)")
+  func eraseWithoutSDK() async throws {
+    let harness = try Harness(sdkChoice: .invalidSetting)
+    defer { harness.cleanUp() }
+    let folder = try harness.addDevice("Pixel")
+    try FileTree.file(folder, "cache.img")
+
+    #expect(await thrownError { try await harness.client.erase(AndroidVirtualDevice.ID("Pixel")) } == .sdkUnavailable)
+    #expect(FileTree.exists(folder, "cache.img"))
+    #expect(harness.command.invocations.isEmpty)
+  }
 }

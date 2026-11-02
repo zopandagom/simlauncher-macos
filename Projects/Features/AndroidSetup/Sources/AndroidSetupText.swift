@@ -151,6 +151,11 @@ enum AndroidSetupText {
   static let installButton = String(localized: "Android 도구 설치", bundle: .module)
   static let recheckButton = String(localized: "다시 확인", bundle: .module)
   static let deviceListButton = String(localized: "기기 목록 열기", bundle: .module)
+  /// 셋 다 설치되지 않았을 때 "기기 목록 열기" 아래 보조 문구.
+  static let deviceListWithoutToolsNote = String(
+    localized: "Android 도구가 없어도 기기 목록에서 기기를 삭제할 수 있습니다.",
+    bundle: .module
+  )
   static let recheckingLabel = String(localized: "확인 중…", bundle: .module)
   static let revealButton = String(localized: "Finder 에서 보기", bundle: .module)
   static let openSettingsButton = String(localized: "설정 열기", bundle: .module)

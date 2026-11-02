@@ -12,19 +12,23 @@ public struct AndroidAVDFacts: Sendable {
   public let imageInstalled: Bool
   /// `multiinstance.lock` 의 `F_GETLK`: true = WRLCK(실행 중), false = UNLCK, nil = 파일 없음·확인 실패.
   public let lockHeld: Bool?
+  /// Android 도구(emulator·platform-tools)를 쓸 수 있는지. false 면 이미지 설치 여부를 보지 못했다(`imageInstalled` 는 false).
+  public let sdkAvailable: Bool
 
   public init(
     name: String,
     folderExists: Bool,
     config: [(key: String, value: String)]?,
     imageInstalled: Bool,
-    lockHeld: Bool?
+    lockHeld: Bool?,
+    sdkAvailable: Bool
   ) {
     self.name = name
     self.folderExists = folderExists
     self.config = config
     self.imageInstalled = imageInstalled
     self.lockHeld = lockHeld
+    self.sdkAvailable = sdkAvailable
   }
 }
 
@@ -45,13 +49,17 @@ public enum AndroidDeviceJudge {
   static let cpuArchKey = "hw.cpu.arch"
   static let hingeKey = "hw.sensor.hinge"
 
-  /// 우선순위: 이름(`AndroidAVDName.isValid`) → 폴더 없음 → config 읽지 못함 → 이미지 경로 키 없음·형식 틀림 →
+  /// 우선순위: SDK 없음 → 이름(`AndroidAVDName.isValid`) → 폴더 없음 → config 읽지 못함 → 이미지 경로 키 없음·형식 틀림 →
   /// 이미지 abi 가 호스트와 다름 → `hw.cpu.arch` 없음(configUnreadable)·호스트 값과 다름(unsupportedABI) → 이미지 미설치 → available.
   /// `abi.type` 은 보지 않는다 (emulator 는 이미지 경로와 `hw.cpu.arch` 로 켠다).
+  /// SDK 없음을 맨 앞에 두어 모든 기기가 같은 이유를 보이고, 끄기도 이 이유로 막는다 (`canShutdown`).
   public static func availability(
     _ facts: AndroidAVDFacts,
     host: AndroidHostArchitecture
   ) -> AndroidVirtualDevice.Availability {
+    guard facts.sdkAvailable else {
+      return .unavailable(.sdkUnavailable)
+    }
     guard AndroidAVDName.isValid(facts.name) else {
       return .unavailable(.unsupportedName)
     }

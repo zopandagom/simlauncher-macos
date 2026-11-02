@@ -92,7 +92,8 @@ public final class SetupModel {
   /// 지금 설치의 식별자. 끝난 설치에서 늦게 온 진행 알림을 무시한다.
   @ObservationIgnored private var installID: UUID?
   /// App 이 종료를 확정했다. 이후 확인·설치를 시작하지 않고, 설치가 끝나도 다시 확인하지 않는다.
-  @ObservationIgnored private var isTerminating = false
+  /// 관찰되는 값이라 바뀌면 `canInstallRuntime` 을 쓰는 화면이 다시 그려진다 (바깥에는 그것과 `terminationAction` 으로만 보인다).
+  private var isTerminating = false
   /// 테스트용: 끝난 무진행 시계 Task 수. 화면·동작에 쓰지 않는다.
   @ObservationIgnored private(set) var stallTimerEndCount = 0
 

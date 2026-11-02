@@ -14,7 +14,8 @@ import WorkspaceInterface
 /// App 이 다른 대기(녹화 저장·런타임 설치)를 기다리는 동안 확인·설치 버튼을 끈다.
 /// 설정 창에서 SDK 위치가 바뀌면 App 이 `sdkLocationChanged()` 를 부른다.
 /// 앱 시작 뒤 첫 확인 결과가 셋 다 설치됨(위치가 폴더)이면 `isFinished` 가 true 가 되어 App 이 Android 기기 목록 화면을 보인다.
-/// 아니면 이 화면에서 설치가 끝나 셋 다 설치됨이 된 뒤 "기기 목록 열기"(`deviceListButtonTapped()`)로 넘어간다 (자동 전환하지 않는다).
+/// 아니면 이 화면의 "기기 목록 열기"(`deviceListButtonTapped()`)로 넘어간다 (설치가 끝나도 자동 전환하지 않는다).
+/// "기기 목록 열기" 는 확인이 끝나면 설치되지 않은 것이 있어도 열 수 있다 (Android 도구가 없어도 기기 목록에서 꺼진 기기를 지울 수 있다).
 /// 기기 목록의 "Android 도구" 버튼은 App 이 `reopened()` 로 이 화면을 다시 연다.
 @MainActor
 @Observable
@@ -59,9 +60,9 @@ public final class AndroidSetupModel {
       && !self.isTerminating
   }
 
-  /// 마지막 확인이 셋 다 설치됨(위치가 폴더)이고, 확인·계획·설치·설치 결과 확인 중이 아니다 ("기기 목록 열기").
+  /// 확인이 끝났고(설치되지 않은 것이 있거나 위치를 쓸 수 없어도), 확인·계획·설치·설치 결과 확인 중이 아니다 ("기기 목록 열기").
   public var canOpenDeviceList: Bool {
-    guard case let .checked(status) = self.checkState, Self.isDeviceListReady(status) else {
+    guard case .checked = self.checkState else {
       return false
     }
     return !self.isChecking && !self.isPlanning && self.install == nil && !self.isVerifyingInstall
@@ -249,7 +250,7 @@ public extension AndroidSetupModel {
 
   // MARK: - 내부
 
-  /// 기기 목록을 열 수 있는 확인 결과: 셋 다 설치됨이고 위치가 폴더다.
+  /// 첫 확인 뒤 기기 목록으로 곧바로 넘어갈 확인 결과: 셋 다 설치됨이고 위치가 폴더다.
   private static func isDeviceListReady(_ status: AndroidSDKStatus) -> Bool {
     guard case .folder = status.location else { return false }
     return status.isReady

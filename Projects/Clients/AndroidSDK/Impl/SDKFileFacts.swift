@@ -3,7 +3,8 @@ import Foundation
 
 /// 볼륨 사실. 테스트가 주입한다.
 struct SDKVolume: Equatable, Sendable {
-  /// `stat` 의 `st_dev`. 두 경로가 같은 볼륨인지 비교한다. 읽지 못하면 nil (다른 볼륨으로 본다).
+  /// `stat` 의 `st_dev`. 두 경로가 같은 볼륨인지 비교한다. 읽지 못하면 nil. nil 의 뜻은 부르는 쪽이 정한다: 받기 볼륨과의
+  /// 비교(`sameVolumeAsDownloads`·여유 비교)는 다른 볼륨으로 보고, 받을 패키지 폴더의 볼륨 검사는 확인하지 못한 것으로 보고 진행한다.
   let device: UInt64?
   /// `volumeNameKey`.
   let name: String?
@@ -20,7 +21,7 @@ struct SDKVolume: Equatable, Sendable {
     return self.supportsSymbolicLinks == nil && self.supportsExclusiveRenaming == nil ? nil : true
   }
 
-  /// 실제 볼륨 값.
+  /// 실제 볼륨 값. 실제 경로를 받는다 (`AndroidSDKClientImpl` 이 `SDKFiles.volumeLocation` 으로 푼다).
   static func read(_ url: URL) -> SDKVolume {
     var info = stat()
     let device = stat(url.path(percentEncoded: false), &info) == 0 ? UInt64(info.st_dev) : nil
@@ -134,7 +135,17 @@ enum SDKFiles {
     return stat(url.path(percentEncoded: false), &info) == 0 ? url : self.nearestExistingAncestor(of: url)
   }
 
+  /// 볼륨 값(이름·성질·여유 공간)을 읽을 곳: `RealPath.of(url)` 이 있으면 그 경로, 없으면(없는 경로·루프) 받은 `url` 그대로.
+  /// `URL.resourceValues` 의 볼륨 값은 마지막 링크를 따라가지 않는다(끝 `/` 를 붙여도. 중간 링크는 따라간다, 실측).
+  static func volumeLocation(_ url: URL) -> URL {
+    guard let real = RealPath.of(url) else {
+      return url
+    }
+    return URL(filePath: real, directoryHint: .isDirectory)
+  }
+
   /// `volumeAvailableCapacityForImportantUsage`, nil 이면 `volumeAvailableCapacity`, 둘 다 없으면 nil.
+  /// 실제 경로를 받는다 (`AndroidSDKClientImpl` 이 `SDKFiles.volumeLocation` 으로 푼다).
   static func availableCapacity(_ url: URL) -> Int64? {
     let values = try? url.resourceValues(forKeys: [
       .volumeAvailableCapacityForImportantUsageKey,

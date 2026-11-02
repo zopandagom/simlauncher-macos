@@ -16,7 +16,8 @@ public struct AndroidSDKClientImpl: AndroidSDKClient {
   private let volume: @Sendable (URL) -> SDKVolume
   private let downloadsDirectory: URL
   private let endpoints: RepositoryEndpoints
-  private let staging = StagingFolders()
+  /// 지금 쓰는 스테이징 이름 등록부 (테스트가 지금 쓰는 이름을 등록한다).
+  let staging = StagingFolders()
 
   /// App 은 이 Impl 을 하나만 만든다 (지금 쓰는 스테이징 목록을 함께 쓴다).
   /// - Parameters:
@@ -43,6 +44,8 @@ public struct AndroidSDKClientImpl: AndroidSDKClient {
   }
 
   /// 테스트용: 여유 공간·볼륨 읽기, 받기 임시 폴더(볼륨 비교용), 저장소 주소를 정한다. 여유가 nil 이면 그 비교를 건너뛴다.
+  /// 두 읽기 함수는 `SDKFiles.volumeLocation` 으로 감싸 저장한다: Impl 안의 모든 볼륨 값(성질·이름·여유 공간) 조회가
+  /// 링크를 따라간 실제 경로를 넘긴다 (주입한 함수도 실제 경로를 받는다).
   init(
     download: any DownloadClient,
     command: any CommandClient,
@@ -57,8 +60,8 @@ public struct AndroidSDKClientImpl: AndroidSDKClient {
     self.command = command
     self.host = AndroidHostArchitecture(hostArchitecture)
     self.sdkRoot = sdkRoot
-    self.availableCapacity = availableCapacity
-    self.volume = volume
+    self.availableCapacity = { availableCapacity(SDKFiles.volumeLocation($0)) }
+    self.volume = { volume(SDKFiles.volumeLocation($0)) }
     self.downloadsDirectory = downloadsDirectory
     self.endpoints = endpoints
   }
@@ -169,11 +172,8 @@ public struct AndroidSDKClientImpl: AndroidSDKClient {
 
   @concurrent
   public func removeLeftovers() async {
-    if case let .root(root) = await self.sdkRoot(),
-       SDKFiles.rootKind(root.url.path(percentEncoded: false)) == .directory,
-       let real = RealPath.of(root.url)
-    {
-      self.staging.removeLeftovers(root: real)
+    if case let .root(root) = await self.sdkRoot() {
+      await self.removeLeftovers(in: root)
     }
     await self.download.removeLeftoverDownloads()
   }
@@ -234,7 +234,9 @@ public struct AndroidSDKClientImpl: AndroidSDKClient {
   }
 
   /// 위치(없으면 기본 위치만 가장 가까운 있는 조상)와, 받을 패키지마다 최종 경로의 가장 가까운 있는 조상이 쓸 수 있는 디렉터리여야 하고,
-  /// 위치(또는 그 조상)의 볼륨이 링크와 `RENAME_EXCL` 을 지원해야 한다 (`SDKVolume.supportsInstall`. 볼륨은 위치에서만 본다).
+  /// 위치(또는 그 조상)의 볼륨이 링크와 `RENAME_EXCL` 을 지원해야 한다 (`SDKVolume.supportsInstall`).
+  /// 볼륨 값은 링크를 따라간 실제 경로에서 읽는다. 스테이징이 SDK 루트에 있어, 받을 패키지의 최종 경로 조상(링크는 따라간다)이
+  /// 루트와 다른 볼륨이면 rename 이 볼륨을 넘지 못한다(EXDEV, 실측). 받기 전에 `.packageFolderOnOtherVolume` 으로 거절한다.
   /// 고른 폴더가 없거나 파일·깨진 링크면 쓸 수 없다.
   private func checkWritable(_ root: AndroidSDKRoot, pending: [AndroidSelectedPackage]) throws(AndroidSDKInstallError) {
     let rootKind = SDKFiles.rootKind(root.url.path(percentEncoded: false))
@@ -257,6 +259,10 @@ public struct AndroidSDKClientImpl: AndroidSDKClient {
       let ancestor = SDKFiles.nearestExistingAncestor(of: root.destination(for: package.path))
       guard SDKFiles.isWritableDirectory(ancestor) else {
         throw .sdkFolderUnavailable
+      }
+      // device 를 읽지 못하면(어느 한쪽이 nil) 확인하지 못한 것으로 보고 진행한다 (드물게 뒤의 rename 이 `.sdkFolderUnavailable`).
+      if self.isOnOtherVolume(ancestor, than: rootFolder) {
+        throw .packageFolderOnOtherVolume(package.component)
       }
     }
   }
@@ -303,5 +309,22 @@ private extension Int64 {
   func addingClamped(_ other: Int64) -> Int64 {
     let (sum, overflow) = self.addingReportingOverflow(other)
     return overflow ? .max : sum
+  }
+}
+
+public extension AndroidSDKClientImpl {
+  @concurrent
+  func removeLeftovers(in root: AndroidSDKRoot) async {
+    if SDKFiles.rootKind(root.url.path(percentEncoded: false)) == .directory, let real = RealPath.of(root.url) {
+      self.staging.removeLeftovers(root: real)
+    }
+  }
+
+  /// 두 위치의 device 를 모두 읽었고 서로 다를 때만 true.
+  private func isOnOtherVolume(_ url: URL, than other: URL) -> Bool {
+    guard let device = self.volume(url).device, let otherDevice = self.volume(other).device else {
+      return false
+    }
+    return device != otherDevice
   }
 }

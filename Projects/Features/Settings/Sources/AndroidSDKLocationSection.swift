@@ -71,7 +71,7 @@ struct AndroidSDKLocationSection: View {
       }
       .disabled(!self.model.canChooseSDKFolder)
       Button(SettingsText.androidSDKResetButton) {
-        self.model.sdkDefaultButtonTapped()
+        Task { await self.model.sdkDefaultButtonTapped() }
       }
       .disabled(!self.model.canResetSDKFolder)
       if self.model.isInspectingSDKFolder {

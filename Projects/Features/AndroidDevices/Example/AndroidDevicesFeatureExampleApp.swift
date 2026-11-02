@@ -101,7 +101,8 @@ enum DemoScenario: String, CaseIterable, Hashable {
   case createFailure = "실패: 만들기 (이름 충돌)"
   case folderKept = "삭제: 폴더 남김 (정보 알림)"
   case eraseUnsafe = "실패: 초기화 (기기 폴더 위치)"
-  case sdkUnavailable = "목록 실패: Android 도구 없음"
+  case sdkUnavailable = "Android 도구 없음 (삭제만)"
+  case sdkUnavailableEmpty = "Android 도구 없음 · 기기 없음"
   case avdFolderUnavailable = "목록 실패: 기기 폴더 읽기"
   case slowInstall = "앱 설치 오래 걸림 (설치 중 유지)"
   case inspectFailure = "설치 실패: 검사 (.aab)"
@@ -245,6 +246,11 @@ enum DemoScenario: String, CaseIterable, Hashable {
       AndroidDeviceInventory(devices: [], creationOptions: .emptySample)
     case .noImageWithDevices:
       AndroidDeviceInventory(devices: [.phoneSample], creationOptions: .emptySample)
+    case .sdkUnavailable:
+      // 잠금 파일만으로 읽은 목록: 꺼진 기기(삭제만)와 잠금으로 켜진 기기(끄기·삭제 모두 막힘).
+      .sdkUnavailableSample(devices: [.sdkUnavailableShutdownSample, .sdkUnavailableBootedSample])
+    case .sdkUnavailableEmpty:
+      .sdkUnavailableSample(devices: [])
     case .outsideBooting:
       AndroidDeviceInventory(devices: [.phoneSample, .bootingSample], creationOptions: .sample)
     case .multiDevice, .multiDeviceSlowDownload, .multiDeviceFailure:
@@ -258,8 +264,8 @@ enum DemoScenario: String, CaseIterable, Hashable {
     switch self {
     case .slowBoot, .bootFailure, .shutdownFailure, .createFailure, .folderKept, .eraseUnsafe:
       self.configureDeviceOperations(fake)
-    case .sdkUnavailable:
-      fake.setFetchError(.sdkUnavailable)
+    case .sdkUnavailable, .sdkUnavailableEmpty:
+      break
     case .avdFolderUnavailable:
       fake.setFetchError(.avdFolderUnavailable)
     default:
@@ -464,8 +470,12 @@ private func demoPreview(_ scenario: DemoScenario) -> some View {
   demoPreview(.outsideBooting)
 }
 
-#Preview("목록 실패") {
+#Preview("Android 도구 없음") {
   demoPreview(.sdkUnavailable)
+}
+
+#Preview("목록 실패") {
+  demoPreview(.avdFolderUnavailable)
 }
 
 #Preview("받는 중") {

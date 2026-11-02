@@ -99,10 +99,18 @@ enum AVDFolderScan {
     return url
   }
 
-  /// 판정에 쓸 사실. 이미지 설치 여부는 지금 SDK(`tools`)에서 본다.
-  static func facts(_ entry: AVDEntry, tools: SDKTools) -> AndroidAVDFacts {
+  /// 판정에 쓸 사실. 이미지 설치 여부는 지금 SDK(`tools`)에서 본다. `tools` 가 nil(SDK 를 쓸 수 없음)이면 이미지 설치 여부를
+  /// 보지 않고(`imageInstalled` false) `sdkAvailable` false. 잠금 조회는 SDK 를 쓰지 않아 그대로 한다.
+  static func facts(_ entry: AVDEntry, tools: SDKTools?) -> AndroidAVDFacts {
     guard let folder = entry.folder, FileFacts.isDirectory(folder) else {
-      return AndroidAVDFacts(name: entry.name, folderExists: false, config: nil, imageInstalled: false, lockHeld: nil)
+      return AndroidAVDFacts(
+        name: entry.name,
+        folderExists: false,
+        config: nil,
+        imageInstalled: false,
+        lockHeld: nil,
+        sdkAvailable: tools != nil
+      )
     }
     let configURL = folder.appending(path: self.configFileName, directoryHint: .notDirectory)
     let config = FileFacts.read(configURL, limit: AVDIniFile.maxByteCount).flatMap(AVDIniFile.parse)
@@ -113,8 +121,9 @@ enum AVDFolderScan {
       name: entry.name,
       folderExists: true,
       config: config,
-      imageInstalled: image.map(tools.isInstalled) ?? false,
-      lockHeld: AVDLock.isHeld(folder: folder)
+      imageInstalled: tools.flatMap { tools in image.map(tools.isInstalled) } ?? false,
+      lockHeld: AVDLock.isHeld(folder: folder),
+      sdkAvailable: tools != nil
     )
   }
 }

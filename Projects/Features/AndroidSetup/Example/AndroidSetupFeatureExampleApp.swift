@@ -12,7 +12,8 @@ import WorkspaceTesting
 /// `WorkspaceClientFake` 를 주입한다. 파일·네트워크·명령을 쓰지 않으므로 아무것도 받거나 설치하지 않고 Finder 도 열리지 않는다.
 /// 왼쪽 목록에서 상태를 고른다: "설치해 보기" 는 계획 받기 → 동의 시트 → 패키지별 진행 → 끝나면 셋 다 설치됨으로 바뀐다.
 /// 계획 받는 중·동의 대기·진행 단계·실패 상태는 고르면 "Android 도구 설치" 를 대신 눌러 그 상태에서 멈춘다.
-/// 셋 다 설치됨으로 넘어가면(첫 확인이 준비됨이거나 "기기 목록 열기") 기기 목록 자리와 "Android 도구" 버튼(`reopened()`)을 보인다.
+/// 기기 목록으로 넘어가면(첫 확인이 셋 다 설치됨이거나 "기기 목록 열기") 기기 목록 자리와 "Android 도구" 버튼(`reopened()`)을 보인다.
+/// "기기 목록 열기" 는 확인이 끝나면 늘 보이므로 "일부 설치·쓸 수 없음"·"빈 상태" 에서도 (보통 버튼과 보조 문구로) 눌러 볼 수 있다.
 @main
 struct AndroidSetupFeatureExampleApp: App {
   @State private var scenario: DemoScenario = .install
@@ -32,7 +33,8 @@ struct AndroidSetupFeatureExampleApp: App {
         .navigationSplitViewColumnWidth(min: 200, ideal: 220)
       } detail: {
         if let model = self.models[self.scenario] {
-          // App 처럼 셋 다 설치됨으로 넘어가면 기기 목록 자리를 보인다 (기기 목록은 다른 Feature 라 여기 없다).
+          // App 처럼 기기 목록으로 넘어가면(첫 확인이 셋 다 설치됨이거나 "기기 목록 열기") 기기 목록 자리를 보인다
+          // (기기 목록은 다른 Feature 라 여기 없다).
           if model.isFinished {
             DeviceListPlaceholder(model: model)
           } else {
@@ -76,6 +78,7 @@ enum DemoScenario: String, CaseIterable, Hashable {
   case downloadFailed = "실패: 패키지 받기"
   case checksumFailed = "실패: 손상"
   case spaceFailed = "실패: 저장 공간"
+  case otherVolumeFailed = "실패: 다른 디스크의 하위 폴더"
   case cancelled = "취소됨"
 
   var title: String {
@@ -114,6 +117,7 @@ enum DemoScenario: String, CaseIterable, Hashable {
     .downloadFailed: .download(.systemImage, .connectionLost),
     .checksumFailed: .checksumMismatch(.emulator),
     .spaceFailed: .insufficientDiskSpace(.systemImage, required: 9_100_000_000, available: 3_200_000_000),
+    .otherVolumeFailed: .packageFolderOnOtherVolume(.systemImage),
     .cancelled: .cancelled,
   ]
 
@@ -217,6 +221,10 @@ private struct InstallingDemoClient: AndroidSDKClient {
 
   func removeLeftovers() async {
     await self.fake.removeLeftovers()
+  }
+
+  func removeLeftovers(in root: AndroidSDKRoot) async {
+    await self.fake.removeLeftovers(in: root)
   }
 
   func inspectCandidateFolder(_ url: URL) async -> (candidate: AndroidSDKFolderCandidate, writable: Bool) {

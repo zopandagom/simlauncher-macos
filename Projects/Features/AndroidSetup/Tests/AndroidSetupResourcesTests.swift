@@ -198,7 +198,8 @@ enum AndroidSetupTextCatalog {
   static let installErrors: [AndroidSDKInstallError] = [
     .download(.emulator, .offline), .checksumMismatch(.emulator), .archiveUnreadable(.emulator),
     .archiveUnsafe(.emulator), .insufficientDiskSpace(.emulator, required: 1, available: nil),
-    .sdkFolderUnavailable, .destinationExists(.emulator), .licenseNotAccepted, .sdkLocationChanged, .cancelled,
+    .sdkFolderUnavailable, .packageFolderOnOtherVolume(.systemImage), .destinationExists(.emulator),
+    .licenseNotAccepted, .sdkLocationChanged, .cancelled,
   ]
 
   /// 서식이 없는 문구 (키 = 값).
@@ -211,7 +212,7 @@ enum AndroidSetupTextCatalog {
       AndroidSetupText.lockedLocationNote, AndroidSetupText.installButton, AndroidSetupText.recheckButton,
       AndroidSetupText.recheckingLabel, AndroidSetupText.revealButton, AndroidSetupText.openSettingsButton,
       AndroidSetupText.cancelButton, AndroidSetupText.okButton, AndroidSetupText.fetchingPlanLabel,
-      AndroidSetupText.deviceListButton,
+      AndroidSetupText.deviceListButton, AndroidSetupText.deviceListWithoutToolsNote,
       AndroidSetupText.consentTitle, AndroidSetupText.consentMessage, AndroidSetupText.consentRecordNote,
       AndroidSetupText.acceptButton, AndroidSetupText.downloadSizeLabel, AndroidSetupText.installSizeLabel,
       AndroidSetupText.requiredSpaceLabel, AndroidSetupText.unknownVolumeName,
@@ -240,7 +241,7 @@ enum AndroidSetupTextCatalog {
     texts += self.downloadFailures.map { AndroidSetupText.message(for: $0) }
     texts += self.installErrors.compactMap { error -> String? in
       switch error {
-      case .download, .insufficientDiskSpace, .destinationExists:
+      case .download, .insufficientDiskSpace, .packageFolderOnOtherVolume, .destinationExists:
         nil
       default:
         AndroidSetupText.message(for: error)
@@ -290,6 +291,11 @@ enum AndroidSetupTextCatalog {
         text: AndroidSetupText.noCompatiblePackage(name)
       ),
       Formatted(key: "%@ 을(를) 받지 못했습니다.", arguments: [name], text: AndroidSetupText.componentFailed(name)),
+      Formatted(
+        key: "%@ 폴더(또는 그 안의 폴더)가 SDK 폴더와 다른 디스크에 있어 설치할 수 없습니다. 그 폴더를 같은 디스크로 옮기거나 설정에서 다른 SDK 폴더를 고르세요.",
+        arguments: [AndroidSetupText.componentTitle(.systemImage)],
+        text: AndroidSetupText.message(for: AndroidSDKInstallError.packageFolderOnOtherVolume(.systemImage))
+      ),
       Formatted(
         key: "같은 이름의 폴더가 이미 있어 %@ 을(를) 설치하지 않았습니다. Android Studio 가 설치 중이었을 수 있습니다. 다시 확인을 누르세요.",
         arguments: [name],

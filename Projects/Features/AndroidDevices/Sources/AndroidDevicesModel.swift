@@ -19,7 +19,8 @@ import WorkspaceInterface
 /// `AndroidAppSheetsModel` 에 있고, 확정한 요청을 App 이 넘긴다). Client 호출은 흐름 타입이 맡는다: 기기 명령은
 /// `AndroidDeviceCommandFlow`, 앱 작업은 `AndroidAppInstallFlow`, 스크린샷·녹화(예약·찍기·녹화·보이기)는 `AndroidScreenCaptureFlow`.
 /// 녹화는 Model 이 소유한 Task 로 돌고, 녹화 중인 기기는 끄기·삭제·초기화를 막으며, 다시 읽은 목록에서 없거나 꺼졌으면 멈춘다.
-/// Android 도구(SDK) 상태 확인·설치는 여기서 하지 않고, "Android 도구" 버튼으로 App 에 도구 화면을 요청한다.
+/// Android 도구(SDK) 상태 확인·설치는 여기서 하지 않고, "Android 도구" 버튼으로 App 에 도구 화면을 요청한다. 도구를 쓸 수 없으면
+/// 목록은 잠금 파일만으로 읽혀(`isSDKUnavailable`) 꺼진 기기의 삭제만 되고, 목록 위 안내 줄이 도구 화면으로 이끈다.
 /// 상태를 바꾸지 않는 읽기 API(`canCreateDevice` 등)는 `AndroidDevicesModel+Reading.swift` 에 있다.
 @MainActor
 @Observable
@@ -41,6 +42,9 @@ public final class AndroidDevicesModel {
     foldableImages: [],
     host: .aarch64
   )
+  /// 마지막으로 읽은 목록이 Android 도구(SDK)를 쓸 수 없어 잠금 파일만으로 읽은 목록이다 (모든 기기가 쓸 수 없음,
+  /// 꺼진 기기의 삭제만 된다). 화면이 목록 위 안내 줄·빈 화면에 "Android 도구 열기" 를 보인다. 다시 읽기가 실패하면 이전 값을 유지한다.
+  public private(set) var isSDKUnavailable = false
   /// 만들기 시트 초안. nil 이면 시트가 닫혀 있다.
   public private(set) var creationDraft: AndroidDeviceCreationDraft?
   /// 기기를 만드는 중이다. 한 번에 하나만 만든다.
@@ -61,6 +65,7 @@ public final class AndroidDevicesModel {
   /// 기기별 녹화 작업. Model 이 소유해 중지·기기 꺼짐·앱 종료가 이것을 취소해 멈춘다 (View 의 Task 취소는 전해지지 않는다).
   @ObservationIgnored private var recordingTasks: [AndroidVirtualDevice.ID: Task<Void, Never>] = [:]
   /// 앱 종료를 기다리는 중이다. 새 녹화를 시작하지 않는다 (곧 종료하므로 되돌리지 않는다).
+  /// 녹화 시작의 가드로만 쓰고 화면 상태를 정하는 값은 읽지 않아 관찰하지 않는다 (종료 대기 중 "녹화" 누름은 무시된다).
   @ObservationIgnored private var isTerminating = false
   /// 기기별 받기 작업 (받기 묶음의 기기는 같은 Task). Model 이 소유해 받기 취소(`downloadCancelTapped(_:)`)가 이것만 멈춘다.
   /// 결과를 받은 직후, 어느 기기도 풀리기 전에 지운다.
@@ -536,6 +541,7 @@ extension AndroidDevicesModel {
             self.recordingTasks[id]?.cancel()
           }
           self.creationOptions = inventory.creationOptions
+          self.isSDKUnavailable = !inventory.sdkAvailable
         } catch {
           self.loadFailed(error)
         }
@@ -548,9 +554,10 @@ extension AndroidDevicesModel {
     await task.value
   }
 
-  /// 목록이 있으면 알림만 쌓고 목록을 유지한다. 목록이 없거나 Android 도구를 찾지 못했으면(목록이 더는 맞지 않는다) 실패 화면.
+  /// 목록이 있으면 알림만 쌓고 목록을 유지한다. 목록이 없으면 실패 화면 (Android 도구를 찾지 못한 경우는 실패가 아니라
+  /// `isSDKUnavailable` 인 목록으로 온다).
   private func loadFailed(_ error: AndroidEmulatorError) {
-    if case .loaded = self.listState, error != .sdkUnavailable {
+    if case .loaded = self.listState {
       self.enqueue(.refreshFailed(error))
       return
     }

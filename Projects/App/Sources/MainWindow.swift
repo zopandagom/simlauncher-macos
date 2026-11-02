@@ -6,8 +6,8 @@ import SwiftUI
 
 /// 메인 창. 사이드바로 iOS / Android 칸을 나눈다.
 /// iOS 칸은 Setup 이 끝나면(`SetupModel.isFinished`) 기기 목록, 아니면 Setup 이다. Android 칸은 Xcode 준비 여부와 관계없이
-/// 열리고, Android 도구가 준비되면(`AndroidSetupModel.isFinished`) Android 기기 목록, 아니면 Android 도구 화면이다. 칸을 옮기면 떠난 칸의 View 가 사라지고,
-/// 돌아오면 새로 만들어져 `onAppear` 가 다시 읽는다
+/// 열리고, 도구 화면에서 기기 목록으로 넘어가면(`AndroidSetupModel.isFinished`: 첫 확인이 셋 다 설치됨이거나 "기기 목록 열기")
+/// Android 기기 목록, 아니면 Android 도구 화면이다. 칸을 옮기면 떠난 칸의 View 가 사라지고, 돌아오면 새로 만들어져 `onAppear` 가 다시 읽는다
 /// (계획 받기·설치·녹화 같은 진행은 Model 이 소유해 계속된다). 고른 칸은 View 일시 상태라 앱을 다시 켜면 iOS 칸이다.
 struct MainWindow: View {
   let setupModel: SetupModel

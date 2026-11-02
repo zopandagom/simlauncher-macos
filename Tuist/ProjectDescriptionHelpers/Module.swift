@@ -73,7 +73,8 @@ public enum Feature: String, CaseIterable {
   case settings = "Settings"
   /// Android 도구(SDK) 상태 확인과 없는 구성 요소 설치(라이선스 동의, 진행률·취소). 메인 창 사이드바의 Android 칸.
   case androidSetup = "AndroidSetup"
-  /// Android 기기(AVD) 목록과 켜기·끄기·만들기·삭제·초기화, 함께 켜기. 메인 창 사이드바 Android 칸에서 Android 도구가 준비되면 보인다.
+  /// Android 기기(AVD) 목록과 켜기·끄기·만들기·삭제·초기화, 함께 켜기. 메인 창 사이드바 Android 칸에서 첫 확인이 셋 다 설치됨이면
+  /// 곧바로, 아니면 도구 화면의 "기기 목록 열기" 로 보인다 (도구가 없으면 꺼진 기기 삭제만).
   case androidDevices = "AndroidDevices"
 
   public var name: String { "\(self.rawValue)Feature" }
