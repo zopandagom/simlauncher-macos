@@ -19,8 +19,10 @@ public protocol AndroidSDKClient: Sendable {
 
   /// 계획의 패키지를 순서대로 설치한다. 시작 때(패키지 전) 차례로: provider 의 지금 위치가 `plan.root` 와 다르면
   /// `.sdkLocationChanged` → `acceptedLicenses`(지문)에 계획의 라이선스가 모두 없으면 `.licenseNotAccepted` →
-  /// 받을 패키지의 최종 경로의 가장 가까운 있는 조상과 위치에 쓸 수 없으면 `.sdkFolderUnavailable` → 필요 공간 어림
-  /// (archive 크기 × 3 의 합을 SDK 볼륨, 가장 큰 archive 를 받기 볼륨과 비교)이 모자라면 `.insufficientDiskSpace`.
+  /// 위치에 쓸 수 없으면 `.sdkFolderUnavailable` → 받을 패키지마다 차례로, 최종 경로의 가장 가까운 있는 조상에 쓸 수 없으면
+  /// `.sdkFolderUnavailable`, 그 조상(링크는 따라간다)이 SDK 위치와 다른 볼륨이면 `.packageFolderOnOtherVolume` →
+  /// 필요 공간 어림(archive 크기 × 3 의 합을 SDK 위치의 실제 경로 볼륨, 가장 큰 archive 를 받기 볼륨과 비교)이 모자라면
+  /// `.insufficientDiskSpace`.
   /// 어느 것이든 걸리면 아무것도 받지 않는다. 그 뒤 `plan.root` 에 끝까지 설치하고 provider 를 다시 부르지 않는다.
   /// 패키지마다 시작 직전에 최종 경로를 다시 보고 무엇이든 있으면 건너뛴다(alreadyPresent). 진행은 순서대로 알린다
   /// (앞 알림이 끝난 뒤 다음). 패키지 하나가 실패하면 나머지는 하지 않는다.
@@ -90,6 +92,9 @@ public enum AndroidSDKInstallError: Error, Hashable, Sendable {
   case insufficientDiskSpace(AndroidSDKComponent, required: Int64, available: Int64?)
   /// SDK 폴더를 만들 수 없다·쓸 수 없다·파일이 있다·링크나 `RENAME_EXCL` 미지원 볼륨.
   case sdkFolderUnavailable
+  /// 받을 패키지의 최종 경로의 가장 가까운 있는 조상(링크는 따라간다)이 SDK 위치와 다른 볼륨이다
+  /// (스테이징이 SDK 위치에 있어 옮기지 못한다). 아무것도 받지 않았다.
+  case packageFolderOnOtherVolume(AndroidSDKComponent)
   /// 최종 경로에 이미 무엇인가 생겼다 (Android Studio 가 그사이 설치했을 수 있다). 덮어쓰지 않았다.
   case destinationExists(AndroidSDKComponent)
   /// 계획의 라이선스 중 동의하지 않은 원문이 있다. 아무것도 하지 않았다.
