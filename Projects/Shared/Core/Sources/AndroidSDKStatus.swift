@@ -86,7 +86,8 @@ public struct AndroidSDKStatus: Hashable, Sendable {
     Set(self.components.filter { $0.value == .missing }.keys)
   }
 
-  /// 셋 다 설치됨 (7-B 의 진입 조건).
+  /// 셋 다 설치됨. 첫 확인 뒤 기기 목록으로 곧바로 넘어가는 조건이다 (`AndroidSetupModel`).
+  /// 아니어도 도구 화면의 "기기 목록 열기" 로 기기 목록에 갈 수 있다 (도구가 없으면 꺼진 기기 삭제만).
   public var isReady: Bool {
     AndroidSDKComponent.allCases.allSatisfy {
       if case .installed = self.components[$0] {
