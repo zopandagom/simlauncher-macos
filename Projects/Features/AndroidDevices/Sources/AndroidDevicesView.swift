@@ -62,10 +62,7 @@ public struct AndroidDevicesView: View {
           .disabled(!self.model.canCreateDevice)
           // 비활성 툴바 버튼에는 툴팁이 잘 뜨지 않아 보조로만 둔다. 이유는 글자로 보인다
           // (기기가 있으면 목록 위 안내 줄, 없으면 빈 화면 안내).
-          .help(
-            self.model.isCreationUnavailable
-              ? AndroidDevicesText.createUnavailableNotice : AndroidDevicesText.createDeviceButton
-          )
+          .help(self.createButtonHelp)
         }
         ToolbarItem {
           Button {
@@ -201,6 +198,15 @@ public struct AndroidDevicesView: View {
       }
   }
 
+  /// 툴바 + 의 툴팁. 비활성이면 이유(Android 도구를 쓸 수 없음이 먼저), 아니면 버튼 이름.
+  private var createButtonHelp: String {
+    if self.model.isSDKUnavailable {
+      return AndroidDevicesText.sdkUnavailableNotice
+    }
+    return self.model.isCreationUnavailable
+      ? AndroidDevicesText.createUnavailableNotice : AndroidDevicesText.createDeviceButton
+  }
+
   /// 앞 알림의 닫기 처리가 끝난 뒤 false → true 전이가 생기도록 다음 실행 차례에 띄운다.
   private func showFirstNotice() {
     guard let next = self.model.notices.first else {
@@ -233,7 +239,7 @@ public struct AndroidDevicesView: View {
           Task { await self.model.refreshButtonTapped() }
         }
         .disabled(self.model.isRefreshing)
-        // 읽기 실패는 대개 Android 도구 문제라 도구 화면으로 가는 길을 함께 둔다.
+        // Android 도구를 찾지 못한 경우는 여기 오지 않지만(안내 줄이 있는 목록), 다른 읽기 실패에도 도구 화면으로 가는 길을 둔다.
         Button(AndroidDevicesText.openSetupButton) {
           self.model.setupButtonTapped()
         }
@@ -247,16 +253,20 @@ public struct AndroidDevicesView: View {
     }
   }
 
-  /// 기기가 없을 때. 만들 이미지가 없으면 도구 화면으로, 있으면 만들기로 안내한다.
+  /// 기기가 없을 때. Android 도구를 쓸 수 없거나 만들 이미지가 없으면 도구 화면으로, 있으면 만들기로 안내한다.
   private var emptyView: some View {
-    let noImage = self.model.isCreationUnavailable
+    let sdkUnavailable = self.model.isSDKUnavailable
+    let noImage = sdkUnavailable || self.model.isCreationUnavailable
+    let title = sdkUnavailable
+      ? AndroidDevicesText.sdkUnavailableTitle
+      : noImage ? AndroidDevicesText.noImageTitle : AndroidDevicesText.emptyTitle
+    let message = sdkUnavailable
+      ? AndroidDevicesText.sdkUnavailableMessage
+      : noImage ? AndroidDevicesText.noImageMessage : AndroidDevicesText.emptyMessage
     return ContentUnavailableView {
-      Label(
-        noImage ? AndroidDevicesText.noImageTitle : AndroidDevicesText.emptyTitle,
-        systemImage: "smartphone"
-      )
+      Label(title, systemImage: "smartphone")
     } description: {
-      Text(noImage ? AndroidDevicesText.noImageMessage : AndroidDevicesText.emptyMessage)
+      Text(message)
     } actions: {
       if noImage {
         Button(AndroidDevicesText.openSetupButton) {
@@ -288,18 +298,22 @@ extension AndroidDevicesView {
       }
     }
     .safeAreaInset(edge: .top, spacing: 0) {
-      if self.model.isCreationUnavailable {
-        self.createUnavailableNotice
+      // 둘은 함께 보이지 않는다 (Android 도구를 쓸 수 없으면 선택지도 비어 있다).
+      if self.model.isSDKUnavailable {
+        self.listNotice(AndroidDevicesText.sdkUnavailableNotice)
+      } else if self.model.isCreationUnavailable {
+        self.listNotice(AndroidDevicesText.createUnavailableNotice)
       }
     }
   }
 
-  /// 기기는 있지만 만들 이미지가 없을 때 목록 위에 고정해 보이는 안내 줄 (툴바 + 가 비활성인 이유)과 도구 화면 버튼.
-  private var createUnavailableNotice: some View {
+  /// 기기가 있을 때 목록 위에 고정해 보이는 안내 줄과 도구 화면 버튼. Android 도구를 쓸 수 없을 때(켜기·끄기·만들기가 막힌
+  /// 이유)와 만들 이미지가 없을 때(툴바 + 가 비활성인 이유)에 쓴다.
+  private func listNotice(_ text: String) -> some View {
     VStack(spacing: 0) {
       HStack(spacing: 12) {
         Label {
-          Text(AndroidDevicesText.createUnavailableNotice)
+          Text(text)
             .fixedSize(horizontal: false, vertical: true)
         } icon: {
           Image(systemName: "info.circle")
