@@ -20,7 +20,7 @@ struct SDKVolume: Equatable, Sendable {
     return self.supportsSymbolicLinks == nil && self.supportsExclusiveRenaming == nil ? nil : true
   }
 
-  /// 실제 볼륨 값.
+  /// 실제 볼륨 값. 실제 경로를 받는다 (`AndroidSDKClientImpl` 이 `SDKFiles.volumeLocation` 으로 푼다).
   static func read(_ url: URL) -> SDKVolume {
     var info = stat()
     let device = stat(url.path(percentEncoded: false), &info) == 0 ? UInt64(info.st_dev) : nil
@@ -134,7 +134,17 @@ enum SDKFiles {
     return stat(url.path(percentEncoded: false), &info) == 0 ? url : self.nearestExistingAncestor(of: url)
   }
 
+  /// 볼륨 값(이름·성질·여유 공간)을 읽을 곳: `RealPath.of(url)` 이 있으면 그 경로, 없으면(없는 경로·루프) 받은 `url` 그대로.
+  /// `URL.resourceValues` 의 볼륨 값은 마지막 링크를 따라가지 않는다(끝 `/` 를 붙여도. 중간 링크는 따라간다, 실측).
+  static func volumeLocation(_ url: URL) -> URL {
+    guard let real = RealPath.of(url) else {
+      return url
+    }
+    return URL(filePath: real, directoryHint: .isDirectory)
+  }
+
   /// `volumeAvailableCapacityForImportantUsage`, nil 이면 `volumeAvailableCapacity`, 둘 다 없으면 nil.
+  /// 실제 경로를 받는다 (`AndroidSDKClientImpl` 이 `SDKFiles.volumeLocation` 으로 푼다).
   static func availableCapacity(_ url: URL) -> Int64? {
     let values = try? url.resourceValues(forKeys: [
       .volumeAvailableCapacityForImportantUsageKey,

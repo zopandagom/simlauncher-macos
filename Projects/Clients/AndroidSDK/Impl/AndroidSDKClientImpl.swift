@@ -44,6 +44,8 @@ public struct AndroidSDKClientImpl: AndroidSDKClient {
   }
 
   /// 테스트용: 여유 공간·볼륨 읽기, 받기 임시 폴더(볼륨 비교용), 저장소 주소를 정한다. 여유가 nil 이면 그 비교를 건너뛴다.
+  /// 두 읽기 함수는 `SDKFiles.volumeLocation` 으로 감싸 저장한다: Impl 안의 모든 볼륨 값(성질·이름·여유 공간) 조회가
+  /// 링크를 따라간 실제 경로를 넘긴다 (주입한 함수도 실제 경로를 받는다).
   init(
     download: any DownloadClient,
     command: any CommandClient,
@@ -58,8 +60,8 @@ public struct AndroidSDKClientImpl: AndroidSDKClient {
     self.command = command
     self.host = AndroidHostArchitecture(hostArchitecture)
     self.sdkRoot = sdkRoot
-    self.availableCapacity = availableCapacity
-    self.volume = volume
+    self.availableCapacity = { availableCapacity(SDKFiles.volumeLocation($0)) }
+    self.volume = { volume(SDKFiles.volumeLocation($0)) }
     self.downloadsDirectory = downloadsDirectory
     self.endpoints = endpoints
   }
@@ -232,7 +234,8 @@ public struct AndroidSDKClientImpl: AndroidSDKClient {
   }
 
   /// 위치(없으면 기본 위치만 가장 가까운 있는 조상)와, 받을 패키지마다 최종 경로의 가장 가까운 있는 조상이 쓸 수 있는 디렉터리여야 하고,
-  /// 위치(또는 그 조상)의 볼륨이 링크와 `RENAME_EXCL` 을 지원해야 한다 (`SDKVolume.supportsInstall`. 볼륨은 위치에서만 본다).
+  /// 위치(또는 그 조상)의 볼륨이 링크와 `RENAME_EXCL` 을 지원해야 한다 (`SDKVolume.supportsInstall`).
+  /// 볼륨 값은 링크를 따라간 실제 경로에서 읽는다.
   /// 고른 폴더가 없거나 파일·깨진 링크면 쓸 수 없다.
   private func checkWritable(_ root: AndroidSDKRoot, pending: [AndroidSelectedPackage]) throws(AndroidSDKInstallError) {
     let rootKind = SDKFiles.rootKind(root.url.path(percentEncoded: false))
