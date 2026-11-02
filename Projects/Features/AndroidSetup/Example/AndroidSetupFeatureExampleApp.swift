@@ -76,6 +76,7 @@ enum DemoScenario: String, CaseIterable, Hashable {
   case downloadFailed = "실패: 패키지 받기"
   case checksumFailed = "실패: 손상"
   case spaceFailed = "실패: 저장 공간"
+  case otherVolumeFailed = "실패: 다른 디스크의 하위 폴더"
   case cancelled = "취소됨"
 
   var title: String {
@@ -114,6 +115,7 @@ enum DemoScenario: String, CaseIterable, Hashable {
     .downloadFailed: .download(.systemImage, .connectionLost),
     .checksumFailed: .checksumMismatch(.emulator),
     .spaceFailed: .insufficientDiskSpace(.systemImage, required: 9_100_000_000, available: 3_200_000_000),
+    .otherVolumeFailed: .packageFolderOnOtherVolume(.systemImage),
     .cancelled: .cancelled,
   ]
 
