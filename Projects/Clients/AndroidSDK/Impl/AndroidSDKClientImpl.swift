@@ -235,7 +235,8 @@ public struct AndroidSDKClientImpl: AndroidSDKClient {
 
   /// 위치(없으면 기본 위치만 가장 가까운 있는 조상)와, 받을 패키지마다 최종 경로의 가장 가까운 있는 조상이 쓸 수 있는 디렉터리여야 하고,
   /// 위치(또는 그 조상)의 볼륨이 링크와 `RENAME_EXCL` 을 지원해야 한다 (`SDKVolume.supportsInstall`).
-  /// 볼륨 값은 링크를 따라간 실제 경로에서 읽는다.
+  /// 볼륨 값은 링크를 따라간 실제 경로에서 읽는다. 스테이징이 SDK 루트에 있어, 받을 패키지의 최종 경로 조상(링크는 따라간다)이
+  /// 루트와 다른 볼륨이면 rename 이 볼륨을 넘지 못한다(EXDEV, 실측). 받기 전에 `.packageFolderOnOtherVolume` 으로 거절한다.
   /// 고른 폴더가 없거나 파일·깨진 링크면 쓸 수 없다.
   private func checkWritable(_ root: AndroidSDKRoot, pending: [AndroidSelectedPackage]) throws(AndroidSDKInstallError) {
     let rootKind = SDKFiles.rootKind(root.url.path(percentEncoded: false))
@@ -258,6 +259,10 @@ public struct AndroidSDKClientImpl: AndroidSDKClient {
       let ancestor = SDKFiles.nearestExistingAncestor(of: root.destination(for: package.path))
       guard SDKFiles.isWritableDirectory(ancestor) else {
         throw .sdkFolderUnavailable
+      }
+      // device 를 읽지 못하면(어느 한쪽이 nil) 확인하지 못한 것으로 보고 진행한다 (드물게 뒤의 rename 이 `.sdkFolderUnavailable`).
+      if self.isOnOtherVolume(ancestor, than: rootFolder) {
+        throw .packageFolderOnOtherVolume(package.component)
       }
     }
   }
@@ -313,5 +318,13 @@ public extension AndroidSDKClientImpl {
     if SDKFiles.rootKind(root.url.path(percentEncoded: false)) == .directory, let real = RealPath.of(root.url) {
       self.staging.removeLeftovers(root: real)
     }
+  }
+
+  /// 두 위치의 device 를 모두 읽었고 서로 다를 때만 true.
+  private func isOnOtherVolume(_ url: URL, than other: URL) -> Bool {
+    guard let device = self.volume(url).device, let otherDevice = self.volume(other).device else {
+      return false
+    }
+    return device != otherDevice
   }
 }

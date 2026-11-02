@@ -3,7 +3,8 @@ import Foundation
 
 /// 볼륨 사실. 테스트가 주입한다.
 struct SDKVolume: Equatable, Sendable {
-  /// `stat` 의 `st_dev`. 두 경로가 같은 볼륨인지 비교한다. 읽지 못하면 nil (다른 볼륨으로 본다).
+  /// `stat` 의 `st_dev`. 두 경로가 같은 볼륨인지 비교한다. 읽지 못하면 nil. nil 의 뜻은 부르는 쪽이 정한다: 받기 볼륨과의
+  /// 비교(`sameVolumeAsDownloads`·여유 비교)는 다른 볼륨으로 보고, 받을 패키지 폴더의 볼륨 검사는 확인하지 못한 것으로 보고 진행한다.
   let device: UInt64?
   /// `volumeNameKey`.
   let name: String?

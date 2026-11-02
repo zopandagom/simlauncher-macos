@@ -5,7 +5,8 @@ import Synchronization
 import Testing
 @testable import AndroidSDKImpl
 
-/// 볼륨 값을 링크를 따라간 실제 경로에서 읽기(`SDKFiles.volumeLocation`, Impl init 의 감싸기).
+/// 볼륨 값을 링크를 따라간 실제 경로에서 읽기(`SDKFiles.volumeLocation`, Impl init 의 감싸기)와
+/// 받을 패키지 폴더가 SDK 위치와 다른 볼륨이면 받기 전에 거절하기.
 /// 실제 다른 볼륨(외장 디스크)은 단위 테스트로 만들 수 없어, 주입 볼륨이 실제 경로에 따라 다른 값을 돌려준다.
 struct AndroidSDKClientImplVolumeTests {
   /// `url` 이 `base` 와 같거나 그 아래다 (끝 `/` 는 무시한다).
@@ -50,6 +51,92 @@ struct AndroidSDKClientImplVolumeTests {
 
     #expect(SDKFiles.volumeLocation(missing) == missing)
     #expect(SDKFiles.volumeLocation(loop) == loop)
+  }
+
+  // MARK: - 받을 패키지 폴더의 볼륨
+
+  /// `sdk/system-images` 가 `other/system-images` 를 가리키는 링크이고, 주입 볼륨이 `other` 아래 실제 경로만 `otherDevice` 로 읽는 Harness.
+  static func linkedSystemImages(otherDevice: UInt64) throws -> (harness: Harness, other: URL) {
+    let otherBox = OtherFolder()
+    let harness = try Harness(volume: { url in
+      SDKVolume(
+        device: otherBox.contains(url) ? otherDevice : 1,
+        name: "Test",
+        supportsSymbolicLinks: true
+      )
+    })
+    let other = harness.directory.child("other")
+    otherBox.set(other)
+    try FileTree.directory(other, "system-images")
+    try FileTree.directory(harness.sdk, "")
+    try FileTree.link(harness.sdk, "system-images", to: Self.path(other.appending(path: "system-images")))
+    return (harness, other)
+  }
+
+  @Test("system-images 가 다른 볼륨을 가리키면 받지 않고 packageFolderOnOtherVolume, SDK·다른 볼륨에 아무것도 만들지 않는다")
+  func otherVolumeRejectedBeforeDownload() async throws {
+    let (harness, other) = try Self.linkedSystemImages(otherDevice: 2)
+    defer { harness.directory.remove() }
+
+    let result = try await harness.install(harness.plan()).result
+
+    #expect(result == .failure(.packageFolderOnOtherVolume(.systemImage)))
+    #expect(harness.downloadCount == 0)
+    #expect(harness.download.calls.isEmpty)
+    #expect(FileTree.names(harness.sdk) == ["system-images"])
+    #expect(FileTree.names(other.appending(path: "system-images")).isEmpty)
+  }
+
+  @Test("system-images 링크가 같은 볼륨의 다른 폴더면 통과해 링크 너머에 설치한다")
+  func sameVolumeLinkInstalls() async throws {
+    let (harness, other) = try Self.linkedSystemImages(otherDevice: 1)
+    defer { harness.directory.remove() }
+
+    let outcome = try await harness.install(harness.plan()).result.get()
+
+    #expect(outcome.installed == [.platformTools, .emulator, .systemImage])
+    let image = other.appending(path: "system-images/android-37.0/google_apis/arm64-v8a/system.img")
+    #expect(FileTree.read(image) == "img")
+  }
+
+  @Test("최종 경로의 부모가 루트인 패키지(platform-tools·emulator)는 다른 볼륨 검사에 걸리지 않는다")
+  func rootLevelPackagesUnaffected() async throws {
+    let (harness, _) = try Self.linkedSystemImages(otherDevice: 2)
+    defer { harness.directory.remove() }
+
+    let outcome = try await harness.install(harness.plan([.platformTools, .emulator])).result.get()
+
+    #expect(outcome.installed == [.platformTools, .emulator])
+  }
+
+  @Test("최종 경로가 이미 있으면(다른 볼륨 링크라도) 받지 않을 패키지라 검사하지 않고 건너뛴다")
+  func existingDestinationSkipped() async throws {
+    let (harness, other) = try Self.linkedSystemImages(otherDevice: 2)
+    defer { harness.directory.remove() }
+    try FileTree.installed(.systemImage, in: other)
+
+    let outcome = try await harness.install(harness.plan()).result.get()
+
+    #expect(outcome.installed == [.platformTools, .emulator])
+    #expect(outcome.alreadyPresent == [.systemImage])
+  }
+
+  @Test("device 를 읽지 못하면 확인하지 못한 것으로 보고 진행한다")
+  func unknownDeviceProceeds() async throws {
+    let otherBox = OtherFolder()
+    let harness = try Harness(volume: { url in
+      SDKVolume(device: otherBox.contains(url) ? nil : 1, name: "Test", supportsSymbolicLinks: true)
+    })
+    defer { harness.directory.remove() }
+    let other = harness.directory.child("other")
+    otherBox.set(other)
+    try FileTree.directory(other, "system-images")
+    try FileTree.directory(harness.sdk, "")
+    try FileTree.link(harness.sdk, "system-images", to: Self.path(other.appending(path: "system-images")))
+
+    let outcome = try await harness.install(harness.plan()).result.get()
+
+    #expect(outcome.installed == [.platformTools, .emulator, .systemImage])
   }
 
   // MARK: - 링크인 SDK 루트의 볼륨 값
