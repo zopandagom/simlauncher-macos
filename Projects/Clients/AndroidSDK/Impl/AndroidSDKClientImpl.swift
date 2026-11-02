@@ -16,7 +16,8 @@ public struct AndroidSDKClientImpl: AndroidSDKClient {
   private let volume: @Sendable (URL) -> SDKVolume
   private let downloadsDirectory: URL
   private let endpoints: RepositoryEndpoints
-  private let staging = StagingFolders()
+  /// 지금 쓰는 스테이징 이름 등록부 (테스트가 지금 쓰는 이름을 등록한다).
+  let staging = StagingFolders()
 
   /// App 은 이 Impl 을 하나만 만든다 (지금 쓰는 스테이징 목록을 함께 쓴다).
   /// - Parameters:
@@ -169,11 +170,8 @@ public struct AndroidSDKClientImpl: AndroidSDKClient {
 
   @concurrent
   public func removeLeftovers() async {
-    if case let .root(root) = await self.sdkRoot(),
-       SDKFiles.rootKind(root.url.path(percentEncoded: false)) == .directory,
-       let real = RealPath.of(root.url)
-    {
-      self.staging.removeLeftovers(root: real)
+    if case let .root(root) = await self.sdkRoot() {
+      await self.removeLeftovers(in: root)
     }
     await self.download.removeLeftoverDownloads()
   }
@@ -303,5 +301,14 @@ private extension Int64 {
   func addingClamped(_ other: Int64) -> Int64 {
     let (sum, overflow) = self.addingReportingOverflow(other)
     return overflow ? .max : sum
+  }
+}
+
+public extension AndroidSDKClientImpl {
+  @concurrent
+  func removeLeftovers(in root: AndroidSDKRoot) async {
+    if SDKFiles.rootKind(root.url.path(percentEncoded: false)) == .directory, let real = RealPath.of(root.url) {
+      self.staging.removeLeftovers(root: real)
+    }
   }
 }
