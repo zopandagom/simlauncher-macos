@@ -80,7 +80,7 @@ struct AndroidSDKClientImplCancelTests {
     #expect(!FileTree.exists(harness.sdk.appending(path: "platform-tools")))
   }
 
-  @Test("마무리 중 취소: 그 패키지는 끝까지 설치하고, 다음 패키지는 받지 않고 cancelled")
+  @Test("마무리 중 취소: 그 패키지는 package.xml 까지 끝까지 설치하고, 다음 패키지는 받지 않고 cancelled")
   func cancelWhileFinishing() async throws {
     let harness = try Harness()
     defer { harness.directory.remove() }
@@ -96,6 +96,8 @@ struct AndroidSDKClientImplCancelTests {
 
     #expect(result == .failure(.cancelled))
     #expect(FileTree.exists(harness.sdk.appending(path: "platform-tools/adb")))
+    let packageXML = harness.sdk.appending(path: "platform-tools/package.xml", directoryHint: .notDirectory)
+    #expect(try Data(contentsOf: packageXML) == PackageSpec(.platformTools).packageXML)
     #expect(harness.stagingNames.isEmpty)
     #expect(!harness.download.calls.contains(.download(PackageSpec(.emulator).url.url)))
   }
