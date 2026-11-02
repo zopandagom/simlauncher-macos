@@ -168,3 +168,113 @@ struct AndroidRepositoryTests {
     #expect(try await AndroidRepository.decoded(from: data) == AndroidRepository(xmlData: data))
   }
 }
+
+// MARK: - package.xml 원문 조각
+
+extension AndroidRepositoryTests {
+  static let inlineTypeDetails = "<type-details xsi:type=\"generic:genericDetailsType\"/>"
+  static let inlineRevision = "<revision><major>1</major></revision>"
+
+  /// remotePackage 하나(path `emulator`)의 저장소. 루트에 `sdk`·`xsi`·`generic`·`x` 를 선언한다.
+  static func inline(_ body: String, rootAttributes: String = "") throws -> AndroidRemotePackage {
+    let xml = """
+    <sdk:sdk-repository xmlns:sdk="urn:r" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" \
+    xmlns:generic="urn:g" xmlns:x="urn:x"\(rootAttributes)><remotePackage path="emulator">\(body)\
+    <display-name>E</display-name></remotePackage></sdk:sdk-repository>
+    """
+    let repository = try AndroidRepository(xmlData: Data(xml.utf8))
+    let package = try #require(repository.packages.first)
+    #expect(repository.packages.count == 1)
+    #expect(package.revision == .v("1"))
+    return package
+  }
+
+  @Test("platform-tools 원문 조각: xsi:type 을 푼 generic/02·genericDetailsType, 빈 type-details, revision 그대로, 의존 없음")
+  func platformToolsSource() throws {
+    let repository = try AndroidFixture.repository("android-repository")
+    let latest = try #require(repository.packages.first { $0.path.raw == "platform-tools" })
+    let source = try #require(latest.localPackageSource)
+
+    #expect(source.typeNamespace == "http://schemas.android.com/repository/android/generic/02")
+    #expect(source.typeName == "genericDetailsType")
+    #expect(source.typeDetails.isEmpty)
+    #expect(source.dependencies == nil)
+    guard case let .element(name, attributes, children) = source.revision else {
+      Issue.record("revision 이 요소가 아니다")
+      return
+    }
+    #expect(name == "revision")
+    #expect(attributes.isEmpty)
+    #expect(children.compactMap(Self.elementName) == ["major", "minor", "micro"])
+  }
+
+  @Test("시스템 이미지 원문 조각: sys-img2/03·sysImgDetailsType, 자식 요소 순서, dependencies 요소")
+  func systemImageSource() throws {
+    let repository = try AndroidFixture.repository("android-sys-img")
+    let arm = try #require(repository.packages.first)
+    let source = try #require(arm.localPackageSource)
+
+    #expect(source.typeNamespace == "http://schemas.android.com/sdk/android/repo/sys-img2/03")
+    #expect(source.typeName == "sysImgDetailsType")
+    #expect(source.typeDetails.compactMap(Self.elementName) == [
+      "api-level", "extension-level", "base-extension", "tag", "vendor", "abi",
+    ])
+    let dependencies = try #require(source.dependencies)
+    #expect(Self.elementName(dependencies) == "dependencies")
+  }
+
+  @Test("인라인 기본 모양은 원문 조각이 있다 (아래 nil 경우의 기준)")
+  func inlineBaseline() throws {
+    let source = try #require(Self.inline(Self.inlineTypeDetails + Self.inlineRevision).localPackageSource)
+    #expect(source.typeNamespace == "urn:g")
+    #expect(source.typeName == "genericDetailsType")
+    #expect(source.revision == .element(
+      name: "revision",
+      attributes: [:],
+      children: [.element(name: "major", attributes: [:], children: [.text("1")])]
+    ))
+  }
+
+  /// `{T}`·`{R}` 은 기본 type-details·revision 으로 바꾼다.
+  @Test(
+    "옮길 수 없는 모양이면 원문 조각만 nil, 패키지는 그대로 읽는다",
+    arguments: [
+      // ① xsi:type 없음
+      ("<type-details/>{R}", ""),
+      // ② xsi:type 값의 접두가 선언되지 않음, XMLSchema-instance 가 아닌 접두의 type
+      ("<type-details xsi:type=\"nope:genericDetailsType\"/>{R}", ""),
+      ("<type-details x:type=\"generic:genericDetailsType\"/>{R}", ""),
+      // ③ 값에 접두 없음
+      ("<type-details xsi:type=\"genericDetailsType\"/>{R}", ""),
+      // ④ 루트에 기본 네임스페이스
+      ("{T}{R}", " xmlns=\"urn:d\""),
+      // ⑤ type-details 하위에 접두 요소
+      ("<type-details xsi:type=\"generic:t\"><x:abi>a</x:abi></type-details>{R}", ""),
+      // ⑥ 하위 요소에 접두 속성
+      ("<type-details xsi:type=\"generic:t\"><tag x:id=\"1\"/></type-details>{R}", ""),
+      // ⑦ type-details 두 번
+      ("{T}{T}{R}", ""),
+      // ⑧ 하위 요소에 xmlns 선언
+      ("<type-details xsi:type=\"generic:t\"><tag xmlns:y=\"urn:y\"/></type-details>{R}", ""),
+      // ⑨ revision 요소에 접두
+      ("{T}<x:revision><major>1</major></x:revision>", ""),
+      // ⑩ dependencies 요소에 접두 속성
+      ("{T}{R}<dependencies x:a=\"1\"><dependency path=\"emulator\"/></dependencies>", ""),
+      // ⑪ revision 두 번
+      ("{T}{R}{R}", ""),
+    ]
+  )
+  func sourceUnavailable(body: String, rootAttributes: String) throws {
+    let body = body
+      .replacing("{T}", with: Self.inlineTypeDetails)
+      .replacing("{R}", with: Self.inlineRevision)
+    #expect(try Self.inline(body, rootAttributes: rootAttributes).localPackageSource == nil)
+  }
+
+  static func elementName(_ node: AndroidXMLNode) -> String? {
+    guard case let .element(name, _, _) = node else {
+      return nil
+    }
+    return name
+  }
+}

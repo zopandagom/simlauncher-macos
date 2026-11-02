@@ -147,5 +147,18 @@ struct AndroidSDKSelectionPlanTests: AndroidSelectionTesting {
       == "https://dl.google.com/android/repository/sys-img/google_apis/arm64-v8a-37.0_r08.zip")
     #expect(plan.licenses.map(\.id) == ["android-sdk-license", "android-sdk-arm-dbt-license"])
     #expect(plan.downloadBytes == 16_110_554 + 416_112_708 + 2_104_098_168)
+    #expect(try plan.packages.map(\.localPackageXML) == [
+      AndroidLocalPackageXMLTests.expected("android-local-package-platform-tools"),
+      AndroidLocalPackageXMLTests.expected("android-local-package-emulator"),
+      AndroidLocalPackageXMLTests.expected("android-local-package-sys-img"),
+    ])
+  }
+
+  @Test("원문 조각이 없는 패키지로 만든 계획은 localPackageXML 이 nil (설치는 그대로 계획한다)")
+  func noLocalPackageXML() throws {
+    let plan = try Self.plan()
+
+    #expect(plan.packages.count == 3)
+    #expect(plan.packages.allSatisfy { $0.localPackageXML == nil })
   }
 }

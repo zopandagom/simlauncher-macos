@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sdk:sdk-repository xmlns:sdk="urn:example:repo" xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+  <license id="lic" type="text">A &amp; B &lt;c&gt; "q" 동의&#13;끝
+</license>
+  <channel id="channel-0">stable</channel>
+  <remotePackage path="emulator" xmlns:g="urn:example:generic">
+    <type-details i:type="g:genericDetailsType">
+      <note kind="a&quot;b&#10;c" id="1">x &amp; y</note>
+      <empty></empty>
+    </type-details>
+    <revision>
+      <major>1</major>
+      <micro>3</micro>
+    </revision>
+    <display-name>  Emu &amp; 도구  </display-name>
+    <uses-license ref="lic"/>
+    <channelRef ref="channel-0"/>
+    <archives/>
+  </remotePackage>
+</sdk:sdk-repository>
