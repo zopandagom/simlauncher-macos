@@ -2,9 +2,45 @@
 
 **iPhone·iPad·Android 폰이 없어도 Mac 하나로 개발 중인 iOS·Android 앱을 써 볼 수 있어요.**
 
-SimLauncher 는 Mac 에서 iPhone·iPad 시뮬레이터(가상 기기)를 켜고, 개발자에게 받은 앱 빌드를 설치해 바로 실행해 주는 앱이에요. 터미널이나 Xcode 를 다룰 줄 몰라도 괜찮아요. Xcode 를 설치하고 처음 한 번 준비하는 과정은 앱이 단계별로 안내하고, 그다음부터는 버튼 몇 번으로 앱을 설치하고 확인할 수 있어요.
+[![최신 릴리스](https://img.shields.io/github/v/release/zopandagom/simlauncher-macos)](https://github.com/zopandagom/simlauncher-macos/releases/latest) ![macOS 26+](https://img.shields.io/badge/macOS-26%2B-blue) ![Swift 6](https://img.shields.io/badge/Swift-6-orange) [![MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-Android 앱도 같은 방법으로 확인할 수 있어요. Android 에뮬레이터(가상 기기)를 쓰는 데 필요한 도구는 SimLauncher 가 직접 내려받아 설치해서, Android Studio 나 Java 를 따로 설치하지 않아도 돼요.
+![카탈로그에서 앱을 골라 설치하는 모습](docs/media/install-catalog.gif)
+
+![Android 에뮬레이터와 Android 기기 목록](docs/media/android-device-list.png)
+
+## 한눈에 보기
+
+### 왜 만들었나
+- **문제**: 개발 중인 앱을 확인하려면 테스트 기기에 빌드를 설치하거나, Xcode·Android Studio·터미널로 시뮬레이터·에뮬레이터를 직접 다뤄야 해요. 기기가 없거나 개발 도구를 쓰지 않는 기획·디자인·QA 팀원은 확인할 때마다 개발자에게 부탁해야 했어요.
+- **해결**: SimLauncher 는 가상 기기를 켜고, 앱 빌드를 받아 설치·실행하는 과정을 Mac 앱의 버튼 몇 번으로 줄여요. 처음 한 번 하는 준비(Xcode 설치·라이선스 동의, Android 도구 설치)도 앱이 단계별로 안내해서, 그다음부터는 터미널 없이 쓸 수 있어요.
+
+### 주요 기능
+| 기능 | iOS (시뮬레이터) | Android (에뮬레이터) |
+|---|---|---|
+| 가상 기기 켜기·끄기·만들기·초기화·삭제 | ✓ | ✓ (폴더블 포함) |
+| 앱 설치 (Mac 의 파일·URL·회사 빌드 목록) | `.app`, `.app` 을 담은 zip | `.apk` |
+| 앱 실행·딥링크 열기 | ✓ | ✓ |
+| 화면 스크린샷·녹화 | ✓ | ✓ |
+| 여러 기기에 한 번에 설치 | ✓ | ✓ |
+| 준비 안내 | Xcode 설치·라이선스·시뮬레이터 설치 | Android 도구를 앱이 직접 설치 (Android Studio·Java 필요 없음) |
+
+**회사 빌드 목록**: 빌드 저장소 주소를 담은 `catalog.json` 하나를 등록하면 앱 이름·버전을 골라 설치할 수 있어요 ([규격](docs/CATALOG.md), GitHub Actions 예시 포함).
+
+### 기술적으로 신경 쓴 점
+- **모듈 구조**: Tuist 로 Feature 5개 · Client 10개(Interface / Impl / Testing) · Shared 로 나누고, 규칙 기반 단방향 MV 를 썼어요. 모듈 경계는 빌드와 lint 로 지켜요: Feature 끼리 의존하지 못하게 Tuist 템플릿이 막고, 부수효과(`Process`·네트워크·UserDefaults 등)는 Client Impl 에서만, Impl 은 App 에서만 import 하도록 SwiftLint 사용자 규칙으로 만들어 커밋 훅과 CI 에서 검사해요.
+- **안전한 동시성과 테스트**: Swift 6 strict concurrency. Feature 는 Fake Client 로, Client Impl·도메인 규칙(Core)은 단위 테스트로 검증해 테스트가 약 1,960개예요.
+- **외부 도구 다루기**: `simctl`·Android `emulator`·`adb` 를 `Process` 로 실행하고, 켜는 중·끄는 중·실패·취소 같은 상태를 화면에 그대로 보여요. Android SDK 는 Google 저장소에서 필요한 패키지만 받아 Android Studio 와 같은 형식으로 설치해, Studio 와 함께 써도 다시 받지 않아요.
+- **배포**: `make release` 한 번으로 Developer ID 서명 → Apple 공증 → staple → 검사까지 마친 dmg 를 만들고, GitHub Releases 로 배포해요 ([RELEASING.md](docs/RELEASING.md)).
+- **개발 흐름**: main 직접 커밋을 막는 git 훅, PR 마다 lint·테스트 CI 와 자동 코드 리뷰, 문서([아키텍처](docs/ARCHITECTURE.md)·[규칙](docs/CONVENTIONS.md)·[로드맵](docs/DEVELOPMENT_PLAN.md))를 코드와 같은 PR 에서 고치는 방식으로 개발했어요. [Claude Code](https://claude.com/claude-code) 와 함께 개발하며, 작업 규칙과 리뷰 흐름을 레포에 정의해 두었어요([CLAUDE.md](CLAUDE.md), `.claude/skills`).
+
+### 앞으로 개선할 점
+- **시뮬레이터 디버그 로그 보기**: 설치한 앱이 남기는 로그를 SimLauncher 화면에서 바로 보고, 문제를 개발자에게 전달할 수 있게 할 예정이에요.
+- **앱 화면 레이아웃 보기 (디자이너용, iOS·Android)**: 실행 중인 앱 화면의 뷰마다 테두리를 그려 보이고, 뷰를 클릭하면 위치·크기(x, y, width, height 등)를 보여 줄 예정이에요. 디자이너가 개발 도구 없이 시안과 실제 화면의 간격·크기를 비교할 수 있게 하려는 기능이에요.
+- 그 밖의 후보: [로드맵의 "이후"](docs/DEVELOPMENT_PLAN.md#로드맵)
+
+---
+
+## 사용 안내
 
 ![기기 목록](docs/media/device-list.png)
 
