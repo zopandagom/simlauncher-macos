@@ -137,6 +137,8 @@ extension AndroidSetupText {
         localized: "SDK 폴더에 쓸 수 없어 설치하지 못했습니다. Finder 에서 폴더 권한을 확인하거나 설정에서 다른 폴더를 고르세요.",
         bundle: .module
       )
+    case let .packageFolderOnOtherVolume(component):
+      self.packageFolderOnOtherVolume(self.componentTitle(component))
     case let .destinationExists(component):
       self.destinationExists(self.componentTitle(component))
     case .licenseNotAccepted:
@@ -150,6 +152,14 @@ extension AndroidSetupText {
 
   static func componentFailed(_ name: String) -> String {
     String(localized: "\(name) 을(를) 받지 못했습니다.", bundle: .module)
+  }
+
+  /// 원인은 하위 폴더를 다른 디스크로 잇는 링크일 수도, 마운트 지점일 수도 있어 넓게 말한다.
+  static func packageFolderOnOtherVolume(_ name: String) -> String {
+    String(
+      localized: "\(name) 폴더(또는 그 안의 폴더)가 SDK 폴더와 다른 디스크에 있어 설치할 수 없습니다. 그 폴더를 같은 디스크로 옮기거나 설정에서 다른 SDK 폴더를 고르세요.",
+      bundle: .module
+    )
   }
 
   static func destinationExists(_ name: String) -> String {
@@ -182,8 +192,8 @@ extension AndroidSetupText {
       String(localized: "받은 파일이 손상되었습니다. 다시 설치를 누르세요.", bundle: .module)
     case .archiveUnsafe:
       String(localized: "받은 파일의 형식이 예상과 달라 설치하지 않았습니다. 앱을 업데이트하세요.", bundle: .module)
-    case .archiveUnreadable, .download, .insufficientDiskSpace, .sdkFolderUnavailable, .destinationExists,
-         .licenseNotAccepted, .sdkLocationChanged, .cancelled:
+    case .archiveUnreadable, .download, .insufficientDiskSpace, .sdkFolderUnavailable, .packageFolderOnOtherVolume,
+         .destinationExists, .licenseNotAccepted, .sdkLocationChanged, .cancelled:
       String(localized: "받은 파일을 풀지 못했습니다. 다시 설치를 누르고, 계속되면 앱을 업데이트하세요.", bundle: .module)
     }
   }
