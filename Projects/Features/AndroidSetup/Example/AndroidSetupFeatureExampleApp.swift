@@ -219,6 +219,10 @@ private struct InstallingDemoClient: AndroidSDKClient {
     await self.fake.removeLeftovers()
   }
 
+  func removeLeftovers(in root: AndroidSDKRoot) async {
+    await self.fake.removeLeftovers(in: root)
+  }
+
   func inspectCandidateFolder(_ url: URL) async -> (candidate: AndroidSDKFolderCandidate, writable: Bool) {
     await self.fake.inspectCandidateFolder(url)
   }
