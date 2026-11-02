@@ -1,3 +1,4 @@
+import AppBundleInterface
 import Testing
 @testable import AppBundleImpl
 
@@ -93,10 +94,47 @@ struct ZipListingTests {
     let link = ZipinfoOutput.single("lrwxr-xr-x  2.0 unx        4 b- stor 20240101.000000 Sample.app/l")
     let fifo = ZipinfoOutput.single("prw-r--r--  2.0 unx        0 b- stor 20240101.000000 Sample.app/p")
     let slash = ZipinfoOutput.single("-rw-r--r--  2.0 unx        0 b- stor 20240101.000000 Sample.app/")
+    let topLinkWithSlash = ZipinfoOutput.single("lrwxr-xr-x  2.0 unx        4 b- stor 20261031.120000 Evil.app/")
+    let innerLinkWithSlash = ZipinfoOutput.single("lrwxr-xr-x  2.0 unx       13 b- stor 20261031.120000 Sample.app/a/")
 
     #expect(ZipListing.parse(link)?.entries.first?.kind == .symlink)
     #expect(ZipListing.parse(fifo)?.entries.first?.kind == .other)
     #expect(ZipListing.parse(slash)?.entries.first?.kind == .directory)
+    #expect(ZipListing.parse(topLinkWithSlash)?.entries.first?.kind == .symlink)
+    #expect(ZipListing.parse(innerLinkWithSlash)?.entries.first?.kind == .symlink)
+  }
+
+  @Test("이름이 / 로 끝나는 링크가 맨 위 .app 이면 목록 검사가 unsafe 로 거절한다 (실측 zipinfo 출력)")
+  func topLevelAppLinkWithTrailingSlash() throws {
+    // 링크 항목 하나뿐인 zip 의 `zipinfo -s -T` 출력 그대로 (2026-10-31 실측. ditto 는 이 zip 을 풀지 못하고 종료 1).
+    let output = """
+    Archive:  top.zip
+    Zip file size: 120 bytes, number of entries: 1
+    lrwxr-xr-x  2.0 unx        4 b- stor 20261031.120000 Evil.app/
+    1 file, 4 bytes uncompressed, 4 bytes compressed:  0.0%
+
+    """
+    let listing = try #require(ZipListing.parse(output))
+
+    #expect(listing.entries == [.init(name: "Evil.app/", size: 4, kind: .symlink)])
+    #expect(throws: AppBundleError.zipUnsafeEntry) { try ZipListingCheck.check(listing) }
+  }
+
+  @Test("앱 안의 이름이 / 로 끝나는 링크는 링크로 읽고 목록 검사는 통과한다 (앱 안 링크는 푼 뒤 검사가 본다)")
+  func innerLinkWithTrailingSlash() throws {
+    let output = """
+    Archive:  inner.zip
+    Zip file size: 354 bytes, number of entries: 3
+    drwxr-xr-x  2.0 unx        0 b- stor 20261031.120000 Sample.app/
+    -rw-r--r--  2.0 unx        1 b- stor 20261031.120000 Sample.app/Info.plist
+    lrwxr-xr-x  2.0 unx       13 b- stor 20261031.120000 Sample.app/a/
+    3 files, 14 bytes uncompressed, 14 bytes compressed:  0.0%
+
+    """
+    let listing = try #require(ZipListing.parse(output))
+
+    #expect(listing.entries.map(\.kind) == [.directory, .file, .symlink])
+    #expect(throws: Never.self) { try ZipListingCheck.check(listing) }
   }
 
   @Test("읽지 못하는 출력은 nil: 줄이 헤더보다 적음, 크기가 숫자 아님, 헤더 형식 아님, 경고 줄, 이름 없음")
