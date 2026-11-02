@@ -180,13 +180,20 @@ public struct AndroidSetupView: View {
             self.note(AndroidSetupText.originalLocationNote(result.root))
           }
         }
-        // 셋 다 설치됐으면 기기 목록으로 가는 길. 설치 직후에도 결과 줄을 볼 수 있게 자동으로 넘어가지 않는다.
+        // 기기 목록으로 가는 길. 셋 다 설치됐으면 강조 버튼, 아니면 보통 버튼과 보조 문구
+        // (Android 도구가 없어도 목록에서 꺼진 기기를 지울 수 있다). 설치 직후에도 결과 줄을 볼 수 있게 자동으로 넘어가지 않는다.
         if status.isReady {
           Button(AndroidSetupText.deviceListButton) {
             self.model.deviceListButtonTapped()
           }
           .buttonStyle(.borderedProminent)
           .disabled(!self.model.canOpenDeviceList)
+        } else {
+          Button(AndroidSetupText.deviceListButton) {
+            self.model.deviceListButtonTapped()
+          }
+          .disabled(!self.model.canOpenDeviceList)
+          self.note(AndroidSetupText.deviceListWithoutToolsNote)
         }
       }
     }
