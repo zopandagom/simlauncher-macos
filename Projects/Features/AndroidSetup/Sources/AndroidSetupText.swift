@@ -12,7 +12,7 @@ enum AndroidSetupText {
   static let checkingTitle = String(localized: "Android 도구를 확인하는 중…", bundle: .module)
   static let readyTitle = String(localized: "Android 도구가 준비되었습니다", bundle: .module)
   static let readyMessage = String(
-    localized: "기기 목록에서 Android 기기를 만들고 켤 수 있습니다. 앱 설치는 다음 업데이트에서 제공합니다.",
+    localized: "기기 목록에서 Android 기기를 만들고 켜고, 앱을 설치해 확인할 수 있습니다.",
     bundle: .module
   )
   static let notReadyTitle = String(localized: "Android 도구를 설치하세요", bundle: .module)
