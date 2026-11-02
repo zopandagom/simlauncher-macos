@@ -20,6 +20,7 @@ public final class AndroidSDKClientFake: AndroidSDKClient {
     case fetchInstallPlan
     case install(AndroidSDKInstallPlan, acceptedLicenses: Set<String>)
     case removeLeftovers
+    case removeLeftoversIn(AndroidSDKRoot)
     case inspectCandidateFolder(URL)
   }
 
@@ -225,6 +226,10 @@ public final class AndroidSDKClientFake: AndroidSDKClient {
 
   public func removeLeftovers() async {
     self.record(.removeLeftovers)
+  }
+
+  public func removeLeftovers(in root: AndroidSDKRoot) async {
+    self.record(.removeLeftoversIn(root))
   }
 
   public func inspectCandidateFolder(_ url: URL) async -> (candidate: AndroidSDKFolderCandidate, writable: Bool) {

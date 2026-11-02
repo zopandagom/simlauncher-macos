@@ -36,6 +36,11 @@ public protocol AndroidSDKClient: Sendable {
   /// `DownloadClient.removeLeftoverDownloads()` 를 부른다. 실패는 무시한다.
   func removeLeftovers() async
 
+  /// 주어진 위치(지금 위치가 아니어도)의 남은 `.simlauncher-staging-*`(이 프로세스가 지금 쓰는 것 제외)를 지운다.
+  /// 위치가 디렉터리가 아니거나(분리된 디스크·없음) 실제 경로를 얻지 못하면 아무것도 하지 않는다. 받기 폴더는 건드리지 않는다.
+  /// 실패는 무시한다. provider 를 부르지 않는다.
+  func removeLeftovers(in root: AndroidSDKRoot) async
+
   /// 설정 창이 고른 폴더를 판정한다 (파일만 읽고 쓰지 않는다). 링크면 따라간 실제 폴더를 본다.
   /// writable: 폴더의 `access(W_OK)` 와, `system-images` 가 있으면 그 `access(W_OK)`. 하나라도 false 면 false.
   func inspectCandidateFolder(_ url: URL) async -> (candidate: AndroidSDKFolderCandidate, writable: Bool)
