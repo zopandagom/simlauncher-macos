@@ -9,8 +9,9 @@ import PreferencesInterface
 /// 메인 밖에서 해석하고(`BuildCatalog.decoded(from:)`), 통과해야 저장한다. 확인 중 취소·창 닫기·다시 열기는 확인을 취소한다.
 /// 관리자가 강제한 목록이면 바꾸지 않는다. 창이 열린 채 바깥에서 바뀐 값은 다음 창 열기·추가·삭제 때 반영한다.
 /// Android SDK 위치: 고른 폴더를 판정해(`inspectCandidateFolder`) 빈 폴더나 SDK 폴더만 저장하고, 기본 위치로 되돌릴 수 있다.
-/// 저장 값이 실제로 바뀌면 App 이 주입한 `androidSDKLocationChanged` 를 부른다 (Android 화면이 다시 확인하게. 같은 앱의 다른 창이라
-/// 앱 활성화 알림이 오지 않는다). 관리자가 강제한 위치면 바꾸지 않는다.
+/// 저장 값이 실제로 바뀌면 App 이 주입한 `androidSDKLocationChanged` 를 부르고(Android 화면이 다시 확인하게. 같은 앱의 다른 창이라
+/// 앱 활성화 알림이 오지 않는다), 이전 위치의 남은 스테이징을 지운다(`removeLeftovers(in:)`. 새 위치는 도구 화면을 열 때 지운다).
+/// 관리자가 강제한 위치면 바꾸지 않는다.
 /// Settings 씬의 View 와 이 Model 은 앱 시작 때 한 번 만들어지므로, 생성자는 저장만 하고 읽기는 `onAppear()` 에서 한다.
 @MainActor
 @Observable
@@ -181,22 +182,24 @@ public final class SettingsModel {
     } else {
       false
     }
-    if self.saveAndroidSDKPath(isDefault ? nil : path) {
+    let outcome = self.saveAndroidSDKPath(isDefault ? nil : path)
+    if outcome.saved {
       self.androidSDKCandidate = result
     }
+    await self.removeLeftovers(previous: outcome.previous)
   }
 
-  /// "기본 위치로 되돌리기". 누를 수 없으면 무시한다.
-  public func sdkDefaultButtonTapped() {
+  /// "기본 위치로 되돌리기". 누를 수 없으면 무시한다. 위치가 바뀌었으면 이전 위치의 남은 스테이징을 지운 뒤 돌아온다.
+  public func sdkDefaultButtonTapped() async {
     guard self.canResetSDKFolder else { return }
     self.androidSDKCandidate = nil
-    self.saveAndroidSDKPath(nil)
+    let outcome = self.saveAndroidSDKPath(nil)
+    await self.removeLeftovers(previous: outcome.previous)
   }
 
-  /// 저장하고 다시 읽는다. 저장 직전에 읽은 위치와 달라졌을 때만 Android 화면에 알린다. 바깥에서 잠겼으면 다시 읽어 잠금 안내로 바꾸고
-  /// false 를 돌려준다.
-  @discardableResult
-  private func saveAndroidSDKPath(_ path: String?) -> Bool {
+  /// 저장하고 다시 읽는다. 저장 직전에 읽은 위치와 달라졌을 때만 Android 화면에 알리고 이전 위치를 previous 로 돌려준다
+  /// (바뀌지 않았으면 nil). 바깥에서 잠겼으면 다시 읽어 잠금 안내로 바꾸고 saved 는 false.
+  private func saveAndroidSDKPath(_ path: String?) -> (saved: Bool, previous: AndroidSDKRootChoice?) {
     let before = AndroidSDKRootChoice.resolve(self.preferences.androidSDKPath().value, home: self.home)
     let saved: Bool
     do throws(PreferencesError) {
@@ -206,10 +209,18 @@ public final class SettingsModel {
       saved = false
     }
     self.androidSDKPath = self.preferences.androidSDKPath()
-    if self.androidSDKRootChoice != before {
-      self.androidSDKLocationChanged()
+    guard self.androidSDKRootChoice != before else {
+      return (saved, nil)
     }
-    return saved
+    self.androidSDKLocationChanged()
+    return (saved, before)
+  }
+
+  /// 바뀌기 전 위치가 폴더 경로면 그 위치의 남은 스테이징을 지운다 (잘못된 설정이었으면 지울 곳이 없다).
+  /// 기다리는 동안 버튼은 막지 않는다: 두 번 바꿔 정리가 둘 돌아도 Client 가 지우기 실패를 무시한다.
+  private func removeLeftovers(previous: AndroidSDKRootChoice?) async {
+    guard case let .root(root) = previous else { return }
+    await self.androidSDK.removeLeftovers(in: root)
   }
 
   /// 판정 중이 아닌 상태로 돌아간다. 늦게 끝나는 판정의 결과는 `inspectionID` 가 달라 버린다.

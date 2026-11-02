@@ -73,7 +73,11 @@ struct SettingsAndroidSDKTests: SettingsAndroidSDKTesting {
 
     await model.sdkFolderChosen(Self.chosen)
 
-    #expect(androidSDK.calls == [.inspectCandidateFolder(Self.chosen)])
+    // 위치가 바뀌어 이전(기본) 위치의 남은 스테이징도 정리한다 (SettingsAndroidSDKLeftoversTests).
+    #expect(androidSDK.calls == [
+      .inspectCandidateFolder(Self.chosen),
+      .removeLeftoversIn(AndroidSDKRoot(url: Self.defaultURL, isDefault: true)),
+    ])
     #expect(Self.sdkWrites(preferences) == [Self.chosenPath])
     #expect(model.androidSDKPath == Self.stored(Self.chosenPath))
     #expect(model.androidSDKCandidate == SettingsSDKFolderResult(

@@ -22,7 +22,7 @@ struct SettingsAndroidSDKGuardTests: SettingsAndroidSDKTesting {
     #expect(!model.canResetSDKFolder)
 
     await model.sdkFolderChosen(Self.other)
-    model.sdkDefaultButtonTapped()
+    await model.sdkDefaultButtonTapped()
 
     #expect(Self.inspectCount(androidSDK) == 0)
     #expect(Self.sdkWriteCount(preferences) == 0)
@@ -66,11 +66,16 @@ struct SettingsAndroidSDKGuardTests: SettingsAndroidSDKTesting {
     #expect(!model.canChooseSDKFolder)
     #expect(!model.canResetSDKFolder)
     await model.sdkFolderChosen(Self.other)
-    model.sdkDefaultButtonTapped()
+    await model.sdkDefaultButtonTapped()
     androidSDK.resumeInspections()
     await task.value()
 
-    #expect(androidSDK.calls == [.inspectCandidateFolder(Self.chosen)])
+    // 판정은 처음 고른 폴더 하나뿐이고, 그 저장 뒤 이전 위치 정리가 한 번 따른다.
+    guard case let .root(previous) = AndroidSDKRootChoice.resolve(.path("/Volumes/Old/sdk"), home: testHome) else {
+      Issue.record("이전 위치가 경로로 읽히지 않는다")
+      return
+    }
+    #expect(androidSDK.calls == [.inspectCandidateFolder(Self.chosen), .removeLeftoversIn(previous)])
     #expect(Self.sdkWrites(preferences) == [Self.chosenPath])
   }
 
@@ -127,7 +132,7 @@ struct SettingsAndroidSDKGuardTests: SettingsAndroidSDKTesting {
     await model.sdkFolderChosen(Self.other)
     #expect(model.androidSDKCandidate != nil)
 
-    model.sdkDefaultButtonTapped()
+    await model.sdkDefaultButtonTapped()
 
     #expect(Self.sdkWrites(preferences) == [nil])
     #expect(model.androidSDKPath == .absent)
@@ -137,12 +142,12 @@ struct SettingsAndroidSDKGuardTests: SettingsAndroidSDKTesting {
   }
 
   @Test("잘못된 저장 값도 되돌릴 수 있다")
-  func resetInvalidSetting() {
+  func resetInvalidSetting() async {
     let preferences = PreferencesClientFake(androidSDKPath: AndroidSDKPathSetting(value: .malformed, isLocked: false))
     let changes = LocationChangeCounter()
     let model = Self.openedModel(preferences: preferences, locationChanges: changes)
 
-    model.sdkDefaultButtonTapped()
+    await model.sdkDefaultButtonTapped()
 
     #expect(Self.sdkWrites(preferences) == [nil])
     #expect(model.androidSDKRootChoice == .root(AndroidSDKRoot(url: Self.defaultURL, isDefault: true)))
@@ -150,25 +155,25 @@ struct SettingsAndroidSDKGuardTests: SettingsAndroidSDKTesting {
   }
 
   @Test("이미 기본 위치면 되돌리기를 무시한다")
-  func resetIgnoredWhenDefault() {
+  func resetIgnoredWhenDefault() async {
     let preferences = PreferencesClientFake()
     let changes = LocationChangeCounter()
     let model = Self.openedModel(preferences: preferences, locationChanges: changes)
 
-    model.sdkDefaultButtonTapped()
+    await model.sdkDefaultButtonTapped()
 
     #expect(Self.sdkWriteCount(preferences) == 0)
     #expect(changes.isEmpty)
   }
 
   @Test("창을 연 뒤 바깥에서 잠긴 채 되돌리면 쓰지 못하고 다시 읽어 잠금 안내로 바꾼다")
-  func resetLockedOutside() {
+  func resetLockedOutside() async {
     let preferences = PreferencesClientFake(androidSDKPath: Self.stored("/Volumes/Old/sdk"))
     let changes = LocationChangeCounter()
     let model = Self.openedModel(preferences: preferences, locationChanges: changes)
     preferences.setStoredAndroidSDKPath(Self.stored("/Volumes/Old/sdk", isLocked: true))
 
-    model.sdkDefaultButtonTapped()
+    await model.sdkDefaultButtonTapped()
 
     #expect(Self.sdkWrites(preferences) == [nil])
     #expect(model.androidSDKPath == Self.stored("/Volumes/Old/sdk", isLocked: true))
