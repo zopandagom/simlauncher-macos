@@ -44,6 +44,13 @@ struct AndroidDeviceListTests {
     #expect(Self.device(state: .booted, availability: .unavailable(.systemImageMissing(nil))).canShutdown)
   }
 
+  @Test("SDK 를 쓸 수 없으면 켜는 중·켜짐이어도 끌 수 없다 (adb 가 없다)", arguments: [
+    AndroidVirtualDevice.State.booting, .booted,
+  ])
+  func cannotShutdownWithoutSDK(state: AndroidVirtualDevice.State) {
+    #expect(!Self.device(state: state, availability: .unavailable(.sdkUnavailable)).canShutdown)
+  }
+
   @Test("꺼진 기기만 삭제할 수 있다 (쓸 수 없어도)")
   func delete() {
     #expect(Self.device(state: .shutdown).deleteAvailability == .allowed)

@@ -38,8 +38,9 @@ public extension AndroidVirtualDevice {
   }
 
   /// 켜는 중·켜짐이면 끌 수 있다 (쓸 수 없는 기기도. 앱 작업 중인지는 Feature 가 본다).
+  /// SDK 를 쓸 수 없으면 끌 수 없다 (adb 가 없다. 에뮬레이터 창을 닫아 끈다).
   var canShutdown: Bool {
-    self.state != .shutdown
+    self.state != .shutdown && self.availability != .unavailable(.sdkUnavailable)
   }
 
   /// `.shutdown` 이면 allowed, 아니면 blocked(.notShutdown). 쓸 수 있는지는 보지 않는다.

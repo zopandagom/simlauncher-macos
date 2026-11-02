@@ -10,6 +10,51 @@ struct AndroidDeviceJudgeTests {
     #expect(AndroidDeviceJudge.availability(Self.facts(), host: .aarch64) == .available)
   }
 
+  @Test("SDK 를 쓸 수 없으면 이름·폴더·이미지보다 먼저 sdkUnavailable")
+  func sdkUnavailableFirst() {
+    let cases = [
+      Self.facts(sdkAvailable: false),
+      Self.facts(name: "테스트 폰", folderExists: false, config: nil, sdkAvailable: false),
+      Self.facts(folderExists: false, config: nil, imageInstalled: false, sdkAvailable: false),
+      Self.facts(config: Self.config(sysdir: nil), sdkAvailable: false),
+    ]
+
+    for facts in cases {
+      #expect(AndroidDeviceJudge.availability(facts, host: .aarch64) == .unavailable(.sdkUnavailable))
+    }
+  }
+
+  @Test("SDK 를 쓸 수 없을 때 잠금이 있으면 켜짐: 끄기·삭제·앱 작업 모두 막힌다")
+  func sdkUnavailableLocked() {
+    let device = AndroidDeviceJudge.device(Self.facts(lockHeld: true, sdkAvailable: false), host: .aarch64, adb: nil)
+
+    #expect(device.state == .booted)
+    #expect(device.availability == .unavailable(.sdkUnavailable))
+    #expect(!device.canShutdown)
+    #expect(device.deleteAvailability == .blocked(.notShutdown))
+    #expect(device.appActionAvailability == .blocked(.unavailable))
+  }
+
+  @Test("SDK 를 쓸 수 없을 때 잠금이 없으면 꺼짐: 켜기·초기화는 막히고 삭제만 된다", arguments: [false, nil] as [Bool?])
+  func sdkUnavailableUnlocked(lockHeld: Bool?) {
+    let facts = Self.facts(imageInstalled: false, lockHeld: lockHeld, sdkAvailable: false)
+    let device = AndroidDeviceJudge.device(facts, host: .aarch64, adb: nil)
+
+    #expect(device.state == .shutdown)
+    #expect(!device.canBoot)
+    #expect(device.deleteAvailability == .allowed)
+    #expect(device.eraseAvailability == .blocked(.unavailable))
+  }
+
+  @Test("SDK 가 있으면 쓸 수 없는 기기(이름 틀림)도 켜져 있으면 끌 수 있다")
+  func sdkAvailableUnusableCanShutdown() {
+    let facts = Self.facts(name: "My Phone", lockHeld: true)
+    let device = AndroidDeviceJudge.device(facts, host: .aarch64, adb: .booted)
+
+    #expect(device.availability == .unavailable(.unsupportedName))
+    #expect(device.canShutdown)
+  }
+
   @Test("이름이 규칙에 맞지 않으면 다른 사실보다 먼저 unsupportedName")
   func unsupportedNameFirst() {
     let facts = Self.facts(name: "테스트 폰", folderExists: false, config: nil)
@@ -384,14 +429,16 @@ extension AndroidDeviceJudgeTests {
     folderExists: Bool = true,
     config: [(key: String, value: String)]? = Self.config(),
     imageInstalled: Bool = true,
-    lockHeld: Bool? = nil
+    lockHeld: Bool? = nil,
+    sdkAvailable: Bool = true
   ) -> AndroidAVDFacts {
     AndroidAVDFacts(
       name: name,
       folderExists: folderExists,
       config: config,
       imageInstalled: imageInstalled,
-      lockHeld: lockHeld
+      lockHeld: lockHeld,
+      sdkAvailable: sdkAvailable
     )
   }
 }

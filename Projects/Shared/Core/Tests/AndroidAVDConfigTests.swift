@@ -123,7 +123,8 @@ struct AndroidAVDConfigTests {
       folderExists: true,
       config: AVDIniFile.parse(data),
       imageInstalled: true,
-      lockHeld: nil
+      lockHeld: nil,
+      sdkAvailable: true
     )
 
     let device = AndroidDeviceJudge.device(facts, host: .aarch64, adb: nil)
