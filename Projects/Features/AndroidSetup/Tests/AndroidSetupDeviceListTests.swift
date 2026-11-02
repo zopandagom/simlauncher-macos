@@ -7,8 +7,8 @@ import Testing
 import WorkspaceTesting
 @testable import AndroidSetupFeature
 
-/// 기기 목록으로 넘어가기: 첫 확인 자동 전환(`isFinished`), "기기 목록 열기"(`canOpenDeviceList`·`deviceListButtonTapped`),
-/// 기기 목록에서 돌아오기(`reopened`).
+/// 기기 목록으로 넘어가기: 첫 확인 자동 전환(`isFinished`, 셋 다 설치됨일 때만), "기기 목록 열기"(`canOpenDeviceList`·
+/// `deviceListButtonTapped`. 확인이 끝났으면 설치되지 않은 것이 있어도 열고, 확인·계획·설치 중에는 막는다), 기기 목록에서 돌아오기(`reopened`).
 @MainActor
 struct AndroidSetupDeviceListTests: AndroidSetupTesting {
   @Test("첫 확인이 셋 다 설치됨이면 곧바로 기기 목록으로 넘어간다")
@@ -19,17 +19,38 @@ struct AndroidSetupDeviceListTests: AndroidSetupTesting {
   }
 
   @Test(
-    "첫 확인이 셋 다 설치됨이 아니면 넘어가지 않고 기기 목록을 열 수 없다",
+    "첫 확인이 셋 다 설치됨이 아니면 자동으로 넘어가지 않고, 위치를 쓸 수 없어도 버튼으로 기기 목록을 연다",
     arguments: [
       AndroidSDKStatus.absentSample, .partialSample, .chosenMissingSample, .unusableSample(.unreadable),
+      .unusableSample(.invalidSetting),
     ]
   )
-  func notReadyStays(status: AndroidSDKStatus) async {
+  func notReadyOpensByButton(status: AndroidSDKStatus) async {
     let setup = await Self.checkedFixture(status)
     #expect(!setup.model.isFinished)
+    #expect(setup.model.canOpenDeviceList)
+    setup.model.deviceListButtonTapped()
+    #expect(setup.model.isFinished)
+  }
+
+  @Test("계획을 받는 중·동의를 기다리는 중에는 기기 목록을 열 수 없고, 끝나면 연다")
+  func planningBlocksOpen() async {
+    let setup = await Self.checkedFixture { $0.suspendPlans() }
+    let install = Self.start { await setup.model.installButtonTapped() }
+    await Self.waitUntil { setup.fake.suspendedPlanCount == 1 }
     #expect(!setup.model.canOpenDeviceList)
     setup.model.deviceListButtonTapped()
     #expect(!setup.model.isFinished)
+    setup.fake.resumePlans()
+    await install.value()
+
+    // 동의 기록이 없어 동의 대기에서 멈춘다.
+    #expect(setup.model.isPlanning)
+    #expect(!setup.model.canOpenDeviceList)
+    setup.model.planCancelButtonTapped()
+    #expect(setup.model.canOpenDeviceList)
+    setup.model.deviceListButtonTapped()
+    #expect(setup.model.isFinished)
   }
 
   @Test("첫 확인 뒤 다시 확인으로 셋 다 설치됨이 되면 자동으로 넘어가지 않고 버튼으로 넘어간다")
@@ -55,7 +76,7 @@ struct AndroidSetupDeviceListTests: AndroidSetupTesting {
     #expect(setup.model.isFinished)
   }
 
-  @Test("확인 중에는 기기 목록을 열 수 없다")
+  @Test("확인 중에는 (설치되지 않은 것이 없어도) 기기 목록을 열 수 없다")
   func checkingBlocksOpen() async {
     let setup = await Self.checkedFixture(.partialSample)
     setup.fake.setStatus(.readySample)

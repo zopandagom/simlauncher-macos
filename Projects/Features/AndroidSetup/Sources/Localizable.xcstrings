@@ -81,6 +81,16 @@
         }
       }
     },
+    "Android 도구가 없어도 기기 목록에서 기기를 삭제할 수 있습니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Android 도구가 없어도 기기 목록에서 기기를 삭제할 수 있습니다."
+          }
+        }
+      }
+    },
     "Android 도구가 준비되었습니다" : {
       "localizations" : {
         "ko" : {
