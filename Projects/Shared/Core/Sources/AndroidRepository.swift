@@ -119,6 +119,41 @@ public struct AndroidPackageDependency: Hashable, Sendable {
   }
 }
 
+/// 저장소 XML 요소를 다시 쓰려고 보관한 마디. 이름·속성 이름은 XML 에 적힌 그대로다 (접두·`xmlns` 가 없는 것만 담는다).
+public indirect enum AndroidXMLNode: Hashable, Sendable {
+  case element(name: String, attributes: [String: String], children: [AndroidXMLNode])
+  /// 글자 마디 (엔티티·CDATA 를 푼 값. 이어진 글자는 하나로 합쳤다).
+  case text(String)
+}
+
+/// `package.xml`(`AndroidLocalPackageXML`)에 다시 쓸 remotePackage 의 원문 조각.
+public struct AndroidLocalPackageSource: Hashable, Sendable {
+  /// type-details 의 `xsi:type` 접두가 가리키는 네임스페이스 URI (`…/repository/android/generic/02`).
+  public let typeNamespace: String
+  /// type-details 의 `xsi:type` 로컬 이름 (`genericDetailsType`·`sysImgDetailsType`).
+  public let typeName: String
+  /// type-details 의 자식 마디, 문서 순서.
+  public let typeDetails: [AndroidXMLNode]
+  /// `<revision>` 요소 그대로 (minor·micro 가 없으면 없는 그대로).
+  public let revision: AndroidXMLNode
+  /// `<dependencies>` 요소 그대로. 없으면 nil.
+  public let dependencies: AndroidXMLNode?
+
+  public init(
+    typeNamespace: String,
+    typeName: String,
+    typeDetails: [AndroidXMLNode],
+    revision: AndroidXMLNode,
+    dependencies: AndroidXMLNode?
+  ) {
+    self.typeNamespace = typeNamespace
+    self.typeName = typeName
+    self.typeDetails = typeDetails
+    self.revision = revision
+    self.dependencies = dependencies
+  }
+}
+
 /// 저장소 XML 의 `<remotePackage>`.
 public struct AndroidRemotePackage: Hashable, Sendable {
   public let path: AndroidPackagePath
@@ -136,6 +171,8 @@ public struct AndroidRemotePackage: Hashable, Sendable {
   public let dependencies: [AndroidPackageDependency]
   /// 필수 값(size·checksum·url)을 모두 갖춘 archive 만, 문서 순서.
   public let archives: [AndroidArchive]
+  /// package.xml 에 다시 쓸 원문 조각. 옮길 수 없는 모양(접두 붙은 하위 이름, 풀리지 않는 `xsi:type` 등)이면 nil.
+  public let localPackageSource: AndroidLocalPackageSource?
 
   public init(
     path: AndroidPackagePath,
@@ -146,7 +183,8 @@ public struct AndroidRemotePackage: Hashable, Sendable {
     obsolete: Bool,
     systemImage: AndroidSystemImageDetails?,
     dependencies: [AndroidPackageDependency],
-    archives: [AndroidArchive]
+    archives: [AndroidArchive],
+    localPackageSource: AndroidLocalPackageSource? = nil
   ) {
     self.path = path
     self.revision = revision
@@ -157,6 +195,7 @@ public struct AndroidRemotePackage: Hashable, Sendable {
     self.systemImage = systemImage
     self.dependencies = dependencies
     self.archives = archives
+    self.localPackageSource = localPackageSource
   }
 }
 

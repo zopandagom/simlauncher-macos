@@ -3,17 +3,23 @@ import Foundation
 /// 저장소 XML 을 `AndroidRepository` 로 읽는다. 요소는 로컬 이름(접두를 뗀 이름)과 조상 경로로 알아보고, 모르는 요소는 무시한다.
 /// 읽는 구조 (1단계 실측, 설계 §6):
 /// ```
-/// <sdk:sdk-repository> | <sys-img:sdk-sys-img>
+/// <sdk:sdk-repository xmlns:sdk="…" xmlns:generic="…" xmlns:xsi="…"> | <sys-img:sdk-sys-img xmlns:…>
 ///   <license id="…" type="text">원문</license>
 ///   <channel id="channel-0">stable</channel>
 ///   <remotePackage path="…" obsolete="true">
-///     <type-details><api-level/><codename/><tag><id/></tag>…<abi/><base-extension/></type-details>
+///     <type-details xsi:type="generic:genericDetailsType"><api-level/><codename/><tag><id/></tag>…<abi/>
+/// <base-extension/></type-details>
 ///     <revision><major/><minor/><micro/><preview/></revision>
 ///     <display-name/> <uses-license ref="…"/> <channelRef ref="channel-N"/>
 ///     <dependencies><dependency path="…"><min-revision>…</min-revision></dependency></dependencies>
 ///     <archives><archive><host-os/><host-arch/><complete><size/><checksum
 /// type="sha1"/><url/></complete></archive></archives>
 /// ```
+/// package.xml 에 다시 쓸 원문 조각(`AndroidLocalPackageSource`): remotePackage 바로 아래 type-details·revision·dependencies
+/// 를 마디 그대로 잡고, `xmlns:*` 선언 범위로 type-details 의 `xsi:type` 을 (네임스페이스 URI, 로컬 이름) 으로 푼다.
+/// 옮길 수 없는 모양이면 그 패키지의 조각만 nil (패키지는 그대로 읽는다): 잡은 범위 안 하위 요소 이름·속성 이름에 `:` 가 있거나
+/// 속성 이름이 `xmlns` 로 시작함, revision·dependencies 요소 자체의 이름·속성이 그 모양, type-details 범위에 기본 네임스페이스,
+/// `xsi:type` 이 없거나 `접두:이름` 이 아니거나 접두가 선언되지 않음, 같은 요소가 두 번.
 enum AndroidRepositoryReader {
   static let roots: Set<String> = ["sdk-repository", "sdk-sys-img"]
 
@@ -151,6 +157,7 @@ private struct PackageDraft {
   var baseExtension: String?
   var dependencies: [DependencyDraft] = []
   var archives: [ArchiveDraft] = []
+  var source = AndroidRepositoryReader.SourceDraft()
 }
 
 // MARK: - XMLParser delegate
@@ -171,6 +178,10 @@ private final class Delegate: NSObject, XMLParserDelegate {
   private var package: PackageDraft?
   private var dependency: DependencyDraft?
   private var archive: ArchiveDraft?
+  /// 요소마다 보이는 `xmlns` 선언 (접두 → URI, 기본 네임스페이스는 ""). `stack` 과 같은 깊이.
+  private var scopes: [[String: String]] = []
+  /// 원문 조각을 잡는 중인 요소들. 0 번이 type-details·revision·dependencies.
+  private var capture: [AndroidRepositoryReader.CaptureFrame] = []
 
   func repository() -> AndroidRepository {
     AndroidRepository(licenses: self.licenses, packages: self.packages.compactMap(self.package(from:)))
@@ -194,6 +205,9 @@ private final class Delegate: NSObject, XMLParserDelegate {
     }
     self.stack.append(name)
     self.text = ""
+    let scope = AndroidRepositoryReader.scope(adding: attributes, to: self.scopes.last ?? [:])
+    self.scopes.append(scope)
+    self.startCapture(elementName, localName: name, attributes: attributes, scope: scope)
     switch self.stack.count {
     case 2:
       self.startTopLevel(name, attributes: attributes)
@@ -204,10 +218,13 @@ private final class Delegate: NSObject, XMLParserDelegate {
 
   func parser(_: XMLParser, foundCharacters string: String) {
     self.text += string
+    self.captureText(string)
   }
 
   func parser(_: XMLParser, foundCDATA CDATABlock: Data) {
-    self.text += String(bytes: CDATABlock, encoding: .utf8) ?? ""
+    let string = String(bytes: CDATABlock, encoding: .utf8) ?? ""
+    self.text += string
+    self.captureText(string)
   }
 
   func parser(
@@ -220,8 +237,10 @@ private final class Delegate: NSObject, XMLParserDelegate {
       return
     }
     let parent = self.stack.count >= 2 ? self.stack[self.stack.count - 2] : nil
+    self.endCapture(name)
     self.end(name, parent: parent, depth: self.stack.count)
     self.stack.removeLast()
+    self.scopes.removeLast()
     self.text = ""
   }
 
@@ -384,6 +403,81 @@ private final class Delegate: NSObject, XMLParserDelegate {
   }
 }
 
+// MARK: - 원문 조각 잡기
+
+extension Delegate {
+  private func startCapture(
+    _ elementName: String,
+    localName: String,
+    attributes: [String: String],
+    scope: [String: String]
+  ) {
+    guard self.package != nil else {
+      return
+    }
+    if !self.capture.isEmpty {
+      if AndroidRepositoryReader.isPrefixed(elementName) || AndroidRepositoryReader.hasForeignAttribute(attributes) {
+        self.package?.source.invalid = true
+      }
+      self.capture.append(AndroidRepositoryReader.CaptureFrame(name: elementName, attributes: attributes))
+      return
+    }
+    guard
+      self.stack.count == 3,
+      self.stack[1] == "remotePackage",
+      AndroidRepositoryReader.SourceDraft.kinds.contains(localName),
+      var source = self.package?.source
+    else {
+      return
+    }
+    defer { self.package?.source = source }
+    guard source.seen.insert(localName).inserted else {
+      source.invalid = true
+      return
+    }
+    if localName == "type-details" {
+      if scope[""] != nil {
+        source.invalid = true
+      }
+      if let type = AndroidRepositoryReader.schemaType(attributes, scope: scope) {
+        source.typeNamespace = type.namespace
+        source.typeName = type.name
+      } else {
+        source.invalid = true
+      }
+    } else if AndroidRepositoryReader.isPrefixed(elementName)
+      || AndroidRepositoryReader.hasForeignAttribute(attributes)
+    {
+      source.invalid = true
+    }
+    self.capture.append(AndroidRepositoryReader.CaptureFrame(name: elementName, attributes: attributes))
+  }
+
+  private func captureText(_ string: String) {
+    guard !self.capture.isEmpty else {
+      return
+    }
+    self.capture[self.capture.count - 1].append(text: string)
+  }
+
+  /// 잡는 중인 요소가 끝나면 부모 마디에 붙이고, 맨 위(type-details·revision·dependencies)면 패키지 초안에 둔다.
+  private func endCapture(_ localName: String) {
+    guard let frame = self.capture.popLast() else {
+      return
+    }
+    guard self.capture.isEmpty else {
+      self.capture[self.capture.count - 1].children.append(frame.node)
+      return
+    }
+    switch localName {
+    case "type-details": self.package?.source.typeDetails = frame.children
+    case "revision": self.package?.source.revision = frame.node
+    case "dependencies": self.package?.source.dependencies = frame.node
+    default: break
+    }
+  }
+}
+
 // MARK: - 드래프트 → 패키지
 
 extension Delegate {
@@ -433,7 +527,8 @@ extension Delegate {
       obsolete: draft.obsolete,
       systemImage: systemImage,
       dependencies: dependencies,
-      archives: draft.archives.compactMap(\.archive)
+      archives: draft.archives.compactMap(\.archive),
+      localPackageSource: draft.source.source
     )
   }
 }

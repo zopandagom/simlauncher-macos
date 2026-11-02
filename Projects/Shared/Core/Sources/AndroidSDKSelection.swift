@@ -10,6 +10,7 @@ import Foundation
 /// - archive: host-os 가 없거나 `macosx`, host-arch 가 없거나 호스트와 같다 (같은 것을 먼저). 파일 이름이
 ///   `^[A-Za-z0-9_][A-Za-z0-9._-]*$` 인 것만 XML 폴더 기준 https 주소로 만든다 (경로·절대 주소·숨김 이름은 거절).
 /// - 라이선스: 패키지가 있는 XML 의 `<license>` 원문. 계획의 원문은 지문 기준으로 중복을 빼고 처음 나온 순서.
+/// - package.xml: 고른 패키지의 원문 조각으로 만든 내용(`AndroidLocalPackageXML`). 만들 수 없으면 nil 이고 설치는 그대로 한다.
 public enum AndroidSDKSelection {
   /// 고르는 데 쓰는 값.
   public struct Input: Sendable {
@@ -86,7 +87,8 @@ public enum AndroidSDKSelection {
         displayName: candidate.package.displayName,
         license: license,
         archive: candidate.archive,
-        url: candidate.url
+        url: candidate.url,
+        localPackageXML: AndroidLocalPackageXML.render(candidate.package, license: license)
       ))
     }
     var fingerprints: Set<String> = []

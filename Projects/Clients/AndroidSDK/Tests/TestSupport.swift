@@ -62,6 +62,23 @@ enum FileTree {
     SDKFiles.exists(url)
   }
 
+  /// 폴더에 ACL `group:everyone deny add_file` 을 단다 (`chmod +a "everyone deny add_file"` 과 같다). 안에 새 파일을
+  /// 만들 수 없고, 그 폴더의 이름 바꾸기·지우기는 된다 (실측). 텍스트 형식의 권한 이름은 `add_file` 이 아니라 `write` 다.
+  static func denyAddFile(_ url: URL) throws {
+    let text = "!#acl 1\ngroup:ABCDEFAB-CDEF-ABCD-EFAB-CDEF0000000C:everyone:12:deny:write\n"
+    guard let acl = acl_from_text(text) else {
+      throw ACLError(code: errno)
+    }
+    defer { acl_free(UnsafeMutableRawPointer(acl)) }
+    guard acl_set_file(url.path(percentEncoded: false), ACL_TYPE_EXTENDED, acl) == 0 else {
+      throw ACLError(code: errno)
+    }
+  }
+
+  struct ACLError: Error {
+    let code: Int32
+  }
+
   static func names(_ url: URL) -> [String] {
     ((try? FileManager.default.contentsOfDirectory(atPath: url.path(percentEncoded: false))) ?? []).sorted()
   }
@@ -134,6 +151,11 @@ struct PackageSpec {
       url = url.appending(path: part, directoryHint: .isDirectory)
     }
     return url
+  }
+
+  /// 계획이 기본으로 담는 package.xml 내용.
+  var packageXML: Data {
+    Data("<package \(self.component.folderName)/>".utf8)
   }
 
   /// 받은 파일 내용. Fake 명령이 `source.zip` 링크 대상을 읽어 어느 패키지인지 안다.
@@ -322,11 +344,13 @@ struct Harness {
   }
 
   /// 구성 요소마다 받은 파일을 쓰고 Fake 의 주소별 결과로 둔 계획. `corrupt` 의 구성 요소는 계획의 체크섬이 다르다.
+  /// package.xml 내용은 `PackageSpec.packageXML` 이고, `noPackageXML` 의 구성 요소는 nil(쓰지 않음)이다.
   func plan(
     _ components: [AndroidSDKComponent] = AndroidSDKComponent.allCases,
     root: AndroidSDKRoot? = nil,
     corrupt: Set<AndroidSDKComponent> = [],
-    wrongSize: Set<AndroidSDKComponent> = []
+    wrongSize: Set<AndroidSDKComponent> = [],
+    noPackageXML: Set<AndroidSDKComponent> = []
   ) throws -> AndroidSDKInstallPlan {
     var packages: [AndroidSelectedPackage] = []
     for (index, component) in components.enumerated() {
@@ -359,7 +383,8 @@ struct Harness {
           checksum: checksum,
           fileName: "\(component.folderName).zip"
         ),
-        url: spec.url
+        url: spec.url,
+        localPackageXML: noPackageXML.contains(component) ? nil : spec.packageXML
       ))
     }
     return AndroidSDKInstallPlan(

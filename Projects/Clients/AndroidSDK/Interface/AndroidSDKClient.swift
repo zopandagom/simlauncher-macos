@@ -27,7 +27,8 @@ public protocol AndroidSDKClient: Sendable {
   /// 패키지마다 시작 직전에 최종 경로를 다시 보고 무엇이든 있으면 건너뛴다(alreadyPresent). 진행은 순서대로 알린다
   /// (앞 알림이 끝난 뒤 다음). 패키지 하나가 실패하면 나머지는 하지 않는다.
   /// 취소: 받기·확인·풀기 중이면 멈추고 그 패키지의 받은 폴더·스테이징을 지운 뒤 `.cancelled` (앞서 끝난 패키지는 남는다).
-  /// 마무리(rename·스테이징 지우기)는 취소를 받지 않고, 끝낸 뒤 다음 패키지 시작에서 `.cancelled`. 돌아오면 unzip 은 끝나 있다.
+  /// 마무리(package.xml 만들기·rename·스테이징 지우기)는 취소를 받지 않고, 끝낸 뒤 다음 패키지 시작에서 `.cancelled`.
+  /// 돌아오면 unzip 은 끝나 있다.
   func install(
     _ plan: AndroidSDKInstallPlan,
     acceptedLicenses: Set<String>,

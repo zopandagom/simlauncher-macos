@@ -7,7 +7,7 @@ public struct AndroidSDKInstallProgress: Hashable, Sendable {
     case verifying
     /// zipinfo 검사와 unzip 풀기.
     case extracting
-    /// 최종 경로로 이름 바꾸기와 스테이징 지우기. 취소를 받지 않는다.
+    /// package.xml 만들기(계획에 있을 때), 최종 경로로 이름 바꾸기와 스테이징 지우기. 취소를 받지 않는다.
     case finishing
   }
 

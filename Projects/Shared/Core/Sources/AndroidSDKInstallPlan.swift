@@ -25,6 +25,8 @@ public struct AndroidSelectedPackage: Hashable, Sendable {
   public let archive: AndroidArchive
   /// archive 파일 이름을 XML 폴더 기준으로 붙인 https 주소.
   public let url: DownloadURL
+  /// 최종 폴더에 둘 package.xml 내용 (`AndroidLocalPackageXML`). nil 이면 쓰지 않는다.
+  public let localPackageXML: Data?
 
   public init(
     component: AndroidSDKComponent,
@@ -33,7 +35,8 @@ public struct AndroidSelectedPackage: Hashable, Sendable {
     displayName: String,
     license: AndroidLicense,
     archive: AndroidArchive,
-    url: DownloadURL
+    url: DownloadURL,
+    localPackageXML: Data? = nil
   ) {
     self.component = component
     self.path = path
@@ -42,6 +45,7 @@ public struct AndroidSelectedPackage: Hashable, Sendable {
     self.license = license
     self.archive = archive
     self.url = url
+    self.localPackageXML = localPackageXML
   }
 }
 

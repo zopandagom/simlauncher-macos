@@ -96,6 +96,7 @@ struct AndroidSDKClientImplArchiveTests {
     #expect(empty.stagingNames.isEmpty)
   }
 
+  // 계획에 package.xml 이 있어도 Studio 가 만든 폴더에는 쓰지 않는다 (이름 목록이 그대로).
   @Test("최종 경로가 이름 바꾸기 직전에 생기면(RENAME_EXCL 실패) destinationExists, 기존 폴더 내용 그대로")
   func destinationExists() async throws {
     let sdkBox = Recorder<URL>()
@@ -120,5 +121,68 @@ struct AndroidSDKClientImplArchiveTests {
     #expect(PackageInstaller.renameFailure(errno: EEXIST, component: .emulator) == .destinationExists(.emulator))
     #expect(PackageInstaller.renameFailure(errno: ENOTSUP, component: .emulator) == .sdkFolderUnavailable)
     #expect(PackageInstaller.renameFailure(errno: EXDEV, component: .emulator) == .sdkFolderUnavailable)
+  }
+
+  @Test("zip 에 package.xml 파일이 이미 있으면 계획 값으로 바꾸지 않고 그대로 옮긴다")
+  func archivePackageXMLFile() async throws {
+    let harness = try Harness(unzip: { spec, contents in
+      try spec.extract(into: contents)
+      try FileTree.file(contents, "\(spec.top)/package.xml", contents: "archive")
+      return .success()
+    })
+    defer { harness.directory.remove() }
+
+    #expect(try await harness.install(harness.plan([.platformTools])).result.get().installed == [.platformTools])
+    #expect(FileTree.read(harness.sdk.appending(path: "platform-tools/package.xml")) == "archive")
+  }
+
+  @Test("zip 에 package.xml 링크(맨 위 폴더 안)가 있으면 링크와 그 대상을 그대로 옮긴다")
+  func archivePackageXMLLink() async throws {
+    let harness = try Harness(unzip: { spec, contents in
+      try spec.extract(into: contents)
+      try FileTree.link(contents, "\(spec.top)/package.xml", to: "adb")
+      return .success()
+    })
+    defer { harness.directory.remove() }
+
+    #expect(try await harness.install(harness.plan([.platformTools])).result.get().installed == [.platformTools])
+    let link = harness.sdk.appending(path: "platform-tools/package.xml", directoryHint: .notDirectory)
+    #expect(try FileManager.default.destinationOfSymbolicLink(atPath: link.path(percentEncoded: false)) == "adb")
+    #expect(FileTree.read(harness.sdk.appending(path: "platform-tools/adb")) == "adb")
+  }
+
+  /// ACL 폴더는 이름 바꾸기가 되므로, 이름 바꾸기 뒤에 쓰거나 쓰기 실패를 무시하면 최종 경로가 생겨 이 테스트가 실패한다.
+  @Test("package.xml 을 만들지 못하면 sdkFolderUnavailable, 최종 경로·스테이징 없음, 받은 폴더 지움, 다음 패키지 받지 않음")
+  func packageXMLWriteFailure() async throws {
+    let harness = try Harness(unzip: { spec, contents in
+      try spec.extract(into: contents)
+      if spec.component == .platformTools {
+        try FileTree.denyAddFile(contents.appending(path: spec.top, directoryHint: .isDirectory))
+      }
+      return .success()
+    })
+    defer { harness.directory.remove() }
+
+    let result = try await harness.install(harness.plan([.platformTools, .emulator])).result
+
+    #expect(result == .failure(.sdkFolderUnavailable))
+    #expect(!FileTree.exists(harness.sdk.appending(path: "platform-tools")))
+    #expect(harness.stagingNames.isEmpty)
+    #expect(harness.removedDownloads.count == 1)
+    #expect(!harness.download.calls.contains(.download(PackageSpec(.emulator).url.url)))
+  }
+
+  @Test("package.xml 만들기 실패: ENOSPC·EDQUOT → insufficientDiskSpace, EACCES·EPERM·EROFS·EIO → sdkFolderUnavailable")
+  func packageXMLFailureMapping() {
+    for code in [ENOSPC, EDQUOT] {
+      #expect(PackageInstaller.packageXMLFailure(errno: code, component: .emulator, required: 10, available: 5)
+        == .insufficientDiskSpace(.emulator, required: 10, available: 5))
+      #expect(PackageInstaller.packageXMLFailure(errno: code, component: .emulator, required: 10, available: nil)
+        == .insufficientDiskSpace(.emulator, required: 10, available: nil))
+    }
+    for code in [EACCES, EPERM, EROFS, EIO] {
+      #expect(PackageInstaller.packageXMLFailure(errno: code, component: .emulator, required: 10, available: 5)
+        == .sdkFolderUnavailable)
+    }
   }
 }

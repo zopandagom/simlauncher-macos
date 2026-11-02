@@ -10,7 +10,7 @@ import Testing
 
 /// `install(_:acceptedLicenses:progress:)`: 받은 파일은 테스트가 쓴 작은 바이트 열이고 체크섬 확인은 실제로 돈다.
 struct AndroidSDKClientImplInstallTests {
-  @Test("셋 다 설치: 순서·인자·빈 환경, 최종 경로에 트리, 스테이징·받은 폴더 지움, 기본 위치는 중간 폴더까지 만든다")
+  @Test("셋 다 설치: 순서·인자·빈 환경, 최종 경로에 트리·계획의 package.xml, 스테이징·받은 폴더 지움, 기본 위치는 중간 폴더까지 만든다")
   func installsAll() async throws {
     let harness = try Harness()
     defer { harness.directory.remove() }
@@ -27,6 +27,8 @@ struct AndroidSDKClientImplInstallTests {
       for file in spec.files {
         #expect(FileTree.read(spec.destination(in: harness.sdk).appending(path: file.name)) == file.contents)
       }
+      let packageXML = spec.destination(in: harness.sdk).appending(path: "package.xml", directoryHint: .notDirectory)
+      #expect(try Data(contentsOf: packageXML) == spec.packageXML)
     }
     #expect(harness.stagingNames.isEmpty)
     #expect(Set(harness.removedDownloads.map(\.folder.lastPathComponent)) == [
@@ -84,6 +86,24 @@ struct AndroidSDKClientImplInstallTests {
     #expect(progress.filter { !$0.canCancel }.map(\.phase) == [.finishing, .finishing])
   }
 
+  @Test("계획의 package.xml 이 nil 인 패키지는 package.xml 없이 설치하고, 나머지는 계획 값을 쓴다")
+  func noPackageXML() async throws {
+    let harness = try Harness()
+    defer { harness.directory.remove() }
+    let plan = try harness.plan(noPackageXML: [.emulator])
+
+    let (result, _) = await harness.install(plan)
+
+    #expect(try result.get().installed == [.platformTools, .emulator, .systemImage])
+    #expect(FileTree.names(harness.sdk.appending(path: "emulator")) == ["emulator", "source.properties"])
+    for component in [AndroidSDKComponent.platformTools, .systemImage] {
+      let spec = PackageSpec(component)
+      let packageXML = spec.destination(in: harness.sdk).appending(path: "package.xml", directoryHint: .notDirectory)
+      #expect(try Data(contentsOf: packageXML) == spec.packageXML)
+    }
+  }
+
+  // 계획에 package.xml 이 있어도 이미 있는 폴더에는 쓰지 않는다 (이름 목록이 그대로).
   @Test("시작 때 최종 경로에 무엇이든 있으면 건너뛰고(alreadyPresent) 전체 바이트에서 뺀다, 기존 내용 그대로")
   func skipsPresentAtStart() async throws {
     let harness = try Harness()
