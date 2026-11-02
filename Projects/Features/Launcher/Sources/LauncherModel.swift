@@ -72,6 +72,7 @@ public final class LauncherModel {
   /// 기기별 녹화 작업. Model 이 소유해 중지·기기 꺼짐·앱 종료가 이것을 취소해 멈춘다 (View 의 Task 취소는 전해지지 않는다).
   @ObservationIgnored private var recordingTasks: [VirtualDevice.ID: Task<Void, Never>] = [:]
   /// 앱 종료를 기다리는 중이다. 새 녹화를 시작하지 않는다 (곧 종료하므로 되돌리지 않는다).
+  /// 녹화 시작의 가드로만 쓰고 화면 상태를 정하는 값은 읽지 않아 관찰하지 않는다 (종료 대기 중 "녹화" 누름은 무시된다).
   @ObservationIgnored private var isTerminating = false
 
   public init(
