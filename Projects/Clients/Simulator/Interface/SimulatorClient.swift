@@ -1,7 +1,8 @@
 import Core
 import Foundation
 
-/// iOS 시뮬레이터 기기·런타임·기기 종류와 런타임 디스크 이미지 목록을 읽고, 켜고 끄고, 만들고 지우고 초기화하고, 앱을 설치·실행하고 링크를 열고 화면을 찍고 녹화하는 Client.
+/// iOS 시뮬레이터 기기·런타임·기기 종류와 런타임 디스크 이미지 목록을 읽고, 켜고 끄고, 만들고 지우고 초기화하고, 앱을 설치·실행(콘솔을 붙인 실행 포함)하고
+/// 링크를 열고 화면을 찍고 녹화하는 Client.
 /// Impl 은 `xcrun simctl` 과 같은 개발자 디렉터리를 쓴다. 쓸 Xcode 가 없으면(App 이 넘긴 provider 가 nil 을 돌려줌)
 /// 어떤 명령도 실행하지 않고 `.developerToolsUnavailable` 를 던진다.
 public protocol SimulatorClient: Sendable {
@@ -46,6 +47,27 @@ public protocol SimulatorClient: Sendable {
   /// 설치된 앱을 실행한다 (`simctl launch`). 이미 실행 중이면 다시 띄운다(새 pid).
   /// 성공해도 앱이 곧바로 종료됐을 수 있다 (simctl 이 결정적으로 알려 주지 않는다).
   func launch(_ bundleID: AppBundleID, on id: VirtualDevice.ID) async throws(SimulatorError)
+
+  /// 설치된 앱을 콘솔을 붙여 실행하고(`simctl launch --console-pty --terminate-running-process <기기> <번들 ID>`),
+  /// 끝날 때까지 앱 출력을 줄로 넘긴다. 앱의 stdout·stderr·NSLog 와 Logger(`OS_ACTIVITY_DT_MODE`)가 한 흐름으로 오고 구별하지 않는다.
+  /// 이미 실행 중이면 그 앱을 끝내고 다시 띄운다. 사전 목록 확인은 하지 않는다 (꺼진 기기는 simctl 이 실패한다).
+  /// - simctl 이 찍는 실행 신호 줄(`<번들 ID>: <pid>`, `\n` 으로 끝남)이나 **앱의 첫 줄** 중 먼저 온 것에서 `onEvent(.launched)` 를
+  ///   한 번 부른다 (신호 줄은 앱의 첫 줄들보다 늦을 수 있고, 실패할 때 simctl 은 stdout 에 쓰지 않는다, 측정).
+  ///   신호 줄과 simctl 이 끝에 찍는 빈 줄은 넘기지 않는다.
+  /// - 앱 줄은 `onEvent(.lines(_:))` 로 받은 순서대로 넘긴다 (조각마다 다 된 줄만. 끝에 남은 조각은 끝날 때 한 줄로).
+  ///   다음 조각은 앞 `onEvent` 가 끝난 뒤 넘긴다.
+  /// - **호출한 Task 의 취소가 멈춤이다**: SIGINT(→ 10초 SIGTERM → 5초 SIGKILL)로 simctl 을 멈추고(SIGINT·SIGTERM 은 앱도 끝낸다)
+  ///   끝나면 `.stopped` 로 돌아온다. 시간 제한은 없다.
+  /// - 취소하지 않으면 앱이 끝나거나 기기가 꺼질 때 simctl 이 끝나고 `.exited` 로 돌아온다.
+  /// - 신호 전에 0 이 아닌 코드로 끝나면 `launch(_:on:)` 와 같은 분류로 던진다 (`.appNotInstalled`·`.deviceNotBooted`·
+  ///   `.appLaunchFailed`·`.commandFailed`). 신호 없이 0 으로 끝나면 `.exited` (실행은 된 것으로 본다). 신호 뒤에는 종료 코드와 관계없이 `.exited`.
+  /// - UDID 형식이 아니면 실행하지 않고 `.deviceNotFound`. 쓸 Xcode 가 없거나 띄우지 못하면 `.developerToolsUnavailable`.
+  /// - stdout 은 쌓지 않는다 (`CommandClient.streamCancellable`).
+  func launchWithConsole(
+    _ bundleID: AppBundleID,
+    on id: VirtualDevice.ID,
+    onEvent: @escaping @Sendable (AppConsoleEvent) async -> Void
+  ) async throws(SimulatorError) -> AppConsoleEnd
 
   /// 켜진 기기에서 링크를 연다 (`simctl openurl`). 사전 목록 확인·재조회는 하지 않는다 (꺼져 있으면 simctl 이 `.deviceNotBooted`).
   /// 처리할 앱이 없으면 `.urlNotHandled`, simctl 이 형식을 거절하면 `.invalidURL`.

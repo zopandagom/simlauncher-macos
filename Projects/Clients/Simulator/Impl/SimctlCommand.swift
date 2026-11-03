@@ -54,6 +54,13 @@ enum SimctlCommand {
     ["simctl", "launch", udid, bundleID]
   }
 
+  /// 콘솔을 붙인 실행. 인자 규칙은 `launch(udid:bundleID:)` 와 같다 (`--` 없음).
+  /// `--console-pty` 는 앱의 stdout·stderr 를 pty 로 받아 simctl stdout 하나로 넘기고(앱 줄 끝 `\r\n`), `--terminate-running-process` 는
+  /// 이미 실행 중인 앱을 끝내고 다시 띄운다 (끝난 앞 실행의 simctl 도 곧 끝난다, 측정).
+  static func launchWithConsole(udid: String, bundleID: String) -> [String] {
+    ["simctl", "launch", "--console-pty", "--terminate-running-process", udid, bundleID]
+  }
+
   /// `udid` 는 `validatedUDID(_:)` 를 거친 값, `url` 은 `DeepLink.url.absoluteString`(스킴으로 시작)만 넘긴다.
   /// openurl 은 기기 뒤 인자를 옵션으로 읽지 않고 `--` 도 URL 로 받으므로(-50) 붙이지 않는다.
   static func openURL(udid: String, url: String) -> [String] {
@@ -86,6 +93,16 @@ enum SimctlCommand {
   /// UUID 형식이면 대문자 UUID 문자열, 아니면 nil. 기기 이름이나 옵션("-h")이 인자로 해석되지 않게 한다.
   static func validatedUDID(_ raw: String) -> String? {
     UUID(uuidString: raw)?.uuidString
+  }
+
+  /// `environment(base:developerDirectory:)` 에 콘솔 실행용 두 값을 더한다:
+  /// `NSUnbufferedIO=YES` 는 simctl 자신의 stdout 을 버퍼링하지 않게 해 실행 신호 줄이 곧바로 오게 하고(없으면 simctl 이 끝날 때 온다, 측정),
+  /// `SIMCTL_CHILD_OS_ACTIVITY_DT_MODE=enable` 은 앱에 `OS_ACTIVITY_DT_MODE` 를 넘겨 Logger·os_log 도 콘솔로 오게 한다.
+  static func consoleEnvironment(base: [String: String], developerDirectory: URL?) -> [String: String] {
+    var environment = Self.environment(base: base, developerDirectory: developerDirectory)
+    environment["NSUnbufferedIO"] = "YES"
+    environment["SIMCTL_CHILD_OS_ACTIVITY_DT_MODE"] = "enable"
+    return environment
   }
 
   /// 개발자 디렉터리가 있으면 `DEVELOPER_DIR` 로 넣고, 없으면 물려받은 `DEVELOPER_DIR` 도 지워 `xcode-select` 기본값을 쓴다.
