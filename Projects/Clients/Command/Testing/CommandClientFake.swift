@@ -8,12 +8,14 @@ public final class CommandClientFake: CommandClient {
     public let executable: URL
     public let arguments: [String]
     public let environment: [String: String]
-    /// `runCancellable` 로 왔으면 true.
+    /// `runCancellable`·`streamCancellable` 로 왔으면 true.
     public let isCancellable: Bool
     /// `runCancellable` 의 시간 제한. `run` 이면 nil.
     public let timeout: Duration?
     /// `launch` 로 왔으면 true.
     public let isLaunch: Bool
+    /// `streamCancellable` 로 왔으면 true (`isCancellable` 도 true, `timeout` 은 nil).
+    public let isStream: Bool
 
     /// 기존 3-인자 비교는 `run` 요청(false·nil)과 같다.
     public init(
@@ -22,7 +24,8 @@ public final class CommandClientFake: CommandClient {
       environment: [String: String],
       isCancellable: Bool = false,
       timeout: Duration? = nil,
-      isLaunch: Bool = false
+      isLaunch: Bool = false,
+      isStream: Bool = false
     ) {
       self.executable = executable
       self.arguments = arguments
@@ -30,10 +33,12 @@ public final class CommandClientFake: CommandClient {
       self.isCancellable = isCancellable
       self.timeout = timeout
       self.isLaunch = isLaunch
+      self.isStream = isStream
     }
   }
 
-  /// `runCancellable` 처리기. `emit` 으로 출력 조각을 넘기고(호출한 쪽의 `onOutput` 이 끝난 뒤 돌아온다) 결과를 정한다.
+  /// `runCancellable`·`streamCancellable` 처리기 (`invocation.isStream` 으로 가른다). `emit` 으로 출력 조각을 넘기고(호출한 쪽의 `onOutput` 이
+  /// 끝난 뒤 돌아온다) 결과를 정한다.
   public typealias CancellableHandler = @Sendable (
     Invocation,
     _ emit: @Sendable (CommandOutput) async -> Void
@@ -115,6 +120,34 @@ public final class CommandClientFake: CommandClient {
       timeout: timeout
     )
     self.recorded.withLock { $0.append(invocation) }
+    return try await self.runRecordedCancellable(invocation, onOutput: onOutput)
+  }
+
+  /// `runCancellable` 과 같은 처리기·기본 경로로 답하고 결과의 stderr 만 돌려준다 (stdout 은 쌓지 않는다).
+  /// 요청은 `isCancellable: true, timeout: nil, isStream: true` 로 기록한다.
+  public func streamCancellable(
+    _ executable: URL,
+    _ arguments: [String],
+    environment: [String: String],
+    onOutput: @escaping @Sendable (CommandOutput) async -> Void
+  ) async throws(CommandError) -> StreamedCommandResult {
+    let invocation = Invocation(
+      executable: executable,
+      arguments: arguments,
+      environment: environment,
+      isCancellable: true,
+      timeout: nil,
+      isStream: true
+    )
+    self.recorded.withLock { $0.append(invocation) }
+    let result = try await self.runRecordedCancellable(invocation, onOutput: onOutput)
+    return StreamedCommandResult(exitCode: result.exitCode, stderr: result.stderr)
+  }
+
+  private func runRecordedCancellable(
+    _ invocation: Invocation,
+    onOutput: @escaping @Sendable (CommandOutput) async -> Void
+  ) async throws(CommandError) -> CommandResult {
     guard !Task.isCancelled else {
       throw .cancelled
     }

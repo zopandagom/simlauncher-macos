@@ -42,6 +42,18 @@ public protocol CommandClient: Sendable {
     onOutput: @escaping @Sendable (CommandOutput) async -> Void
   ) async throws(CommandError) -> CommandResult
 
+  /// `runCancellable` 과 같은 규약(조각 순서, 앞 조각의 `onOutput` 이 끝난 뒤 다음, 돌아온 뒤에는 부르지 않음,
+  /// Task 취소 → SIGINT → (10초) SIGTERM → (5초) SIGKILL 뒤 **프로세스가 끝난 뒤** `.cancelled`, 시작 전 취소면 실행하지 않음,
+  /// 시작하지 못하면 `.launchFailed`, 0 이 아닌 종료 코드는 결과)이지만, 시간 제한이 없고 **stdout 을 결과에 쌓지 않는다**
+  /// (오래 사는 출력: 앱 로그. 쌓으면 켜 둔 동안 메모리가 끝없이 는다). stderr 는 앞 `StreamedCommandResult.stderrLimit` 만 쌓는다.
+  /// - Parameter environment: 프로세스 환경 전체. 물려받은 환경에 더하지 않는다.
+  func streamCancellable(
+    _ executable: URL,
+    _ arguments: [String],
+    environment: [String: String],
+    onOutput: @escaping @Sendable (CommandOutput) async -> Void
+  ) async throws(CommandError) -> StreamedCommandResult
+
   /// 오래 사는 프로세스를 띄우고 곧바로 돌아온다 (끝날 때까지 기다리지 않는다). 셸을 거치지 않는다.
   /// stdin·stdout·stderr 는 /dev/null 이다 (출력을 읽지 않는다: 오래 켜 두면 파이프가 차 자식이 막히므로).
   /// 프로세스를 시작하지 못하면 `.launchFailed`. 이 앱이 끝나도 프로세스는 남는다 (앱은 아무것도 보내지 않는다).
