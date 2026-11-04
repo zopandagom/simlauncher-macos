@@ -113,7 +113,8 @@ public final class DeviceLogModel {
 
   // MARK: - 다시 실행
 
-  /// 끝난 세션의 앱을 같은 기기에서 다시 실행한다 (기기를 켜지 않는다). 성공하면 새 세션으로 옮긴다.
+  /// 끝난 세션의 앱을 같은 기기에서 다시 실행한다 (기기를 켜지 않는다). 성공하면 새 세션으로 옮긴다
+  /// (창이 열려 있고 아직 다시 실행한 세션을 보고 있을 때만).
   /// 도는 동안 창을 닫아도 계속되고, 상태(`.running`)가 남아 다시 연 창에서 겹쳐 누르지 못한다.
   public func relaunchTapped(in target: AppLogTarget) async {
     guard let window = self.windows[target], window.relaunch != .running,
@@ -124,8 +125,9 @@ public final class DeviceLogModel {
     do {
       let newSession = try await self.appLog.relaunch(session)
       self.windows[target]?.setRelaunch(.idle)
-      // 세션 목록 알림보다 먼저 올 수 있다. 알림도 같은 앱의 더 늦은 세션으로 옮기므로 결과는 같다.
-      if let window = self.windows[target], window.isOpen, window.selectedSessionID != newSession {
+      // 알림이 먼저 오면 같은 앱의 새 세션이라 알림이 옮기고(선택이 이미 newSession), 결과가 먼저 오면 여기서 고른다
+      // (그 뒤 그 세션이 아직 없는 알림은 그대로 둔다). 도는 동안 사용자가 다른 세션을 골랐으면 덮지 않는다.
+      if let window = self.windows[target], window.isOpen, window.selectedSessionID == session {
         self.select(newSession, in: target)
       }
     } catch {
@@ -149,12 +151,16 @@ public final class DeviceLogModel {
     if !self.hasReceivedSessions {
       self.hasReceivedSessions = true
     }
+    // 앞 목록: 이번 알림에서 새로 생긴 세션과 정리로 빠진 세션을 가린다 (`DeviceLogSessionChoice.selection`).
+    let previous = Set(self.sessions.map(\.id))
     self.sessions = sessions
     // 창 값을 붙잡은 채 바꾸면 줄 배열이 통째로 복사된다. 대상만 모은다.
     let openTargets = self.windows.compactMap { $0.value.isOpen ? $0.key : nil }
     for target in openTargets {
       let current = self.windows[target]?.selectedSessionID
-      let next = DeviceLogSessionChoice.selection(current: current, of: target, in: sessions)
+      let next = DeviceLogSessionChoice.selection(
+        current: current, of: target, previous: previous, in: sessions
+      )
       guard next != current else { continue }
       self.clearRelaunchFailure(in: target)
       self.select(next, in: target)

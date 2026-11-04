@@ -100,6 +100,44 @@ struct DeviceLogModelOpenTests {
     #expect(Support.texts(model.window(for: Support.target).visibleLines) == ["new"])
   }
 
+  @Test("앞 실행을 고르면 다른 기기·다른 앱·상태 바뀜 알림에도 남고, 같은 앱의 새 세션이 생기면 옮긴다")
+  func keepsEarlierRunAcrossNotices() async {
+    let earlier = Support.summary(at: 0, state: .ended(.replaced))
+    let later = Support.summary(at: 10)
+    let (model, fake) = Support.fixture([earlier, later])
+    fake.append(["earlier 1"], to: earlier.id)
+    fake.append(["later 1", "later 2"], to: later.id)
+    await Support.openAndWait(model, expecting: later.id, visible: 2)
+    model.sessionSelected(earlier.id, in: Support.target)
+    await Support.waitUntil { model.window(for: Support.target).visibleCount == 1 }
+    let expectEarlier = { (sourceLocation: SourceLocation) in
+      let window = model.window(for: Support.target)
+      #expect(window.selectedSessionID == earlier.id, sourceLocation: sourceLocation)
+      #expect(Support.texts(window.visibleLines) == ["earlier 1"], sourceLocation: sourceLocation)
+    }
+    expectEarlier(#_sourceLocation)
+    fake.publish(Support.summary(at: 20, target: Support.otherTarget))
+    await Support.waitUntil { model.sessions.count == 3 }
+    await Support.settle()
+    expectEarlier(#_sourceLocation)
+    fake.publish(Support.summary("com.example.other", at: 30))
+    await Support.waitUntil { model.sessions.count == 4 }
+    await Support.settle()
+    expectEarlier(#_sourceLocation)
+    fake.publish(later.with(state: .ended(.appExited)))
+    await Support.waitUntil { model.sessions.first { $0.id == later.id }?.state == .ended(.appExited) }
+    await Support.settle()
+    expectEarlier(#_sourceLocation)
+    let newest = Support.summary(at: 40)
+    fake.append(["newest 1"], to: newest.id)
+    fake.publish(newest)
+    await Support.waitUntil {
+      model.window(for: Support.target).selectedSessionID == newest.id
+        && model.window(for: Support.target).visibleCount == 1
+    }
+    #expect(Support.texts(model.window(for: Support.target).visibleLines) == ["newest 1"])
+  }
+
   @Test("고른 세션이 정리되면 대상의 가장 늦은 세션으로 옮기고, 남은 세션이 없으면 빈 화면이다")
   func movesWhenSelectedSessionRemoved() async {
     let first = Support.summary("com.example.other", at: 0, state: .ended(.appExited))
@@ -446,6 +484,25 @@ struct DeviceLogModelRelaunchTests {
     #expect(window.relaunch == .idle)
     #expect(window.selectedSessionID == nil)
     #expect(fake.calls == [.relaunch(session.id)])
+  }
+
+  @Test("다시 실행이 도는 동안 다른 앱 세션을 고르면 결과가 그 선택을 덮지 않는다")
+  func relaunchKeepsUserChoice() async {
+    let session = Support.summary(state: .ended(.appExited))
+    let other = Support.summary("com.example.other", at: -10, state: .ended(.appExited))
+    let (model, fake) = Support.fixture([other, session])
+    await Support.openAndWait(model, expecting: session.id, visible: 0)
+    fake.suspendRelaunches()
+    let relaunch = Task { await model.relaunchTapped(in: Support.target) }
+    await Support.waitUntil { model.window(for: Support.target).relaunch == .running && fake.calls.count == 1 }
+    model.sessionSelected(other.id, in: Support.target)
+    fake.resumeRelaunches()
+    await relaunch.value
+    await Support.waitUntil { model.sessions.count == 3 }
+    await Support.settle()
+    let window = model.window(for: Support.target)
+    #expect(window.relaunch == .idle)
+    #expect(window.selectedSessionID == other.id)
   }
 }
 
