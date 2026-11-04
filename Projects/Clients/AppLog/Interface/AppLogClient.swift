@@ -15,7 +15,7 @@ public protocol AppLogClient: Sendable {
     deviceName: String
   ) async throws(AppLogLaunchError) -> AppLogSessionID
 
-  /// 세션과 같은 기기·앱을 다시 실행한다 (iOS 는 Simulator 앱을 연 뒤(실패는 무시) `launchIOSApp` 과 같다).
+  /// 세션과 같은 기기·앱을 다시 실행한다 (iOS 는 그 기기가 켜져 있으면 Simulator 앱을 연 뒤(실패는 무시) `launchIOSApp` 과 같다. 기기는 켜지 않는다).
   /// 기기를 켜지 않는다 (꺼져 있으면 `.deviceNotBooted`). 세션이 없으면 `.sessionNotFound`.
   func relaunch(_ session: AppLogSessionID) async throws(AppLogLaunchError) -> AppLogSessionID
 

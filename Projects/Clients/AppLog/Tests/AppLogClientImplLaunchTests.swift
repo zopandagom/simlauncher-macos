@@ -93,7 +93,7 @@ struct AppLogClientImplLaunchTests {
   func endReasonFromInventory(state: VirtualDevice.State, expected: AppLogEndReason) async throws {
     let fixture = AppLogFixture()
     let (id, run) = try await fixture.launched(run: 0)
-    fixture.simulator.setInventory(Self.inventory(iPhoneOnState: state))
+    fixture.simulator.setInventory(DeviceInventory.sample(iPhoneOnState: state))
 
     run.finish(.success(.exited))
 
@@ -179,22 +179,5 @@ struct AppLogClientImplLaunchTests {
     try await waitUntil { updates.last?.count == 2 }
     #expect(updates.last?.map(\.id) == [first, second])
     updates.cancel()
-  }
-
-  /// 샘플 목록에서 켜진 iPhone 의 상태만 바꾼다.
-  private static func inventory(iPhoneOnState state: VirtualDevice.State) -> DeviceInventory {
-    let sample = DeviceInventory.sample
-    let devices = sample.devices.map { device in
-      guard device.id == SampleID.iPhoneOn else { return device }
-      return VirtualDevice(
-        id: device.id,
-        name: device.name,
-        family: device.family,
-        state: state,
-        availability: device.availability,
-        runtime: device.runtime
-      )
-    }
-    return DeviceInventory(devices: devices, runtimes: sample.runtimes, deviceTypes: sample.deviceTypes)
   }
 }

@@ -239,3 +239,22 @@ struct AppLogFixture {
     return reason
   }
 }
+
+extension DeviceInventory {
+  /// 샘플 목록에서 켜진 iPhone(`SampleID.iPhoneOn`)의 상태만 바꾼다.
+  static func sample(iPhoneOnState state: VirtualDevice.State) -> DeviceInventory {
+    let sample = DeviceInventory.sample
+    let devices = sample.devices.map { device in
+      guard device.id == SampleID.iPhoneOn else { return device }
+      return VirtualDevice(
+        id: device.id,
+        name: device.name,
+        family: device.family,
+        state: state,
+        availability: device.availability,
+        runtime: device.runtime
+      )
+    }
+    return DeviceInventory(devices: devices, runtimes: sample.runtimes, deviceTypes: sample.deviceTypes)
+  }
+}

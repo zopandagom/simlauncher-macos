@@ -85,7 +85,7 @@ struct AppLogClientImplReplacementTests {
     #expect(try await fixture.waitForEnd(of: first) == .appExited)
   }
 
-  @Test("다시 실행은 Simulator 앱을 연 뒤 같은 기기·앱으로 실행한다 (기기는 켜지 않는다)")
+  @Test("켜진 기기의 다시 실행은 Simulator 앱을 연 뒤 같은 기기·앱으로 실행한다 (기기는 켜지 않는다)")
   func relaunch() async throws {
     let fixture = AppLogFixture()
     let (first, firstRun) = try await fixture.launched(run: 0)
@@ -110,7 +110,7 @@ struct AppLogClientImplReplacementTests {
     #expect(await fixture.summaries().last?.state == .receiving)
   }
 
-  @Test("Simulator 앱 열기가 실패해도 다시 실행한다, 실행 실패는 그대로 던진다")
+  @Test("켜진 기기에서 Simulator 앱 열기가 실패해도 다시 실행한다, 실행 실패는 그대로 던진다")
   func relaunchIgnoresOpenFailure() async throws {
     let fixture = AppLogFixture()
     let (first, firstRun) = try await fixture.launched(run: 0)
@@ -123,6 +123,53 @@ struct AppLogClientImplReplacementTests {
     run.finish(.failure(.deviceNotBooted))
 
     await #expect(throws: AppLogLaunchError.deviceNotBooted) { try await task.value }
+    // 기본 샘플 목록의 기기는 켜져 있어 열기를 시도한 뒤 실패한 경로다.
+    #expect(fixture.simulator.calls.contains(.openSimulatorApp))
+  }
+
+  /// 다시 실행할 때의 기기 목록 (켜진 기기가 아닌 경우).
+  enum RelaunchInventory: Sendable, CustomTestStringConvertible {
+    case state(VirtualDevice.State)
+    case missing
+    case unreadable
+
+    var testDescription: String {
+      switch self {
+      case let .state(state): "목록에 있고 \(state)"
+      case .missing: "목록에 없음"
+      case .unreadable: "목록을 읽지 못함"
+      }
+    }
+  }
+
+  @Test(
+    "켜진 기기가 아니거나 목록을 읽지 못하면 Simulator 앱을 열지 않고 실행해 실패를 그대로 던진다 (앱이 기기를 켜지 않게)",
+    arguments: [
+      RelaunchInventory.state(.shutdown), .state(.booting), .state(.shuttingDown), .state(.unknown), .missing,
+      .unreadable,
+    ]
+  )
+  func relaunchSkipsOpenUnlessBooted(inventory: RelaunchInventory) async throws {
+    let fixture = AppLogFixture()
+    let (first, firstRun) = try await fixture.launched(run: 0)
+    firstRun.finish(.success(.exited))
+    _ = try await fixture.waitForEnd(of: first)
+    switch inventory {
+    case let .state(state):
+      fixture.simulator.setInventory(DeviceInventory.sample(iPhoneOnState: state))
+    case .missing:
+      fixture.simulator.setInventory(DeviceInventory(devices: [], runtimes: [], deviceTypes: []))
+    case .unreadable:
+      fixture.simulator.setFetchError(.commandFailed)
+    }
+
+    let task = Task { try await fixture.client.relaunch(first) }
+    let run = try await fixture.console.run(1)
+    run.finish(.failure(.deviceNotBooted))
+
+    await #expect(throws: AppLogLaunchError.deviceNotBooted) { try await task.value }
+    #expect(!fixture.simulator.calls.contains(.openSimulatorApp))
+    #expect(!fixture.simulator.calls.contains(.boot(SampleID.iPhoneOn)))
   }
 
   @Test("없는 세션의 다시 실행은 실행 없이 sessionNotFound")

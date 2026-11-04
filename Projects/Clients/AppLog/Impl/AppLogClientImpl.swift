@@ -58,7 +58,9 @@ public actor AppLogClientImpl: AppLogClient {
     )
   }
 
-  /// 기기를 켜지 않는다. Simulator 앱을 먼저 열어(실패는 무시) 실행 결과가 보이게 한다 (설치 흐름의 켜기·앱 열기와 같은 결과를 켜기 없이).
+  /// 기기를 켜지 않는다. 목록을 다시 읽어 그 기기가 켜져 있을 때만 Simulator 앱을 먼저 열어(실패는 무시) 실행 결과가 보이게 한다
+  /// (설치 흐름의 켜기·앱 열기와 같은 결과를 켜기 없이). 꺼졌거나 없거나 목록을 읽지 못하면 앱을 열지 않는다: 켜진 기기가 없을 때
+  /// Simulator 앱을 열면 앱이 기기를 켤 수 있다. 그때도 실행은 시도해 simctl 의 실패(`.deviceNotBooted` 등)를 그대로 던진다.
   public func relaunch(_ session: AppLogSessionID) async throws(AppLogLaunchError) -> AppLogSessionID {
     guard !self.running.isStopping else {
       throw .commandFailed
@@ -66,7 +68,10 @@ public actor AppLogClientImpl: AppLogClient {
     guard let record = self.table.record(session), record.isPublished else {
       throw .sessionNotFound
     }
-    try? await self.simulator.openSimulatorApp()
+    let inventory = try? await self.simulator.fetchInventory()
+    if inventory?.devices.first(where: { $0.id == record.spec.device })?.state == .booted {
+      try? await self.simulator.openSimulatorApp()
+    }
     return try await self.start(record.spec)
   }
 
