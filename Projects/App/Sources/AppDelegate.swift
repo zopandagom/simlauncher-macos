@@ -1,6 +1,7 @@
 import AndroidDevicesFeature
 import AndroidSetupFeature
 import AppKit
+import AppLogInterface
 import LauncherFeature
 import SetupFeature
 
@@ -22,6 +23,10 @@ import SetupFeature
 /// 그래서 로그아웃·재시동·시스템 종료 중에 기다릴 것이 있으면 `.terminateCancel` 이 로그아웃 자체를 취소한다: 설치를 멈추거나
 /// 녹화를 저장하고 앱만 끝나며, 사용자가 다시 로그아웃해야 한다.
 /// 신호는 보내지 않는다: 설치·녹화를 멈추는 일은 각 Model 의 Task 취소로 하고, 프로세스 신호는 Command Client Impl 이 보낸다.
+/// 앱 로그 받기는 묻지도 기다리지도 않는다: 종료가 정해지면(`applicationWillTerminate`. 바로 끝낼 때와 위 기다림 뒤 다시 종료할 때
+/// 모두 지난다) `AppLogClient.stopAll()` 이 모든 받기 작업을 취소하고, 그 취소가 받던 simctl 마다 그 자리에서 SIGINT 를 보내
+/// Simulator 안의 그 앱도 꺼진다 (SimLauncher 종료 때 앱이 같이 꺼지는 것은 수용한 동작이다). 비정상 종료면 이 경로를 거치지
+/// 않지만 받는 쪽 파이프가 닫혀 simctl 이 끝나고 앱도 꺼진다(측정).
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
   /// App 이 `init` 에서 넣는다. 없으면 설치를 보지 않는다.
@@ -32,6 +37,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   var androidSetupModel: AndroidSetupModel?
   /// App 이 `init` 에서 넣는다. 없으면 Android 녹화를 보지 않는다.
   var androidDevicesModel: AndroidDevicesModel?
+  /// App 이 `init` 에서 넣는다. 없으면 앱 로그 받기를 멈추지 않는다.
+  var appLog: (any AppLogClient)?
   /// 녹화 저장·설치가 끝나기를 기다리는 중. 그동안 온 종료 요청은 거절한다 (기다림이 끝나면 앱이 스스로 종료한다).
   private var isWaitingToTerminate = false
 
@@ -54,6 +61,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     guard isRecording || setupAction != .terminateNow || androidAction != .terminateNow else { return .terminateNow }
     self.waitThenTerminate()
     return .terminateCancel
+  }
+
+  /// 종료가 정해졌다: 앱 로그 받기를 기다리지 않고 모두 멈춘다 (actor 를 거치지 않는 동기 호출이라 종료 전에 신호가 나간다).
+  func applicationWillTerminate(_ notification: Notification) {
+    self.appLog?.stopAll()
   }
 
   /// 녹화 저장(iOS·Android)·런타임 설치·Android 도구 설치의 종료 처리를 함께 시작하고, 모두 끝나기를 기다린 뒤 다시 종료한다.

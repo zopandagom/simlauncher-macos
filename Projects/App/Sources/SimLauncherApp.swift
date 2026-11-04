@@ -4,9 +4,11 @@ import AndroidPackageImpl
 import AndroidSDKImpl
 import AndroidSetupFeature
 import AppBundleImpl
+import AppLogImpl
 import CommandImpl
 import Core
 import DevEnvironmentImpl
+import DeviceLogFeature
 import DownloadImpl
 import Foundation
 import LauncherFeature
@@ -31,7 +33,10 @@ import WorkspaceImpl
 /// 앱·링크를 같은 방식으로 넘기고, 두 Model 의 시트끼리 서로 막는 것도 App 이 클로저로 잇는다 (Model 끼리 참조하지 않는다).
 /// 설정 창(`Settings` 씬, ⌘,)은 메인 창의 칸·화면과 관계없이 열리고, 설정 창에서 Android SDK 위치를 바꾸면
 /// `androidSDKLocationChanged` 로 Android 도구 화면이 다시 확인하고 Android 기기 목록이 (보이면) 다시 읽는다 (같은 앱의 다른 창이라
-/// 앱 활성화 알림이 오지 않는다). Android 기기(에뮬레이터)는 녹화 밖에는 종료 요청 때 보지 않는다 (켜진 에뮬레이터는 앱이 끝나도 남는다.
+/// 앱 활성화 알림이 오지 않는다). iOS 기기 행 "로그 보기" 는 로그 창(`WindowGroup(id: AppLogTarget.windowID, for: AppLogTarget.self)`,
+/// 기기당 창 하나, 복원 끔)을 연다. 모든 로그 창이 App 이 소유한 `DeviceLogModel` 하나를 함께 쓰고, 창을 닫아도 받기와 앱은 계속된다.
+/// 앱 로그 받기는 종료 요청 때 묻지 않고, 종료가 정해지면 `AppDelegate` 가 `stopAll()` 로 기다리지 않고 멈춘다 (앱도 꺼진다).
+/// Android 기기(에뮬레이터)는 녹화 밖에는 종료 요청 때 보지 않는다 (켜진 에뮬레이터는 앱이 끝나도 남는다.
 /// apk 받기·설치·실행·링크 열기도 묻지 않는다. 남은 받기 폴더는 다음에 iOS 기기 목록·Android 기기 목록·Android 도구 화면 중 하나가
 /// 열릴 때 지운다).
 @main
@@ -45,10 +50,12 @@ struct SimLauncherApp: App {
   @State private var androidDevicesModel: AndroidDevicesModel
   @State private var androidDownloadInstallModel: AndroidDownloadInstallModel
   @State private var androidAppSheetsModel: AndroidAppSheetsModel
+  @State private var deviceLogModel: DeviceLogModel
 
   /// 명령 실행 Client 하나를 개발 환경·시뮬레이터·앱 번들 Client 가 함께 쓰고,
   /// 개발 환경 Client 하나를 Setup 과 시뮬레이터의 개발자 디렉터리가 함께 쓰며,
-  /// 시뮬레이터 Client 하나를 Setup(Xcode 가 준비된 뒤 런타임 목록 읽기)과 Launcher 가 함께 쓴다.
+  /// 시뮬레이터 Client 하나를 Setup(Xcode 가 준비된 뒤 런타임 목록 읽기)과 Launcher, 앱 로그 Client 가 함께 쓴다.
+  /// 앱 로그 Client 하나를 Launcher(로그 받기와 함께 실행·행의 "로그 보기")와 로그 창, 종료 처리(`AppDelegate`)가 함께 쓴다.
   /// 받기 Client 는 하나만 만들어 Launcher 의 URL·카탈로그 설치, 카탈로그에서 설치 시트의 카탈로그 받기,
   /// 설정 창의 카탈로그 등록 확인, Android 기기 목록의 URL·카탈로그 설치와 그 시트의 카탈로그 받기가 함께 쓴다
   /// (지금 받는 폴더 목록을 그 안에서 함께 써, 한쪽의 남은 폴더 정리가 다른 쪽이 받는 중인 폴더를 지우지 않는다).
@@ -84,12 +91,16 @@ struct SimLauncherApp: App {
     self._androidAppSheetsModel = State(initialValue: android.appSheets)
     let setup = SetupModel(devEnvironment: devEnvironment, simulator: simulator)
     self._setupModel = State(initialValue: setup)
+    // 앱 로그 Client 생성자는 명령을 실행하지 않는다. 받기는 설치 후 실행·창의 "다시 실행" 때만 시작한다.
+    let appLog = AppLogClientImpl(simulator: simulator)
+    self._deviceLogModel = State(initialValue: DeviceLogModel(appLog: appLog))
     // 스크린샷·녹화 저장 폴더는 "스크린샷"·"녹화" 를 누를 때 만든다 (Workspace Client 생성자는 파일을 건드리지 않는다).
     let launcher = LauncherModel(
       simulator: simulator,
       appBundle: appBundle,
       download: download,
       workspace: WorkspaceClientImpl(),
+      appLog: appLog,
       setupRequested: { setup.reopened() }
     )
     self._launcherModel = State(initialValue: launcher)
@@ -99,24 +110,15 @@ struct SimLauncherApp: App {
       download: download,
       installRequested: { request in await launcher.catalogInstallRequested(request) }
     ))
-    // 설정 창의 내용은 앱 시작 때 한 번 만들어진다(측정). 생성자는 Client 를 저장만 하고, 목록 읽기는 창을 열 때,
-    // 카탈로그 받기는 "등록" 을 누를 때만 한다. SDK 위치를 바꾸면 Android 도구 화면에 알린다.
-    self._settingsModel = State(initialValue: SettingsModel(
-      preferences: preferences,
-      download: download,
-      androidSDK: android.sdk,
-      home: home,
-      androidSDKLocationChanged: {
-        Task { await android.setup.sdkLocationChanged() }
-        Task { await android.devices.sdkLocationChanged() }
-      }
-    ))
+    self._settingsModel = State(initialValue: Self.makeSettings(preferences, download, android, home))
     // 종료 요청 때 AppDelegate 가 Setup 에 설치 상태를 묻는다: 준비·내려받기 중이면 확인을 받아 멈추게 하고,
     // 설치 단계·멈추는 중이면 끝나기를 기다린다 (어댑터는 init 에서 넣은 값을 종료 요청 때 그대로 본다, 측정).
     // 두 기기 목록(iOS·Android)에는 녹화 중인지 묻는다: 어느 쪽이든 녹화 중이면 확인을 한 번 받아 모든 녹화를 멈추고 저장한 뒤
     // 종료한다.
     // Android 도구 화면에는 설치 상태를 묻는다: 받기·확인·풀기 중이면 확인을 받아 멈추게 하고, 마무리 단계면 끝나기를 기다린다.
+    // 앱 로그 받기는 묻지 않고, 종료가 정해지면 모두 멈춘다 (SIGINT 를 보내고 기다리지 않는다. 앱도 꺼진다).
     self.appDelegate.setupModel = setup
+    self.appDelegate.appLog = appLog
     self.appDelegate.launcherModel = launcher
     self.appDelegate.androidSetupModel = android.setup
     self.appDelegate.androidDevicesModel = android.devices
@@ -129,6 +131,26 @@ struct SimLauncherApp: App {
     let devices: AndroidDevicesModel
     let downloadInstall: AndroidDownloadInstallModel
     let appSheets: AndroidAppSheetsModel
+  }
+
+  /// 설정 창의 내용은 앱 시작 때 한 번 만들어진다(측정). 생성자는 Client 를 저장만 하고, 목록 읽기는 창을 열 때,
+  /// 카탈로그 받기는 "등록" 을 누를 때만 한다. SDK 위치를 바꾸면 Android 도구 화면에 알린다.
+  private static func makeSettings(
+    _ preferences: PreferencesClientImpl,
+    _ download: DownloadClientImpl,
+    _ android: AndroidAssembly,
+    _ home: URL
+  ) -> SettingsModel {
+    SettingsModel(
+      preferences: preferences,
+      download: download,
+      androidSDK: android.sdk,
+      home: home,
+      androidSDKLocationChanged: {
+        Task { await android.setup.sdkLocationChanged() }
+        Task { await android.devices.sdkLocationChanged() }
+      }
+    )
   }
 
   private static func makeAndroid(
@@ -211,6 +233,15 @@ struct SimLauncherApp: App {
         androidAppSheetsModel: self.androidAppSheetsModel
       )
     }
+    // 기기 행 "로그 보기" 가 여는 로그 창. 같은 기기(값)면 창 하나이고, 앱 시작 때 열리지 않는다(측정). 받은 로그는 메모리에만
+    // 있어 앱을 다시 켜면 없으므로 창을 되살리지 않는다. 창을 닫아도 받기는 계속된다 (DeviceLogView 의 onDisappear 는 구독만 끊는다).
+    WindowGroup(id: AppLogTarget.windowID, for: AppLogTarget.self) { $target in
+      if let target {
+        DeviceLogView(model: self.deviceLogModel, target: target)
+      }
+    }
+    .defaultSize(width: 900, height: 600)
+    .restorationBehavior(.disabled)
     // 창을 닫으면 진행 중인 등록 확인을 취소한다 (SettingsView 의 onDisappear).
     Settings {
       SettingsView(model: self.settingsModel)
