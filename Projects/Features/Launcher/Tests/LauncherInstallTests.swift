@@ -1,5 +1,6 @@
 import AppBundleInterface
 import AppBundleTesting
+import AppLogTesting
 import Core
 import DownloadTesting
 import Foundation
@@ -164,7 +165,8 @@ struct LauncherInstallTests: LauncherModelTesting {
       simulator: SimulatorClientFake(inventory: .sample),
       appBundle: before,
       download: DownloadClientFake(),
-      workspace: WorkspaceClientFake()
+      workspace: WorkspaceClientFake(),
+      appLog: AppLogClientFake()
     )
     await beforeLoad.appFileSelected(Self.picked, for: SampleID.iPhoneOff)
     #expect(before.calls.isEmpty)

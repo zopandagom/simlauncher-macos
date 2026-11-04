@@ -1,4 +1,5 @@
 import AppBundleTesting
+import AppLogTesting
 import Core
 import DownloadTesting
 import SimulatorInterface
@@ -34,7 +35,8 @@ struct LauncherCreateTests: LauncherModelTesting {
       simulator: SimulatorClientFake(inventory: .sample),
       appBundle: AppBundleClientFake(),
       download: DownloadClientFake(),
-      workspace: WorkspaceClientFake()
+      workspace: WorkspaceClientFake(),
+      appLog: AppLogClientFake()
     )
     #expect(before.canCreateDevice == false)
     before.createButtonTapped()
@@ -44,7 +46,8 @@ struct LauncherCreateTests: LauncherModelTesting {
       simulator: SimulatorClientFake(inventory: .noRuntime),
       appBundle: AppBundleClientFake(),
       download: DownloadClientFake(),
-      workspace: WorkspaceClientFake()
+      workspace: WorkspaceClientFake(),
+      appLog: AppLogClientFake()
     )
     await noRuntime.onAppear()
     #expect(noRuntime.canCreateDevice == false)
@@ -58,7 +61,8 @@ struct LauncherCreateTests: LauncherModelTesting {
       simulator: SimulatorClientFake(inventory: .noDevices),
       appBundle: AppBundleClientFake(),
       download: DownloadClientFake(),
-      workspace: WorkspaceClientFake()
+      workspace: WorkspaceClientFake(),
+      appLog: AppLogClientFake()
     )
     await model.onAppear()
 
@@ -295,7 +299,8 @@ extension LauncherCreateTests {
       simulator: SimulatorClientFake(inventory: .noCreatableDeviceType),
       appBundle: AppBundleClientFake(),
       download: DownloadClientFake(),
-      workspace: WorkspaceClientFake()
+      workspace: WorkspaceClientFake(),
+      appLog: AppLogClientFake()
     )
     await model.onAppear()
 
@@ -318,7 +323,8 @@ extension LauncherCreateTests {
       simulator: SimulatorClientFake(inventory: inventory),
       appBundle: AppBundleClientFake(),
       download: DownloadClientFake(),
-      workspace: WorkspaceClientFake()
+      workspace: WorkspaceClientFake(),
+      appLog: AppLogClientFake()
     )
     await model.onAppear()
 
@@ -344,7 +350,8 @@ extension LauncherCreateTests {
       simulator: SimulatorClientFake(inventory: .noCreatableDeviceType),
       appBundle: AppBundleClientFake(),
       download: DownloadClientFake(),
-      workspace: WorkspaceClientFake()
+      workspace: WorkspaceClientFake(),
+      appLog: AppLogClientFake()
     )
 
     #expect(model.canCreateDevice == false)

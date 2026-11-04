@@ -3,6 +3,6 @@ import ProjectDescriptionHelpers
 
 let project = Project.feature(
   .launcher,
-  clients: [.simulator, .appBundle, .download, .preferences, .workspace],
+  clients: [.simulator, .appBundle, .download, .preferences, .workspace, .appLog],
   shared: [.core]
 )

@@ -307,3 +307,15 @@ enum LauncherText {
     }
   }
 }
+
+// MARK: - 앱 로그
+
+extension LauncherText {
+  static var viewLogButton: String {
+    String(localized: "로그 보기", bundle: .module)
+  }
+
+  static var viewLogHelp: String {
+    String(localized: "이 기기에서 실행한 앱의 로그 창을 엽니다", bundle: .module)
+  }
+}

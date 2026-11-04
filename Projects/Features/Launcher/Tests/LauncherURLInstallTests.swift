@@ -1,5 +1,6 @@
 import AppBundleInterface
 import AppBundleTesting
+import AppLogTesting
 import Core
 import DownloadInterface
 import DownloadTesting
@@ -77,7 +78,8 @@ struct LauncherURLInstallTests: LauncherModelTesting {
       simulator: SimulatorClientFake(inventory: .sample),
       appBundle: AppBundleClientFake(),
       download: DownloadClientFake(),
-      workspace: WorkspaceClientFake()
+      workspace: WorkspaceClientFake(),
+      appLog: AppLogClientFake()
     )
     beforeLoad.installFromURLMenuTapped(SampleID.iPhoneOn)
     #expect(beforeLoad.installURLDraft == nil)

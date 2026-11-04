@@ -1,4 +1,5 @@
 import AppBundleTesting
+import AppLogTesting
 import Core
 import DownloadTesting
 import Foundation
@@ -115,7 +116,8 @@ struct LauncherScreenshotTests: LauncherModelTesting {
       simulator: simulator,
       appBundle: AppBundleClientFake(),
       download: DownloadClientFake(),
-      workspace: workspace
+      workspace: workspace,
+      appLog: AppLogClientFake.forwarding(to: simulator)
     )
 
     await model.screenshotButtonTapped(SampleID.iPhoneOn)

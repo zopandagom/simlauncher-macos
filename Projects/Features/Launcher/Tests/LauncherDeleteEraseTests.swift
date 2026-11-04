@@ -1,4 +1,5 @@
 import AppBundleTesting
+import AppLogTesting
 import Core
 import DownloadTesting
 import SimulatorInterface
@@ -61,7 +62,8 @@ struct LauncherDeleteEraseTests: LauncherModelTesting {
       simulator: SimulatorClientFake(inventory: .sample),
       appBundle: AppBundleClientFake(),
       download: DownloadClientFake(),
-      workspace: WorkspaceClientFake()
+      workspace: WorkspaceClientFake(),
+      appLog: AppLogClientFake()
     )
     before.deleteButtonTapped(SampleID.iPhoneOff)
     #expect(before.pendingConfirmation == nil)

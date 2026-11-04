@@ -1,4 +1,5 @@
 import AppBundleTesting
+import AppLogTesting
 import Core
 import DownloadTesting
 import SimulatorInterface
@@ -18,7 +19,8 @@ struct LauncherFeatureTests: LauncherModelTesting {
       simulator: fake,
       appBundle: AppBundleClientFake(),
       download: DownloadClientFake(),
-      workspace: WorkspaceClientFake()
+      workspace: WorkspaceClientFake(),
+      appLog: AppLogClientFake.forwarding(to: fake)
     )
     #expect(model.listState == .loading)
 
@@ -40,7 +42,8 @@ struct LauncherFeatureTests: LauncherModelTesting {
       simulator: fake,
       appBundle: appBundle,
       download: download,
-      workspace: WorkspaceClientFake()
+      workspace: WorkspaceClientFake(),
+      appLog: AppLogClientFake.forwarding(to: fake)
     )
     let appear = Task { await model.onAppear() }
     await Self.waitUntil { fake.calls.count == 1 }
@@ -71,7 +74,8 @@ struct LauncherFeatureTests: LauncherModelTesting {
       simulator: fake,
       appBundle: AppBundleClientFake(),
       download: DownloadClientFake(),
-      workspace: WorkspaceClientFake()
+      workspace: WorkspaceClientFake(),
+      appLog: AppLogClientFake.forwarding(to: fake)
     )
 
     await model.onAppear()
@@ -108,7 +112,8 @@ struct LauncherFeatureTests: LauncherModelTesting {
       simulator: fake,
       appBundle: AppBundleClientFake(),
       download: DownloadClientFake(),
-      workspace: WorkspaceClientFake()
+      workspace: WorkspaceClientFake(),
+      appLog: AppLogClientFake.forwarding(to: fake)
     )
 
     let first = Task { await model.onAppear() }
@@ -290,7 +295,11 @@ struct LauncherFeatureTests: LauncherModelTesting {
   }
 
   // MARK: - 조작할 수 없는 기기
+}
 
+// MARK: - 켜기·끄기 무시
+
+extension LauncherFeatureTests {
   @Test("쓸 수 없는·켜진·목록에 없는 기기 켜기와 꺼진 기기 끄기는 아무것도 부르지 않는다")
   func invalidActionsCallNothing() async {
     let (model, fake) = await Self.loadedModel()
@@ -312,7 +321,8 @@ struct LauncherFeatureTests: LauncherModelTesting {
       simulator: fake,
       appBundle: AppBundleClientFake(),
       download: DownloadClientFake(),
-      workspace: WorkspaceClientFake()
+      workspace: WorkspaceClientFake(),
+      appLog: AppLogClientFake.forwarding(to: fake)
     )
 
     await model.bootButtonTapped(SampleID.iPhoneOff)

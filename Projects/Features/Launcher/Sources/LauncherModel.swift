@@ -1,4 +1,5 @@
 import AppBundleInterface
+import AppLogInterface
 import Core
 import DownloadInterface
 import Foundation
@@ -13,6 +14,7 @@ import WorkspaceInterface
 /// 켜진 기기 화면을 동영상 폴더의 SimLauncher 폴더에 녹화하고, 멈추거나(중지·기기 꺼짐·앱 종료) 스스로 끝나면 저장해 Finder 에서 보인다.
 /// 카탈로그에서 설치 시트(`CatalogInstallModel`)가 고른 버전은 App 이 `catalogInstallRequested(_:)` 로 넘겨 같은 받기 경로로 설치한다.
 /// 목록에서 고른 기기(`selection`)에 앱을 한 번 받고 풀어 기기별로 동시에 설치·실행하거나 함께 켜고, 결과를 알림 하나에 모은다.
+/// 실행은 앱 로그 받기와 함께 하고(`AppLogClient`), 앱 로그 세션이 있는 기기(`logDevices`)의 행에 "로그 보기" 를 보인다 (창은 View 가 연다).
 /// Xcode 준비와 iOS 시뮬레이터 설치는 여기서 하지 않고, Setup 진입 버튼으로 App 에 Setup 화면을 요청한다.
 /// 앱 설치의 켜기·풀기·검사·설치·실행은 Model 이 소유한 `AppInstallFlow` 가, 끄기·만들기·삭제·초기화 명령은
 /// `DeviceCommandFlow` 가, 스크린샷·녹화의 예약·찍기·녹화·보이기는 `ScreenCaptureFlow` 가 한다 (Model 상태에는 창구로만 닿는다).
@@ -47,10 +49,15 @@ public final class LauncherModel {
   public private(set) var installURLDraft: InstallURLDraft?
   /// 목록에서 고른 기기 (⌘·⇧ 클릭). 툴바 "선택한 기기…" 의 대상이고, 다시 읽은 목록에 없는 기기는 빠진다.
   public private(set) var selection: Set<VirtualDevice.ID> = []
+  /// 앱 로그 세션(받는 중·끝남)이 하나라도 있는 iOS 기기. 행의 "로그 보기" 를 정한다.
+  public private(set) var logDevices: Set<VirtualDevice.ID> = []
 
   @ObservationIgnored private let simulator: any SimulatorClient
   @ObservationIgnored private let appBundle: any AppBundleClient
   @ObservationIgnored private let download: any DownloadClient
+  @ObservationIgnored private let appLog: any AppLogClient
+  /// 앱 로그 세션 구독. 첫 `onAppear()` 에서 한 번 시작해 앱이 끝날 때까지 돈다 (View 가 다시 만들어져도 하나).
+  @ObservationIgnored private var logWatchTask: Task<Void, Never>?
   /// Setup 진입 버튼(툴바 "개발 환경", 빈 화면의 "iOS 설치"·"다른 iOS 버전 설치", 목록 위 안내 줄의 "다른 iOS 버전 설치",
   /// 목록 읽기 실패 화면의 "개발 환경 열기")을 눌렀을 때 부른다. App 이 Setup 화면을 다시 연다 (화면 간 흐름은 App 이 잇는다).
   @ObservationIgnored private let setupRequested: @MainActor () -> Void
@@ -80,13 +87,15 @@ public final class LauncherModel {
     appBundle: any AppBundleClient,
     download: any DownloadClient,
     workspace: any WorkspaceClient,
+    appLog: any AppLogClient,
     setupRequested: @escaping @MainActor () -> Void = {},
     now: @escaping @Sendable () -> Date = { Date() }
   ) {
     self.simulator = simulator
     self.appBundle = appBundle
     self.download = download
-    self.installFlow = AppInstallFlow(simulator: simulator, appBundle: appBundle, download: download)
+    self.appLog = appLog
+    self.installFlow = AppInstallFlow(simulator: simulator, appBundle: appBundle, download: download, appLog: appLog)
     self.commandFlow = DeviceCommandFlow(simulator: simulator)
     self.captureFlow = ScreenCaptureFlow(simulator: simulator, workspace: workspace, now: now)
     self.setupRequested = setupRequested
@@ -94,7 +103,9 @@ public final class LauncherModel {
 
   /// 목록을 읽은 뒤(목록을 먼저 보인다) 남은 zip 풀기·받기 임시 폴더(앞선 실행이 남겼거나 지우지 못한 것)를 정리한다.
   /// 화면이 나타날 때마다 불리므로 Setup 화면에서 돌아올 때마다 다시 읽고 정리한다. 지금 쓰는 폴더는 Client 가 건너뛴다.
+  /// 처음 한 번은 앱 로그 세션 구독도 시작한다.
   public func onAppear() async {
+    self.watchLogsIfNeeded()
     await self.reload()
     await self.appBundle.removeLeftoverExtractions()
     await self.download.removeLeftoverDownloads()
@@ -188,6 +199,18 @@ public final class LauncherModel {
   /// 기기 작업 실패는 늘 쌓는다. 새로 고침 실패는 같은 원인이 이미 줄에 있으면 쌓지 않는다.
   private func enqueue(_ notice: LauncherNotice) {
     self.noticeQueue.enqueue(notice)
+  }
+
+  /// 앱 로그 세션 요약을 구독해 세션이 있는 iOS 기기를 `logDevices` 로 둔다 (요약은 세션이 생기거나 상태가 바뀔 때만 온다).
+  private func watchLogsIfNeeded() {
+    guard self.logWatchTask == nil else { return }
+    let appLog = self.appLog
+    self.logWatchTask = Task {
+      for await summaries in await appLog.sessionUpdates() {
+        let targets = summaries.lazy.map(\.target).filter { $0.platform == .iOS }
+        self.logDevices = Set(targets.map { VirtualDevice.ID($0.deviceID) })
+      }
+    }
   }
 
   /// 목록을 읽는다. 읽는 중이면 새로 시작하지 않고 그 읽기를 기다리며, 끝난 뒤 한 번 더 읽게 한다.

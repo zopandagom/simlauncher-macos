@@ -1,10 +1,14 @@
 import AppBundleInterface
+import AppLogInterface
 import Core
 import DownloadInterface
 import Foundation
 import SimulatorInterface
 
 /// 앱 설치 흐름: (zip 이면) 풀기 → 검사 → 지금 목록으로 판정 → 켜기·Simulator 앱 열기 → 설치 → 실행 → 다시 읽기.
+/// 실행은 앱 로그 받기와 함께 한다(`AppLogClient.launchIOSApp`: 실행 신호나 실패까지만 기다리고, 받기는 AppLog Client 의 작업에서
+/// 앱이 끝날 때까지 이어진다). 설치가 실행 중인 같은 앱을 끝내므로(측정) 설치 전에 `replacementWillStart` 로 알리고, 설치가
+/// 실패하면 `replacementCancelled` 로 되돌린다 (앞 세션의 끝난 이유를 "다시 설치·실행됨" 으로 가른다).
 /// 첫 단계인 켜기·Simulator 앱 열기(`bootIfNeededAndShowSimulator`)는 켜기 버튼·링크 열기도 함께 쓴다.
 /// 링크 열기와 받기 결과 해석도 같은 창구를 쓰므로 여기에 둔다.
 /// 여러 기기 설치는 받기·풀기·검사를 한 번만 하고, 기기별 판정 → 켜기 → 설치 → 실행을 동시에 돌려 끝나는 대로 그 기기를
@@ -32,6 +36,7 @@ struct AppInstallFlow {
   let simulator: any SimulatorClient
   let appBundle: any AppBundleClient
   let download: any DownloadClient
+  let appLog: any AppLogClient
 
   /// 고르거나 끌어다 놓은 항목: 정확히 하나여야 하고(둘 이상이면 이유를 알린다), zip 이면 풀어서, 아니면 그대로 검사·설치·실행한다.
   func install(_ items: [URL], on id: VirtualDevice.ID, label: LauncherNotice.Device, host: Host) async {
@@ -217,7 +222,8 @@ struct AppInstallFlow {
     return device
   }
 
-  /// 꺼져 있으면 켜고, Simulator 앱을 열고, 검사한 경로를 설치하고, 검사한 번들 ID 로 실행한 뒤 다시 읽는다.
+  /// 꺼져 있으면 켜고, Simulator 앱을 열고, 검사한 경로를 설치하고, 검사한 번들 ID 로 로그 받기와 함께 실행한 뒤 다시 읽는다.
+  /// 실행 실패 알림은 Simulator 의 실행 실패와 같은 문구다 (`AppLogLaunchError` 는 같은 이름의 `SimulatorError` 로 바꾼다).
   private func runInstall(
     _ info: AppBundleInfo,
     on device: VirtualDevice,
@@ -225,17 +231,24 @@ struct AppInstallFlow {
     host: Host
   ) async {
     guard await self.bootIfNeededAndShowSimulator(device, label: label, host: host) else { return }
+    await self.appLog.replacementWillStart(info.bundleID, on: device.id)
     do throws(SimulatorError) {
       try await self.simulator.install(info.location, on: device.id)
     } catch {
+      await self.appLog.replacementCancelled(info.bundleID, on: device.id)
       host.enqueue(.installFailed(label, .simulator(error)))
       await host.reload()
       return
     }
-    do throws(SimulatorError) {
-      try await self.simulator.launch(info.bundleID, on: device.id)
+    do throws(AppLogLaunchError) {
+      _ = try await self.appLog.launchIOSApp(
+        info.bundleID,
+        appName: info.displayName,
+        on: device.id,
+        deviceName: device.name
+      )
     } catch {
-      host.enqueue(.launchFailed(label, error))
+      host.enqueue(.launchFailed(label, SimulatorError(error)))
     }
     await host.reload()
   }
@@ -409,5 +422,20 @@ private final class BatchResultCollector {
     default: return false
     }
     return true
+  }
+}
+
+private extension SimulatorError {
+  /// 로그 받기와 함께 한 실행의 실패를 Simulator 의 실행 실패로 (알림 문구를 지금과 같게). 이름이 같은 6개는 그대로,
+  /// 다시 실행할 세션 없음(설치 흐름에서는 나오지 않는다)은 명령 실패로 본다.
+  init(_ error: AppLogLaunchError) {
+    switch error {
+    case .developerToolsUnavailable: self = .developerToolsUnavailable
+    case .deviceNotFound: self = .deviceNotFound
+    case .deviceNotBooted: self = .deviceNotBooted
+    case .appNotInstalled: self = .appNotInstalled
+    case .appLaunchFailed: self = .appLaunchFailed
+    case .commandFailed, .sessionNotFound: self = .commandFailed
+    }
   }
 }
