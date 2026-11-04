@@ -10,6 +10,8 @@ import Synchronization
 /// install·openURL 은 실제처럼 목록의 기기 상태를 본다(없으면 `.deviceNotFound`, 켜져 있지 않으면 `.deviceNotBooted`),
 /// 성공해도 목록은 바꾸지 않는다. screenshot·recordVideo 도 install 과 같은 순서로 기기 상태를 보고, 파일은 만들지 않는다.
 /// recordVideo 는 기본으로 바로 시작 신호를 보내고 호출한 Task 가 취소될 때까지 기다린 뒤 `.saved` 를 돌려준다. launch 는 설치 여부를 보지 않고 설정한 에러가 없으면 성공한다.
+/// launchWithConsole 은 처리기(`setConsoleHandler`)가 없으면 launch 의 에러를 던지거나, `.launched` 를 보내고 호출한 Task 가 취소될 때까지 기다린 뒤
+/// `.stopped`.
 /// 런타임 이미지 목록은 기기 목록과 따로 저장하고(기본값 `RuntimeImage.samples`), 어떤 호출도 그 목록을 바꾸지 않는다.
 public final class SimulatorClientFake: SimulatorClient {
   public enum Call: Hashable, Sendable {
@@ -23,6 +25,7 @@ public final class SimulatorClientFake: SimulatorClient {
     case erase(VirtualDevice.ID)
     case install(URL, VirtualDevice.ID)
     case launch(AppBundleID, VirtualDevice.ID)
+    case launchWithConsole(AppBundleID, VirtualDevice.ID)
     case openURL(DeepLink, VirtualDevice.ID)
     case screenshot(VirtualDevice.ID, URL)
     case recordVideo(VirtualDevice.ID, URL)
@@ -47,6 +50,7 @@ public final class SimulatorClientFake: SimulatorClient {
     var eraseError: SimulatorError?
     var installError: SimulatorError?
     var launchError: SimulatorError?
+    var consoleHandler: ConsoleHandler?
     var openURLError: SimulatorError?
     var screenshotError: SimulatorError?
     var recordingStartError: SimulatorError?
@@ -383,6 +387,44 @@ public extension SimulatorClientFake {
     if let error = self.state.withLock({ $0.launchError }) {
       throw error
     }
+  }
+
+  /// `launchWithConsole` 처리기. `emit` 으로 알림을 넘기고(호출한 쪽의 `onEvent` 가 끝난 뒤 돌아온다) 끝을 정한다.
+  /// 멈춤 흉내는 처리기가 호출한 Task 의 취소를 보고 `.stopped` 를 돌려주는 식으로 한다.
+  typealias ConsoleHandler = @Sendable (
+    AppBundleID,
+    VirtualDevice.ID,
+    _ emit: @escaping @Sendable (AppConsoleEvent) async -> Void
+  ) async throws(SimulatorError) -> AppConsoleEnd
+
+  /// 이후 `launchWithConsole` 의 처리기. nil 이면 기본 동작 (타입 설명).
+  func setConsoleHandler(_ handler: ConsoleHandler?) {
+    self.state.withLock { $0.consoleHandler = handler }
+  }
+
+  /// 기록 → 지연 → 처리기가 있으면 그 결과. 없으면 설정한 launch 에러를 던지거나, 아직 취소되지 않았으면 `.launched` 를 보내고
+  /// 호출한 Task 가 취소될 때까지 기다린 뒤 `.stopped`. 설치 여부·기기 상태는 보지 않는다 (launch 와 같다).
+  func launchWithConsole(
+    _ bundleID: AppBundleID,
+    on id: VirtualDevice.ID,
+    onEvent: @escaping @Sendable (AppConsoleEvent) async -> Void
+  ) async throws(SimulatorError) -> AppConsoleEnd {
+    self.record(.launchWithConsole(bundleID, id))
+    await self.sleepIfNeeded()
+    let (handler, error) = self.state.withLock { ($0.consoleHandler, $0.launchError) }
+    if let handler {
+      return try await handler(bundleID, id, onEvent)
+    }
+    if let error {
+      throw error
+    }
+    if !Task.isCancelled {
+      await onEvent(.launched)
+    }
+    while !Task.isCancelled {
+      try? await Task.sleep(for: .seconds(3600))
+    }
+    return .stopped
   }
 
   func setOpenURLError(_ error: SimulatorError?) {

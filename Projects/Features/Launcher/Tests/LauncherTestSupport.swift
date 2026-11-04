@@ -1,4 +1,6 @@
 import AppBundleTesting
+import AppLogInterface
+import AppLogTesting
 import Core
 import DownloadInterface
 import DownloadTesting
@@ -18,12 +20,15 @@ protocol LauncherModelTesting {}
 extension LauncherModelTesting {
   /// 샘플 목록 Fake 를 설정하고 첫 목록까지 읽은 Model. 앱 번들·받기·Workspace Client 는 넘긴 것(기본: 샘플 앱·샘플 받기
   /// Fake·빈 Workspace Fake)을 쓰고, Model 의 지금 시각(스크린샷 파일 이름)은 `now` 로 고정한다.
+  /// 앱 로그 Client 는 넘긴 것을 쓰고, 없으면 실행을 Simulator Fake 의 `launch` 로 넘기는 Fake 다 (설치·실행 테스트가
+  /// Simulator 호출 기록과 실행 실패를 그대로 본다).
   /// `now` 는 클로저가 아닌 값이다 (뒤따르는 클로저가 `configure` 로 가게).
   static func loadedModel(
     appBundle: AppBundleClientFake = AppBundleClientFake(),
     download: any DownloadClient = DownloadClientFake(),
     workspace: WorkspaceClientFake = WorkspaceClientFake(),
     now: Date = Date(),
+    appLog: AppLogClientFake? = nil,
     _ configure: (SimulatorClientFake) -> Void = { _ in }
   ) async -> (LauncherModel, SimulatorClientFake) {
     let fake = SimulatorClientFake(inventory: .sample)
@@ -33,6 +38,7 @@ extension LauncherModelTesting {
       appBundle: appBundle,
       download: download,
       workspace: workspace,
+      appLog: appLog ?? AppLogClientFake.forwarding(to: fake),
       now: { now }
     )
     await model.onAppear()
@@ -299,5 +305,35 @@ enum CatalogData {
     let fake = DownloadClientFake()
     fake.setFetchResult(.success(data))
     return fake
+  }
+}
+
+// MARK: - 앱 로그
+
+extension AppLogClientFake {
+  /// 실행(`launchIOSApp`)을 Simulator Fake 의 `launch` 로 넘기는 Fake. 기존 설치·실행 테스트가 Simulator 의 호출 기록·실행 실패
+  /// 단언을 그대로 쓰게 한다 (실패는 같은 이름의 `AppLogLaunchError` 로 바꾸고, Launcher 가 다시 `SimulatorError` 로 바꾼다).
+  static func forwarding(to simulator: SimulatorClientFake) -> AppLogClientFake {
+    AppLogClientFake { bundleID, device throws(AppLogLaunchError) in
+      do throws(SimulatorError) {
+        try await simulator.launch(bundleID, on: device)
+      } catch {
+        throw AppLogLaunchError(error)
+      }
+    }
+  }
+}
+
+extension AppLogLaunchError {
+  /// Simulator 실행 실패를 같은 이름의 값으로 (이름이 없는 것은 명령 실패).
+  init(_ error: SimulatorError) {
+    switch error {
+    case .developerToolsUnavailable: self = .developerToolsUnavailable
+    case .deviceNotFound: self = .deviceNotFound
+    case .deviceNotBooted: self = .deviceNotBooted
+    case .appNotInstalled: self = .appNotInstalled
+    case .appLaunchFailed: self = .appLaunchFailed
+    default: self = .commandFailed
+    }
   }
 }

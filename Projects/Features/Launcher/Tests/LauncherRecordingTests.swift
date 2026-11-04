@@ -1,4 +1,5 @@
 import AppBundleTesting
+import AppLogTesting
 import Core
 import DownloadTesting
 import Foundation
@@ -299,7 +300,8 @@ struct LauncherRecordingTests: LauncherRecordingTesting {
       simulator: simulator,
       appBundle: AppBundleClientFake(),
       download: DownloadClientFake(),
-      workspace: workspace
+      workspace: workspace,
+      appLog: AppLogClientFake.forwarding(to: simulator)
     )
 
     await model.recordButtonTapped(SampleID.iPhoneOn)

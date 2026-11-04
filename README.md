@@ -21,20 +21,21 @@
 | 앱 설치 (Mac 의 파일·URL·회사 빌드 목록) | `.app`, `.app` 을 담은 zip | `.apk` |
 | 앱 실행·딥링크 열기 | ✓ | ✓ |
 | 화면 스크린샷·녹화 | ✓ | ✓ |
+| 실행한 앱의 로그 보기 (print·NSLog·Logger, 필터) | ✓ | 예정 |
 | 여러 기기에 한 번에 설치 | ✓ | ✓ |
 | 준비 안내 | Xcode 설치·라이선스·시뮬레이터 설치 | Android 도구를 앱이 직접 설치 (Android Studio·Java 필요 없음) |
 
 **회사 빌드 목록**: 빌드 저장소 주소를 담은 `catalog.json` 하나를 등록하면 앱 이름·버전을 골라 설치할 수 있어요 ([규격](docs/CATALOG.md), GitHub Actions 예시 포함).
 
 ### 기술적으로 신경 쓴 점
-- **모듈 구조**: Tuist 로 Feature 5개 · Client 10개(Interface / Impl / Testing) · Shared 로 나누고, 규칙 기반 단방향 MV 를 썼어요. 모듈 경계는 빌드와 lint 로 지켜요: Feature 끼리 의존하지 못하게 Tuist 템플릿이 막고, 부수효과(`Process`·네트워크·UserDefaults 등)는 Client Impl 에서만, Impl 은 App 에서만 import 하도록 SwiftLint 사용자 규칙으로 만들어 커밋 훅과 CI 에서 검사해요.
-- **안전한 동시성과 테스트**: Swift 6 strict concurrency. Feature 는 Fake Client 로, Client Impl·도메인 규칙(Core)은 단위 테스트로 검증해 테스트가 약 1,960개예요.
+- **모듈 구조**: Tuist 로 Feature 6개 · Client 11개(Interface / Impl / Testing) · Shared 로 나누고, 규칙 기반 단방향 MV 를 썼어요. 모듈 경계는 빌드와 lint 로 지켜요: Feature 끼리 의존하지 못하게 Tuist 템플릿이 막고, 부수효과(`Process`·네트워크·UserDefaults 등)는 Client Impl 에서만, Impl 은 App 에서만 import 하도록 SwiftLint 사용자 규칙으로 만들어 커밋 훅과 CI 에서 검사해요.
+- **안전한 동시성과 테스트**: Swift 6 strict concurrency. Feature 는 Fake Client 로, Client Impl·도메인 규칙(Core)은 단위 테스트로 검증해 테스트가 약 2,100개예요.
 - **외부 도구 다루기**: `simctl`·Android `emulator`·`adb` 를 `Process` 로 실행하고, 켜는 중·끄는 중·실패·취소 같은 상태를 화면에 그대로 보여요. Android SDK 는 Google 저장소에서 필요한 패키지만 받아 Android Studio 와 같은 형식으로 설치해, Studio 와 함께 써도 다시 받지 않아요.
 - **배포**: `make release` 한 번으로 Developer ID 서명 → Apple 공증 → staple → 검사까지 마친 dmg 를 만들고, GitHub Releases 로 배포해요 ([RELEASING.md](docs/RELEASING.md)).
 - **개발 흐름**: main 직접 커밋을 막는 git 훅, PR 마다 lint·테스트 CI 와 자동 코드 리뷰, 문서([아키텍처](docs/ARCHITECTURE.md)·[규칙](docs/CONVENTIONS.md)·[로드맵](docs/DEVELOPMENT_PLAN.md))를 코드와 같은 PR 에서 고치는 방식으로 개발했어요. [Claude Code](https://claude.com/claude-code) 와 함께 개발하며, 작업 규칙과 리뷰 흐름을 레포에 정의해 두었어요([CLAUDE.md](CLAUDE.md), `.claude/skills`).
 
 ### 앞으로 개선할 점
-- **시뮬레이터 디버그 로그 보기**: 설치한 앱이 남기는 로그를 SimLauncher 화면에서 바로 보고, 문제를 개발자에게 전달할 수 있게 할 예정이에요.
+- **앱 로그 보기 넓히기**: iOS 는 지금 설치 후 실행한 앱의 로그를 창에서 보고 거를 수 있어요([앱 로그 보기](#앱-로그-보기)). Android 기기의 앱 로그와 자주 쓰는 필터 저장을 더하고, 로그를 개발자에게 전달하기 쉽게 할 예정이에요.
 - **앱 화면 레이아웃 보기 (디자이너용, iOS·Android)**: 실행 중인 앱 화면의 뷰마다 테두리를 그려 보이고, 뷰를 클릭하면 위치·크기(x, y, width, height 등)를 보여 줄 예정이에요. 디자이너가 개발 도구 없이 시안과 실제 화면의 간격·크기를 비교할 수 있게 하려는 기능이에요.
 - 그 밖의 후보: [로드맵의 "이후"](docs/DEVELOPMENT_PLAN.md#로드맵)
 
@@ -133,6 +134,16 @@ Xcode 만 준비되어 있으면 iOS 시뮬레이터가 없어도 기기 목록�
 앱의 특정 화면으로 바로 가는 링크(딥링크, 예: `myapp://item/1`)나 웹 주소를 기기에서 열어 볼 수 있어요. 줄의 **링크 열기…** 를 누르고 링크를 입력한 뒤 **열기** 를 누르세요. 기기가 꺼져 있으면 켜고 열어요.
 
 ![링크 열기](docs/media/open-url.png)
+
+### 앱 로그 보기
+SimLauncher 로 앱을 설치하고 실행하면(여러 기기에 한 번에 설치할 때도) 앱이 남기는 로그(`print`·`NSLog`·`Logger`)를 받아 두고, 그 기기 줄에 **로그 보기** 가 생겨요. 누르면 그 기기의 로그 창이 열리고, 실행한 때부터의 로그가 실시간으로 쌓여요.
+
+- 창을 닫아도 로그는 계속 받아요. 다시 **로그 보기** 를 누르면 닫은 동안의 로그까지 이어서 보여요. 기기마다 창은 하나예요.
+- 한 기기에서 여러 앱을 실행했거나 같은 앱을 다시 설치·실행했으면 창 위쪽에서 볼 실행을 골라요.
+- 앱이 끝나거나 기기가 꺼지면 창에 끝난 이유와 **다시 실행** 이 보여요. 다시 실행은 켜진 기기에서만 돼요(꺼진 기기는 켜지 않고 알려 드려요).
+- **필터**: **포함**(그 글자가 든 줄)·**시작**(그 글자로 시작하는 줄. `Logger`·`NSLog` 줄은 앞의 날짜·앱 이름 다음부터 봐요)·**정규식** 중에서 골라 조건을 넣어요. 조건을 여러 개 넣으면 하나라도 맞는 줄이 보이고, **제외** 를 켠 조건이 맞는 줄은 숨겨요. 맞은 부분은 강조되고, 아래에 보이는 줄 수와 전체 줄 수가 나와요. 여러 줄로 찍은 `print` 는 줄마다 따로 걸러져요.
+- **일시정지** 하면 목록이 멈추고(그동안 온 줄 수만 보여요), **따라가기** 를 켜 두면 새 줄을 따라 맨 아래로 내려가요. **지우기** 는 지금까지 받은 줄을 창에서 지워요.
+- 로그는 기기마다 최근 실행 5개, 실행마다 최근 5만 줄(또는 32 MiB)까지 보관하고, 파일로 저장하지 않아요. SimLauncher 를 종료하면 로그가 사라지고, 로그를 받던 앱도 함께 꺼져요(묻지 않아요). 기기의 홈 화면에서 직접 켠 앱의 로그는 받지 않아요.
 
 ### 여러 기기에 한 번에
 같은 앱을 여러 기기에서 확인하고 싶을 때 써요.

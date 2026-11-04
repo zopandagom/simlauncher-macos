@@ -22,13 +22,14 @@ public struct Client: Hashable, Sendable {
 
 // 새 Client 는 이 extension 에 static 상수로 추가한다.
 public extension Client {
-  /// iOS 시뮬레이터 기기·런타임 목록과 런타임 디스크 이미지 목록, 켜기·끄기·만들기·삭제·초기화, 앱 설치·실행, 화면 찍기·녹화,
-  /// Simulator 앱 열기 (`xcrun simctl`).
+  /// iOS 시뮬레이터 기기·런타임 목록과 런타임 디스크 이미지 목록, 켜기·끄기·만들기·삭제·초기화, 앱 설치·실행
+  /// (콘솔을 붙인 실행 `--console-pty` 포함), 화면 찍기·녹화, Simulator 앱 열기 (`xcrun simctl`).
   static let simulator = Client("Simulator")
   /// 로컬 iOS 앱 번들(.app) 검사와 zip 풀기.
   static let appBundle = Client("AppBundle")
   /// 실행 파일을 인자 배열로 실행하고 종료 코드·stdout·stderr 를 돌려준다 (셸을 거치지 않는다).
-  /// 끝날 때까지 기다리는 실행과, 취소·시간 제한으로 멈추고 출력을 받는 대로 넘기는 실행 두 가지.
+  /// 끝날 때까지 기다리는 실행, 취소·시간 제한으로 멈추고 출력을 받는 대로 넘기는 실행, 그 가운데 stdout 을 쌓지 않는 오래 사는 실행
+  /// (`streamCancellable`), 띄우고 곧바로 돌아오는 실행.
   /// 인자 구성·결과 해석은 이것을 조합하는 Client Impl 이 한다.
   static let command = Client("Command")
   /// 쓸 Xcode 확인·선택(xcode-select, /Applications), 라이선스·첫 실행 준비 확인, Xcode·App Store 열기,
@@ -59,6 +60,9 @@ public extension Client {
   /// 로컬 .apk 검사: zipinfo 목록·서명 유무·AndroidManifest.xml(AXML) 의 package·minSdk·네이티브 ABI.
   /// Mac 에 풀지 않는다(`unzip -p` 로 manifest 하나만 메모리로). 명령은 CommandClient 로 실행한다.
   static let androidPackage = Client("AndroidPackage")
+  /// iOS·Android 앱을 로그 받기와 함께 실행하고, 기기·실행별 세션 버퍼(세션당 최근 5만 줄·32 MiB, 기기당 5개)와 끝남 이유를 갖는다.
+  /// iOS 는 Simulator Client 의 `launchWithConsole` 을 조합한다 (Android 는 L-B). 앱 출력은 화면에만 보인다 (파일·Logger 없음).
+  static let appLog = Client("AppLog")
 }
 
 /// 화면 단위 기능 모듈. Feature 끼리는 서로 의존하지 않는다.
@@ -76,6 +80,9 @@ public enum Feature: String, CaseIterable {
   /// Android 기기(AVD) 목록과 켜기·끄기·만들기·삭제·초기화, 함께 켜기. 메인 창 사이드바 Android 칸에서 첫 확인이 셋 다 설치됨이면
   /// 곧바로, 아니면 도구 화면의 "기기 목록 열기" 로 보인다 (도구가 없으면 꺼진 기기 삭제만).
   case androidDevices = "AndroidDevices"
+  /// 기기별 앱 로그 창(iOS·Android 공용): 세션 고르기, 필터(포함·시작·정규식·제외)·강조, 일시정지·따라가기·지우기,
+  /// 끝난 세션 다시 실행.
+  case deviceLog = "DeviceLog"
 
   public var name: String { "\(self.rawValue)Feature" }
   public var tests: String { "\(self.name)Tests" }

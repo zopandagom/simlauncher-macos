@@ -2,7 +2,8 @@ import CommandInterface
 import Foundation
 import Synchronization
 
-/// `runCancellable` 한 번의 실행 상태: 프로세스 단계, 멈춘 이유, 쌓은 출력, 출력 전달 스트림.
+/// `runCancellable`·`streamCancellable` 한 번의 실행 상태: 프로세스 단계, 멈춘 이유, 쌓은 출력, 출력 전달 스트림.
+/// 쌓기는 `Retention` 으로 거른다 (`streamCancellable` 은 stdout 을 쌓지 않고 stderr 는 앞부분만).
 /// 신호는 lock 안에서 종료 처리(`terminationHandler`)가 오기 전에만 pid 로 보낸다. 종료 처리가 온 뒤에는 보내지 않지만,
 /// Foundation 이 프로세스를 거둔 뒤 종료 처리가 오기 전의 짧은 틈(그 사이 pid 가 재사용될 수 있다)은 막지 못한다.
 /// `Process` 객체는 동시성 경계 밖으로 넘기지 않고 pid 만 쓴다.
@@ -17,6 +18,19 @@ final class ProcessControl: Sendable {
     let eofGrace: Duration
 
     static let standard = Timing(interruptGrace: .seconds(10), terminateGrace: .seconds(5), eofGrace: .seconds(2))
+  }
+
+  /// 결과에 쌓는 출력.
+  struct Retention: Sendable {
+    /// false 면 stdout 을 결과에 쌓지 않는다 (조각으로만 넘긴다).
+    let retainsStdout: Bool
+    /// 결과에 쌓는 stderr 의 앞 바이트 수. nil 이면 전부.
+    let stderrLimit: Int?
+
+    /// `runCancellable`: 전부.
+    static let all = Retention(retainsStdout: true, stderrLimit: nil)
+    /// `streamCancellable`: stdout 은 쌓지 않고 stderr 는 앞부분만 (실패 분류용).
+    static let streamed = Retention(retainsStdout: false, stderrLimit: StreamedCommandResult.stderrLimit)
   }
 
   private enum Phase {
@@ -42,17 +56,20 @@ final class ProcessControl: Sendable {
   private let stdoutHandle: FileHandle
   private let stderrHandle: FileHandle
   private let continuation: AsyncStream<CommandOutput>.Continuation
+  private let retention: Retention
 
   init(
     timing: Timing,
     stdout: FileHandle,
     stderr: FileHandle,
-    continuation: AsyncStream<CommandOutput>.Continuation
+    continuation: AsyncStream<CommandOutput>.Continuation,
+    retention: Retention = .all
   ) {
     self.timing = timing
     self.stdoutHandle = stdout
     self.stderrHandle = stderr
     self.continuation = continuation
+    self.retention = retention
   }
 
   // MARK: - 읽기
@@ -80,9 +97,18 @@ final class ProcessControl: Sendable {
     self.state.withLock { state in
       switch output {
       case let .stdout(data):
-        state.stdout.append(data)
+        if self.retention.retainsStdout {
+          state.stdout.append(data)
+        }
       case let .stderr(data):
-        state.stderr.append(data)
+        if let limit = self.retention.stderrLimit {
+          let room = limit - state.stderr.count
+          if room > 0 {
+            state.stderr.append(data.prefix(room))
+          }
+        } else {
+          state.stderr.append(data)
+        }
       }
       if !state.outputClosed {
         self.continuation.yield(output)

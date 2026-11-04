@@ -1,0 +1,436 @@
+{
+  "sourceLanguage" : "ko",
+  "strings" : {
+    "%@ · 시작 %@ · %@" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · 시작 %@ · %@"
+          }
+        }
+      }
+    },
+    "%@ 로그" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 로그"
+          }
+        }
+      }
+    },
+    "SimLauncher 에서 앱을 설치·실행하면 그때부터의 로그가 여기에 쌓입니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SimLauncher 에서 앱을 설치·실행하면 그때부터의 로그가 여기에 쌓입니다."
+          }
+        }
+      }
+    },
+    "Xcode 를 찾지 못했거나 아직 준비되지 않아 다시 실행하지 못했습니다. 메인 창 오른쪽 위 개발 환경을 눌러 준비를 마친 뒤 다시 시도하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xcode 를 찾지 못했거나 아직 준비되지 않아 다시 실행하지 못했습니다. 메인 창 오른쪽 위 개발 환경을 눌러 준비를 마친 뒤 다시 시도하세요."
+          }
+        }
+      }
+    },
+    "걸러 볼 글자" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "걸러 볼 글자"
+          }
+        }
+      }
+    },
+    "계속" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "계속"
+          }
+        }
+      }
+    },
+    "기기가 꺼져 있어 다시 실행하지 않았습니다. 기기 목록에서 켠 뒤 다시 실행하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기기가 꺼져 있어 다시 실행하지 않았습니다. 기기 목록에서 켠 뒤 다시 실행하세요."
+          }
+        }
+      }
+    },
+    "기기를 찾지 못해 다시 실행하지 못했습니다. 기기 목록에 이 기기가 있는지 확인하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기기를 찾지 못해 다시 실행하지 못했습니다. 기기 목록에 이 기기가 있는지 확인하세요."
+          }
+        }
+      }
+    },
+    "기기에 이 앱이 없습니다. 기기 목록에서 다시 설치하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기기에 이 앱이 없습니다. 기기 목록에서 다시 설치하세요."
+          }
+        }
+      }
+    },
+    "끝남" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "끝남"
+          }
+        }
+      }
+    },
+    "끝남 — SimLauncher 가 앱을 다시 설치·실행했습니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "끝남 — SimLauncher 가 앱을 다시 설치·실행했습니다"
+          }
+        }
+      }
+    },
+    "끝남 — 기기가 꺼졌습니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "끝남 — 기기가 꺼졌습니다"
+          }
+        }
+      }
+    },
+    "끝남 — 로그 받기를 멈췄습니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "끝남 — 로그 받기를 멈췄습니다"
+          }
+        }
+      }
+    },
+    "끝남 — 앱이 끝났습니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "끝남 — 앱이 끝났습니다"
+          }
+        }
+      }
+    },
+    "다시 실행" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다시 실행"
+          }
+        }
+      }
+    },
+    "다시 실행하지 못했습니다. 잠시 뒤 다시 시도하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다시 실행하지 못했습니다. 잠시 뒤 다시 시도하세요."
+          }
+        }
+      }
+    },
+    "대소문자 구분" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "대소문자 구분"
+          }
+        }
+      }
+    },
+    "따라가기" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "따라가기"
+          }
+        }
+      }
+    },
+    "맞추는 방법" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "맞추는 방법"
+          }
+        }
+      }
+    },
+    "받는 중" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "받는 중"
+          }
+        }
+      }
+    },
+    "버퍼가 차서 앞 %lld줄을 버렸습니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "버퍼가 차서 앞 %lld줄을 버렸습니다"
+          }
+        }
+      }
+    },
+    "보이는 %lld줄 / 전체 %lld줄" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "보이는 %lld줄 / 전체 %lld줄"
+          }
+        }
+      }
+    },
+    "새 줄 %lld" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "새 줄 %lld"
+          }
+        }
+      }
+    },
+    "시작" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "시작"
+          }
+        }
+      }
+    },
+    "앱" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "앱"
+          }
+        }
+      }
+    },
+    "앱 로그" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "앱 로그"
+          }
+        }
+      }
+    },
+    "앱이 시작되지 않았거나 시작하자마자 종료되었습니다. 다시 실행해 보고, 계속되면 앱 개발자에게 알려 주세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "앱이 시작되지 않았거나 시작하자마자 종료되었습니다. 다시 실행해 보고, 계속되면 앱 개발자에게 알려 주세요."
+          }
+        }
+      }
+    },
+    "이 기기의 로그가 없습니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 기기의 로그가 없습니다"
+          }
+        }
+      }
+    },
+    "이 실행의 기록이 정리되어 다시 실행할 수 없습니다. 기기 목록에서 앱을 다시 설치하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 실행의 기록이 정리되어 다시 실행할 수 없습니다. 기기 목록에서 앱을 다시 설치하세요."
+          }
+        }
+      }
+    },
+    "일시정지" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "일시정지"
+          }
+        }
+      }
+    },
+    "정규식" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "정규식"
+          }
+        }
+      }
+    },
+    "정규식을 읽을 수 없습니다. 바로 앞 결과를 보이고 있습니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "정규식을 읽을 수 없습니다. 바로 앞 결과를 보이고 있습니다."
+          }
+        }
+      }
+    },
+    "제외" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "제외"
+          }
+        }
+      }
+    },
+    "조건 더하기" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "조건 더하기"
+          }
+        }
+      }
+    },
+    "조건 지우기" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "조건 지우기"
+          }
+        }
+      }
+    },
+    "지금까지 받은 줄을 창에서 지웁니다. 앱과 로그 받기는 계속됩니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "지금까지 받은 줄을 창에서 지웁니다. 앱과 로그 받기는 계속됩니다."
+          }
+        }
+      }
+    },
+    "지우기" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "지우기"
+          }
+        }
+      }
+    },
+    "켜면 새 줄이 올 때 맨 아래로 스크롤합니다. 위로 스크롤하면 꺼지고 맨 아래로 내리면 다시 켜집니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "켜면 새 줄이 올 때 맨 아래로 스크롤합니다. 위로 스크롤하면 꺼지고 맨 아래로 내리면 다시 켜집니다."
+          }
+        }
+      }
+    },
+    "켜면 이 조건에 맞는 줄을 숨깁니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "켜면 이 조건에 맞는 줄을 숨깁니다."
+          }
+        }
+      }
+    },
+    "켜진 기기에서 이 앱을 다시 실행하고 새 로그를 받습니다. 기기를 켜지는 않습니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "켜진 기기에서 이 앱을 다시 실행하고 새 로그를 받습니다. 기기를 켜지는 않습니다."
+          }
+        }
+      }
+    },
+    "포함" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "포함"
+          }
+        }
+      }
+    },
+    "포함 조건은 하나라도 맞으면 보이고, 제외 조건이 맞으면 숨깁니다. 여러 줄 print 는 줄마다 따로 걸러집니다(Logger·NSLog 머리말은 첫 줄에만 붙습니다). '시작' 은 머리말 뒤 메시지와 비교합니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "포함 조건은 하나라도 맞으면 보이고, 제외 조건이 맞으면 숨깁니다. 여러 줄 print 는 줄마다 따로 걸러집니다(Logger·NSLog 머리말은 첫 줄에만 붙습니다). '시작' 은 머리말 뒤 메시지와 비교합니다."
+          }
+        }
+      }
+    },
+    "필터에 맞는 줄이 없습니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "필터에 맞는 줄이 없습니다"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

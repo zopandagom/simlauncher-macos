@@ -12,7 +12,7 @@ public struct CommandClientImpl: CommandClient {
     self.timing = .standard
   }
 
-  /// 테스트용: `runCancellable` 의 멈춤 단계 간격과 종료 뒤 EOF 대기 시간을 정한다.
+  /// 테스트용: `runCancellable`·`streamCancellable` 의 멈춤 단계 간격과 종료 뒤 EOF 대기 시간을 정한다.
   init(interruptGrace: Duration, terminateGrace: Duration, eofGrace: Duration) {
     self.timing = ProcessControl.Timing(
       interruptGrace: interruptGrace,
@@ -79,6 +79,46 @@ public struct CommandClientImpl: CommandClient {
     timeout: Duration?,
     onOutput: @escaping @Sendable (CommandOutput) async -> Void
   ) async throws(CommandError) -> CommandResult {
+    try await self.runControlled(
+      Request(executable: executable, arguments: arguments, environment: environment),
+      timeout: timeout,
+      retention: .all,
+      onOutput: onOutput
+    )
+  }
+
+  /// stdout 을 결과에 쌓지 않는 것 말고는 `runCancellable` 과 같은 경로다. 출력 스트림(AsyncStream)은 상한이 없지만,
+  /// 받는 쪽(Simulator 의 줄 나누기 → AppLog actor 의 버퍼)이 조각마다 짧게 처리해 쌓이지 않는다고 보고 상한을 두지 않는다
+  /// (`runCancellable` 과 같다).
+  public func streamCancellable(
+    _ executable: URL,
+    _ arguments: [String],
+    environment: [String: String],
+    onOutput: @escaping @Sendable (CommandOutput) async -> Void
+  ) async throws(CommandError) -> StreamedCommandResult {
+    let result = try await self.runControlled(
+      Request(executable: executable, arguments: arguments, environment: environment),
+      timeout: nil,
+      retention: .streamed,
+      onOutput: onOutput
+    )
+    return StreamedCommandResult(exitCode: result.exitCode, stderr: result.stderr)
+  }
+
+  /// 실행할 파일·인자·환경.
+  private struct Request {
+    let executable: URL
+    let arguments: [String]
+    let environment: [String: String]
+  }
+
+  /// `runCancellable`·`streamCancellable` 이 함께 쓰는 경로. 결과에 쌓는 출력만 `retention` 으로 다르다.
+  private func runControlled(
+    _ request: Request,
+    timeout: Duration?,
+    retention: ProcessControl.Retention,
+    onOutput: @escaping @Sendable (CommandOutput) async -> Void
+  ) async throws(CommandError) -> CommandResult {
     guard !Task.isCancelled else {
       throw .cancelled
     }
@@ -89,18 +129,10 @@ public struct CommandClientImpl: CommandClient {
       timing: self.timing,
       stdout: stdoutPipe.fileHandleForReading,
       stderr: stderrPipe.fileHandleForReading,
-      continuation: continuation
+      continuation: continuation,
+      retention: retention
     )
-    let process = Process()
-    process.executableURL = executable
-    process.arguments = arguments
-    process.environment = environment
-    process.standardInput = FileHandle.nullDevice
-    process.standardOutput = stdoutPipe
-    process.standardError = stderrPipe
-    process.terminationHandler = { process in
-      control.exited(process.terminationStatus)
-    }
+    let process = Self.process(request, stdout: stdoutPipe, stderr: stderrPipe, control: control)
 
     let result: Result<CommandResult, CommandError> = await withTaskCancellationHandler {
       // 시작 전 취소 확인을 지난 뒤 온 취소는 시작 직후 SIGINT 로 처리한다 (`launched`).
@@ -132,6 +164,21 @@ public struct CommandClientImpl: CommandClient {
       control.requestStop(.cancelled)
     }
     return try result.get()
+  }
+
+  /// 파이프에 연결하고 끝나면 `control` 에 알리는 프로세스 (아직 띄우지 않는다).
+  private static func process(_ request: Request, stdout: Pipe, stderr: Pipe, control: ProcessControl) -> Process {
+    let process = Process()
+    process.executableURL = request.executable
+    process.arguments = request.arguments
+    process.environment = request.environment
+    process.standardInput = FileHandle.nullDevice
+    process.standardOutput = stdout
+    process.standardError = stderr
+    process.terminationHandler = { process in
+      control.exited(process.terminationStatus)
+    }
+    return process
   }
 
   public func launch(

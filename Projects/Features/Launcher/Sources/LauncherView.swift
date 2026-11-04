@@ -20,6 +20,8 @@ public struct LauncherView: View {
   /// 패널 표시 여부와 따로 둔다.
   @State private var importTarget: ImportTarget?
   @State private var isImporterPresented = false
+  /// 기기 행 "로그 보기" 가 로그 창(`AppLogTarget.windowID`)을 연다. 같은 기기면 SwiftUI 가 그 창을 앞으로 가져온다.
+  @Environment(\.openWindow) private var openWindow
 
   public init(model: LauncherModel, catalogModel: CatalogInstallModel) {
     self.model = model
@@ -337,46 +339,24 @@ extension LauncherView {
       downloadStage: self.model.activity.downloadStage(on: device.id),
       downloadGroupSize: self.model.activity.downloadGroupSize(on: device.id),
       installFromFileTapped: { self.importerRequested(for: .device(device.id)) },
-      installFromURLTapped: {
-        self.model.installFromURLMenuTapped(device.id)
-      },
-      installFromCatalogTapped: {
-        Task { await self.catalogModel.menuTapped(device) }
-      },
-      cancelDownloadTapped: {
-        self.model.downloadCancelTapped(device.id)
-      },
-      appDropped: { urls in
-        Task { await self.model.appDropped(urls, on: device.id) }
-      },
-      openURLTapped: {
-        self.model.openURLButtonTapped(device.id)
-      },
+      installFromURLTapped: { self.model.installFromURLMenuTapped(device.id) },
+      installFromCatalogTapped: { Task { await self.catalogModel.menuTapped(device) } },
+      cancelDownloadTapped: { self.model.downloadCancelTapped(device.id) },
+      appDropped: { urls in Task { await self.model.appDropped(urls, on: device.id) } },
+      openURLTapped: { self.model.openURLButtonTapped(device.id) },
+      hasLog: self.model.logDevices.contains(device.id),
+      logTapped: { self.openWindow(id: AppLogTarget.windowID, value: AppLogTarget.iOS(device.id)) },
       canTakeScreenshot: self.model.screenshots.canStart(on: device, during: task),
       isTakingScreenshot: self.model.screenshots.isTaking(on: device.id),
-      screenshotTapped: {
-        Task { await self.model.screenshotButtonTapped(device.id) }
-      },
+      screenshotTapped: { Task { await self.model.screenshotButtonTapped(device.id) } },
       recordingPhase: self.model.recordings.phase(on: device.id),
       canStartRecording: self.model.recordings.canStart(on: device, during: task),
-      recordTapped: {
-        Task { await self.model.recordButtonTapped(device.id) }
-      },
-      stopRecordingTapped: {
-        self.model.recordingStopTapped(device.id)
-      },
-      bootTapped: {
-        Task { await self.model.bootButtonTapped(device.id) }
-      },
-      shutdownTapped: {
-        Task { await self.model.shutdownButtonTapped(device.id) }
-      },
-      eraseTapped: {
-        self.model.eraseButtonTapped(device.id)
-      },
-      deleteTapped: {
-        self.model.deleteButtonTapped(device.id)
-      }
+      recordTapped: { Task { await self.model.recordButtonTapped(device.id) } },
+      stopRecordingTapped: { self.model.recordingStopTapped(device.id) },
+      bootTapped: { Task { await self.model.bootButtonTapped(device.id) } },
+      shutdownTapped: { Task { await self.model.shutdownButtonTapped(device.id) } },
+      eraseTapped: { self.model.eraseButtonTapped(device.id) },
+      deleteTapped: { self.model.deleteButtonTapped(device.id) }
     )
   }
 }

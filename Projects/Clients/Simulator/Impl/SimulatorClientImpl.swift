@@ -285,7 +285,12 @@ public struct SimulatorClientImpl: SimulatorClient {
   /// install·launch·openurl 의 stderr 에는 앱이 정한 글자나 사용자가 넣은 URL 이 섞인다. 잘못된 UTF-8 이면 Latin-1 로 읽는다
   /// (실패하지 않고, 분류가 보는 domain 줄·"reason: NotFound" 는 ASCII 라 그대로 남는다).
   static func stderr(_ result: CommandResult) -> String {
-    String(bytes: result.stderr, encoding: .utf8) ?? String(bytes: result.stderr, encoding: .isoLatin1) ?? ""
+    self.stderr(result.stderr)
+  }
+
+  /// `stderr(_ result:)` 와 같은 읽기 (`launchWithConsole` 의 결과는 stderr 앞부분만 갖는다).
+  static func stderr(_ data: Data) -> String {
+    String(bytes: data, encoding: .utf8) ?? String(bytes: data, encoding: .isoLatin1) ?? ""
   }
 }
 
