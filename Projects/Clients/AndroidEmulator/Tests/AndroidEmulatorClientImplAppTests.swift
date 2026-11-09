@@ -24,25 +24,6 @@ struct AndroidEmulatorClientImplAppTests {
     CommandResult(exitCode: code, stdout: Data(stdout.utf8), stderr: Data(stderr.utf8))
   }
 
-  /// launcher 가 둘 이상일 때 `resolve-activity --brief` 출력 (실측).
-  static let chooser = Self.result(
-    0,
-    stdout: "priority=0 preferredOrder=0 match=0x0 specificIndex=-1 isDefault=false\n" +
-      "android/com.android.internal.app.ResolverActivity\n"
-  )
-
-  /// launcher 둘의 `query-activities --brief` 출력 (실측, 패키지만 바꿨다). 순서는 manifest 순서다.
-  static let twoLaunchers = """
-  2 activities found:
-    Activity #0:
-      priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=false
-      org.videolan.vlc/android.app.Activity
-    Activity #1:
-      priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=false
-      org.videolan.vlc/android.app.ListActivity
-
-  """
-
   /// 목록 읽기(`devices`·`emu avd name`·`sys.boot_completed`)를 뺀 adb 호출.
   static func appCalls(_ harness: Harness) -> [[String]] {
     harness.adbCalls.filter { arguments in
@@ -52,7 +33,7 @@ struct AndroidEmulatorClientImplAppTests {
     }
   }
 
-  /// 다섯 메서드를 차례로 불러 던진 에러를 모은다.
+  /// 다섯 메서드(실행은 `launchWithLogcat`)를 차례로 불러 던진 에러를 모은다.
   static func allErrors(_ client: AndroidEmulatorClientImpl, _ id: AndroidVirtualDevice.ID) async throws
     -> [AndroidEmulatorError?]
   {
@@ -60,7 +41,7 @@ struct AndroidEmulatorClientImplAppTests {
     return await [
       thrownError { _ = try await client.deviceTraits(id) },
       thrownError { try await client.install(Self.apk, on: id) },
-      thrownError { try await client.launch(Self.package, on: id) },
+      thrownError { _ = try await client.launchWithLogcat(Self.package, on: id) { _ in } },
       thrownError { try await client.openURL(link, on: id) },
       thrownError { _ = try await client.installedPackages(on: id) },
     ]
@@ -198,121 +179,6 @@ extension AndroidEmulatorClientImplAppTests {
     harness.adb.onApp { _ throws(CommandError) in throw .timedOut }
 
     #expect(await thrownError { _ = try await harness.client.installedPackages(on: Self.pixel) } == .adbUnavailable)
-  }
-
-  // MARK: - 실행
-
-  @Test("launch: resolve 한 component 를 인용해 am start -n 으로 실행한다")
-  func launch() async throws {
-    let harness = try Self.booted()
-    defer { harness.cleanUp() }
-    harness.adb.onApp { arguments in
-      if arguments.contains("resolve-activity") {
-        return Self.result(0, stdout: "priority=0 preferredOrder=0\norg.videolan.vlc/.StartActivity\n")
-      }
-      return Self.result(0, stdout: "Starting: Intent { cmp=org.videolan.vlc/.StartActivity }\n")
-    }
-
-    try await harness.client.launch(Self.package, on: Self.pixel)
-
-    #expect(Self.appCalls(harness) == [
-      [
-        "-s", "emulator-5554", "shell", "cmd", "package", "resolve-activity", "--brief",
-        "-a", "android.intent.action.MAIN", "-c", "android.intent.category.LAUNCHER", "org.videolan.vlc",
-      ],
-      ["-s", "emulator-5554", "shell", "am", "start", "-n", "'org.videolan.vlc/.StartActivity'"],
-    ])
-    #expect(!Self.appCalls(harness).contains { $0.contains("query-activities") })
-    #expect(harness.command.invocations.last?.timeout == .seconds(10))
-  }
-
-  @Test("launch: 기기가 고르기 화면을 돌려주면(launcher 둘 이상) query-activities 의 첫 화면을 실행한다 (실측 출력)")
-  func launchAmbiguous() async throws {
-    let harness = try Self.booted()
-    defer { harness.cleanUp() }
-    harness.adb.onApp { arguments in
-      if arguments.contains("resolve-activity") {
-        return Self.chooser
-      }
-      if arguments.contains("query-activities") {
-        return Self.result(0, stdout: Self.twoLaunchers)
-      }
-      return Self.result(0, stdout: "Starting: Intent { cmp=org.videolan.vlc/android.app.Activity }\n")
-    }
-
-    try await harness.client.launch(Self.package, on: Self.pixel)
-
-    #expect(Self.appCalls(harness) == [
-      [
-        "-s", "emulator-5554", "shell", "cmd", "package", "resolve-activity", "--brief",
-        "-a", "android.intent.action.MAIN", "-c", "android.intent.category.LAUNCHER", "org.videolan.vlc",
-      ],
-      [
-        "-s", "emulator-5554", "shell", "cmd", "package", "query-activities", "--brief",
-        "-a", "android.intent.action.MAIN", "-c", "android.intent.category.LAUNCHER", "org.videolan.vlc",
-      ],
-      ["-s", "emulator-5554", "shell", "am", "start", "-n", "'org.videolan.vlc/android.app.Activity'"],
-    ])
-  }
-
-  @Test("launch: 고르기 화면 뒤 query 가 비면 pm path 로 가리고, 켜는 중이면 am start 없이 deviceNotBooted")
-  func launchAmbiguousFailures() async throws {
-    let harness = try Self.booted()
-    defer { harness.cleanUp() }
-    let client = harness.client
-    for (code, expected) in [(Int32(1), AndroidLaunchFailure.notInstalled), (0, .noLauncherActivity)] {
-      harness.adb.onApp { arguments in
-        if arguments.contains("resolve-activity") {
-          return Self.chooser
-        }
-        if arguments.contains("query-activities") {
-          return Self.result(0, stdout: "No activities found\n")
-        }
-        return Self.result(code)
-      }
-      #expect(await thrownError { try await client.launch(Self.package, on: Self.pixel) } == .launchFailed(expected))
-    }
-    harness.adb.onApp { arguments in
-      arguments.contains("resolve-activity")
-        ? Self.chooser
-        : Self.result(20, stderr: "cmd: Can't find service: package\n")
-    }
-    #expect(await thrownError { try await client.launch(Self.package, on: Self.pixel) } == .deviceNotBooted)
-
-    let calls = Self.appCalls(harness)
-    #expect(calls.count == 8)
-    #expect(calls[2] == ["-s", "emulator-5554", "shell", "pm", "path", "org.videolan.vlc"])
-    #expect(!calls.contains { $0.contains("am") })
-  }
-
-  @Test("launch: 화면이 없으면 pm path 로 가린다 (rc 1 → notInstalled, rc 0 → noLauncherActivity)")
-  func launchWithoutActivity() async throws {
-    let harness = try Self.booted()
-    defer { harness.cleanUp() }
-    let client = harness.client
-    for (code, expected) in [(Int32(1), AndroidLaunchFailure.notInstalled), (0, .noLauncherActivity)] {
-      harness.adb.onApp { arguments in
-        arguments.contains("resolve-activity") ? Self.result(0, stdout: "No activity found\n") : Self.result(code)
-      }
-      #expect(await thrownError { try await client.launch(Self.package, on: Self.pixel) } == .launchFailed(expected))
-    }
-    let calls = Self.appCalls(harness)
-    #expect(calls.count == 4)
-    #expect(calls[1] == ["-s", "emulator-5554", "shell", "pm", "path", "org.videolan.vlc"])
-    #expect(!calls.contains { $0.contains("am") })
-  }
-
-  @Test("launch: 실행 중 끊기면 deviceNotBooted")
-  func launchDisconnected() async throws {
-    let harness = try Self.booted()
-    defer { harness.cleanUp() }
-    harness.adb.onApp { arguments in
-      arguments.contains("resolve-activity")
-        ? Self.result(0, stdout: "org.videolan.vlc/.StartActivity\n")
-        : Self.result(1, stderr: "adb: device 'emulator-5554' not found\n")
-    }
-
-    #expect(await thrownError { try await harness.client.launch(Self.package, on: Self.pixel) } == .deviceNotBooted)
   }
 
   // MARK: - 링크·앱 목록

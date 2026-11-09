@@ -3,7 +3,8 @@ import CommandInterface
 import Core
 import Foundation
 
-/// 켜진 기기의 앱 작업(값 읽기·설치·실행·링크 열기·앱 목록) adb 인자와 출력 해석.
+/// 켜진 기기의 앱 작업(값 읽기·설치·실행 화면 찾기·`am start`·링크 열기·앱 목록) adb 인자와 출력 해석.
+/// 로그 받기와 함께 하는 실행의 나머지 단계(force-stop·시각·pid·logcat)는 `ADBLogcatCommands`.
 /// `shell` 뒤 사용자 값·기기에서 읽은 값(링크·component)은 `ADBShell.quote` 를 거친다. 패키지 이름은 `AndroidPackageName` 이라
 /// 셸 특수 문자가 없어 인용하지 않는다. install 의 apk 경로는 호스트 argv 라 인용하지 않는다 (`/` 로 시작해 옵션으로 읽히지 않는다).
 enum ADBAppCommands {
@@ -259,18 +260,18 @@ enum ADBAppCommands {
   }
 
   /// stdout 다음 stderr.
-  private static func text(_ result: CommandResult) -> String {
+  static func text(_ result: CommandResult) -> String {
     let stdout = String(bytes: result.stdout, encoding: .utf8) ?? ""
     let stderr = String(bytes: result.stderr, encoding: .utf8) ?? ""
     return stdout + "\n" + stderr
   }
 
-  private static func lines(_ data: Data) -> [String] {
+  static func lines(_ data: Data) -> [String] {
     self.lines(String(bytes: data, encoding: .utf8) ?? "")
   }
 
   /// 앞뒤 공백을 뺀 비지 않은 줄 (CRLF 포함).
-  private static func lines(_ text: String) -> [String] {
+  static func lines(_ text: String) -> [String] {
     text.split(whereSeparator: \.isNewline)
       .map { $0.trimmingCharacters(in: .whitespaces) }
       .filter { !$0.isEmpty }
