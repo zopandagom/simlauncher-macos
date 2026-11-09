@@ -11,13 +11,15 @@ import Synchronization
 ///   nil 이면 `.nameUnavailable`). 성공하면 꺼진 새 기기(표시 이름은 `DeviceName.normalized`)를 목록 끝에 더한다.
 /// - `delete` 는 성공하면 그 기기를 빼고 설정한 결과(기본 `.deleted`)를 돌려준다. 목록에 없는 기기여도 성공한다.
 /// - `erase` 는 성공해도 목록을 바꾸지 않는다.
-/// - 앱 작업(`deviceTraits`·`install`·`launchWithLogcat`·`openURL`·`installedPackages`·`screenshot`·`recordScreen`)은 설정한
+/// - 앱 작업(`deviceTraits`·`install`·`launchWithLogcat`·`openURL`·`installedPackages`·`screenshot`·`recordScreen`·
+///   `layoutSnapshot`)은 설정한
 /// 결과만 돌려주고
 ///   목록·기기 상태를 보지 않는다. 기본은 `AndroidDeviceTraits.sample`·성공·빈 앱 목록. 기기별 설정(`…(_:for:)`)이 전체 설정보다 먼저다.
 /// - `screenshot`·`recordScreen` 은 파일을 만들거나 쓰지 않는다. `recordScreen` 은 기본으로 바로 시작 신호를 보내고 호출한 Task 가
 ///   취소될 때까지 기다린 뒤 `.saved` 를 돌려준다 (iOS `SimulatorClientFake.recordVideo` 와 같다).
 /// - `launchWithLogcat` 은 처리기(`setLogcatHandler`)가 없으면 설정한 실행 에러(기기별 먼저)를 던지거나, `.launched` 를 보내고 호출한
 ///   Task 가 취소될 때까지 기다린 뒤 `.stopped` (iOS `SimulatorClientFake.launchWithConsole` 과 같다).
+/// - `layoutSnapshot` 은 설정한 결과(기본 `LayoutSnapshot.androidLayoutSample` 성공)를 돌려준다.
 /// - 멈춤(`suspend…`) 중인 호출은 기록만 하고 재개까지 기다린다 (취소를 받지 않는다). 결과는 깨어난 뒤의 설정을 쓴다.
 public final class AndroidEmulatorClientFake: AndroidEmulatorClient {
   public enum Call: Hashable, Sendable {
@@ -34,15 +36,16 @@ public final class AndroidEmulatorClientFake: AndroidEmulatorClient {
     case installedPackages(AndroidVirtualDevice.ID)
     case screenshot(AndroidVirtualDevice.ID, URL)
     case recordScreen(AndroidVirtualDevice.ID, URL)
+    case layoutSnapshot(AndroidVirtualDevice.ID)
   }
 
-  private enum SuspendableCall: Hashable {
-    case fetch, boot, shutdown, create, delete, erase, install, packageList, screenshot, recording
+  enum SuspendableCall: Hashable {
+    case fetch, boot, shutdown, create, delete, erase, install, packageList, screenshot, recording, layout
     case bootOf(AndroidVirtualDevice.ID)
     case installOf(AndroidVirtualDevice.ID)
   }
 
-  private struct State {
+  struct State {
     var inventory: AndroidDeviceInventory
     var calls: [Call] = []
     var fetchError: AndroidEmulatorError?
@@ -65,12 +68,13 @@ public final class AndroidEmulatorClientFake: AndroidEmulatorClient {
     var recordingSignalsStart = true
     var openURLError: AndroidEmulatorError?
     var installedPackages: Result<[AndroidPackageName], AndroidEmulatorError> = .success([])
+    var layoutSnapshotResult: Result<LayoutSnapshot, AndroidEmulatorError> = .success(.androidLayoutSample)
     var delay: Duration?
     var suspended: Set<SuspendableCall> = []
     var waiters: [SuspendableCall: [CheckedContinuation<Void, Never>]] = [:]
   }
 
-  private let state: Mutex<State>
+  let state: Mutex<State>
 
   public init(inventory: AndroidDeviceInventory = AndroidDeviceInventory(devices: [], creationOptions: .emptySample)) {
     self.state = Mutex(State(inventory: inventory))
@@ -259,23 +263,23 @@ public final class AndroidEmulatorClientFake: AndroidEmulatorClient {
   }
 }
 
-/// 호출 기록·지연·멈춤 보조 (`state` 를 같은 파일에서만 만진다).
-private extension AndroidEmulatorClientFake {
-  private func record(_ call: Call) {
+/// 호출 기록·지연·멈춤 보조 (모듈 안에서만 보인다).
+extension AndroidEmulatorClientFake {
+  func record(_ call: Call) {
     self.state.withLock { $0.calls.append(call) }
   }
 
-  private func sleepIfNeeded() async {
+  func sleepIfNeeded() async {
     if let delay = self.state.withLock({ $0.delay }) {
       try? await Task.sleep(for: delay)
     }
   }
 
-  private func suspend(_ call: SuspendableCall) {
+  func suspend(_ call: SuspendableCall) {
     self.state.withLock { _ = $0.suspended.insert(call) }
   }
 
-  private func resume(_ call: SuspendableCall) {
+  func resume(_ call: SuspendableCall) {
     let waiters = self.state.withLock { state in
       state.suspended.remove(call)
       return state.waiters.removeValue(forKey: call) ?? []
@@ -285,7 +289,7 @@ private extension AndroidEmulatorClientFake {
     }
   }
 
-  private func waitIfSuspended(_ call: SuspendableCall) async {
+  func waitIfSuspended(_ call: SuspendableCall) async {
     // 플래그 확인과 continuation 저장을 한 lock 안에서 해야 resume 이 저장보다 먼저 와도 놓치지 않는다.
     await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
       let wait = self.state.withLock { state in

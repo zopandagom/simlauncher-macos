@@ -132,3 +132,41 @@ public extension AndroidDeviceTraits {
   /// 설계 실측 기기: API 37, `arm64-v8a` 만 (32비트 ABI 없음).
   static let sample = AndroidDeviceTraits(apiLevel: 37, abis: ["arm64-v8a"])
 }
+
+public extension LayoutSnapshot {
+  /// 작은 Android 레이아웃 스냅샷: 1080×2400 px, 밀도 420(2.625 px/dp), 루트 FrameLayout 과 "Navigate up" 버튼.
+  /// 스크린샷은 1×1 PNG 자리 채우기다.
+  static let androidLayoutSample = LayoutSnapshot(
+    deviceName: "Pixel 9",
+    capturedAt: Date(timeIntervalSince1970: 1_800_000_000),
+    screenshotPNG: Data([
+      0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+      0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4,
+      0x89, 0x00, 0x00, 0x00, 0x0B, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x60, 0x00, 0x02, 0x00,
+      0x00, 0x05, 0x00, 0x01, 0x7A, 0x5E, 0xAB, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44,
+      0xAE, 0x42, 0x60, 0x82,
+    ]),
+    pixelSize: LayoutSize(width: 1080, height: 2400),
+    unit: .dp,
+    pixelsPerUnit: 2.625,
+    nodes: [
+      LayoutNode(
+        id: 0,
+        depth: 0,
+        parentID: nil,
+        frame: LayoutRect(x: 0, y: 0, width: 1080, height: 2400),
+        type: "android.widget.FrameLayout"
+      ),
+      LayoutNode(
+        id: 1,
+        depth: 1,
+        parentID: 0,
+        frame: LayoutRect(x: 85, y: 105, width: 63, height: 63),
+        type: "android.widget.ImageButton",
+        label: "Navigate up"
+      ),
+    ],
+    appIdentifier: "com.android.settings",
+    isSystemScreen: false
+  )
+}
