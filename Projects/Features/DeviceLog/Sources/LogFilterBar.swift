@@ -29,7 +29,7 @@ struct LogFilterBar: View {
         .toggleStyle(.checkbox)
         Spacer()
       }
-      Text(DeviceLogText.filterHelp)
+      Text(DeviceLogText.filterHelp(platform: self.target.platform))
         .font(.caption)
         .foregroundStyle(.secondary)
         .fixedSize(horizontal: false, vertical: true)

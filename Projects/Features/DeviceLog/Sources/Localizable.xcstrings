@@ -21,6 +21,16 @@
         }
       }
     },
+    "Android 도구를 찾지 못해 다시 실행하지 못했습니다. 메인 창 Android 칸 오른쪽 위 Android 도구에서 상태를 확인하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Android 도구를 찾지 못해 다시 실행하지 못했습니다. 메인 창 Android 칸 오른쪽 위 Android 도구에서 상태를 확인하세요."
+          }
+        }
+      }
+    },
     "SimLauncher 에서 앱을 설치·실행하면 그때부터의 로그가 여기에 쌓입니다." : {
       "localizations" : {
         "ko" : {
@@ -57,6 +67,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "계속"
+          }
+        }
+      }
+    },
+    "기기 상태를 확인하지 못했습니다. 잠시 뒤 다시 시도하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기기 상태를 확인하지 못했습니다. 잠시 뒤 다시 시도하세요."
           }
         }
       }
@@ -107,6 +127,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "끝남 — SimLauncher 가 앱을 다시 설치·실행했습니다"
+          }
+        }
+      }
+    },
+    "끝남 — 기기가 꺼졌거나 연결이 끊겼습니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "끝남 — 기기가 꺼졌거나 연결이 끊겼습니다"
           }
         }
       }
@@ -271,6 +301,16 @@
         }
       }
     },
+    "이 기기를 지금 쓸 수 없어 다시 실행하지 못했습니다. 기기 목록에서 이유를 확인하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 기기를 지금 쓸 수 없어 다시 실행하지 못했습니다. 기기 목록에서 이유를 확인하세요."
+          }
+        }
+      }
+    },
     "이 기기의 로그가 없습니다" : {
       "localizations" : {
         "ko" : {
@@ -287,6 +327,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "이 실행의 기록이 정리되어 다시 실행할 수 없습니다. 기기 목록에서 앱을 다시 설치하세요."
+          }
+        }
+      }
+    },
+    "이 앱에는 홈 화면에서 여는 화면이 없어 실행할 수 없습니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 앱에는 홈 화면에서 여는 화면이 없어 실행할 수 없습니다."
           }
         }
       }
@@ -407,6 +457,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "포함"
+          }
+        }
+      }
+    },
+    "포함 조건은 하나라도 맞으면 보이고, 제외 조건이 맞으면 숨깁니다. '시작' 은 시각·pid·tid·레벨 뒤의 태그부터 비교합니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "포함 조건은 하나라도 맞으면 보이고, 제외 조건이 맞으면 숨깁니다. '시작' 은 시각·pid·tid·레벨 뒤의 태그부터 비교합니다."
           }
         }
       }

@@ -30,6 +30,32 @@ struct LogLineHeaderTests {
     }
   }
 
+  @Test("Android logcat threadtime 줄은 레벨 뒤 태그부터가 메시지다 (pid·tid 앞 공백 수가 달라도)")
+  func androidThreadtime() {
+    let lines = [
+      ("11-09 14:13:30.242  4750  4759 I ncher.sampleapp: Compiler allocated", "ncher.sampleapp: Compiler allocated"),
+      (
+        "11-09 14:14:23.672 15052 15052 E AndroidRuntime: FATAL EXCEPTION: main",
+        "AndroidRuntime: FATAL EXCEPTION: main"
+      ),
+      ("01-02 03:04:05.006   123     7 D MyTag   : hello", "MyTag   : hello"),
+    ]
+    for (line, message) in lines {
+      #expect(line[LogLineHeader.messageStart(in: line)...] == message, "\(line)")
+    }
+  }
+
+  @Test("threadtime 처럼 보여도 형식이 다르면(버퍼 머리 줄, 레벨 없음, 밀리초가 셋이 아님) 줄 처음이다")
+  func androidNotHeader() {
+    for line in [
+      "--------- beginning of main",
+      "11-09 14:13:30.242  4750  4759 ncher.sampleapp: no level",
+      "11-09 14:13:30.24  4750  4759 I tag: short millis",
+    ] {
+      #expect(LogLineHeader.messageOffset(in: line) == 0, "\(line)")
+    }
+  }
+
   @Test("한글이 든 줄은 UTF-16 위치로 돌려준다")
   func utf16Offset() {
     let line = "2026-11-03 15:58:08.123 앱[1:2] 안녕"
@@ -283,5 +309,19 @@ struct LogFilterTests {
     #expect(filter.conditions.count == 1)
     #expect(filter.conditions.first?.text.isEmpty == true)
     #expect(filter.conditions.first?.id != id)
+  }
+}
+
+/// Android logcat 줄의 필터 (`LogLineHeader` 의 threadtime 머리말).
+extension LogFilterTests {
+  @Test("Android logcat 줄의 시작 조건은 태그부터 맞추고, 날짜·pid 로는 맞지 않는다")
+  func prefixAndroidTag() async throws {
+    let line = "11-09 14:14:23.672  5052  5052 E AndroidRuntime: FATAL EXCEPTION: main"
+    let tag = try self.compiled([Spec(.prefix, "AndroidRuntime", false)])
+    #expect(await self.shows(tag, line))
+    let highlights = try #require(await self.visible(tag, line)?.highlights)
+    #expect(highlights == [LogHighlight(location: Int32(LogLineHeader.messageOffset(in: line)), length: 14)])
+    #expect(try await !self.shows(self.compiled([Spec(.prefix, "11-09", false)]), line))
+    #expect(try await !self.shows(self.compiled([Spec(.prefix, "FATAL", false)]), line))
   }
 }
