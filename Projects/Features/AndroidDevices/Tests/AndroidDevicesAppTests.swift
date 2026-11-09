@@ -2,12 +2,13 @@ import AndroidEmulatorInterface
 import AndroidEmulatorTesting
 import AndroidPackageInterface
 import AndroidPackageTesting
+import AppLogTesting
 import Core
 import Foundation
 import Testing
 @testable import AndroidDevicesFeature
 
-/// 켜진 기기 행의 앱 설치 (파일 고르기·드롭 → 검사 → 기기 값 → 판정 → 설치 → 실행).
+/// 켜진 기기 행의 앱 설치 (파일 고르기·드롭 → 검사 → 기기 값 → 판정 → 설치 → 실행). 실행은 앱 로그 받기와 함께 한다 (`AppLogClient`).
 @MainActor
 struct AndroidDevicesInstallTests: AndroidDevicesTesting {
   static let tablet = AndroidVirtualDevice.bootedTabletSample
@@ -20,7 +21,7 @@ struct AndroidDevicesInstallTests: AndroidDevicesTesting {
     fake.calls.filter { $0 != .fetchDevices }
   }
 
-  @Test("성공: 검사 → 기기 값 → 설치 → 실행 → 다시 읽기 순서이고, 흐름 동안만 설치 중이다")
+  @Test("성공: 검사 → 기기 값 → 대체 예고 → 설치 → 로그 받기와 함께 실행 → 다시 읽기 순서이고, 흐름 동안만 설치 중이다")
   func installSucceeds() async {
     let setup = await Self.loadedFixture()
     setup.package.suspend()
@@ -33,7 +34,10 @@ struct AndroidDevicesInstallTests: AndroidDevicesTesting {
     #expect(Self.appCalls(setup.fake) == [
       .deviceTraits(Self.tablet.id),
       .install(Self.info.location, Self.tablet.id),
-      .launch(Self.info.packageName, Self.tablet.id),
+    ])
+    #expect(setup.appLog.calls == [
+      .androidReplacementWillStart(Self.info.packageName, Self.tablet.id),
+      .launchAndroidApp(Self.info.packageName, Self.tablet.id),
     ])
     #expect(Self.fetchCount(setup.fake) == 2)
     #expect(setup.model.activity.task(on: Self.tablet.id) == nil)
@@ -113,24 +117,29 @@ struct AndroidDevicesInstallTests: AndroidDevicesTesting {
     #expect(Self.fetchCount(setup.fake) == 1)
   }
 
-  @Test("설치 명령이 실패하면 알리고 다시 읽으며 실행하지 않는다")
+  @Test("설치 명령이 실패하면 대체 예고를 되돌리고 알리며 다시 읽고, 실행하지 않는다")
   func installFails() async {
     let setup = await Self.loadedFixture { $0.setInstallError(.installFailed(.updateIncompatible)) }
     await setup.model.appFileSelected(Self.apk, for: Self.tablet.id)
     #expect(Self.notices(setup.model) == [
       .installFailed(Self.label, .emulator(.installFailed(.updateIncompatible))),
     ])
-    #expect(!Self.appCalls(setup.fake).contains(.launch(Self.info.packageName, Self.tablet.id)))
+    #expect(setup.appLog.calls == [
+      .androidReplacementWillStart(Self.info.packageName, Self.tablet.id),
+      .androidReplacementCancelled(Self.info.packageName, Self.tablet.id),
+    ])
     #expect(Self.fetchCount(setup.fake) == 2)
     #expect(setup.model.activity.task(on: Self.tablet.id) == nil)
   }
 
   @Test("설치 뒤 실행이 실패하면 설치는 됐다는 알림이고 다시 읽는다")
   func launchAfterInstallFails() async {
-    let setup = await Self.loadedFixture { $0.setLaunchError(.launchFailed(.noLauncherActivity)) }
+    let setup = await Self.loadedFixture()
+    setup.launchErrors.set(.noLauncherActivity)
     await setup.model.appFileSelected(Self.apk, for: Self.tablet.id)
     #expect(Self.notices(setup.model) == [.installedButNotLaunched(Self.label, .launchFailed(.noLauncherActivity))])
     #expect(Self.fetchCount(setup.fake) == 2)
+    #expect(setup.appLog.sessions.isEmpty)
   }
 
   @Test(

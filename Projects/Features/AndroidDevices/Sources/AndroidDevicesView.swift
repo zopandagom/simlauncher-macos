@@ -9,10 +9,12 @@ import UniformTypeIdentifiers
 /// "선택한 기기에 앱 설치"(파일에서 고르기…·URL 에서…·카탈로그에서…)가 고른 기기 중 켜진 기기에 함께 설치한다.
 /// 행의 버튼·메뉴·드롭(스크린샷·녹화 포함)은 그 행 한 대에만 동작한다. 사라질 때(`onDisappear`) 자동 다시 읽기를 멈추게 알린다.
 /// URL·카탈로그 시트는 `downloadModel`, 앱 실행·링크 열기 시트는 `appSheetsModel`(둘 다 App 소유)의 초안으로 띄운다.
+/// 행 "로그 보기" 는 `appSheetsModel.logDevices` 로 누를 수 있는지 정하고, 그 기기의 로그 창(`AppLogTarget.android`)을 연다.
 public struct AndroidDevicesView: View {
   let model: AndroidDevicesModel
   let downloadModel: AndroidDownloadInstallModel
   let appSheetsModel: AndroidAppSheetsModel
+  @Environment(\.openWindow) private var openWindow
   /// 지금 띄운 알림. 닫히는 동안 Model 의 줄에서 빠져도 글자가 비지 않도록 View 가 들고 있는다.
   @State private var presentedNotice: AndroidDevicesNoticeItem?
   /// 알림을 띄웠는지. 다음 알림을 띄울 때 false → true 전이가 생기도록 Model 의 줄과 따로 둔다.
@@ -189,22 +191,16 @@ public struct AndroidDevicesView: View {
           break
         }
       }
-      .task { await self.model.onAppear() }
+      .task {
+        self.appSheetsModel.onAppear()
+        await self.model.onAppear()
+      }
       .onDisappear { self.model.viewDisappeared() }
       // macOS 에서는 다른 앱에 갔다 돌아와도 scenePhase 가 바뀌지 않아, 앱 활성화 알림으로 돌아옴을 안다
       // (에뮬레이터 창을 닫거나 Android Studio 에서 바꾼 것을 반영한다).
       .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
         Task { await self.model.appBecameActive() }
       }
-  }
-
-  /// 툴바 + 의 툴팁. 비활성이면 이유(Android 도구를 쓸 수 없음이 먼저), 아니면 버튼 이름.
-  private var createButtonHelp: String {
-    if self.model.isSDKUnavailable {
-      return AndroidDevicesText.sdkUnavailableNotice
-    }
-    return self.model.isCreationUnavailable
-      ? AndroidDevicesText.createUnavailableNotice : AndroidDevicesText.createDeviceButton
   }
 
   /// 앞 알림의 닫기 처리가 끝난 뒤 false → true 전이가 생기도록 다음 실행 차례에 띄운다.
@@ -290,6 +286,15 @@ public struct AndroidDevicesView: View {
 // MARK: - 기기 목록
 
 extension AndroidDevicesView {
+  /// 툴바 + 의 툴팁. 비활성이면 이유(Android 도구를 쓸 수 없음이 먼저), 아니면 버튼 이름.
+  private var createButtonHelp: String {
+    if self.model.isSDKUnavailable {
+      return AndroidDevicesText.sdkUnavailableNotice
+    }
+    return self.model.isCreationUnavailable
+      ? AndroidDevicesText.createUnavailableNotice : AndroidDevicesText.createDeviceButton
+  }
+
   private func deviceList(_ list: AndroidDeviceList) -> some View {
     // 선택은 `Binding(get:set:)` 으로 Model 의 이벤트에 잇는다 (클릭·⌘·⇧ 클릭·⌘A·빈 곳 클릭).
     List(selection: Binding(get: { self.model.selection }, set: { self.model.selectionChanged($0) })) {
@@ -365,6 +370,8 @@ extension AndroidDevicesView {
       openURLTapped: {
         self.appSheetsModel.openURLTapped(device.id)
       },
+      hasLog: self.appSheetsModel.logDevices.contains(device.id),
+      logTapped: { self.openWindow(id: AppLogTarget.windowID, value: AppLogTarget.android(device.id)) },
       canTakeScreenshot: self.model.screenshots.canStart(on: device, during: task),
       isTakingScreenshot: self.model.screenshots.isTaking(on: device.id),
       screenshotTapped: {

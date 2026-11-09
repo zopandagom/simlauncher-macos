@@ -31,8 +31,9 @@ extension AndroidDevicesText {
     String(localized: "앱 실행…", bundle: .module)
   }
 
+  /// Android 문장이다 (iOS 는 기기를 켜는 문장이 더 붙어 공유하지 않는다).
   static var launchAppHelp: String {
-    String(localized: "이 기기에 설치한 앱 중 하나를 골라 실행합니다.", bundle: .module)
+    String(localized: "이 기기에 설치한 앱 중 하나를 골라 로그를 받으며 실행합니다.", bundle: .module)
   }
 
   /// 앱 설치·실행·링크 열기가 막힌 이유 (행 도움말). 고르거나 시트를 연 사이 기기 상태가 바뀐 실패의 본문에도 쓴다.

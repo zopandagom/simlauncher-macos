@@ -1,5 +1,6 @@
 import AndroidEmulatorInterface
 import AndroidPackageInterface
+import AppLogInterface
 import Core
 import DownloadInterface
 import Foundation
@@ -7,6 +8,9 @@ import Foundation
 /// 앱 설치 흐름: (로컬이면 항목 수 / URL·카탈로그면 받은 결과) → apk 검사 → 지금 목록으로 대상 다시 확인 → 기기 값(API·ABI) →
 /// 판정 → 설치 → 실행 → 다시 읽기. 같은 창구를 쓰는 앱 실행(행 "앱 실행…")과 링크 열기, 앱 작업 대상 확인도 맡는다
 /// (그 시트와 앱 실행 시트의 목록 읽기는 `AndroidAppSheetsModel` 이 한다).
+/// 실행은 앱 로그 받기와 함께 한다(`AppLogClient.launchAndroidApp`: 앱을 끄고 새로 실행. pid 를 얻거나 실패할 때까지 기다리고,
+/// 받기는 AppLog Client 의 작업에서 이어진다). 설치 전에 `replacementWillStart` 로 그 앱의 앞 세션이 다시 설치로 끝남을 알리고,
+/// 설치가 실패하면 `replacementCancelled` 로 되돌린다. 실행 실패 알림은 지금과 같은 문구다 (`AndroidEmulatorError(AppLogLaunchError)`).
 /// `AndroidDevicesModel` 이 `private` 으로 소유하고, 진행 기록(`activity`)을 시작한 Model 메서드 안에서만 부른다.
 /// Client 는 직접 부르고, Model 상태에는 부를 때 넘겨받는 `Host` 창구로만 닿는다 (Model 상태를 직접 바꾸지 않는다).
 /// 모든 실패가 안에서 알림으로 끝나 던지지 않는다. 명령이 기기에 닿기 전의 실패(받기·검사·대상·판정)는 다시 읽지 않는다.
@@ -34,6 +38,7 @@ struct AndroidAppInstallFlow {
   let emulator: any AndroidEmulatorClient
   let package: any AndroidPackageClient
   let download: any DownloadClient
+  let appLog: any AppLogClient
 
   /// 고르거나 끌어다 놓은 항목: 정확히 하나여야 하고(둘 이상이면 이유를 알린다), 검사·판정을 통과하면 설치하고 실행한다.
   func install(_ items: [URL], on id: AndroidVirtualDevice.ID, label: AndroidDeviceLabel, host: Host) async {
@@ -146,6 +151,8 @@ struct AndroidAppInstallFlow {
       host.enqueue(.installFailed(label, .rejected(problem)))
       return
     }
+    // 판정을 통과한 뒤·설치 직전에 알린다 (다시 설치가 앞 앱을 끝내 그 앱의 받는 중 세션이 `.replaced` 로 끝난다).
+    await self.appLog.replacementWillStart(info.packageName, on: id)
     var installError: AndroidEmulatorError?
     do throws(AndroidEmulatorError) {
       try await self.emulator.install(info.location, on: id)
@@ -155,14 +162,20 @@ struct AndroidAppInstallFlow {
     // 설치 명령이 끝나면 받은 파일은 필요 없다 (실측: 설치 직후 지워도 실행된다).
     await self.remove(downloaded)
     if let installError {
+      await self.appLog.replacementCancelled(info.packageName, on: id)
       host.enqueue(.installFailed(label, .emulator(installError)))
       await host.reload()
       return
     }
-    do throws(AndroidEmulatorError) {
-      try await self.emulator.launch(info.packageName, on: id)
+    do throws(AppLogLaunchError) {
+      _ = try await self.appLog.launchAndroidApp(
+        info.packageName,
+        appName: info.packageName.rawValue,
+        on: id,
+        deviceName: label.name
+      )
     } catch {
-      host.enqueue(.installedButNotLaunched(label, error))
+      host.enqueue(.installedButNotLaunched(label, AndroidEmulatorError(error)))
     }
     await host.reload()
   }
@@ -173,17 +186,18 @@ struct AndroidAppInstallFlow {
     await self.download.removeDownloaded(downloaded)
   }
 
-  /// 행 "앱 실행…" 시트에서 고른 앱을 실행하고 다시 읽는다. 실패하면 알림을 쌓는다.
+  /// 행 "앱 실행…" 시트에서 고른 앱을 로그 받기와 함께 실행하고(떠 있으면 끄고 새로 실행) 다시 읽는다. 실패하면 알림을 쌓는다.
+  /// 같은 앱의 앞 세션은 새 실행이 대체하므로 `replacementWillStart` 를 부르지 않는다 (iOS 와 같다).
   func launch(
     _ package: AndroidPackageName,
     on id: AndroidVirtualDevice.ID,
     label: AndroidDeviceLabel,
     host: Host
   ) async {
-    do throws(AndroidEmulatorError) {
-      try await self.emulator.launch(package, on: id)
+    do throws(AppLogLaunchError) {
+      _ = try await self.appLog.launchAndroidApp(package, appName: package.rawValue, on: id, deviceName: label.name)
     } catch {
-      host.enqueue(.launchFailed(label, .emulator(error)))
+      host.enqueue(.launchFailed(label, .emulator(AndroidEmulatorError(error))))
     }
     await host.reload()
   }
@@ -354,5 +368,24 @@ private final class AndroidBatchResultCollector {
     default: return false
     }
     return true
+  }
+}
+
+// 실행 실패 변환(`AndroidEmulatorError(AppLogLaunchError)`)을 `private` 그대로 쓰려고 같은 파일에 둔다.
+private extension AndroidEmulatorError {
+  /// 로그 받기와 함께 한 실행의 실패를 에뮬레이터의 실행 실패로 (알림 문구를 지금과 같게). 흔한 실패는 같은 뜻의 케이스로 되돌리고,
+  /// AppLog 가 명령 실패로 모은 것(드문 사전 확인 실패 포함)과 Android 에서 나오지 않는 것(iOS 앱 시작 실패·세션 없음)은
+  /// 앱 명령 실패로 본다.
+  init(_ error: AppLogLaunchError) {
+    switch error {
+    case .developerToolsUnavailable: self = .sdkUnavailable
+    case .deviceNotFound: self = .deviceNotFound
+    case let .deviceUnavailable(reason): self = .deviceUnavailable(reason)
+    case .deviceNotBooted: self = .deviceNotBooted
+    case .appNotInstalled: self = .launchFailed(.notInstalled)
+    case .noLauncherActivity: self = .launchFailed(.noLauncherActivity)
+    case .adbUnavailable: self = .adbUnavailable
+    case .appLaunchFailed, .commandFailed, .sessionNotFound: self = .appCommandFailed
+    }
   }
 }

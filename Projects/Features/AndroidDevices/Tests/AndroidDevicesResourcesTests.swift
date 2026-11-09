@@ -343,6 +343,8 @@ enum AndroidDevicesTextCatalog {
       AndroidDevicesText.installedButNotLaunchedMessage(for: .launchFailed(.noLauncherActivity)),
       AndroidDevicesText.openURLButton, AndroidDevicesText.openURLHelp, AndroidDevicesText.linkField,
       AndroidDevicesText.linkPrompt, AndroidDevicesText.openURLConfirmButton, AndroidDevicesText.urlNotHandledMessage,
+      AndroidDevicesText.viewLogButton, AndroidDevicesText.viewLogHelp, AndroidDevicesText.viewLogUnavailableHelp,
+      AndroidDevicesText.launchAppSheetNote,
     ]
     texts += [AndroidAppActionBlockReason.notBooted, .unavailable].map { AndroidDevicesText.appActionBlockReason($0) }
     texts += [DeepLinkProblem.malformed, .missingScheme].compactMap { AndroidDevicesText.linkProblem($0) }

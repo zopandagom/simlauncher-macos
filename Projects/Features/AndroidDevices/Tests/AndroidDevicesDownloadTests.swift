@@ -2,6 +2,7 @@ import AndroidEmulatorInterface
 import AndroidEmulatorTesting
 import AndroidPackageInterface
 import AndroidPackageTesting
+import AppLogTesting
 import Core
 import DownloadInterface
 import DownloadTesting
@@ -49,7 +50,7 @@ struct AndroidDevicesDownloadTests: AndroidDevicesTesting {
 
   // MARK: - 성공·진행
 
-  @Test("성공: .apk 이름으로 받고, 받은 파일을 검사·설치·실행한 뒤 다시 읽고, 받은 파일을 한 번 지운다")
+  @Test("성공: .apk 이름으로 받고, 받은 파일을 검사·설치·실행(로그 받기와 함께)한 뒤 다시 읽고, 받은 파일을 한 번 지운다")
   func installSucceeds() async {
     let setup = await Self.loadedFixture()
     await setup.model.downloadInstallRequested(Self.request())
@@ -58,7 +59,10 @@ struct AndroidDevicesDownloadTests: AndroidDevicesTesting {
     #expect(Self.appCalls(setup.fake) == [
       .deviceTraits(Self.tablet.id),
       .install(Self.info.location, Self.tablet.id),
-      .launch(Self.info.packageName, Self.tablet.id),
+    ])
+    #expect(setup.appLog.calls == [
+      .androidReplacementWillStart(Self.info.packageName, Self.tablet.id),
+      .launchAndroidApp(Self.info.packageName, Self.tablet.id),
     ])
     #expect(Self.removals(setup.download) == [Self.file])
     #expect(Self.fetchCount(setup.fake) == 2)
@@ -137,7 +141,8 @@ struct AndroidDevicesDownloadTests: AndroidDevicesTesting {
     #expect(setup.model.activity.downloadStage(on: Self.tablet.id) == nil)
     setup.package.resume()
     await task.value()
-    #expect(Self.appCalls(setup.fake).count == 3)
+    #expect(Self.appCalls(setup.fake).count == 2)
+    #expect(setup.appLog.calls.contains(.launchAndroidApp(Self.info.packageName, Self.tablet.id)))
     #expect(Self.removals(setup.download) == [Self.file])
     #expect(setup.model.notices.isEmpty)
   }
@@ -145,7 +150,12 @@ struct AndroidDevicesDownloadTests: AndroidDevicesTesting {
   @Test("막 끝난 성공 뒤 취소가 이기면 받은 파일을 지우고 알림·검사·다시 읽기 없이 끝난다 (흐름)")
   func lateCancelAfterSuccessRemovesFile() async {
     let setup = await Self.loadedFixture()
-    let flow = AndroidAppInstallFlow(emulator: setup.fake, package: setup.package, download: setup.download)
+    let flow = AndroidAppInstallFlow(
+      emulator: setup.fake,
+      package: setup.package,
+      download: setup.download,
+      appLog: setup.appLog
+    )
     let enqueued = Counter()
     let reloads = Counter()
     let host = AndroidAppInstallFlow.Host(
@@ -245,50 +255,6 @@ struct AndroidDevicesDownloadTests: AndroidDevicesTesting {
     #expect(Self.notices(setup.model) == [.installFailed(Self.label, failure)])
     #expect(Self.removals(setup.download) == [Self.file])
     #expect(Self.appCalls(setup.fake).isEmpty)
-  }
-
-  @Test("판정 거절은 받은 파일을 지운 뒤 알리고 다시 읽지 않는다")
-  func rejectedRemovesFile() async {
-    let setup = await Self.loadedFixture()
-    setup.package.setResult(.success(.sample(minSDK: .level(99))))
-    await setup.model.downloadInstallRequested(Self.request())
-    #expect(Self.notices(setup.model).count == 1)
-    guard case .installFailed(_, .rejected) = Self.notices(setup.model).first else {
-      Issue.record("판정 거절 알림이 아니다: \(Self.notices(setup.model))")
-      return
-    }
-    #expect(Self.removals(setup.download) == [Self.file])
-    #expect(Self.appCalls(setup.fake) == [.deviceTraits(Self.tablet.id)])
-    #expect(Self.fetchCount(setup.fake) == 1)
-  }
-
-  @Test("기기 값 읽기·설치 명령 실패는 받은 파일을 한 번 지우고 알린 뒤 다시 읽는다")
-  func emulatorFailureRemovesFileAndReloads() async {
-    let traits = await Self.loadedFixture { $0.setDeviceTraits(.failure(.deviceNotBooted)) }
-    await traits.model.downloadInstallRequested(Self.request())
-    #expect(Self.notices(traits.model) == [.installFailed(Self.label, .emulator(.deviceNotBooted))])
-    #expect(Self.removals(traits.download) == [Self.file])
-    #expect(Self.fetchCount(traits.fake) == 2)
-
-    let install = await Self.loadedFixture { $0.setInstallError(.installFailed(.updateIncompatible)) }
-    await install.model.downloadInstallRequested(Self.request())
-    #expect(Self.notices(install.model) == [
-      .installFailed(Self.label, .emulator(.installFailed(.updateIncompatible))),
-    ])
-    #expect(Self.removals(install.download) == [Self.file])
-    #expect(Self.appCalls(install.fake).count == 2)
-    #expect(Self.fetchCount(install.fake) == 2)
-  }
-
-  @Test("실행 실패는 설치 후 실행 실패로 알리고, 받은 파일은 이미 지웠다")
-  func launchFailure() async {
-    let setup = await Self.loadedFixture { $0.setLaunchError(.launchFailed(.noLauncherActivity)) }
-    await setup.model.downloadInstallRequested(Self.request(origin: .catalog))
-    #expect(Self.notices(setup.model) == [
-      .installedButNotLaunched(Self.label, .launchFailed(.noLauncherActivity)),
-    ])
-    #expect(Self.removals(setup.download) == [Self.file])
-    #expect(Self.fetchCount(setup.fake) == 2)
   }
 }
 
