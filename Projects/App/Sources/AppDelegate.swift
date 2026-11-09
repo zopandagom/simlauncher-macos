@@ -24,9 +24,10 @@ import SetupFeature
 /// 녹화를 저장하고 앱만 끝나며, 사용자가 다시 로그아웃해야 한다.
 /// 신호는 보내지 않는다: 설치·녹화를 멈추는 일은 각 Model 의 Task 취소로 하고, 프로세스 신호는 Command Client Impl 이 보낸다.
 /// 앱 로그 받기는 묻지도 기다리지도 않는다: 종료가 정해지면(`applicationWillTerminate`. 바로 끝낼 때와 위 기다림 뒤 다시 종료할 때
-/// 모두 지난다) `AppLogClient.stopAll()` 이 모든 받기 작업을 취소하고, 그 취소가 받던 simctl 마다 그 자리에서 SIGINT 를 보내
-/// Simulator 안의 그 앱도 꺼진다 (SimLauncher 종료 때 앱이 같이 꺼지는 것은 수용한 동작이다). 비정상 종료면 이 경로를 거치지
-/// 않지만 받는 쪽 파이프가 닫혀 simctl 이 끝나고 앱도 꺼진다(측정).
+/// 모두 지난다) `AppLogClient.stopAll()` 이 모든 받기 작업을 취소하고, 그 취소가 받던 simctl·adb 마다 그 자리에서 SIGINT 를 보낸다.
+/// iOS 는 Simulator 안의 그 앱도 꺼지고 (SimLauncher 종료 때 앱이 같이 꺼지는 것은 수용한 동작이다), Android 는 adb 와 기기 안
+/// logcat 만 끝나고 에뮬레이터 안의 앱은 남는다(측정). 비정상 종료면 이 경로를 거치지 않지만 iOS 는 받는 쪽 파이프가 닫혀 simctl 이
+/// 끝나고 앱도 꺼진다(측정). Android 의 기기 안 logcat 이 그때 끝나는지는 확인하지 못했다.
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
   /// App 이 `init` 에서 넣는다. 없으면 설치를 보지 않는다.

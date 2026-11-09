@@ -35,9 +35,10 @@ import WorkspaceImpl
 /// 앱·링크를 같은 방식으로 넘기고, 두 Model 의 시트끼리 서로 막는 것도 App 이 클로저로 잇는다 (Model 끼리 참조하지 않는다).
 /// 설정 창(`Settings` 씬, ⌘,)은 메인 창의 칸·화면과 관계없이 열리고, 설정 창에서 Android SDK 위치를 바꾸면
 /// `androidSDKLocationChanged` 로 Android 도구 화면이 다시 확인하고 Android 기기 목록이 (보이면) 다시 읽는다 (같은 앱의 다른 창이라
-/// 앱 활성화 알림이 오지 않는다). iOS 기기 행 "로그 보기" 는 로그 창(`WindowGroup(id: AppLogTarget.windowID, for: AppLogTarget.self)`,
+/// 앱 활성화 알림이 오지 않는다). iOS·Android 기기 행 "로그 보기" 는 로그 창(`WindowGroup(id: AppLogTarget.windowID, for: AppLogTarget.self)`,
 /// 기기당 창 하나, 복원 끔)을 연다. 모든 로그 창이 App 이 소유한 `DeviceLogModel` 하나를 함께 쓰고, 창을 닫아도 받기와 앱은 계속된다.
-/// 앱 로그 받기는 종료 요청 때 묻지 않고, 종료가 정해지면 `AppDelegate` 가 `stopAll()` 로 기다리지 않고 멈춘다 (앱도 꺼진다).
+/// 앱 로그 받기는 종료 요청 때 묻지 않고, 종료가 정해지면 `AppDelegate` 가 `stopAll()` 로 기다리지 않고 멈춘다 (iOS 앱은 꺼지고
+/// Android 앱은 남는다).
 /// Android 기기(에뮬레이터)는 녹화 밖에는 종료 요청 때 보지 않는다 (켜진 에뮬레이터는 앱이 끝나도 남는다.
 /// apk 받기·설치·실행·링크 열기도 묻지 않는다. 남은 받기 폴더는 다음에 iOS 기기 목록·Android 기기 목록·Android 도구 화면 중 하나가
 /// 열릴 때 지운다).
@@ -59,7 +60,8 @@ struct SimLauncherApp: App {
   /// 개발 환경 Client 하나를 Setup 과 시뮬레이터의 개발자 디렉터리가 함께 쓰며,
   /// 시뮬레이터 Client 하나를 Setup(Xcode 가 준비된 뒤 런타임 목록 읽기)과 Launcher(기기 목록·앱 실행 시트의 설치된 앱 목록),
   /// 앱 로그 Client 가 함께 쓴다.
-  /// 앱 로그 Client 하나를 Launcher(로그 받기와 함께 실행·행의 "로그 보기")와 로그 창, 종료 처리(`AppDelegate`)가 함께 쓴다.
+  /// 앱 로그 Client 하나를 Launcher·Android 기기 목록(로그 받기와 함께 실행·행의 "로그 보기")과 로그 창, 종료 처리(`AppDelegate`)가
+  /// 함께 쓴다.
   /// 받기 Client 는 하나만 만들어 Launcher 의 URL·카탈로그 설치, 카탈로그에서 설치 시트의 카탈로그 받기,
   /// 설정 창의 카탈로그 등록 확인, Android 기기 목록의 URL·카탈로그 설치와 그 시트의 카탈로그 받기가 함께 쓴다
   /// (지금 받는 폴더 목록을 그 안에서 함께 써, 한쪽의 남은 폴더 정리가 다른 쪽이 받는 중인 폴더를 지우지 않는다).
@@ -67,7 +69,8 @@ struct SimLauncherApp: App {
   /// Android 도구 화면(라이선스 동의 기록), Android SDK Client 의 위치 provider 가 함께 쓴다
   /// (같은 프로세스의 쓰기를 Impl 안의 `Mutex` 로 묶는다). 앱 번들 Client 하나를 Launcher 와 Android SDK Client 의 호스트
   /// 아키텍처(Rosetta 로 돌아도 arm64)에 함께 쓴다. Android SDK Client 도 받기 Client 를 Launcher 와 함께 쓴다.
-  /// Android 기기 Client 는 명령 실행 Client·SDK 위치 provider·호스트 아키텍처를 Android SDK Client 와 함께 쓴다.
+  /// Android 기기 Client 는 명령 실행 Client·SDK 위치 provider·호스트 아키텍처를 Android SDK Client 와 함께 쓴다. Android 기기 Client
+  /// 하나를 Android 기기 목록·앱 실행 시트와 앱 로그 Client 가 함께 쓴다 (Impl 은 이 앱이 띄운 에뮬레이터 표를 가져 하나만 만든다).
   init() {
     let command = CommandClientImpl()
     let devEnvironment = DevEnvironmentClientImpl(command: command)
@@ -82,21 +85,18 @@ struct SimLauncherApp: App {
     let preferences = PreferencesClientImpl()
     let appBundle = AppBundleClientImpl(command: command)
     let home = FileManager.default.homeDirectoryForCurrentUser
-    let android = Self.makeAndroid(
-      command: command,
-      download: download,
-      preferences: preferences,
-      appBundle: appBundle,
-      home: home
-    )
+    let shared = SharedClients(command: command, download: download, preferences: preferences, appBundle: appBundle)
+    let androidClients = Self.makeAndroidClients(shared, home: home)
+    // 앱 로그 Client 생성자는 명령을 실행하지 않는다. 받기는 설치 후 실행·행의 "앱 실행…"·창의 "다시 실행" 때만 시작한다.
+    // Android 기기 Client 는 Android 기기 목록·앱 실행 시트와 같은 인스턴스다 (Impl 은 이 앱이 띄운 에뮬레이터 표를 가져 하나만 만든다).
+    let appLog = AppLogClientImpl(simulator: simulator, androidEmulator: androidClients.emulator)
+    let android = Self.makeAndroid(shared, clients: androidClients, appLog: appLog)
     self._androidSetupModel = State(initialValue: android.setup)
     self._androidDevicesModel = State(initialValue: android.devices)
     self._androidDownloadInstallModel = State(initialValue: android.downloadInstall)
     self._androidAppSheetsModel = State(initialValue: android.appSheets)
     let setup = SetupModel(devEnvironment: devEnvironment, simulator: simulator)
     self._setupModel = State(initialValue: setup)
-    // 앱 로그 Client 생성자는 명령을 실행하지 않는다. 받기는 설치 후 실행·행의 "앱 실행…"·창의 "다시 실행" 때만 시작한다.
-    let appLog = AppLogClientImpl(simulator: simulator)
     self._deviceLogModel = State(initialValue: DeviceLogModel(appLog: appLog))
     let launcherAssembly = Self.makeLauncher(
       simulator: simulator,
@@ -120,7 +120,7 @@ struct SimLauncherApp: App {
     // 두 기기 목록(iOS·Android)에는 녹화 중인지 묻는다: 어느 쪽이든 녹화 중이면 확인을 한 번 받아 모든 녹화를 멈추고 저장한 뒤
     // 종료한다.
     // Android 도구 화면에는 설치 상태를 묻는다: 받기·확인·풀기 중이면 확인을 받아 멈추게 하고, 마무리 단계면 끝나기를 기다린다.
-    // 앱 로그 받기는 묻지 않고, 종료가 정해지면 모두 멈춘다 (SIGINT 를 보내고 기다리지 않는다. 앱도 꺼진다).
+    // 앱 로그 받기는 묻지 않고, 종료가 정해지면 모두 멈춘다 (SIGINT 를 보내고 기다리지 않는다. iOS 앱은 꺼지고 Android 앱은 남는다).
     self.appDelegate.setupModel = setup
     self.appDelegate.appLog = appLog
     self.appDelegate.launcherModel = launcher
@@ -196,24 +196,29 @@ struct SimLauncherApp: App {
     )
   }
 
-  private static func makeAndroid(
-    command: CommandClientImpl,
-    download: DownloadClientImpl,
-    preferences: PreferencesClientImpl,
-    appBundle: AppBundleClientImpl,
-    home: URL
-  ) -> AndroidAssembly {
+  /// iOS·Android 칸이 함께 쓰는 Client (`init` 안에서 쓰는 값 묶음).
+  private struct SharedClients {
+    let command: CommandClientImpl
+    let download: DownloadClientImpl
+    let preferences: PreferencesClientImpl
+    let appBundle: AppBundleClientImpl
+  }
+
+  /// Android SDK 위치 provider 와 Android 기기 Client. 앱 로그 Client 와 Android 칸이 함께 쓰므로 `makeAndroid` 앞에서 만든다.
+  private struct AndroidClients {
+    let sdkRoot: @Sendable () async -> AndroidSDKRootChoice
+    let emulator: AndroidEmulatorClientImpl
+  }
+
+  private static func makeAndroidClients(_ shared: SharedClients, home: URL) -> AndroidClients {
+    let command = shared.command
+    let preferences = shared.preferences
+    let appBundle = shared.appBundle
     // SDK 위치는 공개 메서드마다 설정을 다시 읽어 정한다 (기본 ~/Library/Android/sdk, 설정 창에서 고른 폴더). ANDROID_HOME 은 보지 않는다.
     // Client 생성자는 파일·네트워크·명령을 건드리지 않는다. 확인은 Android 칸이 보일 때 한다.
     let sdkRoot: @Sendable () async -> AndroidSDKRootChoice = {
       AndroidSDKRootChoice.resolve(preferences.androidSDKPath().value, home: home)
     }
-    let sdk = AndroidSDKClientImpl(
-      download: download,
-      command: command,
-      hostArchitecture: appBundle.hostArchitecture,
-      sdkRoot: sdkRoot
-    )
     // AVD 폴더는 ~/.android/avd (Android Studio 와 함께 쓴다). 생성자는 파일·명령을 건드리지 않고,
     // 기기 목록은 Android 칸의 기기 목록 화면이 보일 때 읽는다.
     let emulator = AndroidEmulatorClientImpl(
@@ -222,6 +227,25 @@ struct SimLauncherApp: App {
       home: home,
       host: AndroidHostArchitecture(appBundle.hostArchitecture)
     )
+    return AndroidClients(sdkRoot: sdkRoot, emulator: emulator)
+  }
+
+  private static func makeAndroid(
+    _ shared: SharedClients,
+    clients: AndroidClients,
+    appLog: AppLogClientImpl
+  ) -> AndroidAssembly {
+    let command = shared.command
+    let download = shared.download
+    let preferences = shared.preferences
+    let appBundle = shared.appBundle
+    let sdk = AndroidSDKClientImpl(
+      download: download,
+      command: command,
+      hostArchitecture: appBundle.hostArchitecture,
+      sdkRoot: clients.sdkRoot
+    )
+    let emulator = clients.emulator
     let setup = AndroidSetupModel(
       androidSDK: sdk,
       preferences: preferences,
@@ -236,14 +260,17 @@ struct SimLauncherApp: App {
       emulator: emulator,
       package: AndroidPackageClientImpl(command: command),
       download: download,
+      appLog: appLog,
       workspace: WorkspaceClientImpl(),
       setupRequested: { setup.reopened() },
       appSheetPresented: { appSheetsBox.model?.hasPresentedSheet ?? false }
     )
-    // 앱 실행·링크 열기 시트. 열 수 있는 기기는 기기 목록에 묻고(만들기 시트·확인 대화상자·작업 중이면 열지 않는다),
-    // 확정한 앱·링크는 기기 목록이 실행한다.
+    // 앱 실행·링크 열기 시트와 행 "로그 보기" 를 누를 수 있는 기기(앱 로그 세션 구독은 기기 목록 화면이 처음 보일 때 시작한다).
+    // 열 수 있는 기기는 기기 목록에 묻고(만들기 시트·확인 대화상자·작업 중이면 열지 않는다), 확정한 앱·링크는 기기 목록이
+    // 실행한다 (실행은 앱 로그 받기와 함께).
     let appSheets = AndroidAppSheetsModel(
       emulator: emulator,
+      appLog: appLog,
       target: { id, task in devices.appSheetTarget(id, for: task) },
       launchRequested: { request in await devices.launchAppRequested(request) },
       openURLRequested: { request in await devices.openURLRequested(request) }
