@@ -1,7 +1,7 @@
 import Core
 import Foundation
 
-/// Android 기기(AVD) 목록·상태와 켜기·끄기·만들기·삭제·초기화, 켜진 기기에 apk 설치·앱 실행·링크 열기·스크린샷·녹화.
+/// Android 기기(AVD) 목록·상태와 켜기·끄기·만들기·삭제·초기화, 켜진 기기에 apk 설치·앱 실행(logcat 받기)·링크 열기·스크린샷·녹화.
 /// AVD 폴더는 `$HOME/.android/avd` (Android Studio 와 함께 쓴다. ANDROID_AVD_HOME 은 보지 않는다).
 /// SDK 위치는 App 이 주입한 provider 를 공개 메서드 한 번에 한 번 부른다. 명령은 CommandClient 로
 /// `<SDK>/emulator/emulator` 와 `<SDK>/platform-tools/adb` 만 실행한다. 네트워크 API 를 쓰지 않는다
@@ -63,11 +63,22 @@ public protocol AndroidEmulatorClient: Sendable {
   /// `apk` 는 `AndroidPackageClient.inspect` 가 돌려준 `location` (절대 경로, 확장자 .apk) 이어야 한다 (adb 는 .apk 로 끝나지 않으면 거절).
   func install(_ apk: URL, on id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError)
 
-  /// 패키지의 launcher 화면을 기기에서 찾아(`cmd package resolve-activity`) `am start -n` 으로 실행한다. 이미 떠 있으면 앞으로 가져온다(성공).
-  /// 기기가 하나로 고르지 못하면(launcher 가 둘 이상) `cmd package query-activities` 의 첫 화면을 실행한다.
-  /// 화면이 없으면 `pm path` 로 설치 여부를 가려 `.launchFailed(.notInstalled)`·`.launchFailed(.noLauncherActivity)`.
-  /// 시작 직후 죽는 앱도 성공으로 돌아온다 (am 이 가르지 못한다).
-  func launch(_ package: AndroidPackageName, on id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError)
+  /// 패키지의 launcher 화면을 찾고(`installedPackages` 와 같은 사전 확인 뒤 `cmd package resolve-activity` → 기기가 하나로 고르지 못하면
+  /// (launcher 가 둘 이상) `cmd package query-activities` 의 첫 화면, 없으면 `pm path` 로 `.launchFailed(.notInstalled)`·
+  /// `.launchFailed(.noLauncherActivity)`), 앱을 끄고(`am force-stop`, 떠 있지 않아도 성공) 기기 시각을 읽은 뒤(`date +%s.%N`)
+  /// `am start -n` 으로 새로 실행하고, 메인 프로세스 pid(`pidof <패키지>`, 기기 안에서 0.1초 간격 60번, 명령 하나 30초 제한이며
+  /// 넘으면 `.adbUnavailable`)를 얻으면 `.launched` 를 한 번 부르고 `logcat --pid=<pid> -v threadtime -T <시각>` 의 줄을 넘긴다
+  /// (실행 직후 줄부터).
+  /// **돌아오는 때**: 앱 프로세스가 끝나면 약 1초 뒤 `.appExited`, 그 전에 adb 가 끝나면(기기 꺼짐·adb 끊김) `.connectionLost`,
+  /// 호출한 Task 가 취소되면 SIGINT 로 멈춘 뒤 `.stopped` (앱은 끄지 않는다. `.launched` 전 취소면 부르지 않았다). 취소는 던지지 않는다.
+  /// pid 를 얻기 전에 앱이 끝났으면 그 앱 uid 의 실행 뒤 줄을 한 번 읽어(`logcat -d --uid`) `.launched`·줄을 넘기고 `.appExited`
+  /// (uid·줄을 읽지 못하면 `.launched` 뒤 줄 없이 `.connectionLost`). 던지는 것은 `.launched` 전 실패뿐이다.
+  /// 다른 프로세스(`android:process`)의 줄은 받지 않는다. 버퍼 머리 줄(`--------- …`)은 넘기지 않는다. stdout 은 쌓지 않는다.
+  func launchWithLogcat(
+    _ package: AndroidPackageName,
+    on id: AndroidVirtualDevice.ID,
+    onEvent: @escaping @Sendable (AndroidLogcatEvent) async -> Void
+  ) async throws(AndroidEmulatorError) -> AndroidLogcatEnd
 
   /// `am start -a android.intent.action.VIEW -d <링크>` (링크는 원격 셸용으로 작은따옴표 인용). 받을 앱이 없으면 `.urlNotHandled`.
   func openURL(_ link: DeepLink, on id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError)
@@ -96,6 +107,24 @@ public protocol AndroidEmulatorClient: Sendable {
     to file: URL,
     onStarted: @escaping @Sendable () async -> Void
   ) async throws(AndroidEmulatorError) -> AndroidScreenRecordingResult
+}
+
+/// `launchWithLogcat` 이 넘기는 알림.
+public enum AndroidLogcatEvent: Hashable, Sendable {
+  /// 앱을 실행하고 메인 프로세스 pid 를 얻었다 (또는 pid 전에 끝나 줄을 한 번 읽었다). 실행마다 한 번, 줄보다 먼저.
+  case launched
+  /// logcat 줄(`-v threadtime`), 받은 순서대로 (줄 끝 문자는 뺐다). 버퍼 머리 줄은 없다.
+  case lines([String])
+}
+
+/// `launchWithLogcat` 의 끝.
+public enum AndroidLogcatEnd: Hashable, Sendable {
+  /// 앱 메인 프로세스가 끝났다 (종료·크래시·force-stop·다시 설치·다른 실행. 원인은 가르지 못한다).
+  case appExited
+  /// 앱이 끝나기 전에 adb 가 끝났다 (기기 꺼짐·adb 연결 끊김).
+  case connectionLost
+  /// 호출한 Task 가 취소되어 멈췄다 (앱은 남는다). `.launched` 전이면 그것을 부르지 않았다.
+  case stopped
 }
 
 /// 끝난 녹화의 결과. 실패(화면이 없거나 가져오지 못함)는 `AndroidEmulatorError` 로 던진다.

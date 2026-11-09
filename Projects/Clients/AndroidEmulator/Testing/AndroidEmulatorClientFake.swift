@@ -11,10 +11,13 @@ import Synchronization
 ///   nil 이면 `.nameUnavailable`). 성공하면 꺼진 새 기기(표시 이름은 `DeviceName.normalized`)를 목록 끝에 더한다.
 /// - `delete` 는 성공하면 그 기기를 빼고 설정한 결과(기본 `.deleted`)를 돌려준다. 목록에 없는 기기여도 성공한다.
 /// - `erase` 는 성공해도 목록을 바꾸지 않는다.
-/// - 앱 작업(`deviceTraits`·`install`·`launch`·`openURL`·`installedPackages`·`screenshot`·`recordScreen`)은 설정한 결과만 돌려주고
+/// - 앱 작업(`deviceTraits`·`install`·`launchWithLogcat`·`openURL`·`installedPackages`·`screenshot`·`recordScreen`)은 설정한
+/// 결과만 돌려주고
 ///   목록·기기 상태를 보지 않는다. 기본은 `AndroidDeviceTraits.sample`·성공·빈 앱 목록. 기기별 설정(`…(_:for:)`)이 전체 설정보다 먼저다.
 /// - `screenshot`·`recordScreen` 은 파일을 만들거나 쓰지 않는다. `recordScreen` 은 기본으로 바로 시작 신호를 보내고 호출한 Task 가
 ///   취소될 때까지 기다린 뒤 `.saved` 를 돌려준다 (iOS `SimulatorClientFake.recordVideo` 와 같다).
+/// - `launchWithLogcat` 은 처리기(`setLogcatHandler`)가 없으면 설정한 실행 에러(기기별 먼저)를 던지거나, `.launched` 를 보내고 호출한
+///   Task 가 취소될 때까지 기다린 뒤 `.stopped` (iOS `SimulatorClientFake.launchWithConsole` 과 같다).
 /// - 멈춤(`suspend…`) 중인 호출은 기록만 하고 재개까지 기다린다 (취소를 받지 않는다). 결과는 깨어난 뒤의 설정을 쓴다.
 public final class AndroidEmulatorClientFake: AndroidEmulatorClient {
   public enum Call: Hashable, Sendable {
@@ -26,7 +29,7 @@ public final class AndroidEmulatorClientFake: AndroidEmulatorClient {
     case erase(AndroidVirtualDevice.ID)
     case deviceTraits(AndroidVirtualDevice.ID)
     case install(URL, AndroidVirtualDevice.ID)
-    case launch(AndroidPackageName, AndroidVirtualDevice.ID)
+    case launchWithLogcat(AndroidPackageName, AndroidVirtualDevice.ID)
     case openURL(DeepLink, AndroidVirtualDevice.ID)
     case installedPackages(AndroidVirtualDevice.ID)
     case screenshot(AndroidVirtualDevice.ID, URL)
@@ -53,8 +56,9 @@ public final class AndroidEmulatorClientFake: AndroidEmulatorClient {
     var deviceTraitsByDevice: [AndroidVirtualDevice.ID: Result<AndroidDeviceTraits, AndroidEmulatorError>] = [:]
     var installError: AndroidEmulatorError?
     var installErrors: [AndroidVirtualDevice.ID: AndroidEmulatorError] = [:]
-    var launchError: AndroidEmulatorError?
-    var launchErrors: [AndroidVirtualDevice.ID: AndroidEmulatorError] = [:]
+    var logcatLaunchError: AndroidEmulatorError?
+    var logcatLaunchErrors: [AndroidVirtualDevice.ID: AndroidEmulatorError] = [:]
+    var logcatHandler: LogcatHandler?
     var screenshotError: AndroidEmulatorError?
     var recordingResult: Result<AndroidScreenRecordingResult, AndroidEmulatorError>?
     var recordingEndsByItself: Result<AndroidScreenRecordingResult, AndroidEmulatorError>?
@@ -211,12 +215,39 @@ public final class AndroidEmulatorClientFake: AndroidEmulatorClient {
     }
   }
 
-  public func launch(_ package: AndroidPackageName, on id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError) {
-    self.record(.launch(package, id))
+  /// `launchWithLogcat` 처리기. `emit` 으로 알림을 넘기고(호출한 쪽의 `onEvent` 가 끝난 뒤 돌아온다) 끝을 정한다.
+  /// 멈춤 흉내는 처리기가 호출한 Task 의 취소를 보고 `.stopped` 를 돌려주는 식으로 한다.
+  public typealias LogcatHandler = @Sendable (
+    AndroidPackageName,
+    AndroidVirtualDevice.ID,
+    _ emit: @escaping @Sendable (AndroidLogcatEvent) async -> Void
+  ) async throws(AndroidEmulatorError) -> AndroidLogcatEnd
+
+  /// 기록 → 지연 → 처리기가 있으면 그 결과. 없으면 설정한 실행 에러(기기별 먼저)를 던지거나, 아직 취소되지 않았으면 `.launched` 를
+  /// 보내고 호출한 Task 가 취소될 때까지 기다린 뒤 `.stopped`. 설치 여부·기기 상태는 보지 않는다.
+  public func launchWithLogcat(
+    _ package: AndroidPackageName,
+    on id: AndroidVirtualDevice.ID,
+    onEvent: @escaping @Sendable (AndroidLogcatEvent) async -> Void
+  ) async throws(AndroidEmulatorError) -> AndroidLogcatEnd {
+    self.record(.launchWithLogcat(package, id))
     await self.sleepIfNeeded()
-    if let error = self.state.withLock({ $0.launchErrors[id] ?? $0.launchError }) {
+    let (handler, error) = self.state.withLock { state in
+      (state.logcatHandler, state.logcatLaunchErrors[id] ?? state.logcatLaunchError)
+    }
+    if let handler {
+      return try await handler(package, id, onEvent)
+    }
+    if let error {
       throw error
     }
+    if !Task.isCancelled {
+      await onEvent(.launched)
+    }
+    while !Task.isCancelled {
+      try? await Task.sleep(for: .seconds(3600))
+    }
+    return .stopped
   }
 
   public func openURL(_ link: DeepLink, on id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError) {
@@ -226,7 +257,10 @@ public final class AndroidEmulatorClientFake: AndroidEmulatorClient {
       throw error
     }
   }
+}
 
+/// 호출 기록·지연·멈춤 보조 (`state` 를 같은 파일에서만 만진다).
+private extension AndroidEmulatorClientFake {
   private func record(_ call: Call) {
     self.state.withLock { $0.calls.append(call) }
   }
@@ -454,8 +488,14 @@ public extension AndroidEmulatorClientFake {
     self.state.withLock { $0.installError = error }
   }
 
-  func setLaunchError(_ error: AndroidEmulatorError?) {
-    self.state.withLock { $0.launchError = error }
+  /// `launchWithLogcat` 이 (처리기가 없을 때) 던질 에러.
+  func setLogcatLaunchError(_ error: AndroidEmulatorError?) {
+    self.state.withLock { $0.logcatLaunchError = error }
+  }
+
+  /// 이후 `launchWithLogcat` 의 처리기. nil 이면 기본 동작 (타입 설명).
+  func setLogcatHandler(_ handler: LogcatHandler?) {
+    self.state.withLock { $0.logcatHandler = handler }
   }
 
   func setOpenURLError(_ error: AndroidEmulatorError?) {
@@ -486,9 +526,9 @@ public extension AndroidEmulatorClientFake {
     self.state.withLock { $0.installErrors[id] = error }
   }
 
-  /// 이 기기의 `launch` 에러. 전체 에러(`setLaunchError(_:)`)보다 먼저다.
-  func setLaunchError(_ error: AndroidEmulatorError?, for id: AndroidVirtualDevice.ID) {
-    self.state.withLock { $0.launchErrors[id] = error }
+  /// 이 기기의 `launchWithLogcat` 에러. 전체 에러(`setLogcatLaunchError(_:)`)보다 먼저다.
+  func setLogcatLaunchError(_ error: AndroidEmulatorError?, for id: AndroidVirtualDevice.ID) {
+    self.state.withLock { $0.logcatLaunchErrors[id] = error }
   }
 
   /// 이후 이 기기의 `install(_:on:)` 만 기록하고 `resumeInstall(of:)` 까지 기다린다 (다른 기기는 기다리지 않는다).
