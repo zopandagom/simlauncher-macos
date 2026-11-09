@@ -1,14 +1,14 @@
 import Core
 import Foundation
 
-/// 앱 설치·링크 열기 대상 기기를 지금 목록으로 다시 확인한 결과. 시트를 연 사이나 검사하는 사이 목록이 바뀌었을 수 있어
+/// 앱 설치·링크 열기·설치된 앱 실행 대상 기기를 지금 목록으로 다시 확인한 결과. 시트를 연 사이나 검사하는 사이 목록이 바뀌었을 수 있어
 /// Model 이 명령 전에 부른다. 같은 기기의 진행 중 작업은 보지 않는다 (부르는 쪽이 정한다).
 enum AppInstallTarget: Hashable, Sendable {
   /// 목록을 아직 읽지 못했다.
   case notLoaded
   /// 목록에 그 기기가 없다.
   case notFound
-  /// 기기가 설치·링크 열기를 받을 수 없는 상태다 (`appInstallAvailability`).
+  /// 기기가 설치·링크 열기·앱 실행을 받을 수 없는 상태다 (`appInstallAvailability`).
   case blocked(AppInstallBlockReason)
   case ready(VirtualDevice)
 
@@ -32,6 +32,15 @@ enum AppInstallTarget: Hashable, Sendable {
 
   /// 링크 열기 흐름의 실패 원인. 목록이 없으면 알리지 않고(nil) 끝낸다. `.ready` 면 nil.
   var openURLFailure: OpenURLFailure? {
+    switch self {
+    case .notLoaded, .ready: nil
+    case .notFound: .simulator(.deviceNotFound)
+    case let .blocked(reason): .deviceNotReady(reason)
+    }
+  }
+
+  /// 설치된 앱 실행 흐름의 실패 원인. 규칙은 링크 열기와 같다 (목록이 없으면 nil). `.ready` 면 nil.
+  var launchAppFailure: InstalledAppLaunchFailure? {
     switch self {
     case .notLoaded, .ready: nil
     case .notFound: .simulator(.deviceNotFound)

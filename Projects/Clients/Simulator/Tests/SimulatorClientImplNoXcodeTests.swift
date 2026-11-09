@@ -10,7 +10,8 @@ import Testing
 /// 개발자 도구가 없는 Mac 에서 `/usr/bin/xcrun` 같은 shim 을 실행하면 Command Line Tools 설치 대화상자가 뜰 수 있다.
 struct SimulatorClientImplNoXcodeTests {
   enum Operation: String, CaseIterable, Sendable {
-    case fetchInventory, boot, shutdown, create, delete, erase, openSimulatorApp, install, launch, openURL
+    case fetchInventory, boot, shutdown, create, delete, erase, openSimulatorApp, install, installedApps, launch,
+         openURL
   }
 
   private static let udid = VirtualDevice.ID("B66201ED-154C-4F97-A6C7-C88F42E8D3A7")
@@ -71,14 +72,25 @@ struct SimulatorClientImplNoXcodeTests {
       try await client.delete(self.udid)
     case .erase:
       try await client.erase(self.udid)
+    case .openSimulatorApp, .install, .installedApps, .launch, .openURL:
+      try await self.performApp(operation, on: client)
+    }
+  }
+
+  private static func performApp(_ operation: Operation, on client: SimulatorClientImpl) async throws(SimulatorError) {
+    switch operation {
     case .openSimulatorApp:
       try await client.openSimulatorApp()
     case .install:
       try await client.install(URL(filePath: "/tmp/A.app", directoryHint: .isDirectory), on: self.udid)
+    case .installedApps:
+      _ = try await client.installedApps(on: self.udid)
     case .launch:
       try await client.launch(AppBundleID("com.example.ok")!, on: self.udid)
     case .openURL:
       try await client.openURL(DeepLink("https://example.com")!, on: self.udid)
+    default:
+      break
     }
   }
 }

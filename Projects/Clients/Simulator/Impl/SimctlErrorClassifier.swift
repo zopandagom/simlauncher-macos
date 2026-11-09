@@ -79,6 +79,19 @@ enum SimctlErrorClassifier {
     }
   }
 
+  /// listapps 실패. 같은 방식: domain 줄이 있으면 그것만 보고, 없으면 `error(exitCode:stderr:)` (xcrun 오류·"Invalid device").
+  /// 측정한 실패의 stderr 에는 앱 글자가 나오지 않지만 다른 앱 명령과 같이 domain 줄을 먼저 본다.
+  static func listAppsError(exitCode: Int32, stderr: String) -> SimulatorError {
+    guard let (domain, code) = domainAndCode(stderr) else {
+      return self.error(exitCode: exitCode, stderr: stderr)
+    }
+    switch (domain, code) {
+    // 꺼진 기기: "Unable to lookup in current state: Shutdown" (149).
+    case ("com.apple.CoreSimulator.SimError", 405): return .deviceNotBooted
+    default: return .commandFailed
+    }
+  }
+
   /// launch 실패. 같은 방식.
   static func launchError(exitCode: Int32, stderr: String) -> SimulatorError {
     guard let (domain, code) = domainAndCode(stderr) else {

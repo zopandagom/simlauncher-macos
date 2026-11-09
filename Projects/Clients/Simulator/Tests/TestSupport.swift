@@ -3,8 +3,8 @@ import Synchronization
 import Testing
 
 enum Fixture {
-  static func data(_ name: String) throws -> Data {
-    let url = try #require(Bundle.module.url(forResource: name, withExtension: "json"))
+  static func data(_ name: String, withExtension fileExtension: String = "json") throws -> Data {
+    let url = try #require(Bundle.module.url(forResource: name, withExtension: fileExtension))
     return try Data(contentsOf: url)
   }
 }

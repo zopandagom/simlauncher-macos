@@ -87,12 +87,19 @@ struct LauncherURLInstallTests: LauncherModelTesting {
 
   @Test("다른 시트나 확인 대화상자가 열려 있으면 URL 설치 시트를 열지 않는다")
   func menuIgnoredWhileOtherSheetIsOpen() async {
-    let (model, _) = await Self.loadedModel()
+    let loaded = await Self.loadedModels()
+    let model = loaded.model
+    let sheets = loaded.sheets
 
-    model.openURLButtonTapped(SampleID.iPhoneOn)
+    sheets.openURLTapped(SampleID.iPhoneOn)
     model.installFromURLMenuTapped(SampleID.iPhoneOff)
     #expect(model.installURLDraft == nil)
-    model.openURLCancelTapped()
+    sheets.openURLCancelTapped()
+
+    await sheets.launchAppTapped(SampleID.iPhoneOn)
+    model.installFromURLMenuTapped(SampleID.iPhoneOff)
+    #expect(model.installURLDraft == nil)
+    sheets.launchAppCancelTapped()
 
     model.createButtonTapped()
     model.installFromURLMenuTapped(SampleID.iPhoneOff)
@@ -109,9 +116,11 @@ struct LauncherURLInstallTests: LauncherModelTesting {
     #expect(model.installURLDraft?.targets.map(\.id) == [SampleID.iPhoneOff])
   }
 
-  @Test("URL 설치 시트가 열려 있으면 + 버튼·삭제·초기화 확인·링크 시트가 열리지 않는다")
+  @Test("URL 설치 시트가 열려 있으면 + 버튼·삭제·초기화 확인·링크·앱 실행 시트가 열리지 않는다")
   func otherSheetsIgnoredWhileInstallURLSheetIsOpen() async {
-    let (model, _) = await Self.loadedModel()
+    let loaded = await Self.loadedModels()
+    let model = loaded.model
+    let sheets = loaded.sheets
     #expect(model.canCreateDevice)
 
     model.installFromURLMenuTapped(SampleID.iPhoneOn)
@@ -122,8 +131,10 @@ struct LauncherURLInstallTests: LauncherModelTesting {
     model.deleteButtonTapped(SampleID.iPhoneOff)
     model.eraseButtonTapped(SampleID.iPhoneOff)
     #expect(model.pendingConfirmation == nil)
-    model.openURLButtonTapped(SampleID.iPhoneOff)
-    #expect(model.openURLDraft == nil)
+    sheets.openURLTapped(SampleID.iPhoneOff)
+    #expect(sheets.openURLDraft == nil)
+    await sheets.launchAppTapped(SampleID.iPhoneOff)
+    #expect(sheets.launchAppDraft == nil)
 
     model.installURLSheetDismissed()
     #expect(model.canCreateDevice)

@@ -37,6 +37,28 @@ struct LauncherResourcesTests {
       #expect(table[key] == key, "\(key)")
       #expect(String(format: table[key] ?? "", "iPhone 17", "iOS 26.0") == title, "\(key)")
     }
+    var keys = Set(texts)
+    keys.formUnion(formatKeys)
+    keys.formUnion(confirmationKeys)
+    keys.formUnion(Self.checkSpecialFormats(in: table))
+    keys.formUnion(Self.checkCatalogTexts(in: table))
+    keys.formUnion(BatchTextCatalog.checkedKeys(in: table))
+    #expect(keys == Set(table.keys))
+  }
+
+  /// 앱 버전 글자·요구 OS·받는 중 바이트·HTTP 상태처럼 형식이 달라 따로 넣어 보는 키를 검사하고 그 키를 돌려준다.
+  static func checkSpecialFormats(in table: [String: String]) -> Set<String> {
+    // 앱 실행 시트의 버전 글자 (`빌드 %@` 는 카탈로그 문구와 같은 키라 `checkCatalogTexts` 가 본다).
+    let versionKeys = LauncherTextCatalog.appVersionKeys
+    #expect(table[versionKeys[0]] == versionKeys[0])
+    #expect(
+      String(format: table[versionKeys[0]] ?? "", "1.0", "7")
+        == LauncherText.appVersionLabel(version: "1.0", build: "7")
+    )
+    #expect(table[versionKeys[1]] == versionKeys[1])
+    #expect(
+      String(format: table[versionKeys[1]] ?? "", "1.0") == LauncherText.appVersionLabel(version: "1.0", build: nil)
+    )
     let osKey = LauncherTextCatalog.requiresNewerOSKey
     #expect(table[osKey] == osKey)
     #expect(String(format: table[osKey] ?? "", "27.1") == LauncherTextCatalog.formattedRequiresNewerOS)
@@ -59,14 +81,7 @@ struct LauncherResourcesTests {
       #expect(table[key] == key, "\(key)")
       #expect(String(format: table[key] ?? "", code) == LauncherText.httpStatusMessage(code), "\(key)")
     }
-    var keys = Set(texts)
-    keys.formUnion(formatKeys)
-    keys.formUnion(confirmationKeys)
-    keys.formUnion([osKey, bothKey, receivedKey])
-    keys.formUnion(httpKeys.map(\.key))
-    keys.formUnion(Self.checkCatalogTexts(in: table))
-    keys.formUnion(BatchTextCatalog.checkedKeys(in: table))
-    #expect(keys == Set(table.keys))
+    return Set([osKey, bothKey, receivedKey] + versionKeys + httpKeys.map(\.key))
   }
 
   /// 카탈로그에서 설치 문구(`CatalogTextCatalog` 의 78개)가 표에 있고, 표의 값(보간 키는 인자를 넣은 값)이 코드 결과와 같은지 보고
@@ -185,6 +200,52 @@ struct LauncherTextTests {
     )
   }
 
+  @Test("설치된 앱 실행 실패 알림은 설치 제목이 아니라 실행 제목이고, 본문은 막힌 이유나 오류 분류 문구다")
+  func installedAppLaunchNotice() {
+    let device = LauncherNotice.Device(name: "iPhone 17", runtimeName: "iOS 26.0")
+    let notice = LauncherNotice.installedAppLaunchFailed(device, .simulator(.appNotInstalled))
+    #expect(LauncherText.title(for: notice) == "“iPhone 17” (iOS 26.0) 기기에서 앱을 실행하지 못했습니다")
+    #expect(LauncherText.message(for: notice) == LauncherText.message(for: .appNotInstalled))
+    for reason in LauncherTextCatalog.installBlockReasons {
+      #expect(
+        LauncherText.message(for: InstalledAppLaunchFailure.deviceNotReady(reason))
+          == LauncherText.launchAppBlockReason(reason)
+      )
+    }
+    #expect(LauncherText.launchAppSheetTitle(for: device) == "“iPhone 17” (iOS 26.0) 기기에서 앱 실행")
+  }
+
+  @Test("앱 실행 시트의 실패 본문: 꺼져 있어 읽지 못했으면 다시 시도가 켠다고 안내하고, 나머지는 알림 본문과 같으며 제목이 단계를 가른다")
+  func launchAppListMessages() {
+    #expect(
+      LauncherText.launchAppListMessage(for: .simulator(.deviceNotBooted))
+        == "기기가 꺼져 있어 앱 목록을 읽지 못했습니다. 다시 시도를 누르면 기기를 켜고 읽습니다."
+    )
+    for error in LauncherTextCatalog.errors where error != .deviceNotBooted {
+      #expect(LauncherText.launchAppListMessage(for: .simulator(error)) == LauncherText.message(for: error))
+    }
+    for reason in LauncherTextCatalog.installBlockReasons {
+      #expect(
+        LauncherText.launchAppListMessage(for: .deviceNotReady(reason)) == LauncherText.launchAppBlockReason(reason)
+      )
+    }
+    #expect(LauncherText.launchAppFailureHeading(for: .boot) == "기기를 켜지 못했습니다")
+    #expect(LauncherText.launchAppFailureHeading(for: .list) == "앱 목록을 읽지 못했습니다")
+  }
+
+  @Test("앱 버전 글자: 버전·빌드가 있는 만큼 보이고, 둘 다 없으면 없다")
+  func appVersionLabels() {
+    #expect(LauncherText.appVersionLabel(version: "1.0", build: "7") == "버전 1.0 (7)")
+    #expect(LauncherText.appVersionLabel(version: "1.0", build: nil) == "버전 1.0")
+    #expect(LauncherText.appVersionLabel(version: nil, build: "7") == "빌드 7")
+    #expect(LauncherText.appVersionLabel(version: nil, build: nil) == nil)
+  }
+
+  @Test("흐린 로그 보기 툴팁은 앱 실행… 을 안내한다")
+  func viewLogUnavailableHelpMentionsLaunchApp() {
+    #expect(LauncherText.viewLogUnavailableHelp.contains(LauncherText.launchAppButton))
+  }
+
   @Test("링크 입력 문제: 비어 있으면 문구가 없고(버튼만 비활성), 나머지는 스킴을 안내한다")
   func linkProblemTexts() {
     #expect(LauncherText.linkProblem(.empty) == nil)
@@ -244,6 +305,7 @@ enum LauncherTextCatalog {
     .eraseFailed(sampleDevice, .commandFailed), .createFailed(sampleDevice, .creationResultUnknown),
     .installFailed(sampleDevice, .multipleItems), .launchFailed(sampleDevice, .appLaunchFailed),
     .openURLFailed(sampleDevice, .simulator(.urlNotHandled)),
+    .installedAppLaunchFailed(sampleDevice, .simulator(.appNotInstalled)),
     .screenshotFailed(sampleDevice, .workspace(.folderUnavailable)),
     .screenshotRevealFailed(sampleDevice, .fileNotFound),
     .recordingFailed(sampleDevice, .workspace(.folderUnavailable)),
@@ -252,7 +314,7 @@ enum LauncherTextCatalog {
     .recordingRevealFailed(sampleDevice, .fileNotFound),
   ]
 
-  /// 기기 이름이 들어가는 제목의 카탈로그 키. 순서는 `notices.dropFirst()` 뒤에 링크 시트 제목이다 (`formattedTitles`).
+  /// 기기 이름이 들어가는 제목의 카탈로그 키. 순서는 `notices.dropFirst()` 뒤에 링크·URL 설치·앱 실행 시트 제목이다 (`formattedTitles`).
   static let formatKeys = [
     "“%@” (%@) 기기를 켜지 못했습니다",
     "“%@” (%@) 기기를 끄지 못했습니다",
@@ -264,6 +326,7 @@ enum LauncherTextCatalog {
     "“%@” (%@) 기기에 앱을 설치하지 못했습니다",
     "“%@” (%@) 기기에 앱을 설치했지만 실행하지 못했습니다",
     "“%@” (%@) 기기에서 링크를 열지 못했습니다",
+    "“%@” (%@) 기기에서 앱을 실행하지 못했습니다",
     "“%@” (%@) 기기의 스크린샷을 저장하지 못했습니다",
     "“%@” (%@) 기기의 스크린샷을 저장했지만 Finder 에서 보여 주지 못했습니다",
     "“%@” (%@) 기기의 화면을 녹화하지 못했습니다",
@@ -273,13 +336,34 @@ enum LauncherTextCatalog {
     "“%@” (%@) 기기의 녹화를 저장했지만 Finder 에서 보여 주지 못했습니다",
     "“%@” (%@) 기기에서 링크 열기",
     "“%@” (%@) 기기에 URL 에서 앱 설치",
+    "“%@” (%@) 기기에서 앱 실행",
   ]
 
-  /// `sampleDevice` 를 넣은 기기 작업 실패 제목과 링크 시트·URL 설치 시트 제목.
+  /// `sampleDevice` 를 넣은 기기 작업 실패 제목과 링크 시트·URL 설치 시트·앱 실행 시트 제목.
   static var formattedTitles: [String] {
     var titles = self.notices.dropFirst().map { LauncherText.title(for: $0) }
     titles += [LauncherText.openURLSheetTitle(for: sampleDevice), LauncherText.installURLSheetTitle(for: sampleDevice)]
+    titles += [LauncherText.launchAppSheetTitle(for: sampleDevice)]
     return titles
+  }
+
+  // MARK: - 앱 실행
+
+  /// 앱 실행 시트 목록 행의 버전 글자 키 (버전·빌드 둘 다, 버전만).
+  static let appVersionKeys = ["버전 %@ (%@)", "버전 %@"]
+
+  /// 앱 실행 문구 (알림 제목·본문은 `notices` 가 덮고, 여기는 그 밖의 것).
+  static var launchAppTexts: [String] {
+    var texts = self.installBlockReasons.map { LauncherText.launchAppBlockReason($0) }
+    texts += [LaunchAppFailureStage.boot, .list].map { LauncherText.launchAppFailureHeading(for: $0) }
+    texts += [LauncherText.launchAppListMessage(for: .simulator(.deviceNotBooted))]
+    texts += [
+      LauncherText.launchAppButton, LauncherText.launchAppHelp, LauncherText.launchingAppLabel,
+      LauncherText.loadingInstalledApps, LauncherText.bootingForAppList, LauncherText.noInstalledApps,
+      LauncherText.installedAppPicker, LauncherText.launchAppSheetNote, LauncherText.launchAppConfirmButton,
+      LauncherText.closeButton,
+    ]
+    return texts
   }
 
   // MARK: - URL 에서 설치
@@ -431,7 +515,8 @@ enum LauncherTextCatalog {
     texts += [LauncherText.message(for: ScreenshotFailure.simulator(.deviceNotBooted))]
     texts += [LauncherText.screenshotButton, LauncherText.screenshotHelp, LauncherText.takingScreenshotLabel]
     texts += self.recordingTexts
-    texts += [LauncherText.viewLogButton, LauncherText.viewLogHelp]
+    texts += self.launchAppTexts
+    texts += [LauncherText.viewLogButton, LauncherText.viewLogHelp, LauncherText.viewLogUnavailableHelp]
     texts += [
       LauncherText.okButton, LauncherText.unavailableLabel, LauncherText.bootButton, LauncherText.shutdownButton,
       LauncherText.loading, LauncherText.loadFailedTitle, LauncherText.refreshButton, LauncherText.retryButton,

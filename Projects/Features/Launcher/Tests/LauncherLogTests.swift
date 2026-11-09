@@ -19,7 +19,7 @@ struct LauncherLogTests: LauncherModelTesting {
 
   // MARK: - 행의 "로그 보기"
 
-  @Test("세션 요약 알림으로 logDevices 가 바뀌고, 끝난 세션만 있어도 보이며, Android 대상은 무시한다")
+  @Test("세션 요약 알림으로 logDevices 가 바뀌고, 끝난 세션만 있어도 누를 수 있으며, Android 대상은 무시한다")
   func logDevicesFollowSessionUpdates() async {
     let appLog = AppLogClientFake()
     let (model, _) = await Self.loadedModel(appLog: appLog)
@@ -38,7 +38,7 @@ struct LauncherLogTests: LauncherModelTesting {
     await Self.waitUntil { model.logDevices == [SampleID.iPhoneOff] }
   }
 
-  @Test("이미 세션이 있으면 첫 onAppear 뒤 곧바로 보이고, onAppear 를 여러 번 불러도 구독은 하나다")
+  @Test("이미 세션이 있으면 첫 onAppear 뒤 곧바로 누를 수 있고, onAppear 를 여러 번 불러도 구독은 하나다")
   func existingSessionsAppearOnce() async {
     let simulator = SimulatorClientFake(inventory: .sample)
     let appLog = OrderRecordingAppLog(
@@ -57,7 +57,7 @@ struct LauncherLogTests: LauncherModelTesting {
     #expect(appLog.sessionSubscriptionCount == 1)
   }
 
-  @Test("설치 후 실행하면 그 기기에 세션이 생겨 행에 로그 보기가 보인다")
+  @Test("설치 후 실행하면 그 기기에 세션이 생겨 행의 로그 보기를 누를 수 있다")
   func installedAppShowsLog() async {
     let appLog = AppLogClientFake()
     let (model, _) = await Self.loadedModel(appLog: appLog)

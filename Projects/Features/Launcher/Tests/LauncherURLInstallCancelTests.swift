@@ -127,12 +127,15 @@ struct LauncherURLInstallCancelTests: LauncherModelTesting {
 
   // MARK: - 겹침
 
-  @Test("받는 중인 기기는 고르기·드롭·링크 열기·켜기·URL 설치 시트를 받지 않고, 새로 고침은 받기 단계를 지우지 않는다")
+  @Test("받는 중인 기기는 고르기·드롭·링크 열기·앱 실행·켜기·URL 설치 시트를 받지 않고, 새로 고침은 받기 단계를 지우지 않는다")
   func downloadingDeviceBlocksOtherActions() async {
     let appBundle = AppBundleClientFake()
     let download = DownloadClientFake()
     download.suspendDownloads()
-    let (model, simulator) = await Self.loadedModel(appBundle: appBundle, download: download)
+    let loaded = await Self.loadedModels(appBundle: appBundle, download: download)
+    let model = loaded.model
+    let sheets = loaded.sheets
+    let simulator = loaded.simulator
     let id = SampleID.iPhoneOff
     let install = Task { await Self.installFromURL(model, on: id) }
     await Self.waitUntil { download.suspendedDownloadCount == 1 }
@@ -140,14 +143,16 @@ struct LauncherURLInstallCancelTests: LauncherModelTesting {
 
     await model.appFileSelected(Self.picked, for: id)
     await model.appDropped([Self.picked], on: id)
-    model.openURLButtonTapped(id)
+    sheets.openURLTapped(id)
+    await sheets.launchAppTapped(id)
     model.installFromURLMenuTapped(id)
     await model.bootButtonTapped(id)
     model.deleteButtonTapped(id)
     await model.refreshButtonTapped()
 
     #expect(appBundle.calls.isEmpty)
-    #expect(model.openURLDraft == nil)
+    #expect(sheets.openURLDraft == nil)
+    #expect(sheets.launchAppDraft == nil)
     #expect(model.installURLDraft == nil)
     #expect(model.pendingConfirmation == nil)
     #expect(Self.bootCount(id, in: simulator) == 0)

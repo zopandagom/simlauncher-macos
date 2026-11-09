@@ -128,9 +128,12 @@ struct LauncherBatchInstallTests: LauncherModelTesting {
     #expect(!batch.isFinished)
 
     // 풀린 기기에서 링크 열기를 시작해 멈춰 둔다.
-    model.openURLButtonTapped(SampleID.iPhoneOn)
-    model.openURLTextChanged(LauncherOpenURLTests.raw)
-    let open = Self.start { await model.openURLConfirmTapped() }
+    let request = OpenURLRequest(
+      deviceID: SampleID.iPhoneOn,
+      device: Self.label(SampleID.iPhoneOn),
+      link: LauncherOpenURLTests.link
+    )
+    let open = Self.start { await model.openURLRequested(request) }
     await Self.waitUntil { simulator.calls.contains(.openURL(LauncherOpenURLTests.link, SampleID.iPhoneOn)) }
     #expect(model.activity.task(on: SampleID.iPhoneOn) == .openURL)
 

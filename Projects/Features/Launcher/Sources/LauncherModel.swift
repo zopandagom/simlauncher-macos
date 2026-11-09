@@ -9,12 +9,12 @@ import WorkspaceInterface
 
 /// 기기 목록 화면의 상태와 로직. iOS 시뮬레이터 기기 목록을 읽고, 기기를 켜고 끄며(켠 뒤 Simulator 앱을 연다),
 /// 만들고 지우고 초기화한다. 고른 .app 이나 .app 을 담은 zip 을(풀어서), 또는 입력한 https 주소의 zip 을 받아 풀어서
-/// 기기에 설치하고 바로 실행하며, 입력한 링크(딥링크·웹 주소)를 기기에서 연다 (모두 꺼져 있으면 켠다).
+/// 기기에 설치하고 바로 실행하며, 입력한 링크를 열고 설치된 앱을 실행한다 (모두 꺼져 있으면 켠다. 두 시트는 `LauncherAppSheetsModel`).
 /// 켜진 기기 화면을 사진 폴더의 SimLauncher 폴더에 PNG 로 저장하고 Finder 에서 보인다 (꺼진 기기는 켜지 않는다).
 /// 켜진 기기 화면을 동영상 폴더의 SimLauncher 폴더에 녹화하고, 멈추거나(중지·기기 꺼짐·앱 종료) 스스로 끝나면 저장해 Finder 에서 보인다.
 /// 카탈로그에서 설치 시트(`CatalogInstallModel`)가 고른 버전은 App 이 `catalogInstallRequested(_:)` 로 넘겨 같은 받기 경로로 설치한다.
 /// 목록에서 고른 기기(`selection`)에 앱을 한 번 받고 풀어 기기별로 동시에 설치·실행하거나 함께 켜고, 결과를 알림 하나에 모은다.
-/// 실행은 앱 로그 받기와 함께 하고(`AppLogClient`), 앱 로그 세션이 있는 기기(`logDevices`)의 행에 "로그 보기" 를 보인다 (창은 View 가 연다).
+/// 실행은 앱 로그 받기와 함께 하고(`AppLogClient`), 앱 로그 세션이 있는 기기(`logDevices`)의 행 "로그 보기" 를 누를 수 있게 한다 (버튼은 늘 보이고, 창은 View 가 연다).
 /// Xcode 준비와 iOS 시뮬레이터 설치는 여기서 하지 않고, Setup 진입 버튼으로 App 에 Setup 화면을 요청한다.
 /// 앱 설치의 켜기·풀기·검사·설치·실행은 Model 이 소유한 `AppInstallFlow` 가, 끄기·만들기·삭제·초기화 명령은
 /// `DeviceCommandFlow` 가, 스크린샷·녹화의 예약·찍기·녹화·보이기는 `ScreenCaptureFlow` 가 한다 (Model 상태에는 창구로만 닿는다).
@@ -25,7 +25,7 @@ public final class LauncherModel {
   public private(set) var listState: LauncherListState = .loading
   /// 목록을 읽는 중이다 (첫 로딩 포함).
   public private(set) var isRefreshing = false
-  /// 기기별 진행 작업(켜기·끄기·삭제·초기화·앱 설치·링크 열기)과 URL 설치의 받기 단계. 같은 기기의 작업은 겹치지 않는다.
+  /// 기기별 진행 작업(켜기·끄기·삭제·초기화·앱 설치·링크 열기·앱 실행)과 URL 설치의 받기 단계. 같은 기기의 작업은 겹치지 않는다.
   public private(set) var activity = DeviceActivity()
   /// 기기별로 찍고 있는 스크린샷. 기기 작업과 겹칠 수 있다 (앱 설치·링크 열기 중에도 찍는다).
   public private(set) var screenshots = ScreenshotActivity()
@@ -43,8 +43,6 @@ public final class LauncherModel {
   public private(set) var isCreating = false
   /// 확인을 기다리는 삭제·초기화. nil 이면 대화상자가 없다.
   public private(set) var pendingConfirmation: DeviceConfirmation?
-  /// 링크 열기 시트 초안. nil 이면 시트가 닫혀 있다.
-  public private(set) var openURLDraft: OpenURLDraft?
   /// URL 에서 설치 시트 초안. nil 이면 시트가 닫혀 있다.
   public private(set) var installURLDraft: InstallURLDraft?
   /// 목록에서 고른 기기 (⌘·⇧ 클릭). 툴바 "선택한 기기…" 의 대상이고, 다시 읽은 목록에 없는 기기는 빠진다.
@@ -61,6 +59,8 @@ public final class LauncherModel {
   /// Setup 진입 버튼(툴바 "개발 환경", 빈 화면의 "iOS 설치"·"다른 iOS 버전 설치", 목록 위 안내 줄의 "다른 iOS 버전 설치",
   /// 목록 읽기 실패 화면의 "개발 환경 열기")을 눌렀을 때 부른다. App 이 Setup 화면을 다시 연다 (화면 간 흐름은 App 이 잇는다).
   @ObservationIgnored private let setupRequested: @MainActor () -> Void
+  /// 앱 실행·링크 열기 시트(`LauncherAppSheetsModel`)가 떠 있다. App 이 그 Model 의 `hasPresentedSheet` 로 잇는다.
+  @ObservationIgnored private let appSheetPresented: @MainActor () -> Bool
   /// 앱 설치 흐름(풀기 → 검사·판정 → 켜기 → 설치 → 실행). Client 만 갖고 Model 상태에는 `installHost` 창구로만 닿는다.
   @ObservationIgnored private let installFlow: AppInstallFlow
   /// 기기 명령 흐름(끄기·만들기·삭제·초기화). Client 만 갖고 Model 상태에는 `installHost` 창구로만 닿는다.
@@ -89,6 +89,7 @@ public final class LauncherModel {
     workspace: any WorkspaceClient,
     appLog: any AppLogClient,
     setupRequested: @escaping @MainActor () -> Void = {},
+    appSheetPresented: @escaping @MainActor () -> Bool = { false },
     now: @escaping @Sendable () -> Date = { Date() }
   ) {
     self.simulator = simulator
@@ -99,7 +100,11 @@ public final class LauncherModel {
     self.commandFlow = DeviceCommandFlow(simulator: simulator)
     self.captureFlow = ScreenCaptureFlow(simulator: simulator, workspace: workspace, now: now)
     self.setupRequested = setupRequested
+    self.appSheetPresented = appSheetPresented
   }
+
+  /// 앱 실행·링크 열기 시트가 떠 있다 (읽기 API 가 private 클로저를 읽도록 여기 둔다).
+  var isAppSheetPresented: Bool { self.appSheetPresented() }
 
   /// 목록을 읽은 뒤(목록을 먼저 보인다) 남은 zip 풀기·받기 임시 폴더(앞선 실행이 남겼거나 지우지 못한 것)를 정리한다.
   /// 화면이 나타날 때마다 불리므로 Setup 화면에서 돌아올 때마다 다시 읽고 정리한다. 지금 쓰는 폴더는 Client 가 건너뛴다.
@@ -302,7 +307,7 @@ public extension LauncherModel {
           self.activity.canStart(action.task, on: device),
           !self.recordings.blocks(action.task, on: id),
           self.pendingConfirmation == nil,
-          self.openURLDraft == nil,
+          !self.isAppSheetPresented,
           self.installURLDraft == nil
     else { return }
     self.pendingConfirmation = DeviceConfirmation(action: action, deviceID: id, device: LauncherNotice.Device(device))
@@ -474,46 +479,44 @@ public extension LauncherModel {
   }
 }
 
-// MARK: - 링크 열기
+// MARK: - 링크 열기·앱 실행
 
-// `private(set)` 상태를 바꾸므로 같은 파일에 둔다.
+// 시트는 `LauncherAppSheetsModel` 이 열고 확정한 요청을 App 이 넘긴다. 진행 기록을 시작하므로 같은 파일에 둔다.
 public extension LauncherModel {
-  /// 행의 "링크 열기…": 링크를 열 수 있는 기기이고 다른 시트·확인 대화상자가 없으면 시트를 연다.
-  func openURLButtonTapped(_ id: VirtualDevice.ID) {
-    guard case let .loaded(list) = self.listState,
-          let device = list.device(id: id),
-          self.activity.canStart(.openURL, on: device),
-          !self.isSheetOrDialogOpen
-    else { return }
-    self.openURLDraft = OpenURLDraft(deviceID: id, device: LauncherNotice.Device(device))
-  }
-
-  func openURLTextChanged(_ text: String) {
-    self.openURLDraft?.textChanged(text)
-  }
-
-  func openURLCancelTapped() {
-    self.openURLDraft = nil
-  }
-
-  func openURLSheetDismissed() {
-    self.openURLDraft = nil
-  }
-
-  /// 시트를 닫고, 꺼져 있으면 켜고, Simulator 앱을 연 뒤 링크를 열고 다시 읽는다. 실패하면 알림을 띄운다.
+  /// 꺼져 있으면 켜고, Simulator 앱을 연 뒤 링크를 열고 다시 읽는다. 실패하면 알림을 띄운다.
   /// 기기는 시트를 연 사이 바뀌었을 수 있어 지금 목록으로 다시 확인한다 (명령 전 거절은 다시 읽지 않는다).
-  func openURLConfirmTapped() async {
-    // 링크에 문제가 있으면 버튼이 비활성이라 드물다. 시트와 입력은 그대로 둔다.
-    guard let draft = self.openURLDraft, let link = draft.link else { return }
-    // 첫 await 전에 닫아, 연타해도 두 번째 호출은 위에서 끝난다.
-    self.openURLDraft = nil
-    let label = draft.device
-    guard let device = self.installFlow.openLinkTarget(draft, host: self.installHost) else { return }
-    // 남은 거절은 같은 기기의 다른 작업뿐이다. 시트가 창을 막아 시트를 연 뒤 그 기기 작업을 시작할 수 없어 드물고,
-    // 행의 진행 표시가 이유를 보인다.
+  func openURLRequested(_ request: OpenURLRequest) async {
+    guard let device = self.installFlow.openLinkTarget(request.deviceID, label: request.device, host: self.installHost)
+    else { return }
+    // 남은 거절은 같은 기기의 다른 작업뿐이다 (시트가 창을 막아 드물고, 행의 진행 표시가 이유를 보인다).
     guard self.activity.begin(.openURL, on: device) else { return }
     defer { self.activity.end(on: device.id) }
-    await self.installFlow.openLink(link, on: device, label: label, host: self.installHost)
+    await self.installFlow.openLink(request.link, on: device, label: request.device, host: self.installHost)
+  }
+
+  /// 꺼져 있으면 켜고, Simulator 앱을 연 뒤 고른 앱을 로그 받기와 함께 실행하고 다시 읽는다. 실패하면 알림을 띄운다.
+  /// 기기는 지금 목록으로 다시 확인한다 (명령 전 거절은 다시 읽지 않는다). 남은 거절은 링크 열기와 같다.
+  func launchAppRequested(_ request: LaunchAppRequest) async {
+    guard let device = self.installFlow.launchAppTarget(request, host: self.installHost),
+          self.activity.begin(.launchApp, on: device)
+    else { return }
+    defer { self.activity.end(on: device.id) }
+    await self.installFlow.launchInstalledApp(request, on: device, host: self.installHost)
+  }
+
+  /// 앱 실행 시트의 준비: 꺼진 기기면 진행 기록 `.boot` 로 켜고 다시 읽는다 (알림·Simulator 앱 열기 없이, 실패는 시트가 보인다).
+  /// 켜진 기기면 곧바로 nil. 판정 실패나 같은 기기의 다른 작업(시트가 창을 막아 드묾)이면 시트에 보일 실패를 돌려준다.
+  func launchAppPreparationRequested(_ id: VirtualDevice.ID) async -> LaunchAppPreparationFailure? {
+    switch self.installFlow.appListPreparation(id, host: self.installHost) {
+    case let .failed(failure): return failure
+    case .ready: return nil
+    case let .needsBoot(device):
+      guard self.activity.begin(.boot, on: device) else {
+        return LaunchAppPreparationFailure(.deviceNotReady(.stateChanging), stage: .list)
+      }
+      defer { self.activity.end(on: id) }
+      return await self.installFlow.bootForAppList(device, host: self.installHost)
+    }
   }
 }
 

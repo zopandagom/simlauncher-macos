@@ -1,8 +1,8 @@
 import Core
 import Foundation
 
-/// iOS 시뮬레이터 기기·런타임·기기 종류와 런타임 디스크 이미지 목록을 읽고, 켜고 끄고, 만들고 지우고 초기화하고, 앱을 설치·실행(콘솔을 붙인 실행 포함)하고
-/// 링크를 열고 화면을 찍고 녹화하는 Client.
+/// iOS 시뮬레이터 기기·런타임·기기 종류와 런타임 디스크 이미지 목록을 읽고, 켜고 끄고, 만들고 지우고 초기화하고, 설치된 앱 목록을 읽고,
+/// 앱을 설치·실행(콘솔을 붙인 실행 포함)하고 링크를 열고 화면을 찍고 녹화하는 Client.
 /// Impl 은 `xcrun simctl` 과 같은 개발자 디렉터리를 쓴다. 쓸 Xcode 가 없으면(App 이 넘긴 provider 가 nil 을 돌려줌)
 /// 어떤 명령도 실행하지 않고 `.developerToolsUnavailable` 를 던진다.
 public protocol SimulatorClient: Sendable {
@@ -43,6 +43,12 @@ public protocol SimulatorClient: Sendable {
   /// 켜진 기기에 .app 을 설치한다 (`simctl install`). 같은 번들 ID 가 있으면 덮어쓰고(실행 중이어도), 원본 파일은 고치지 않는다.
   /// 파일 URL 이 아니면 실행하지 않고 `.appNotFound`. 사전 목록 확인은 하지 않는다 (꺼져 있으면 simctl 이 `.deviceNotBooted`).
   func install(_ app: URL, on id: VirtualDevice.ID) async throws(SimulatorError)
+
+  /// 켜진 기기에 사용자가 설치한 앱 목록 (`simctl listapps <기기>` 한 번, `ApplicationType` 이 `User` 인 항목만).
+  /// 표시 이름(대소문자·숫자 자연 순서, `localizedStandardCompare`) → 번들 ID 순. 번들 ID 가 `AppBundleID` 형식이 아닌 항목은 뺀다.
+  /// 사전 목록 확인은 하지 않는다 (꺼진 기기는 simctl 이 SimError 405 → `.deviceNotBooted`, 없는 기기 "Invalid device" → `.deviceNotFound`).
+  /// UDID 형식이 아니면 실행하지 않고 `.deviceNotFound`. 출력(OpenStep plist)의 최상위가 사전이 아니면 `.unexpectedOutput`. 기기를 바꾸지 않는다.
+  func installedApps(on id: VirtualDevice.ID) async throws(SimulatorError) -> [InstalledApp]
 
   /// 설치된 앱을 실행한다 (`simctl launch`). 이미 실행 중이면 다시 띄운다(새 pid).
   /// 성공해도 앱이 곧바로 종료됐을 수 있다 (simctl 이 결정적으로 알려 주지 않는다).

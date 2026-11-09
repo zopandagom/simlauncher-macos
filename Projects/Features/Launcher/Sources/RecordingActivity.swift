@@ -45,23 +45,23 @@ public struct RecordingActivity: Hashable, Sendable {
   }
 
   /// 이 기기에서 녹화 중이 아니고, `screenshotAvailability == .allowed` 이고, 같은 기기의 기기 작업이 없거나
-  /// `.installApp`·`.openURL` 이면 true. 작업은 모든 케이스를 적는 허용 목록이다 (`default` 없음: 새 `DeviceTask` 케이스가
+  /// `.installApp`·`.openURL`·`.launchApp` 이면 true. 작업은 모든 케이스를 적는 허용 목록이다 (`default` 없음: 새 `DeviceTask` 케이스가
   /// 생기면 컴파일러가 여기서 멈춘다). `.boot` 는 `ScreenshotActivity.canStart` 와 같은 이유로 막는다.
   public func canStart(on device: VirtualDevice, during task: DeviceTask?) -> Bool {
     guard !self.isRecording(on: device.id), device.screenshotAvailability == .allowed else { return false }
     return switch task {
-    case .none, .installApp, .openURL: true
+    case .none, .installApp, .openURL, .launchApp: true
     case .boot, .shutdown, .delete, .erase: false
     }
   }
 
   /// 이 기기가 녹화 중(저장 중 포함)이면 끄기·삭제·초기화를 막는다. 작업은 모든 케이스를 적는다 (`default` 없음).
-  /// `.boot` 는 녹화가 켜진 기기에만 있어 해당 없고, `.installApp`·`.openURL` 은 녹화 중에도 한다.
+  /// `.boot` 는 녹화가 켜진 기기에만 있어 해당 없고, `.installApp`·`.openURL`·`.launchApp` 은 녹화 중에도 한다.
   public func blocks(_ task: DeviceTask, on id: VirtualDevice.ID) -> Bool {
     guard self.isRecording(on: id) else { return false }
     return switch task {
     case .shutdown, .delete, .erase: true
-    case .boot, .installApp, .openURL: false
+    case .boot, .installApp, .openURL, .launchApp: false
     }
   }
 

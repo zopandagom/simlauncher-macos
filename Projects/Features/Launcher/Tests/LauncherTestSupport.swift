@@ -12,6 +12,13 @@ import Testing
 import WorkspaceTesting
 @testable import LauncherFeature
 
+/// `loadedModels` 가 돌려주는 기기 목록 Model·앱 실행/링크 열기 시트 Model·Fake 묶음.
+struct LoadedModels {
+  let model: LauncherModel
+  let sheets: LauncherAppSheetsModel
+  let simulator: SimulatorClientFake
+}
+
 /// Launcher Model 테스트가 함께 쓰는 도움 함수. 테스트 타입이 채택하면 `Self.loadedModel()` 처럼 부른다.
 @MainActor
 protocol LauncherModelTesting {}
@@ -43,6 +50,43 @@ extension LauncherModelTesting {
     )
     await model.onAppear()
     return (model, fake)
+  }
+
+  /// `loadedModel` 과 같은 Model 에 App 처럼 이은 앱 실행·링크 열기 시트 Model 을 더한다 (시트를 열 기기·켜기·다시 읽기·
+  /// 실행·링크 열기는 기기 목록 Model, 기기 목록 Model 은 시트가 떠 있는지 시트 Model 에 묻는다).
+  static func loadedModels(
+    appBundle: AppBundleClientFake = AppBundleClientFake(),
+    download: any DownloadClient = DownloadClientFake(),
+    appLog: AppLogClientFake? = nil,
+    _ configure: (SimulatorClientFake) -> Void = { _ in }
+  ) async -> LoadedModels {
+    let fake = SimulatorClientFake(inventory: .sample)
+    configure(fake)
+    let box = AppSheetsBox()
+    let model = LauncherModel(
+      simulator: fake,
+      appBundle: appBundle,
+      download: download,
+      workspace: WorkspaceClientFake(),
+      appLog: appLog ?? AppLogClientFake.forwarding(to: fake),
+      appSheetPresented: { box.model?.hasPresentedSheet ?? false }
+    )
+    let sheets = Self.appSheets(simulator: fake, launcher: model)
+    box.model = sheets
+    await model.onAppear()
+    return LoadedModels(model: model, sheets: sheets, simulator: fake)
+  }
+
+  /// App 과 같이 기기 목록 Model 에 이은 시트 Model.
+  static func appSheets(simulator: SimulatorClientFake, launcher: LauncherModel) -> LauncherAppSheetsModel {
+    LauncherAppSheetsModel(
+      simulator: simulator,
+      target: { id, task in launcher.appSheetTarget(id, for: task) },
+      prepareRequested: { id in await launcher.launchAppPreparationRequested(id) },
+      refreshRequested: { await launcher.refreshButtonTapped() },
+      launchRequested: { request in await launcher.launchAppRequested(request) },
+      openURLRequested: { request in await launcher.openURLRequested(request) }
+    )
   }
 
   /// 샘플 목록에서 기기 하나의 상태만 바꾼 목록.
@@ -121,6 +165,12 @@ extension LauncherModelTesting {
   static func start(_ operation: @escaping @MainActor () async -> Void) -> TrackedTask {
     TrackedTask(operation)
   }
+}
+
+/// 기기 목록 Model 이 뒤에 만든 시트 Model 을 읽게 넘기는 상자 (App 의 상자와 같다).
+@MainActor
+final class AppSheetsBox {
+  weak var model: LauncherAppSheetsModel?
 }
 
 /// 기다리는 조건은 Fake 와 MainActor 의 차례 넘기기만으로 참이 되어, 정상이면 수 ms 안에 끝난다 (Launcher 스위트 전체가

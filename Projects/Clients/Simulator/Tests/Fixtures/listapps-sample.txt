@@ -1,0 +1,97 @@
+{
+    "com.apple.mobilesafari" =     {
+        ApplicationType = System;
+        Bundle = "file:///Fixture/Runtime/Applications/MobileSafari.app/";
+        CFBundleDisplayName = Safari;
+        CFBundleExecutable = MobileSafari;
+        CFBundleIdentifier = "com.apple.mobilesafari";
+        CFBundleName = Safari;
+        CFBundleShortVersionString = "27.0";
+        CFBundleVersion = "8627.1";
+        IsAppClip = 0;
+        IsDeveloperApp = 0;
+        IsFirstParty = 1;
+        IsHidden = 0;
+        IsRemovable = 0;
+        Path = "/Fixture/Runtime/Applications/MobileSafari.app";
+    };
+    "com.example.beta" =     {
+        ApplicationType = User;
+        Bundle = "file:///Fixture/Device/Bundle/Application/B/Beta.app/";
+        BundleContainer = "file:///Fixture/Device/Bundle/Application/B/";
+        CFBundleDisplayName = Beta;
+        CFBundleExecutable = Beta;
+        CFBundleIdentifier = "com.example.beta";
+        CFBundleName = BetaName;
+        CFBundleShortVersionString = "2.1";
+        CFBundleVersion = 45;
+        DataContainer = "file:///Fixture/Device/Data/Application/B/";
+        GroupContainers =         {
+            "group.com.example.beta" = "file:///Fixture/Device/Shared/AppGroup/G/";
+        };
+        IsAppClip = 0;
+        IsDeveloperApp = 1;
+        IsFirstParty = 0;
+        IsHidden = 0;
+        IsRemovable = 1;
+        Path = "/Fixture/Device/Bundle/Application/B/Beta.app";
+        SBAppTags =         (
+            "hidden-tag"
+        );
+    };
+    "com.example.app10" =     {
+        ApplicationType = User;
+        CFBundleDisplayName = App10;
+        CFBundleIdentifier = "com.example.app10";
+        CFBundleShortVersionString = "1.0";
+        IsHidden = 0;
+    };
+    "com.example.app2" =     {
+        ApplicationType = User;
+        CFBundleDisplayName = "";
+        CFBundleIdentifier = "com.example.app2";
+        CFBundleName = App2;
+        CFBundleVersion = 7;
+        IsHidden = 0;
+    };
+    "com.example.lower" =     {
+        ApplicationType = User;
+        CFBundleDisplayName = app3;
+        CFBundleIdentifier = "com.example.lower";
+        IsHidden = 0;
+    };
+    "com.example.twin.b" =     {
+        ApplicationType = User;
+        CFBundleDisplayName = Twin;
+        CFBundleIdentifier = "com.example.twin.b";
+    };
+    "com.example.twin.a" =     {
+        ApplicationType = User;
+        CFBundleDisplayName = Twin;
+        CFBundleIdentifier = "com.example.twin.a";
+    };
+    "com.example.noname" =     {
+        ApplicationType = User;
+        CFBundleDisplayName = "";
+        CFBundleIdentifier = "com.example.noname";
+        CFBundleName = "";
+    };
+    "-bad.option" =     {
+        ApplicationType = User;
+        CFBundleDisplayName = BadOption;
+    };
+    "com.example.bad id" =     {
+        ApplicationType = User;
+        CFBundleDisplayName = BadSpace;
+    };
+    "com.example.notdict" = "User";
+    "com.example.notype" =     {
+        CFBundleDisplayName = NoType;
+    };
+    "com.example.typearray" =     {
+        ApplicationType =         (
+            User
+        );
+        CFBundleDisplayName = TypeArray;
+    };
+}

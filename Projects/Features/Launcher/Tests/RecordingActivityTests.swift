@@ -21,13 +21,14 @@ struct RecordingActivityTests {
     }
   }
 
-  @Test("같은 기기의 앱 설치·링크 열기 중에는 녹화할 수 있고, 켜기·끄기·삭제·초기화 중에는 녹화할 수 없다")
+  @Test("같은 기기의 앱 설치·링크 열기·앱 실행 중에는 녹화할 수 있고, 켜기·끄기·삭제·초기화 중에는 녹화할 수 없다")
   func canStartDuringDeviceTask() {
     let activity = RecordingActivity()
     let device = Self.device(state: .booted)
 
     #expect(activity.canStart(on: device, during: .installApp))
     #expect(activity.canStart(on: device, during: .openURL))
+    #expect(activity.canStart(on: device, during: .launchApp))
     #expect(!activity.canStart(on: device, during: .boot))
     #expect(!activity.canStart(on: device, during: .shutdown))
     #expect(!activity.canStart(on: device, during: .delete))
@@ -181,7 +182,7 @@ struct RecordingActivityTests {
   func blocksOnlyShutdownDeleteErase() {
     var activity = RecordingActivity()
     let device = Self.device(state: .booted)
-    let tasks: [DeviceTask] = [.boot, .shutdown, .delete, .erase, .installApp, .openURL]
+    let tasks: [DeviceTask] = [.boot, .shutdown, .delete, .erase, .installApp, .openURL, .launchApp]
     for task in tasks {
       #expect(!activity.blocks(task, on: device.id), "\(task)")
     }

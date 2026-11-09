@@ -13,6 +13,7 @@ struct MainWindow: View {
   let setupModel: SetupModel
   let launcherModel: LauncherModel
   let catalogInstallModel: CatalogInstallModel
+  let launcherAppSheetsModel: LauncherAppSheetsModel
   let androidSetupModel: AndroidSetupModel
   let androidDevicesModel: AndroidDevicesModel
   let androidDownloadInstallModel: AndroidDownloadInstallModel
@@ -58,7 +59,11 @@ struct MainWindow: View {
         // 기기 목록 화면은 Setup 이 끝나야 만들어진다 (그 전에는 목록 읽기·정리가 돌지 않는다).
         // 돌아올 때마다 새로 만들어져 onAppear 가 목록을 다시 읽는다.
         if self.setupModel.isFinished {
-          LauncherView(model: self.launcherModel, catalogModel: self.catalogInstallModel)
+          LauncherView(
+            model: self.launcherModel,
+            catalogModel: self.catalogInstallModel,
+            appSheetsModel: self.launcherAppSheetsModel
+          )
         } else {
           SetupView(model: self.setupModel)
         }

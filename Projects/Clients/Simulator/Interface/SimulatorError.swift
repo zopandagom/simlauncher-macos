@@ -16,12 +16,13 @@ public enum SimulatorError: Error, Hashable, Sendable {
   case simulatorAppNotFound
   /// `simctl list -j` 출력(JSON)을 해석하지 못했다 (목록 읽기, 또는 생성·삭제·초기화 전의 목록 확인).
   /// 생성·삭제·초기화 명령은 실행하지 않았다. `simctl runtime list -j` 출력의 최상위가 사전이 아닐 때도 (런타임 이미지 목록).
+  /// `simctl listapps` 출력(OpenStep plist)을 해석하지 못했거나 최상위가 사전이 아닐 때도 (설치된 앱 목록).
   case unexpectedOutput
   /// `simctl create` 는 성공(exit 0)했지만 출력에서 새 기기 UDID 를 읽지 못했다. 기기가 만들어졌을 수 있다. `create` 만 던진다.
   case creationResultUnknown
-  /// 기기가 켜져 있지 않아 앱 설치·실행, 링크 열기, 화면 찍기·녹화를 하지 못했다: install·launch·openurl 의 SimError 405
-  /// "Unable to lookup in current state", screenshot 의 실행 전 확인과 NSPOSIXErrorDomain 60 "Timeout waiting for screen
-  /// surfaces", recordVideo 의 실행 전 확인.
+  /// 기기가 켜져 있지 않아 앱 목록 읽기·설치·실행, 링크 열기, 화면 찍기·녹화를 하지 못했다: listapps·install·launch·openurl 의
+  /// SimError 405 "Unable to lookup in current state", screenshot 의 실행 전 확인과 NSPOSIXErrorDomain 60 "Timeout waiting for
+  /// screen surfaces", recordVideo 의 실행 전 확인.
   case deviceNotBooted
   /// 설치할 .app 이 그 경로에 없다: 파일 URL 이 아니어서 실행하지 않았거나 NSPOSIXErrorDomain 2 (install).
   case appNotFound

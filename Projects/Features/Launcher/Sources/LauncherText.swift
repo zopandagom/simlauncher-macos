@@ -30,7 +30,8 @@ enum LauncherText {
     case .shutdownFailed, .openAppFailed, .createFailed, .deleteFailed, .eraseFailed:
       self.deviceCommandNoticeTitle(for: notice)
     case let .installFailed(device, _), let .launchFailed(device, _), let .openURLFailed(device, _),
-         let .screenshotFailed(device, _), let .screenshotRevealFailed(device, _),
+         let .installedAppLaunchFailed(device, _), let .screenshotFailed(device, _),
+         let .screenshotRevealFailed(device, _),
          let .recordingFailed(device, _), let .recordingInterrupted(device),
          let .recordingStoppedByDevice(device), let .recordingRevealFailed(device, _):
       self.rowTaskNoticeTitle(for: notice, device: device)
@@ -54,6 +55,8 @@ enum LauncherText {
     case let .installFailed(_, failure):
       self.message(for: failure)
     case let .openURLFailed(_, failure):
+      self.message(for: failure)
+    case let .installedAppLaunchFailed(_, failure):
       self.message(for: failure)
     case let .screenshotFailed(_, failure):
       self.message(for: failure)
@@ -317,5 +320,9 @@ extension LauncherText {
 
   static var viewLogHelp: String {
     String(localized: "이 기기에서 실행한 앱의 로그 창을 엽니다", bundle: .module)
+  }
+
+  static var viewLogUnavailableHelp: String {
+    String(localized: "앱 실행… 이나 앱 설치로 SimLauncher 가 이 기기에서 앱을 실행하면 로그를 볼 수 있습니다", bundle: .module)
   }
 }
