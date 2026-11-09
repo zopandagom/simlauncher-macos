@@ -1231,22 +1231,22 @@
         }
       }
     },
-    "꺼지기 전까지 녹화한 화면을 동영상 폴더의 SimLauncher 폴더에 저장했습니다. 다시 녹화하려면 기기를 켠 뒤 녹화를 누르세요." : {
-      "localizations" : {
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "꺼지기 전까지 녹화한 화면을 동영상 폴더의 SimLauncher 폴더에 저장했습니다. 다시 녹화하려면 기기를 켠 뒤 녹화를 누르세요."
-          }
-        }
-      }
-    },
     "꺼짐" : {
       "localizations" : {
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "꺼짐"
+          }
+        }
+      }
+    },
+    "꺼지기 전까지 녹화한 화면을 동영상 폴더의 SimLauncher 폴더에 저장했습니다. 다시 녹화하려면 기기를 켠 뒤 녹화를 누르세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "꺼지기 전까지 녹화한 화면을 동영상 폴더의 SimLauncher 폴더에 저장했습니다. 다시 녹화하려면 기기를 켠 뒤 녹화를 누르세요."
           }
         }
       }
@@ -1447,6 +1447,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "등록된 카탈로그가 없습니다"
+          }
+        }
+      }
+    },
+    "레이아웃 보기" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "레이아웃 보기"
           }
         }
       }
@@ -1807,6 +1817,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "사용할 수 없는 기기에서는 녹화할 수 없습니다"
+          }
+        }
+      }
+    },
+    "사용할 수 없는 기기에서는 레이아웃을 볼 수 없습니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "사용할 수 없는 기기에서는 레이아웃을 볼 수 없습니다"
           }
         }
       }
@@ -2417,6 +2437,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "앱 실행… 이나 앱 설치로 SimLauncher 가 이 기기에서 앱을 실행하면 로그를 볼 수 있습니다"
+          }
+        }
+      }
+    },
+    "앱 화면의 뷰 테두리와 위치·크기를 봅니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "앱 화면의 뷰 테두리와 위치·크기를 봅니다"
           }
         }
       }
@@ -3147,6 +3177,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "켜진 기기에서만 녹화할 수 있습니다. 기기를 켠 뒤 다시 시도하세요"
+          }
+        }
+      }
+    },
+    "켜진 기기에서만 레이아웃을 볼 수 있습니다. 기기를 켠 뒤 다시 시도하세요" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "켜진 기기에서만 레이아웃을 볼 수 있습니다. 기기를 켠 뒤 다시 시도하세요"
           }
         }
       }

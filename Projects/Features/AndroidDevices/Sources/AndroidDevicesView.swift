@@ -384,7 +384,9 @@ extension AndroidDevicesView {
       },
       stopRecordingTapped: {
         self.model.recordingStopTapped(device.id)
-      }
+      },
+      canViewLayout: AndroidLayoutAvailability.canOpen(device: device, during: task),
+      layoutTapped: { self.openWindow(id: LayoutTarget.windowID, value: LayoutTarget.android(device.id)) }
     )
   }
 
