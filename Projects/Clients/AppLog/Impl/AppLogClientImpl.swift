@@ -239,9 +239,11 @@ public actor AppLogClientImpl: AppLogClient {
       return
     }
     // 신호 대기 상한 뒤의 실패: 실패 알림은 이미 지나 끝남으로만 보인다.
+    // Android 는 실행 단계의 adb 호출마다 시간 한도가 있어 adb 가 멈추면 그 합이 상한을 넘을 수 있다. 그 뒤 오는 실패는 대개
+    // adb 무응답이라 "앱이 끝남" 이 아니라 연결 끊김(`.deviceShutDown`, Android 창 문구 "기기가 꺼졌거나 연결이 끊겼습니다")으로 끝낸다.
     switch record.spec.app {
     case .iOS: await self.judgeEnd(id)
-    case .android: self.endReplacedOr(id, .appExited)
+    case .android: self.endReplacedOr(id, .deviceShutDown)
     }
   }
 

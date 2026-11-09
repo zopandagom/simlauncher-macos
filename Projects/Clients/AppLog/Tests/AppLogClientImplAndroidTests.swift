@@ -107,16 +107,16 @@ struct AppLogClientImplAndroidTests {
     }
   }
 
-  @Test("신호 대기 상한 뒤의 실패는 appExited 로 끝난다")
+  @Test("신호 대기 상한 뒤의 실패(adb 무응답 등)는 앱이 끝남이 아니라 연결 끊김(deviceShutDown)으로 끝난다")
   func failureAfterTimeout() async throws {
     let fixture = AppLogFixture(launchSignalTimeout: .milliseconds(50))
     let task = fixture.launchAndroid()
     let run = try await fixture.logcat.run(0)
     let id = try await task.value
 
-    run.finish(.failure(.appCommandFailed))
+    run.finish(.failure(.adbUnavailable))
 
-    #expect(try await fixture.waitForEnd(of: id) == .appExited)
+    #expect(try await fixture.waitForEnd(of: id) == .deviceShutDown)
     #expect(fixture.simulator.calls.isEmpty)
   }
 
