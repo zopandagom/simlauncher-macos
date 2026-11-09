@@ -28,6 +28,8 @@ import WorkspaceImpl
 /// 녹화·런타임 설치·Android 도구 설치)이 있으면 두 기기 목록(`LauncherModel`·`AndroidDevicesModel`)·Setup·Android 도구 화면에
 /// 함께 종료를 알리고 모두 끝나기를 기다린다 (녹화 저장과 두 설치의 멈춤·취소를 함께 시작한다).
 /// 기기 행·툴바의 "카탈로그에서…" 시트(`CatalogInstallModel`)가 고른 버전은 `installRequested` 로 기기 목록(`LauncherModel`)이 설치한다.
+/// iOS 기기 행의 "앱 실행…"·"링크 열기…" 시트(`LauncherAppSheetsModel`)도 확정한 앱·링크를 기기 목록에 넘기고(앱 실행 시트의 켜기·
+/// 다시 읽기도 기기 목록이 한다), 두 Model 의 시트끼리 서로 막는 것도 App 이 클로저로 잇는다 (Android 와 같다).
 /// Android 기기 행의 "URL 에서…"·"카탈로그에서…" 시트(`AndroidDownloadInstallModel`)가 고른 주소·버전도 같은 방식으로 Android 기기
 /// 목록(`AndroidDevicesModel`)이 받아 설치한다. Android 기기 행의 "앱 실행…"·"링크 열기…" 시트(`AndroidAppSheetsModel`)도 확정한
 /// 앱·링크를 같은 방식으로 넘기고, 두 Model 의 시트끼리 서로 막는 것도 App 이 클로저로 잇는다 (Model 끼리 참조하지 않는다).
@@ -45,6 +47,7 @@ struct SimLauncherApp: App {
   @State private var setupModel: SetupModel
   @State private var launcherModel: LauncherModel
   @State private var catalogInstallModel: CatalogInstallModel
+  @State private var launcherAppSheetsModel: LauncherAppSheetsModel
   @State private var settingsModel: SettingsModel
   @State private var androidSetupModel: AndroidSetupModel
   @State private var androidDevicesModel: AndroidDevicesModel
@@ -54,7 +57,8 @@ struct SimLauncherApp: App {
 
   /// 명령 실행 Client 하나를 개발 환경·시뮬레이터·앱 번들 Client 가 함께 쓰고,
   /// 개발 환경 Client 하나를 Setup 과 시뮬레이터의 개발자 디렉터리가 함께 쓰며,
-  /// 시뮬레이터 Client 하나를 Setup(Xcode 가 준비된 뒤 런타임 목록 읽기)과 Launcher, 앱 로그 Client 가 함께 쓴다.
+  /// 시뮬레이터 Client 하나를 Setup(Xcode 가 준비된 뒤 런타임 목록 읽기)과 Launcher(기기 목록·앱 실행 시트의 설치된 앱 목록),
+  /// 앱 로그 Client 가 함께 쓴다.
   /// 앱 로그 Client 하나를 Launcher(로그 받기와 함께 실행·행의 "로그 보기")와 로그 창, 종료 처리(`AppDelegate`)가 함께 쓴다.
   /// 받기 Client 는 하나만 만들어 Launcher 의 URL·카탈로그 설치, 카탈로그에서 설치 시트의 카탈로그 받기,
   /// 설정 창의 카탈로그 등록 확인, Android 기기 목록의 URL·카탈로그 설치와 그 시트의 카탈로그 받기가 함께 쓴다
@@ -91,19 +95,19 @@ struct SimLauncherApp: App {
     self._androidAppSheetsModel = State(initialValue: android.appSheets)
     let setup = SetupModel(devEnvironment: devEnvironment, simulator: simulator)
     self._setupModel = State(initialValue: setup)
-    // 앱 로그 Client 생성자는 명령을 실행하지 않는다. 받기는 설치 후 실행·창의 "다시 실행" 때만 시작한다.
+    // 앱 로그 Client 생성자는 명령을 실행하지 않는다. 받기는 설치 후 실행·행의 "앱 실행…"·창의 "다시 실행" 때만 시작한다.
     let appLog = AppLogClientImpl(simulator: simulator)
     self._deviceLogModel = State(initialValue: DeviceLogModel(appLog: appLog))
-    // 스크린샷·녹화 저장 폴더는 "스크린샷"·"녹화" 를 누를 때 만든다 (Workspace Client 생성자는 파일을 건드리지 않는다).
-    let launcher = LauncherModel(
+    let launcherAssembly = Self.makeLauncher(
       simulator: simulator,
       appBundle: appBundle,
       download: download,
-      workspace: WorkspaceClientImpl(),
       appLog: appLog,
-      setupRequested: { setup.reopened() }
+      setup: setup
     )
+    let launcher = launcherAssembly.model
     self._launcherModel = State(initialValue: launcher)
+    self._launcherAppSheetsModel = State(initialValue: launcherAssembly.sheets)
     // 카탈로그는 시트를 열 때와 새로 고칠 때만 받는다 (앱 시작 때·기기 목록을 볼 때는 받지 않는다).
     self._catalogInstallModel = State(initialValue: CatalogInstallModel(
       preferences: preferences,
@@ -122,6 +126,45 @@ struct SimLauncherApp: App {
     self.appDelegate.launcherModel = launcher
     self.appDelegate.androidSetupModel = android.setup
     self.appDelegate.androidDevicesModel = android.devices
+  }
+
+  /// iOS 기기 목록과 앱 실행·링크 열기 시트의 Model 을 조립한다 (`init` 안에서 쓰는 값 묶음).
+  private struct LauncherAssembly {
+    let model: LauncherModel
+    let sheets: LauncherAppSheetsModel
+  }
+
+  private static func makeLauncher(
+    simulator: SimulatorClientImpl,
+    appBundle: AppBundleClientImpl,
+    download: DownloadClientImpl,
+    appLog: AppLogClientImpl,
+    setup: SetupModel
+  ) -> LauncherAssembly {
+    // 스크린샷·녹화 저장 폴더는 "스크린샷"·"녹화" 를 누를 때 만든다 (Workspace Client 생성자는 파일을 건드리지 않는다).
+    // 앱 실행·링크 열기 시트가 떠 있으면 만들기·삭제·초기화·URL 설치 시트를 막는다. 시트 Model 은 뒤에 만들어 상자로 넘긴다.
+    let launcherSheetsBox = LauncherAppSheetsBox()
+    let launcher = LauncherModel(
+      simulator: simulator,
+      appBundle: appBundle,
+      download: download,
+      workspace: WorkspaceClientImpl(),
+      appLog: appLog,
+      setupRequested: { setup.reopened() },
+      appSheetPresented: { launcherSheetsBox.model?.hasPresentedSheet ?? false }
+    )
+    // 앱 실행·링크 열기 시트. 열 수 있는 기기는 기기 목록에 묻고(만들기·URL 설치 시트·확인 대화상자·작업 중이면 열지 않는다),
+    // 앱 실행 시트의 켜기·다시 읽기와 확정한 앱·링크의 실행은 기기 목록이 한다. 목록 읽기(`simctl listapps`)는 시트를 열 때만 한다.
+    let launcherSheets = LauncherAppSheetsModel(
+      simulator: simulator,
+      target: { id, task in launcher.appSheetTarget(id, for: task) },
+      prepareRequested: { id in await launcher.launchAppPreparationRequested(id) },
+      refreshRequested: { await launcher.refreshButtonTapped() },
+      launchRequested: { request in await launcher.launchAppRequested(request) },
+      openURLRequested: { request in await launcher.openURLRequested(request) }
+    )
+    launcherSheetsBox.model = launcherSheets
+    return LauncherAssembly(model: launcher, sheets: launcherSheets)
   }
 
   /// Android 칸의 Client 와 Model 을 조립한다 (`init` 안에서 쓰는 값 묶음).
@@ -227,6 +270,7 @@ struct SimLauncherApp: App {
         setupModel: self.setupModel,
         launcherModel: self.launcherModel,
         catalogInstallModel: self.catalogInstallModel,
+        launcherAppSheetsModel: self.launcherAppSheetsModel,
         androidSetupModel: self.androidSetupModel,
         androidDevicesModel: self.androidDevicesModel,
         androidDownloadInstallModel: self.androidDownloadInstallModel,
@@ -247,6 +291,13 @@ struct SimLauncherApp: App {
       SettingsView(model: self.settingsModel)
     }
   }
+}
+
+/// iOS 기기 목록 Model 을 먼저 만들어야 하므로(시트 Model 의 `target` 이 그것을 쓴다), 기기 목록의 `appSheetPresented` 가 뒤에
+/// 만든 시트 Model 을 읽게 넘기는 상자. `AndroidAppSheetsBox` 와 같다.
+@MainActor
+private final class LauncherAppSheetsBox {
+  weak var model: LauncherAppSheetsModel?
 }
 
 /// 기기 목록 Model 을 먼저 만들어야 하므로(시트 Model 의 `target` 이 그것을 쓴다), 기기 목록의 `appSheetPresented` 가 뒤에
