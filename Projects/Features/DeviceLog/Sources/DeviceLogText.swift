@@ -189,6 +189,77 @@ enum DeviceLogText {
     }
   }
 
+  // MARK: - 저장된 필터
+
+  static var savedFiltersMenu: String {
+    String(localized: "저장된 필터", bundle: .module)
+  }
+
+  static var noSavedFilters: String {
+    String(localized: "저장된 필터가 없습니다", bundle: .module)
+  }
+
+  static var saveCurrentFilter: String {
+    String(localized: "지금 필터 저장…", bundle: .module)
+  }
+
+  static var deleteMenu: String {
+    String(localized: "삭제", bundle: .module)
+  }
+
+  /// "지금 필터 저장…" 을 막는 이유.
+  static func saveBlocked(_ block: LogFilterSaveBlock) -> String {
+    switch block {
+    case .locked:
+      String(localized: "관리자가 정한 필터 목록이라 저장하거나 지울 수 없습니다.", bundle: .module)
+    case .emptyFilter:
+      String(localized: "조건 글자를 입력하면 저장할 수 있습니다.", bundle: .module)
+    case .invalidRegex:
+      String(localized: "읽을 수 없는 정규식을 고치면 저장할 수 있습니다.", bundle: .module)
+    case .tooManyConditions:
+      String(localized: "조건은 \(SavedLogFilter.maxConditions)개까지 저장할 수 있습니다.", bundle: .module)
+    case .textTooLong:
+      String(localized: "조건 글자는 \(SavedLogFilter.maxTextLength)자까지 저장할 수 있습니다.", bundle: .module)
+    }
+  }
+
+  static var savedFilterLimit: String {
+    String(localized: "저장된 필터는 \(SavedLogFilter.maxCount)개까지입니다.", bundle: .module)
+  }
+
+  static var saveSheetTitle: String {
+    String(localized: "필터 저장", bundle: .module)
+  }
+
+  static var saveNameLabel: String {
+    String(localized: "필터 이름", bundle: .module)
+  }
+
+  static var nameTooLong: String {
+    String(localized: "이름은 \(SavedLogFilter.maxNameLength)자까지 쓸 수 있습니다.", bundle: .module)
+  }
+
+  static var saveButton: String {
+    String(localized: "저장", bundle: .module)
+  }
+
+  static var cancelButton: String {
+    String(localized: "취소", bundle: .module)
+  }
+
+  /// 같은 이름 확인 제목. 이름은 저장된 표기다.
+  static func replaceTitle(existingName: String) -> String {
+    String(localized: "‘\(existingName)’ 필터가 이미 있습니다", bundle: .module)
+  }
+
+  static var replaceMessage: String {
+    String(localized: "지금 필터로 바꿀까요?", bundle: .module)
+  }
+
+  static var replaceButton: String {
+    String(localized: "바꾸기", bundle: .module)
+  }
+
   // MARK: - 창 아래
 
   static func lineCounts(visible: Int, total: Int) -> String {

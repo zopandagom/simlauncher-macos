@@ -1,3 +1,4 @@
+import Core
 import Foundation
 
 /// 로그 창 하나의 필터 입력: 조건 목록과 대소문자 구분. 순수 값이고, 맞춤은 `compiled()` 가 만든 `CompiledLogFilter` 가 한다.
@@ -56,6 +57,24 @@ public struct LogFilter: Hashable, Sendable {
 
   mutating func setCaseSensitive(_ isCaseSensitive: Bool) {
     self.isCaseSensitive = isCaseSensitive
+  }
+
+  /// 저장된 필터(`SavedLogFilter`)로 조건과 대소문자 구분을 통째로 바꾼다.
+  /// 조건 id 는 지금 `nextID` 부터 이어 매긴다 (앞 조건 id 를 다시 쓰지 않아 입력란 정체가 섞이지 않는다).
+  mutating func load(_ saved: SavedLogFilter) {
+    var conditions: [Condition] = []
+    for condition in saved.conditions {
+      conditions.append(Condition(
+        id: self.nextID, kind: Kind(condition.kind), text: condition.text, isExcluded: condition.isExcluded
+      ))
+      self.nextID += 1
+    }
+    self.conditions = conditions
+    self.isCaseSensitive = saved.isCaseSensitive
+    // 저장 값은 조건이 하나 이상이지만, 입력란이 늘 하나 있게 한 번 더 지킨다.
+    if self.conditions.isEmpty {
+      self.addCondition()
+    }
   }
 
   /// 맞춤에 쓸 형태. 정규식을 읽지 못한 조건이 있으면 첫 조건의 문제를 돌려준다.
