@@ -2381,6 +2381,16 @@
         }
       }
     },
+    "SimLauncher 로 이 기기에 앱을 설치하고 실행하면 로그를 볼 수 있습니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SimLauncher 로 이 기기에 앱을 설치하고 실행하면 로그를 볼 수 있습니다"
+          }
+        }
+      }
+    },
     "이 기기에서 실행할 수 없는 빌드입니다. 시뮬레이터용으로 빌드했는지, 이 기기 종류(iPhone·iPad)를 지원하는지 개발자에게 확인하세요." : {
       "localizations" : {
         "ko" : {

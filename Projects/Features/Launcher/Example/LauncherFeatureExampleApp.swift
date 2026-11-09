@@ -17,7 +17,7 @@ import WorkspaceTesting
 /// 1초 지연), `DownloadClientFake`(어떤 주소든 0.3초마다 48 MB 까지 진행을 알린 뒤 zip 을 받은 것으로 끝나고,
 /// `AppBundleClientFake` 가 그 zip 을 샘플 앱으로 푼다)를 주입한다. Setup 화면이 없으므로 Setup 진입 버튼("개발 환경"·"iOS 설치"·"다른 iOS 버전 설치"·
 /// "개발 환경 열기")은 눌러도 아무 일도 하지 않는다.
-/// 실행은 `AppLogClientFake`(실행은 늘 성공하고 받는 중 세션을 만든다)로 해, 설치 후 실행한 기기 행에 "로그 보기" 가 보인다.
+/// 실행은 `AppLogClientFake`(실행은 늘 성공하고 받는 중 세션을 만든다)로 해, 설치 후 실행한 기기 행의 "로그 보기" 가 눌린다 (그 전에는 비활성).
 /// 로그 창 씬이 없어 눌러도 창은 열리지 않는다 (창은 DeviceLog Feature 의 Example 에서 본다).
 /// "카탈로그에서…" 시트는 `PreferencesClientFake`(카탈로그 2개 + http 주소 + 앞 항목과 같은 카탈로그)와 카탈로그 전용
 /// `DownloadClientFake`(주소별 카탈로그 내용, 1초 지연)로 읽고, 고른 버전은 같은 `LauncherModel` 이 받아 설치한다.

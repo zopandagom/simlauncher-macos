@@ -4,7 +4,7 @@ import Foundation
 import SwiftUI
 
 /// 기기 한 줄: 종류 아이콘, 이름, 상태, 앱 설치 메뉴(파일에서 고르기… / URL 에서… / 카탈로그에서…)와 드롭, 링크 열기 버튼(시트),
-/// 로그 보기 버튼(이 기기에 앱 로그 세션이 있으면. 기기 상태·작업과 관계없이 누를 수 있다),
+/// 로그 보기 버튼(늘 보이고, 이 기기에 앱 로그 세션이 있으면 기기 상태·작업과 관계없이 누를 수 있다. 없으면 비활성으로 두고 이유를 툴팁으로),
 /// 스크린샷 버튼(켜진 기기만, 찍는 중이면 작은 진행 표시), 녹화 표시(켜진 기기만: "녹화" 버튼, 녹화 중이면 경과 시간과 "중지",
 /// 저장 중이면 작은 진행 표시), 켜기·끄기 버튼(받는 중이면 진행 막대와 받기 취소 버튼, 녹화 중이면 끄기 비활성),
 /// 기기 작업 메뉴(… 버튼과 컨텍스트 메뉴: 초기화·삭제).
@@ -25,7 +25,7 @@ struct DeviceRow: View {
   let cancelDownloadTapped: () -> Void
   let appDropped: ([URL]) -> Void
   let openURLTapped: () -> Void
-  /// 이 기기에 앱 로그 세션(받는 중·끝남)이 있다 (`LauncherModel.logDevices`). 있으면 "로그 보기" 를 보인다.
+  /// 이 기기에 앱 로그 세션(받는 중·끝남)이 있다 (`LauncherModel.logDevices`). 있으면 "로그 보기" 를 누를 수 있다.
   let hasLog: Bool
   /// 이 기기의 로그 창을 연다 (View 가 `openWindow` 로 연다).
   let logTapped: () -> Void
@@ -78,10 +78,9 @@ struct DeviceRow: View {
       Button(LauncherText.openURLButton, action: self.openURLTapped)
         .disabled(!self.canInstall)
         .help(self.openURLBlockReason ?? LauncherText.openURLHelp)
-      if self.hasLog {
-        Button(LauncherText.viewLogButton, action: self.logTapped)
-          .help(LauncherText.viewLogHelp)
-      }
+      Button(LauncherText.viewLogButton, action: self.logTapped)
+        .disabled(!self.hasLog)
+        .help(self.hasLog ? LauncherText.viewLogHelp : LauncherText.viewLogUnavailableHelp)
       self.screenshot
       RecordingControl(
         phase: self.recordingPhase,

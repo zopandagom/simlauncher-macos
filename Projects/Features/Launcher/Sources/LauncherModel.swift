@@ -14,7 +14,7 @@ import WorkspaceInterface
 /// 켜진 기기 화면을 동영상 폴더의 SimLauncher 폴더에 녹화하고, 멈추거나(중지·기기 꺼짐·앱 종료) 스스로 끝나면 저장해 Finder 에서 보인다.
 /// 카탈로그에서 설치 시트(`CatalogInstallModel`)가 고른 버전은 App 이 `catalogInstallRequested(_:)` 로 넘겨 같은 받기 경로로 설치한다.
 /// 목록에서 고른 기기(`selection`)에 앱을 한 번 받고 풀어 기기별로 동시에 설치·실행하거나 함께 켜고, 결과를 알림 하나에 모은다.
-/// 실행은 앱 로그 받기와 함께 하고(`AppLogClient`), 앱 로그 세션이 있는 기기(`logDevices`)의 행에 "로그 보기" 를 보인다 (창은 View 가 연다).
+/// 실행은 앱 로그 받기와 함께 하고(`AppLogClient`), 앱 로그 세션이 있는 기기(`logDevices`)의 행 "로그 보기" 를 누를 수 있게 한다 (버튼은 늘 보이고, 창은 View 가 연다).
 /// Xcode 준비와 iOS 시뮬레이터 설치는 여기서 하지 않고, Setup 진입 버튼으로 App 에 Setup 화면을 요청한다.
 /// 앱 설치의 켜기·풀기·검사·설치·실행은 Model 이 소유한 `AppInstallFlow` 가, 끄기·만들기·삭제·초기화 명령은
 /// `DeviceCommandFlow` 가, 스크린샷·녹화의 예약·찍기·녹화·보이기는 `ScreenCaptureFlow` 가 한다 (Model 상태에는 창구로만 닿는다).

@@ -318,4 +318,8 @@ extension LauncherText {
   static var viewLogHelp: String {
     String(localized: "이 기기에서 실행한 앱의 로그 창을 엽니다", bundle: .module)
   }
+
+  static var viewLogUnavailableHelp: String {
+    String(localized: "SimLauncher 로 이 기기에 앱을 설치하고 실행하면 로그를 볼 수 있습니다", bundle: .module)
+  }
 }

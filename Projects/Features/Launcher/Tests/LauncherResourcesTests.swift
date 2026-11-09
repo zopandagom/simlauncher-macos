@@ -431,7 +431,7 @@ enum LauncherTextCatalog {
     texts += [LauncherText.message(for: ScreenshotFailure.simulator(.deviceNotBooted))]
     texts += [LauncherText.screenshotButton, LauncherText.screenshotHelp, LauncherText.takingScreenshotLabel]
     texts += self.recordingTexts
-    texts += [LauncherText.viewLogButton, LauncherText.viewLogHelp]
+    texts += [LauncherText.viewLogButton, LauncherText.viewLogHelp, LauncherText.viewLogUnavailableHelp]
     texts += [
       LauncherText.okButton, LauncherText.unavailableLabel, LauncherText.bootButton, LauncherText.shutdownButton,
       LauncherText.loading, LauncherText.loadFailedTitle, LauncherText.refreshButton, LauncherText.retryButton,
