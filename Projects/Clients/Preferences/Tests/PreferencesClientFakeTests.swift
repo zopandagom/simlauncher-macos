@@ -113,3 +113,74 @@ struct PreferencesClientFakeAndroidTests {
     ])
   }
 }
+
+struct PreferencesClientFakeLogFilterTests {
+  static func filter(_ name: String, text: String = "x") -> SavedLogFilter {
+    SavedLogFilter(
+      name: name,
+      conditions: [SavedLogFilter.Condition(kind: .contains, text: text, isExcluded: false)],
+      isCaseSensitive: false
+    )!
+  }
+
+  @Test("Fake 로그 필터 저장·덮어쓰기·삭제는 Impl 과 같은 판정이고 호출을 기록한다")
+  func saveReplaceRemove() throws {
+    let fake = PreferencesClientFake(logFilters: [Self.filter("Errors"), Self.filter("b")])
+
+    #expect(fake.savedLogFilters() == SavedLogFilterSetting(
+      filters: [Self.filter("Errors"), Self.filter("b")],
+      isLocked: false
+    ))
+    #expect(throws: PreferencesError.duplicate) {
+      try fake.saveLogFilter(Self.filter(" errors "), replacingSameName: false)
+    }
+    let replaced = try fake.saveLogFilter(Self.filter("errors", text: "new"), replacingSameName: true)
+    #expect(replaced.filters == [Self.filter("errors", text: "new"), Self.filter("b")])
+    let appended = try fake.saveLogFilter(Self.filter("c"), replacingSameName: false)
+    #expect(appended.filters.map(\.name) == ["errors", "b", "c"])
+    let removed = try fake.removeLogFilter(named: "B")
+    #expect(removed.filters.map(\.name) == ["errors", "c"])
+    #expect(try fake.removeLogFilter(named: "missing").filters.map(\.name) == ["errors", "c"])
+
+    #expect(fake.calls == [
+      .savedLogFilters,
+      .saveLogFilter("errors", replacingSameName: false),
+      .saveLogFilter("errors", replacingSameName: true),
+      .saveLogFilter("c", replacingSameName: false),
+      .removeLogFilter("B"),
+      .removeLogFilter("missing"),
+    ])
+  }
+
+  @Test("Fake 는 잠김이면 locked, 50개면 limitReached, 읽지 못한 항목(nil)을 보존한다")
+  func lockedLimitAndUnreadable() throws {
+    let fifty: [SavedLogFilter?] = (0 ..< 50).map { Self.filter("f\($0)") }
+    let fake = PreferencesClientFake(logFilters: [nil] + fifty)
+
+    #expect(throws: PreferencesError.limitReached) {
+      try fake.saveLogFilter(Self.filter("new"), replacingSameName: false)
+    }
+    _ = try fake.saveLogFilter(Self.filter("F0", text: "new"), replacingSameName: true)
+    #expect(fake.storedLogFilters.first == .some(nil))
+    #expect(fake.storedLogFilters[1] == Self.filter("F0", text: "new"))
+
+    fake.setStoredLogFilters([Self.filter("a"), nil], isLocked: true)
+    #expect(fake.savedLogFilters() == SavedLogFilterSetting(filters: [Self.filter("a")], isLocked: true))
+    #expect(throws: PreferencesError.locked) { try fake.saveLogFilter(Self.filter("b"), replacingSameName: false) }
+    #expect(throws: PreferencesError.locked) { try fake.removeLogFilter(named: "a") }
+    #expect(fake.storedLogFilters == [Self.filter("a"), nil])
+    #expect(fake.storedLogFiltersLocked)
+
+    fake.setStoredLogFilters([nil, Self.filter("a"), nil], isLocked: false)
+    _ = try fake.removeLogFilter(named: "a")
+    #expect(fake.storedLogFilters == [nil, nil])
+  }
+
+  @Test("샘플 필터는 규칙을 지키고 이름이 서로 다르다")
+  func samples() {
+    let samples: [SavedLogFilter] = [.sampleErrors, .sampleHTTP, .sampleInvalidRegex]
+    #expect(SavedLogFilterList.visible(samples) == samples)
+    #expect(SavedLogFilter.sampleHTTP.isCaseSensitive)
+    #expect(SavedLogFilter.sampleInvalidRegex.conditions.first?.kind == .regex)
+  }
+}

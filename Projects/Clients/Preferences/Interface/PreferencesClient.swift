@@ -1,7 +1,7 @@
 import Core
 
 /// 사용자 설정 (UserDefaults 표준 도메인 = 앱 번들 ID): 빌드 카탈로그 주소 목록(`CatalogURLs`), Android SDK 위치(`AndroidSDKPath`),
-/// 동의한 Android SDK 라이선스 원문의 지문(`AcceptedAndroidLicenses`). 설정 저장은 이 Client 의 Impl 에서만 한다
+/// 동의한 Android SDK 라이선스 원문의 지문(`AcceptedAndroidLicenses`), 저장한 로그 필터(`LogFilters`). 설정 저장은 이 Client 의 Impl 에서만 한다
 /// (lint `preferences_only_in_preferences_impl`). 관리자가 `defaults write`·MDM 으로 미리 넣은 값도 같은 도메인·키라 그대로 읽는다.
 /// 관리자가 강제한 키(구성 프로필 등, `objectIsForced`)는 잠김이고 쓰지 않는다. 모든 메서드는 동기이고 빠르다
 /// (UserDefaults 는 프로세스 안 캐시라 async 로 두면 Model 의 await 지점만 는다).
@@ -30,4 +30,18 @@ public protocol PreferencesClient: Sendable {
 
   /// 최신 값을 다시 읽어 없는 지문만 더해 저장한다 (더할 것이 없으면 쓰지 않는다). 잠겼으면 `.locked` 이고 쓰지 않는다.
   func addAcceptedAndroidLicenses(_ fingerprints: Set<String>) throws(PreferencesError)
+
+  /// 저장된 로그 필터(키 `LogFilters`, 사전 배열)의 읽은 항목과 잠금 여부. 키가 없거나 배열이 아니면 빈 목록.
+  /// 읽을 수 없는 항목은 목록에 없다 (docs/CATALOG.md 9절).
+  func savedLogFilters() -> SavedLogFilterSetting
+
+  /// 최신 값을 다시 읽어 잠겼으면 `.locked`. 같은 이름(대소문자 무시)이 있으면 `replacingSameName` 이 거짓이면 `.duplicate`,
+  /// 참이면 그 자리를 바꾼다(이름 표기도 새 값). 없으면 보이는 목록이 상한이면 `.limitReached`, 아니면 끝에 붙인다.
+  /// 읽을 수 없는 항목은 같은 자리에 그대로 둔다. 저장 뒤 목록을 돌려준다 (Core `SavedLogFilterList.saveChange`).
+  func saveLogFilter(_ filter: SavedLogFilter, replacingSameName: Bool) throws(PreferencesError)
+    -> SavedLogFilterSetting
+
+  /// 최신 값을 다시 읽어 잠겼으면 `.locked`, 아니면 같은 이름(대소문자 무시)의 읽은 항목을 모두 지운다
+  /// (없으면 쓰지 않는다). 읽을 수 없는 항목은 그대로 둔다. 지운 뒤 목록을 돌려준다.
+  func removeLogFilter(named name: String) throws(PreferencesError) -> SavedLogFilterSetting
 }

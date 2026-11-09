@@ -8,6 +8,9 @@ import Synchronization
 /// "화면이 읽은 뒤 바깥에서 잠김·중복" 은 `setStored(urls:isLocked:)` 로 만든다 (오류를 억지로 내는 설정은 두지 않는다).
 /// Android SDK 위치·라이선스 지문도 메모리에 두고 Impl 과 같이 잠김이면 `.locked` 이고 쓰지 않는다.
 /// 바깥 변경은 `setStoredAndroidSDKPath(_:)`·`setStoredAndroidLicenses(_:isLocked:)` 로 만든다.
+/// 저장한 로그 필터는 저장 배열처럼 항목 목록(nil = 읽지 못한 항목)으로 두고 Impl 과 같은 Core 규칙(`SavedLogFilterList`)으로 판정한다:
+/// 잠김이면 `.locked`, 같은 이름을 덮어쓰지 않으면 `.duplicate`, 상한이면 `.limitReached`, nil 항목은 같은 자리에 그대로 남긴다.
+/// 바깥 변경은 `setStoredLogFilters(_:isLocked:)` 로 만든다.
 public final class PreferencesClientFake: PreferencesClient {
   public enum Call: Hashable, Sendable {
     case catalogURLs
@@ -18,6 +21,10 @@ public final class PreferencesClientFake: PreferencesClient {
     case setAndroidSDKPath(String?)
     case acceptedAndroidLicenses
     case addAcceptedAndroidLicenses(Set<String>)
+    case savedLogFilters
+    /// 저장한 필터의 이름 (자른 값).
+    case saveLogFilter(String, replacingSameName: Bool)
+    case removeLogFilter(String)
   }
 
   private struct State {
@@ -26,6 +33,8 @@ public final class PreferencesClientFake: PreferencesClient {
     var androidSDKPath: AndroidSDKPathSetting = .absent
     var androidLicenses: Set<String> = []
     var androidLicensesLocked = false
+    var logFilters: [SavedLogFilter?] = []
+    var logFiltersLocked = false
   }
 
   private let state: Mutex<State>
@@ -43,6 +52,12 @@ public final class PreferencesClientFake: PreferencesClient {
     self.init()
     self.setStoredAndroidSDKPath(androidSDKPath)
     self.setStoredAndroidLicenses(androidLicenses, isLocked: androidLicensesLocked)
+  }
+
+  /// 저장된 로그 필터 항목(nil = 읽지 못한 항목)과 잠금을 정해 만든다.
+  public convenience init(logFilters: [SavedLogFilter?], logFiltersLocked: Bool = false) {
+    self.init()
+    self.setStoredLogFilters(logFilters, isLocked: logFiltersLocked)
   }
 
   /// 들어온 호출 순서대로.
@@ -80,6 +95,24 @@ public final class PreferencesClientFake: PreferencesClient {
     self.state.withLock { state in
       state.androidLicenses = fingerprints
       state.androidLicensesLocked = isLocked
+    }
+  }
+
+  /// 지금 저장된 로그 필터 항목, 저장 순서 (기록하지 않는다).
+  public var storedLogFilters: [SavedLogFilter?] {
+    self.state.withLock { $0.logFilters }
+  }
+
+  /// 지금 로그 필터 키가 잠겼는지 (기록하지 않는다).
+  public var storedLogFiltersLocked: Bool {
+    self.state.withLock { $0.logFiltersLocked }
+  }
+
+  /// 바깥 변경(`defaults write`·MDM)을 흉내 낸다. 기록하지 않는다.
+  public func setStoredLogFilters(_ items: [SavedLogFilter?], isLocked: Bool) {
+    self.state.withLock { state in
+      state.logFilters = items
+      state.logFiltersLocked = isLocked
     }
   }
 
@@ -150,6 +183,50 @@ public final class PreferencesClientFake: PreferencesClient {
         throw .locked
       }
       current.androidLicenses.formUnion(fingerprints)
+    }
+  }
+
+  public func savedLogFilters() -> SavedLogFilterSetting {
+    self.state.withLock { state in
+      state.calls.append(.savedLogFilters)
+      return SavedLogFilterSetting(
+        filters: SavedLogFilterList.visible(state.logFilters),
+        isLocked: state.logFiltersLocked
+      )
+    }
+  }
+
+  public func saveLogFilter(
+    _ filter: SavedLogFilter,
+    replacingSameName: Bool
+  ) throws(PreferencesError) -> SavedLogFilterSetting {
+    try self.state.withLock { (current: inout State) throws(PreferencesError) -> SavedLogFilterSetting in
+      current.calls.append(.saveLogFilter(filter.name, replacingSameName: replacingSameName))
+      guard !current.logFiltersLocked else {
+        throw .locked
+      }
+      switch SavedLogFilterList.saveChange(filter, replacingSameName: replacingSameName, in: current.logFilters) {
+      case let .success(change):
+        current.logFilters = change.applied(to: current.logFilters) { $0 }
+      case .failure(.sameName):
+        throw .duplicate
+      case .failure(.limitReached):
+        throw .limitReached
+      }
+      return SavedLogFilterSetting(filters: SavedLogFilterList.visible(current.logFilters), isLocked: false)
+    }
+  }
+
+  public func removeLogFilter(named name: String) throws(PreferencesError) -> SavedLogFilterSetting {
+    try self.state.withLock { (current: inout State) throws(PreferencesError) -> SavedLogFilterSetting in
+      current.calls.append(.removeLogFilter(name))
+      guard !current.logFiltersLocked else {
+        throw .locked
+      }
+      if let change = SavedLogFilterList.removeChange(named: name, in: current.logFilters) {
+        current.logFilters = change.applied(to: current.logFilters) { $0 }
+      }
+      return SavedLogFilterSetting(filters: SavedLogFilterList.visible(current.logFilters), isLocked: false)
     }
   }
 }
