@@ -3,6 +3,8 @@ import AndroidEmulatorInterface
 import AndroidEmulatorTesting
 import AndroidPackageInterface
 import AndroidPackageTesting
+import AppLogInterface
+import AppLogTesting
 import Core
 import DownloadInterface
 import DownloadTesting
@@ -18,6 +20,8 @@ import WorkspaceTesting
 /// (v2 카탈로그·v1 카탈로그·iOS 앱만 있는 v2 카탈로그, 장면에 따라 받지 못하는 주소)를 주입한다.
 /// "스크린샷"·"녹화" 는 `WorkspaceClientFake`(파일을 만들지 않고 가짜 폴더 이름만 예약한다)와 Fake 의 찍기·녹화(파일을 쓰지 않는다.
 /// 녹화는 "중지" 를 누를 때까지 이어진다)로 돈다. Finder 는 열지 않는다.
+/// 앱 실행(설치 후 실행·"앱 실행…")은 로그 받기 대신 `AppLogClientFake`(1초 지연, 장면에 따라 실패)로 돌고, 실행한 기기는 행
+/// "로그 보기" 가 눌린다 (이 데모에는 로그 창이 없어 눌러도 창이 열리지 않는다).
 /// 파일·명령·네트워크를 쓰지 않으므로 아무것도 켜거나 만들거나 설치하지 않는다 (Fake 의 목록만 바뀐다).
 /// 앱 설치(파일·URL·카탈로그)·실행·링크 열기·스크린샷·녹화는 켜진 기기("Pixel Tablet")에서 해 본다.
 /// 왼쪽 목록에서 상태를 고른다. "Android 도구" 버튼은 App 이 도구 화면을 여는 대신 아래 줄에 누른 횟수를 보인다.
@@ -167,16 +171,25 @@ enum DemoScenario: String, CaseIterable, Hashable {
     let workspace = WorkspaceClientFake()
     self.configure(workspace)
     let appSheetsBox = DemoAppSheetsBox()
+    let launchError = self.launchError
+    let appLog = AppLogClientFake(androidLaunchHandler: { _, _ throws(AppLogLaunchError) in
+      try? await Task.sleep(for: .seconds(1))
+      if let launchError {
+        throw launchError
+      }
+    })
     let devices = AndroidDevicesModel(
       emulator: fake,
       package: package,
       download: download,
+      appLog: appLog,
       workspace: workspace,
       setupRequested: setupRequested,
       appSheetPresented: { appSheetsBox.model?.hasPresentedSheet ?? false }
     )
     let appSheets = AndroidAppSheetsModel(
       emulator: fake,
+      appLog: appLog,
       target: { id, task in devices.appSheetTarget(id, for: task) },
       launchRequested: { request in await devices.launchAppRequested(request) },
       openURLRequested: { request in await devices.openURLRequested(request) }
@@ -295,20 +308,25 @@ enum DemoScenario: String, CaseIterable, Hashable {
     }
   }
 
+  /// 앱 실행(로그 받기와 함께)이 던질 실패.
+  private var launchError: AppLogLaunchError? {
+    switch self {
+    case .launchAfterInstallFailure: .noLauncherActivity
+    case .launchFailure: .appNotInstalled
+    default: nil
+    }
+  }
+
   private func configureAppOperations(_ fake: AndroidEmulatorClientFake) {
     switch self {
     case .slowInstall:
       fake.suspendInstalls()
     case .installFailure:
       fake.setInstallError(.installFailed(.updateIncompatible))
-    case .launchAfterInstallFailure:
-      fake.setLaunchError(.launchFailed(.noLauncherActivity))
     case .noInstalledPackages:
       fake.setInstalledPackages(.success([]))
     case .packageListFailure:
       fake.setInstalledPackages(.failure(.deviceNotBooted))
-    case .launchFailure:
-      fake.setLaunchError(.launchFailed(.notInstalled))
     case .urlNotHandled:
       fake.setOpenURLError(.urlNotHandled)
     default:

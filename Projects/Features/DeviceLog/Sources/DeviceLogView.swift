@@ -95,7 +95,7 @@ public struct DeviceLogView: View {
         Spacer()
       }
       if case let .failed(error) = window.relaunch {
-        Text(DeviceLogText.relaunchFailed(error))
+        Text(DeviceLogText.relaunchFailed(error, platform: self.target.platform))
           .foregroundStyle(.red)
           .fixedSize(horizontal: false, vertical: true)
       }
@@ -106,7 +106,7 @@ public struct DeviceLogView: View {
     HStack(spacing: 4) {
       Image(systemName: state == .receiving ? "dot.radiowaves.left.and.right" : "stop.circle")
         .foregroundStyle(state == .receiving ? Color.green : Color.secondary)
-      Text(DeviceLogText.state(state))
+      Text(DeviceLogText.state(state, platform: self.target.platform))
         .foregroundStyle(.secondary)
     }
   }

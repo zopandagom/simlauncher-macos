@@ -1,4 +1,5 @@
 import AppLogInterface
+import Core
 import Foundation
 
 /// 로그 창 문구. 모두 이 모듈의 `Localizable.xcstrings` 에서 찾는다 (`bundle: .module`).
@@ -36,15 +37,18 @@ enum DeviceLogText {
     String(localized: "받는 중", bundle: .module)
   }
 
-  /// 상태 글자. 끝났으면 이유를 붙인다.
-  static func state(_ state: AppLogSessionState) -> String {
+  /// 상태 글자. 끝났으면 이유를 붙인다. Android 의 `.deviceShutDown` 은 adb 연결이 끊긴 경우도 포함해 문구가 다르다.
+  static func state(_ state: AppLogSessionState, platform: AppLogTarget.Platform) -> String {
     switch state {
     case .receiving:
       self.receiving
     case .ended(.appExited):
       String(localized: "끝남 — 앱이 끝났습니다", bundle: .module)
     case .ended(.deviceShutDown):
-      String(localized: "끝남 — 기기가 꺼졌습니다", bundle: .module)
+      switch platform {
+      case .iOS: String(localized: "끝남 — 기기가 꺼졌습니다", bundle: .module)
+      case .android: String(localized: "끝남 — 기기가 꺼졌거나 연결이 끊겼습니다", bundle: .module)
+      }
     case .ended(.replaced):
       String(localized: "끝남 — SimLauncher 가 앱을 다시 설치·실행했습니다", bundle: .module)
     case .ended(.stopped):
@@ -60,13 +64,17 @@ enum DeviceLogText {
     String(localized: "켜진 기기에서 이 앱을 다시 실행하고 새 로그를 받습니다. 기기를 켜지는 않습니다.", bundle: .module)
   }
 
-  static func relaunchFailed(_ error: AppLogLaunchError) -> String {
+  /// 다시 실행 실패 문구. 개발 도구 문구만 플랫폼별이고, Android 전용 케이스는 iOS 에서 나오지 않아 플랫폼을 보지 않는다.
+  static func relaunchFailed(_ error: AppLogLaunchError, platform: AppLogTarget.Platform) -> String {
     switch error {
     case .developerToolsUnavailable:
-      String(
-        localized: "Xcode 를 찾지 못했거나 아직 준비되지 않아 다시 실행하지 못했습니다. 메인 창 오른쪽 위 개발 환경을 눌러 준비를 마친 뒤 다시 시도하세요.",
-        bundle: .module
-      )
+      self.developerToolsUnavailable(platform: platform)
+    case .deviceUnavailable:
+      String(localized: "이 기기를 지금 쓸 수 없어 다시 실행하지 못했습니다. 기기 목록에서 이유를 확인하세요.", bundle: .module)
+    case .noLauncherActivity:
+      String(localized: "이 앱에는 홈 화면에서 여는 화면이 없어 실행할 수 없습니다.", bundle: .module)
+    case .adbUnavailable:
+      String(localized: "기기 상태를 확인하지 못했습니다. 잠시 뒤 다시 시도하세요.", bundle: .module)
     case .deviceNotFound:
       String(localized: "기기를 찾지 못해 다시 실행하지 못했습니다. 기기 목록에 이 기기가 있는지 확인하세요.", bundle: .module)
     case .deviceNotBooted:
@@ -83,6 +91,21 @@ enum DeviceLogText {
     case .sessionNotFound:
       String(
         localized: "이 실행의 기록이 정리되어 다시 실행할 수 없습니다. 기기 목록에서 앱을 다시 설치하세요.",
+        bundle: .module
+      )
+    }
+  }
+
+  private static func developerToolsUnavailable(platform: AppLogTarget.Platform) -> String {
+    switch platform {
+    case .iOS:
+      String(
+        localized: "Xcode 를 찾지 못했거나 아직 준비되지 않아 다시 실행하지 못했습니다. 메인 창 오른쪽 위 개발 환경을 눌러 준비를 마친 뒤 다시 시도하세요.",
+        bundle: .module
+      )
+    case .android:
+      String(
+        localized: "Android 도구를 찾지 못해 다시 실행하지 못했습니다. 메인 창 Android 칸 오른쪽 위 Android 도구에서 상태를 확인하세요.",
         bundle: .module
       )
     }
@@ -142,16 +165,28 @@ enum DeviceLogText {
     String(localized: "정규식을 읽을 수 없습니다. 바로 앞 결과를 보이고 있습니다.", bundle: .module)
   }
 
-  /// 필터 도움말. 여러 줄 print 는 줄마다 따로 오고 머리말이 없다 (2026-11-03 실측).
-  static var filterHelp: String {
-    String(
-      // 키가 한 줄 길이 제한을 넘어 줄 끝 `\` 로 이어 쓴다 (키는 한 줄이다).
-      localized: """
-      포함 조건은 하나라도 맞으면 보이고, 제외 조건이 맞으면 숨깁니다. 여러 줄 print 는 줄마다 따로 걸러집니다\
-      (Logger·NSLog 머리말은 첫 줄에만 붙습니다). '시작' 은 머리말 뒤 메시지와 비교합니다.
-      """,
-      bundle: .module
-    )
+  /// 필터 도움말. iOS: 여러 줄 print 는 줄마다 따로 오고 머리말이 없다 (2026-11-03 실측).
+  /// Android: "시작" 은 threadtime 머리말(시각·pid·tid·레벨) 뒤 태그부터 비교한다 (`LogLineHeader`).
+  static func filterHelp(platform: AppLogTarget.Platform) -> String {
+    switch platform {
+    case .iOS:
+      String(
+        // 키가 한 줄 길이 제한을 넘어 줄 끝 `\` 로 이어 쓴다 (키는 한 줄이다).
+        localized: """
+        포함 조건은 하나라도 맞으면 보이고, 제외 조건이 맞으면 숨깁니다. 여러 줄 print 는 줄마다 따로 걸러집니다\
+        (Logger·NSLog 머리말은 첫 줄에만 붙습니다). '시작' 은 머리말 뒤 메시지와 비교합니다.
+        """,
+        bundle: .module
+      )
+    case .android:
+      String(
+        localized: """
+        포함 조건은 하나라도 맞으면 보이고, 제외 조건이 맞으면 숨깁니다. \
+        '시작' 은 시각·pid·tid·레벨 뒤의 태그부터 비교합니다.
+        """,
+        bundle: .module
+      )
+    }
   }
 
   // MARK: - 창 아래

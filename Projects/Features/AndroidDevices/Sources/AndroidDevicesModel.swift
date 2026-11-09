@@ -1,5 +1,6 @@
 import AndroidEmulatorInterface
 import AndroidPackageInterface
+import AppLogInterface
 import Core
 import DownloadInterface
 import Foundation
@@ -17,7 +18,8 @@ import WorkspaceInterface
 /// 받기는 Model 이 소유하고 행에 진행·취소)를 설치·실행하고(툴바 "선택한 기기에 앱 설치" 는 고른 기기 중 켜진 기기에 한 번 받고
 /// 검사해 동시에 설치하고 결과를 알림 하나에 모은다), 설치한 앱을 골라 실행하고, 링크를 연다 (앱 실행·링크 열기 시트는
 /// `AndroidAppSheetsModel` 에 있고, 확정한 요청을 App 이 넘긴다). Client 호출은 흐름 타입이 맡는다: 기기 명령은
-/// `AndroidDeviceCommandFlow`, 앱 작업은 `AndroidAppInstallFlow`, 스크린샷·녹화(예약·찍기·녹화·보이기)는 `AndroidScreenCaptureFlow`.
+/// `AndroidDeviceCommandFlow`, 앱 작업은 `AndroidAppInstallFlow`(실행은 앱 로그 받기와 함께, `appLog` 는 넘기기만 한다),
+/// 스크린샷·녹화(예약·찍기·녹화·보이기)는 `AndroidScreenCaptureFlow`.
 /// 녹화는 Model 이 소유한 Task 로 돌고, 녹화 중인 기기는 끄기·삭제·초기화를 막으며, 다시 읽은 목록에서 없거나 꺼졌으면 멈춘다.
 /// Android 도구(SDK) 상태 확인·설치는 여기서 하지 않고, "Android 도구" 버튼으로 App 에 도구 화면을 요청한다. 도구를 쓸 수 없으면
 /// 목록은 잠금 파일만으로 읽혀(`isSDKUnavailable`) 꺼진 기기의 삭제만 되고, 목록 위 안내 줄이 도구 화면으로 이끈다.
@@ -99,6 +101,7 @@ public final class AndroidDevicesModel {
     emulator: any AndroidEmulatorClient,
     package: any AndroidPackageClient,
     download: any DownloadClient,
+    appLog: any AppLogClient,
     workspace: any WorkspaceClient,
     setupRequested: @escaping @MainActor () -> Void = {},
     appSheetPresented: @escaping @MainActor () -> Bool = { false },
@@ -108,7 +111,7 @@ public final class AndroidDevicesModel {
     self.emulator = emulator
     self.download = download
     self.commandFlow = AndroidDeviceCommandFlow(emulator: emulator)
-    self.appFlow = AndroidAppInstallFlow(emulator: emulator, package: package, download: download)
+    self.appFlow = AndroidAppInstallFlow(emulator: emulator, package: package, download: download, appLog: appLog)
     self.captureFlow = AndroidScreenCaptureFlow(emulator: emulator, workspace: workspace, now: now)
     self.setupRequested = setupRequested
     self.appSheetPresented = appSheetPresented
@@ -360,8 +363,8 @@ public extension AndroidDevicesModel {
 
   // MARK: - 앱 실행·링크 열기
 
-  /// App 이 `AndroidAppSheetsModel` 의 "실행" 요청을 넘긴다. 고른 앱을 실행한 뒤 다시 읽는다. 기기는 시트를 연 사이 바뀌었을
-  /// 수 있어 지금 목록으로 다시 확인한다 (명령 전 거절은 다시 읽지 않는다).
+  /// App 이 `AndroidAppSheetsModel` 의 "실행" 요청을 넘긴다. 고른 앱을 로그 받기와 함께(떠 있으면 끄고 새로) 실행한 뒤 다시 읽는다.
+  /// 기기는 시트를 연 사이 바뀌었을 수 있어 지금 목록으로 다시 확인한다 (명령 전 거절은 다시 읽지 않는다).
   func launchAppRequested(_ request: AndroidLaunchAppRequest) async {
     guard let device = self.appFlow.target(request.deviceID, host: self.appHost, failed: {
       .launchFailed(request.device, $0)

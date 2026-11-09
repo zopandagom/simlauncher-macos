@@ -12,9 +12,9 @@ public struct AppLogSessionID: Hashable, Sendable {
 
 /// 세션이 끝난 이유.
 public enum AppLogEndReason: Hashable, Sendable {
-  /// 앱이 끝났다 (종료·크래시·Simulator 에서 닫기. simctl 은 원인을 알려 주지 않는다).
+  /// 앱이 끝났다 (종료·크래시·Simulator 에서 닫기. simctl 은 원인을 알려 주지 않는다). Android 는 메인 프로세스가 끝남.
   case appExited
-  /// 기기가 꺼졌거나(끄는 중 포함) 목록에서 사라졌다.
+  /// 기기가 꺼졌거나(끄는 중 포함) 목록에서 사라졌다. Android 는 adb 연결이 끊긴 경우 포함.
   case deviceShutDown
   /// SimLauncher 가 같은 기기에서 같은 앱을 다시 설치하거나 실행해 끝났다.
   case replaced

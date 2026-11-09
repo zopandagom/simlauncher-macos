@@ -99,7 +99,12 @@ struct AndroidDevicesBatchDownloadTests: AndroidDevicesTesting {
   @Test("막 끝난 성공 뒤 취소가 이기면(여러 대) 받은 파일을 한 번 지우고 알림·검사 없이 끝난다 (흐름)")
   func lateCancelRemovesFileOnce() async {
     let setup = await Self.loadedFixture(Self.inventory)
-    let flow = AndroidAppInstallFlow(emulator: setup.fake, package: setup.package, download: setup.download)
+    let flow = AndroidAppInstallFlow(
+      emulator: setup.fake,
+      package: setup.package,
+      download: setup.download,
+      appLog: setup.appLog
+    )
     let enqueued = Counter()
     let host = AndroidAppInstallFlow.Host(
       enqueue: { _ in enqueued.increment() },

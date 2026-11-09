@@ -1,11 +1,15 @@
 import Foundation
 
-/// 로그 줄 앞의 머리말(시각·프로세스 이름·[pid:스레드]) 뒤 메시지가 시작하는 곳. 필터의 "시작" 조건이 이 뒤와 비교한다.
-/// 머리말 형식 (Xcode 27·iOS 27 시뮬레이터 실측, 2026-11-03):
+/// 로그 줄 앞의 머리말 뒤 메시지가 시작하는 곳. 필터의 "시작" 조건이 이 뒤와 비교한다.
+/// iOS 머리말(시각·프로세스 이름·[pid:스레드]) 형식 (Xcode 27·iOS 27 시뮬레이터 실측, 2026-11-03):
 /// - `OS_ACTIVITY_DT_MODE` 켬 (Logger·NSLog):
 ///   `2026-11-03 15:58:29.655736+0900 LogProbe[82561:42341349] [probe] logger default hello`
 /// - DT_MODE 없는 NSLog: `2026-11-03 15:58:08.123 LogProbe[82449:42340721] nslog hello 1`
 /// 프로세스 이름에는 공백이 들 수 있다. Logger 의 카테고리(`[probe] `)는 메시지에 남긴다. print 줄에는 머리말이 없다.
+/// Android logcat `-v threadtime` 머리말(시각·pid·tid·레벨, API 37 에뮬레이터 실측, 2026-11-09):
+///   `11-09 14:13:30.242  4750  4759 I ncher.sampleapp: Compiler allocated …` 의 `I ` 까지. pid·tid 는 오른쪽 맞춤이라 앞 공백 수가
+/// 다르다.
+/// 태그(`ncher.sampleapp: `)는 iOS 카테고리처럼 메시지에 남긴다 ("시작" 을 태그로 걸 수 있게).
 enum LogLineHeader {
   /// 머리말이 없으면 줄 처음.
   static func messageStart(in text: String) -> String.Index {
@@ -26,7 +30,9 @@ enum LogLineHeader {
   private static let maxHeaderLength = 512
 
   /// 고정 패턴이라 만들기에 실패하지 않는다 (테스트가 머리말을 찾는 것으로 확인한다). 실패하면 머리말 없음으로 본다.
+  /// 앞은 iOS, 뒤는 Android threadtime. iOS 줄은 연도 넷으로 시작해 뒤 갈래(`MM-`)에 맞지 않는다.
   private static let pattern = try? NSRegularExpression(
-    pattern: #"\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d+(?:[+-]\d{4})? .+?\[\d+:[0-9A-Fa-f]+\] "#
+    pattern: #"(?:\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d+(?:[+-]\d{4})? .+?\[\d+:[0-9A-Fa-f]+\] "#
+      + #"|\d\d-\d\d \d\d:\d\d:\d\d\.\d{3} +\d+ +\d+ [A-Z] )"#
   )
 }

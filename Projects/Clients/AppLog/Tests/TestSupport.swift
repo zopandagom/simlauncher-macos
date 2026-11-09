@@ -1,3 +1,5 @@
+import AndroidEmulatorInterface
+import AndroidEmulatorTesting
 import AppLogInterface
 import Core
 import Foundation
@@ -101,6 +103,100 @@ final class ConsoleRun: Sendable {
   }
 }
 
+/// `AndroidEmulatorClientFake` 의 logcat 처리기로, 실행(`launchWithLogcat`)마다 테스트가 알림과 끝을 정한다.
+/// 받기 Task 가 취소되면 그 실행은 `.stopped` 로 끝난다 (`stopAll` 흉내).
+final class LogcatDriver: Sendable {
+  private let runs = Mutex<[LogcatRun]>([])
+
+  init(_ emulator: AndroidEmulatorClientFake) {
+    emulator.setLogcatHandler { [self] package, device, emit throws(AndroidEmulatorError) in
+      let run = LogcatRun(package: package, device: device, emitter: emit)
+      self.runs.withLock { $0.append(run) }
+      let result = await withTaskCancellationHandler {
+        await run.wait()
+      } onCancel: {
+        run.cancelled()
+      }
+      return try result.get()
+    }
+  }
+
+  var count: Int {
+    self.runs.withLock { $0.count }
+  }
+
+  /// `index` 번째 실행이 들어올 때까지 기다린다.
+  func run(_ index: Int) async throws -> LogcatRun {
+    try await waitUntil { self.count > index }
+    return self.runs.withLock { $0[index] }
+  }
+}
+
+/// `LogcatDriver` 가 받은 실행 하나.
+final class LogcatRun: Sendable {
+  private struct State {
+    var waiter: CheckedContinuation<Result<AndroidLogcatEnd, AndroidEmulatorError>, Never>?
+    var result: Result<AndroidLogcatEnd, AndroidEmulatorError>?
+    var wasCancelled = false
+  }
+
+  let package: AndroidPackageName
+  let device: AndroidVirtualDevice.ID
+  private let emitter: @Sendable (AndroidLogcatEvent) async -> Void
+  private let state = Mutex(State())
+
+  init(
+    package: AndroidPackageName,
+    device: AndroidVirtualDevice.ID,
+    emitter: @escaping @Sendable (AndroidLogcatEvent) async -> Void
+  ) {
+    self.package = package
+    self.device = device
+    self.emitter = emitter
+  }
+
+  var wasCancelled: Bool {
+    self.state.withLock { $0.wasCancelled }
+  }
+
+  func emit(_ event: AndroidLogcatEvent) async {
+    await self.emitter(event)
+  }
+
+  /// 실행을 끝낸다. 두 번째부터는 무시한다.
+  func finish(_ result: Result<AndroidLogcatEnd, AndroidEmulatorError>) {
+    typealias Waiter = CheckedContinuation<Result<AndroidLogcatEnd, AndroidEmulatorError>, Never>
+    let waiter = self.state.withLock { state -> Waiter? in
+      guard state.result == nil else { return nil }
+      state.result = result
+      let waiter = state.waiter
+      state.waiter = nil
+      return waiter
+    }
+    waiter?.resume(returning: result)
+  }
+
+  func cancelled() {
+    self.state.withLock { $0.wasCancelled = true }
+    self.finish(.success(.stopped))
+  }
+
+  func wait() async -> Result<AndroidLogcatEnd, AndroidEmulatorError> {
+    await withCheckedContinuation { continuation in
+      let ready = self.state.withLock { state -> Result<AndroidLogcatEnd, AndroidEmulatorError>? in
+        if let result = state.result {
+          return result
+        }
+        state.waiter = continuation
+        return nil
+      }
+      if let ready {
+        continuation.resume(returning: ready)
+      }
+    }
+  }
+}
+
 /// 스트림을 끝까지 모은다.
 final class Collector<Element: Sendable>: Sendable {
   private struct State {
@@ -155,9 +251,15 @@ func waitUntil(_ condition: @Sendable () -> Bool) async throws {
 struct AppLogFixture {
   static let app = AppBundleID("dev.simlauncher.logprobe")!
   static let otherApp = AppBundleID("com.example.other")!
+  static let package = AndroidPackageName("dev.simlauncher.sample")!
+  static let otherPackage = AndroidPackageName("com.example.other")!
+  static let avd = AndroidVirtualDevice.ID("Android_Device")
+  static let otherAVD = AndroidVirtualDevice.ID("Pixel_Tablet")
 
   let simulator: SimulatorClientFake
   let console: ConsoleDriver
+  let emulator: AndroidEmulatorClientFake
+  let logcat: LogcatDriver
   let client: AppLogClientImpl
 
   init(
@@ -168,8 +270,11 @@ struct AppLogFixture {
   ) {
     self.simulator = SimulatorClientFake(inventory: inventory)
     self.console = ConsoleDriver(self.simulator)
+    self.emulator = AndroidEmulatorClientFake()
+    self.logcat = LogcatDriver(self.emulator)
     self.client = AppLogClientImpl(
       simulator: self.simulator,
+      androidEmulator: self.emulator,
       limits: limits,
       flushInterval: flushInterval,
       launchSignalTimeout: launchSignalTimeout
@@ -195,6 +300,29 @@ struct AppLogFixture {
   ) async throws -> (AppLogSessionID, ConsoleRun) {
     let task = self.launch(bundleID, on: device)
     let run = try await self.console.run(index)
+    await run.emit(.launched)
+    return try await (task.value, run)
+  }
+
+  /// Android 기기에서 실행을 요청하는 Task (기다리지 않는다).
+  func launchAndroid(
+    _ package: AndroidPackageName = Self.package,
+    on device: AndroidVirtualDevice.ID = Self.avd
+  ) -> Task<AppLogSessionID, any Error> {
+    let client = self.client
+    return Task {
+      try await client.launchAndroidApp(package, appName: package.rawValue, on: device, deviceName: "Android Device")
+    }
+  }
+
+  /// Android 실행을 요청하고 `index` 번째 logcat 실행에 `.launched` 를 보내 세션 ID 를 받는다.
+  func launchedAndroid(
+    _ package: AndroidPackageName = Self.package,
+    on device: AndroidVirtualDevice.ID = Self.avd,
+    run index: Int
+  ) async throws -> (AppLogSessionID, LogcatRun) {
+    let task = self.launchAndroid(package, on: device)
+    let run = try await self.logcat.run(index)
     await run.emit(.launched)
     return try await (task.value, run)
   }

@@ -109,11 +109,10 @@ struct AndroidEmulatorClientFakeTests {
 
     #expect(try await fake.deviceTraits(tablet) == .sample)
     try await fake.install(apk, on: tablet)
-    try await fake.launch(package, on: tablet)
     try await fake.openURL(link, on: tablet)
     #expect(try await fake.installedPackages(on: tablet).isEmpty)
     #expect(fake.calls == [
-      .deviceTraits(tablet), .install(apk, tablet), .launch(package, tablet), .openURL(link, tablet),
+      .deviceTraits(tablet), .install(apk, tablet), .openURL(link, tablet),
       .installedPackages(tablet),
     ])
 
@@ -125,10 +124,6 @@ struct AndroidEmulatorClientFakeTests {
     fake.setInstallError(.installFailed(.versionDowngrade))
     await #expect(throws: AndroidEmulatorError.installFailed(.versionDowngrade)) {
       try await fake.install(apk, on: tablet)
-    }
-    fake.setLaunchError(.launchFailed(.noLauncherActivity))
-    await #expect(throws: AndroidEmulatorError.launchFailed(.noLauncherActivity)) {
-      try await fake.launch(package, on: tablet)
     }
     fake.setOpenURLError(.urlNotHandled)
     await #expect(throws: AndroidEmulatorError.urlNotHandled) { try await fake.openURL(link, on: tablet) }
@@ -152,7 +147,6 @@ struct AndroidEmulatorClientFakeTests {
     while !(fake.calls.contains(.install(apk, tablet)) && fake.calls.contains(.installedPackages(tablet))) {
       await Task.yield()
     }
-    try await fake.launch(package, on: tablet)
     fake.setInstallError(.installTimedOut)
     fake.setInstalledPackages(.success([package]))
     fake.resumeInstalls()
@@ -161,7 +155,7 @@ struct AndroidEmulatorClientFakeTests {
     #expect(try await listing.value == [package])
   }
 
-  @Test("기기별 설정(traits·설치·실행 에러, 설치 멈춤)이 전체 설정보다 먼저이고 다른 기기는 전체 설정을 쓴다")
+  @Test("기기별 설정(traits·설치·logcat 실행 에러, 설치 멈춤)이 전체 설정보다 먼저이고 다른 기기는 전체 설정을 쓴다")
   func perDeviceSettings() async throws {
     let fake = AndroidEmulatorClientFake(inventory: .sample)
     let tablet = AndroidVirtualDevice.bootedTabletSample.id
@@ -171,7 +165,7 @@ struct AndroidEmulatorClientFakeTests {
     let older = AndroidDeviceTraits(apiLevel: 30, abis: ["x86_64"])
     fake.setDeviceTraits(.success(older), for: tablet)
     fake.setInstallError(.installFailed(.olderSDK), for: tablet)
-    fake.setLaunchError(.launchFailed(.notInstalled), for: tablet)
+    fake.setLogcatLaunchError(.launchFailed(.notInstalled), for: tablet)
     fake.setInstallError(.installTimedOut)
 
     #expect(try await fake.deviceTraits(tablet) == older)
@@ -179,9 +173,11 @@ struct AndroidEmulatorClientFakeTests {
     await #expect(throws: AndroidEmulatorError.installFailed(.olderSDK)) { try await fake.install(apk, on: tablet) }
     await #expect(throws: AndroidEmulatorError.installTimedOut) { try await fake.install(apk, on: phone) }
     await #expect(throws: AndroidEmulatorError.launchFailed(.notInstalled)) {
-      try await fake.launch(package, on: tablet)
+      _ = try await fake.launchWithLogcat(package, on: tablet) { _ in }
     }
-    try await fake.launch(package, on: phone)
+    let other = Task { try await fake.launchWithLogcat(package, on: phone) { _ in } }
+    other.cancel()
+    #expect(try await other.value == .stopped)
 
     fake.setInstallError(nil)
     fake.setDeviceTraits(nil, for: tablet)
@@ -197,91 +193,34 @@ struct AndroidEmulatorClientFakeTests {
     try await installing.value
   }
 
-  @Test("스크린샷: 기록하고 설정한 에러를 던진다, 멈춤은 재개까지 기다린다")
-  func screenshot() async throws {
+  @Test("logcat 실행: 기본은 .launched 뒤 취소까지 기다려 .stopped, 에러는 .launched 없이 던지고, 처리기가 먼저다")
+  func launchWithLogcat() async throws {
     let fake = AndroidEmulatorClientFake(inventory: .sample)
     let tablet = AndroidVirtualDevice.bootedTabletSample.id
-    let file = URL(filePath: "/Users/fake/Pictures/SimLauncher/shot.png")
+    let package = try #require(AndroidPackageName("com.example.app"))
+    let events = FakeLogcatEvents()
 
-    try await fake.screenshot(on: tablet, to: file)
-    fake.setScreenshotError(.captureFailed)
-    await #expect(throws: AndroidEmulatorError.captureFailed) { try await fake.screenshot(on: tablet, to: file) }
-    fake.setScreenshotError(nil)
-    fake.suspendScreenshots()
-    let taking = Task { try await fake.screenshot(on: tablet, to: file) }
-    while fake.calls.count < 3 {
+    let running = Task { try await fake.launchWithLogcat(package, on: tablet) { events.append($0) } }
+    while events.all.isEmpty {
       await Task.yield()
     }
-    fake.resumeScreenshots()
-    try await taking.value
-    #expect(fake.calls == Array(repeating: .screenshot(tablet, file), count: 3))
-  }
+    running.cancel()
+    #expect(try await running.value == .stopped)
+    #expect(events.all == [.launched])
 
-  @Test("녹화: 시작 신호 뒤 취소까지 기다려 saved, 멈춘 뒤 결과를 바꿀 수 있다")
-  func recordUntilCancelled() async throws {
-    let fake = AndroidEmulatorClientFake(inventory: .sample)
-    let tablet = AndroidVirtualDevice.bootedTabletSample.id
-    let file = URL(filePath: "/Users/fake/Movies/SimLauncher/rec.mp4")
-    let started = FakeStartFlag()
-
-    let recording = Task { try await fake.recordScreen(on: tablet, to: file) { started.set() } }
-    while !started.isSet {
-      await Task.yield()
+    fake.setLogcatLaunchError(.launchFailed(.noLauncherActivity))
+    await #expect(throws: AndroidEmulatorError.launchFailed(.noLauncherActivity)) {
+      _ = try await fake.launchWithLogcat(package, on: tablet) { events.append($0) }
     }
-    recording.cancel()
-    #expect(try await recording.value == .saved)
+    #expect(events.all == [.launched])
 
-    fake.setRecordingResult(.failure(.recordingLost))
-    let lost = Task { try await fake.recordScreen(on: tablet, to: file) {} }
-    while fake.calls.count < 2 {
-      await Task.yield()
+    fake.setLogcatHandler { _, _, emit in
+      await emit(.launched)
+      await emit(.lines(["a", "b"]))
+      return .appExited
     }
-    lost.cancel()
-    await #expect(throws: AndroidEmulatorError.recordingLost) { try await lost.value }
-    #expect(fake.calls == [.recordScreen(tablet, file), .recordScreen(tablet, file)])
-  }
-
-  @Test("녹화: 시작 신호 없이 멈추면 stoppedBeforeStart, 스스로 끝나는 결과는 취소를 기다리지 않는다")
-  func recordVariants() async throws {
-    let fake = AndroidEmulatorClientFake(inventory: .sample)
-    let tablet = AndroidVirtualDevice.bootedTabletSample.id
-    let file = URL(filePath: "/Users/fake/Movies/SimLauncher/rec.mp4")
-    let started = FakeStartFlag()
-
-    fake.setRecordingSignalsStart(false)
-    fake.suspendRecordings()
-    let silent = Task { try await fake.recordScreen(on: tablet, to: file) { started.set() } }
-    while fake.calls.isEmpty {
-      await Task.yield()
-    }
-    silent.cancel()
-    fake.resumeRecordings()
-    #expect(try await silent.value == .stoppedBeforeStart)
-    #expect(!started.isSet)
-
-    fake.setRecordingSignalsStart(true)
-    fake.setRecordingEndsByItself(.success(.savedAtTimeLimit))
-    #expect(try await fake.recordScreen(on: tablet, to: file) { started.set() } == .savedAtTimeLimit)
-    #expect(started.isSet)
-
-    let failed = FakeStartFlag()
-    fake.setRecordingEndsByItself(.failure(.recordingFailed))
-    await #expect(throws: AndroidEmulatorError.recordingFailed) {
-      _ = try await fake.recordScreen(on: tablet, to: file) { failed.set() }
-    }
-    #expect(!failed.isSet)
-  }
-}
-
-/// `onStarted` 를 받았는지.
-final class FakeStartFlag: Sendable {
-  private let flag = Mutex(false)
-
-  var isSet: Bool {
-    self.flag.withLock { $0 }
-  }
-
-  func set() {
-    self.flag.withLock { $0 = true }
+    #expect(try await fake.launchWithLogcat(package, on: tablet) { events.append($0) } == .appExited)
+    #expect(events.all == [.launched, .launched, .lines(["a", "b"])])
+    #expect(fake.calls == Array(repeating: .launchWithLogcat(package, tablet), count: 3))
   }
 }

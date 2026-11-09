@@ -1,8 +1,10 @@
 import AndroidEmulatorInterface
+import AppLogInterface
 import Core
 import Observation
 
-/// Android 기기 행의 "앱 실행…"·"링크 열기…" 시트의 상태와 로직. 둘은 동시에 하나만 연다. 앱 실행 시트는 열 때와 "다시 시도" 때
+/// Android 기기 행의 앱 작업 상태와 로직: "앱 실행…"·"링크 열기…" 시트와, 행 "로그 보기" 를 누를 수 있는 기기(앱 로그 세션이
+/// 있는 기기, `logDevices`). 세션 구독은 기기 목록 상태를 쓰지 않는 자기 흐름이라 여기 둔다 (창은 View 가 연다). 두 시트는 동시에 하나만 연다. 앱 실행 시트는 열 때와 "다시 시도" 때
 /// 그 기기의 사용자 설치 앱 목록을 읽는다 (진행 기록 없이. 기기를 바꾸지 않는다). 확정한 앱·링크는 App 이 주입한
 /// `launchRequested`·`openURLRequested` 로 기기 목록
 /// 화면(`AndroidDevicesModel.launchAppRequested(_:)`·`openURLRequested(_:)`)에
@@ -17,8 +19,13 @@ public final class AndroidAppSheetsModel {
   public private(set) var launchAppDraft: AndroidLaunchAppDraft?
   /// 링크 열기 시트 초안. nil 이면 시트가 닫혀 있다.
   public private(set) var openURLDraft: AndroidOpenURLDraft?
+  /// 앱 로그 세션(받는 중·끝남)이 하나라도 있는 Android 기기. 행의 "로그 보기" 를 누를 수 있는지를 정한다.
+  public private(set) var logDevices: Set<AndroidVirtualDevice.ID> = []
 
   @ObservationIgnored private let emulator: any AndroidEmulatorClient
+  @ObservationIgnored private let appLog: any AppLogClient
+  /// 앱 로그 세션 구독. 첫 `onAppear()` 에서 한 번 시작해 앱이 끝날 때까지 돈다 (View 가 다시 만들어져도 하나).
+  @ObservationIgnored private var logWatchTask: Task<Void, Never>?
   /// 그 작업의 시트를 열 수 있는 기기 (없으면 nil). App 이 `AndroidDevicesModel.appSheetTarget(_:for:)` 로 잇는다.
   @ObservationIgnored private let target: @MainActor (AndroidVirtualDevice.ID, AndroidDeviceTask)
     -> AndroidVirtualDevice?
@@ -31,11 +38,13 @@ public final class AndroidAppSheetsModel {
 
   public init(
     emulator: any AndroidEmulatorClient,
+    appLog: any AppLogClient,
     target: @escaping @MainActor (AndroidVirtualDevice.ID, AndroidDeviceTask) -> AndroidVirtualDevice?,
     launchRequested: @escaping @MainActor (AndroidLaunchAppRequest) async -> Void = { _ in },
     openURLRequested: @escaping @MainActor (AndroidOpenURLRequest) async -> Void = { _ in }
   ) {
     self.emulator = emulator
+    self.appLog = appLog
     self.target = target
     self.launchRequested = launchRequested
     self.openURLRequested = openURLRequested
@@ -44,6 +53,21 @@ public final class AndroidAppSheetsModel {
   /// 앱 실행·링크 열기 시트가 떠 있다. App 이 `AndroidDevicesModel` 의 `appSheetPresented` 로 잇는다.
   public var hasPresentedSheet: Bool {
     self.launchAppDraft != nil || self.openURLDraft != nil
+  }
+
+  // MARK: - 로그 보기
+
+  /// 기기 목록 화면이 나타났다. 처음 한 번 앱 로그 세션 구독을 시작한다 (다시 불러도 구독은 하나).
+  public func onAppear() {
+    guard self.logWatchTask == nil else { return }
+    let appLog = self.appLog
+    self.logWatchTask = Task {
+      // 요약은 세션이 생기거나 상태가 바뀔 때만 온다. iOS 세션은 보지 않는다.
+      for await summaries in await appLog.sessionUpdates() {
+        let targets = summaries.lazy.map(\.target).filter { $0.platform == .android }
+        self.logDevices = Set(targets.map { AndroidVirtualDevice.ID($0.deviceID) })
+      }
+    }
   }
 
   // MARK: - 앱 실행

@@ -53,7 +53,8 @@ public extension Client {
   static let androidSDK = Client("AndroidSDK")
   /// Android 기기(AVD, `~/.android/avd`. Android Studio 와 함께 쓴다) 목록과 상태(잠금 파일·adb), 켜기(emulator 띄우기·완료 기다리기)·
   /// 끄기(adb emu kill, 앱이 띄운 프로세스는 SIGINT)·만들기(설정 파일 직접 쓰기, 덮어쓰지 않음)·삭제·초기화,
-  /// 켜진 기기의 API 수준·ABI 읽기와 앱 설치(adb install)·실행(기기에서 launcher 화면을 찾아 am start)·링크 열기·사용자 설치 앱 목록,
+  /// 켜진 기기의 API 수준·ABI 읽기와 앱 설치(adb install)·실행(launcher 화면을 찾아 떠 있는 앱을 끄고(force-stop) am start 로 새로 실행하며
+  /// 메인 프로세스 logcat 받기, `launchWithLogcat`)·링크 열기·사용자 설치 앱 목록,
   /// 화면 스크린샷(adb exec-out screencap)·녹화(기기 안 screenrecord → kill -2 로 멈춤 → adb pull 로 예약 파일에 가져오기).
   /// SDK 위치는 AndroidSDK 와 같은 provider 를 App 이 준다. 명령은 CommandClient 로 SDK 의 emulator·adb 만 실행한다.
   static let androidEmulator = Client("AndroidEmulator")
@@ -61,7 +62,8 @@ public extension Client {
   /// Mac 에 풀지 않는다(`unzip -p` 로 manifest 하나만 메모리로). 명령은 CommandClient 로 실행한다.
   static let androidPackage = Client("AndroidPackage")
   /// iOS·Android 앱을 로그 받기와 함께 실행하고, 기기·실행별 세션 버퍼(세션당 최근 5만 줄·32 MiB, 기기당 5개)와 끝남 이유를 갖는다.
-  /// iOS 는 Simulator Client 의 `launchWithConsole` 을 조합한다 (Android 는 L-B). 앱 출력은 화면에만 보인다 (파일·Logger 없음).
+  /// iOS 는 Simulator Client 의 `launchWithConsole` 을, Android 는 AndroidEmulator Client 의 `launchWithLogcat` 을 조합한다.
+  /// 앱 출력은 화면에만 보인다 (파일·Logger 없음).
   static let appLog = Client("AppLog")
 }
 

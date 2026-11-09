@@ -1,6 +1,8 @@
 import AndroidEmulatorInterface
 import AndroidEmulatorTesting
 import AndroidPackageTesting
+import AppLogInterface
+import AppLogTesting
 import Core
 import DownloadTesting
 import Foundation
@@ -29,6 +31,7 @@ extension AndroidDevicesTesting {
   /// 받기 Fake 는 기본 진행·결과(`.fake(index:)`)이고, 테스트가 `download` 로 바꾼다.
   /// 앱 실행·링크 열기 시트 Model(`sheets`)은 App 과 같이 클로저로 잇는다 (`appSheetPresented`·`target`·실행/열기 요청).
   /// 스크린샷·녹화 저장은 `WorkspaceClientFake`(늘 예약·보이기에 성공, 테스트가 `workspace` 로 바꾼다), 시계는 `fixedNow` 다.
+  /// 앱 실행은 `AppLogClientFake`(`appLog`) 로 가고, 실패는 테스트가 `launchErrors` 로 정한다 (기본은 성공).
   static func fixture(
     _ inventory: AndroidDeviceInventory = .sample,
     _ configure: (AndroidEmulatorClientFake) -> Void = { _ in }
@@ -41,10 +44,17 @@ extension AndroidDevicesTesting {
     let download = DownloadClientFake()
     let workspace = WorkspaceClientFake()
     let sheetsBox = AppSheetsBox()
+    let launchErrors = AndroidLaunchErrors()
+    let appLog = AppLogClientFake(androidLaunchHandler: { _, device throws(AppLogLaunchError) in
+      if let error = launchErrors.error(for: device) {
+        throw error
+      }
+    })
     let model = AndroidDevicesModel(
       emulator: fake,
       package: package,
       download: download,
+      appLog: appLog,
       workspace: workspace,
       setupRequested: { setupRequests.increment() },
       appSheetPresented: { sheetsBox.model?.hasPresentedSheet ?? false },
@@ -53,6 +63,7 @@ extension AndroidDevicesTesting {
     )
     let sheets = AndroidAppSheetsModel(
       emulator: fake,
+      appLog: appLog,
       target: { id, task in model.appSheetTarget(id, for: task) },
       launchRequested: { request in await model.launchAppRequested(request) },
       openURLRequested: { request in await model.openURLRequested(request) }
@@ -65,6 +76,8 @@ extension AndroidDevicesTesting {
       package: package,
       download: download,
       workspace: workspace,
+      appLog: appLog,
+      launchErrors: launchErrors,
       sleeper: sleeper,
       setupRequests: setupRequests
     )
@@ -133,6 +146,10 @@ struct AndroidDevicesFixture {
   let package: AndroidPackageClientFake
   let download: DownloadClientFake
   let workspace: WorkspaceClientFake
+  /// 앱 실행(로그 받기와 함께)의 호출 기록과 세션.
+  let appLog: AppLogClientFake
+  /// `appLog` 의 Android 실행이 던질 에러.
+  let launchErrors: AndroidLaunchErrors
   let sleeper: ManualSleeper
   let setupRequests: Counter
 }
@@ -182,6 +199,28 @@ final class ManualSleeper: Sendable {
     for waiter in waiters {
       waiter.resume()
     }
+  }
+}
+
+/// 테스트가 정하는 Android 앱 실행(`AppLogClient.launchAndroidApp`) 실패. 기기별 설정이 전체 설정보다 먼저다.
+final class AndroidLaunchErrors: Sendable {
+  private struct State {
+    var all: AppLogLaunchError?
+    var byDevice: [AndroidVirtualDevice.ID: AppLogLaunchError] = [:]
+  }
+
+  private let state = Mutex(State())
+
+  func set(_ error: AppLogLaunchError?) {
+    self.state.withLock { $0.all = error }
+  }
+
+  func set(_ error: AppLogLaunchError?, for id: AndroidVirtualDevice.ID) {
+    self.state.withLock { $0.byDevice[id] = error }
+  }
+
+  func error(for id: AndroidVirtualDevice.ID) -> AppLogLaunchError? {
+    self.state.withLock { $0.byDevice[id] ?? $0.all }
   }
 }
 

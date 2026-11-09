@@ -23,4 +23,9 @@ public struct AppLogTarget: Hashable, Codable, Sendable {
   public static func iOS(_ id: VirtualDevice.ID) -> AppLogTarget {
     AppLogTarget(platform: .iOS, deviceID: id.rawValue)
   }
+
+  /// Android 기기(AVD)의 로그 창 대상.
+  public static func android(_ id: AndroidVirtualDevice.ID) -> AppLogTarget {
+    AppLogTarget(platform: .android, deviceID: id.rawValue)
+  }
 }

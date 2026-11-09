@@ -4,7 +4,8 @@ import SwiftUI
 
 /// 기기 한 줄: 모양 아이콘, 표시 이름, "API · 상태" 글자(쓸 수 없으면 이유 줄), 앱 설치 메뉴(파일에서 고르기…·URL 에서…·
 /// 카탈로그에서…)와 드롭,
-/// "앱 실행…"·"링크 열기…" 버튼(시트), "스크린샷"·"녹화" 버튼(찍는 중·녹화 단계 표시), 켜기·끄기 버튼(앱 작업 중이면 진행 표시),
+/// "앱 실행…"·"링크 열기…" 버튼(시트), "로그 보기" 버튼(늘 보이고, 앱 로그 세션이 없으면 비활성 + 안내 툴팁. 기기 상태·작업과
+/// 관계없이 세션이 있으면 눌린다), "스크린샷"·"녹화" 버튼(찍는 중·녹화 단계 표시), 켜기·끄기 버튼(앱 작업 중이면 진행 표시),
 /// 기기 작업 메뉴(… 버튼과 컨텍스트 메뉴: 초기화·삭제).
 /// 스크린샷·녹화는 켜진 기기만 되고 앱 작업 중에도 된다. 녹화 중(저장 중 포함)이면 끄기·초기화·삭제를 막고 이유를 보인다.
 /// 앱 설치·실행·링크 열기는 켜진 기기만 된다 (꺼진·켜는 중·쓸 수 없는 행은 비활성이고 도움말에 이유를 보이며, 드롭을 거절한다).
@@ -32,6 +33,10 @@ struct AndroidDeviceRow: View {
   let appDropped: ([URL]) -> Void
   let launchAppTapped: () -> Void
   let openURLTapped: () -> Void
+  /// 이 기기에 앱 로그 세션(받는 중·끝남)이 있다 (`AndroidAppSheetsModel.logDevices`). 있으면 "로그 보기" 를 누를 수 있다.
+  let hasLog: Bool
+  /// 이 기기의 로그 창을 연다 (View 가 `openWindow` 로 연다).
+  let logTapped: () -> Void
   /// 스크린샷 버튼을 누를 수 있다 (`AndroidScreenshotActivity.canStart`: 켜진 기기, 찍는 중이 아님, 기기 작업이 없거나 앱 작업).
   let canTakeScreenshot: Bool
   /// 이 기기의 스크린샷을 찍는 중이다 (버튼 자리에 진행 표시).
@@ -79,6 +84,9 @@ struct AndroidDeviceRow: View {
       Button(AndroidDevicesText.openURLButton, action: self.openURLTapped)
         .disabled(!self.canAct)
         .help(self.appActionBlockReason ?? AndroidDevicesText.openURLHelp)
+      Button(AndroidDevicesText.viewLogButton, action: self.logTapped)
+        .disabled(!self.hasLog)
+        .help(self.hasLog ? AndroidDevicesText.viewLogHelp : AndroidDevicesText.viewLogUnavailableHelp)
       self.screenshot
       AndroidRecordingControl(
         phase: self.recordingPhase,

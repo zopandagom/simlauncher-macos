@@ -1,5 +1,7 @@
 import AndroidEmulatorInterface
 import AndroidEmulatorTesting
+import AppLogInterface
+import AppLogTesting
 import Core
 import Foundation
 import Testing
@@ -92,14 +94,17 @@ struct AndroidDevicesLaunchAppTests: AndroidDevicesTesting {
     #expect(setup.sheets.launchAppDraft?.packages == .loaded(Self.packages))
   }
 
-  @Test("고르고 실행하면 시트를 닫고 그 앱을 실행한 뒤 다시 읽는다")
+  @Test("고르고 실행하면 시트를 닫고 그 앱을 로그 받기와 함께 실행한 뒤 다시 읽는다 (대체 예고는 하지 않는다)")
   func confirmLaunches() async {
     let setup = await Self.loadedFixture { $0.setInstalledPackages(.success(Self.packages)) }
     await setup.sheets.launchAppTapped(Self.tablet.id)
     setup.sheets.launchAppSelectionChanged(Self.packages[1])
     await setup.sheets.launchAppConfirmTapped()
     #expect(setup.sheets.launchAppDraft == nil)
-    #expect(setup.fake.calls.contains(.launch(Self.packages[1], Self.tablet.id)))
+    #expect(setup.appLog.calls == [.launchAndroidApp(Self.packages[1], Self.tablet.id)])
+    #expect(setup.appLog.sessions.map(\.target) == [.android(Self.tablet.id)])
+    #expect(setup.appLog.sessions.map(\.appName) == [Self.packages[1].rawValue])
+    #expect(setup.appLog.sessions.map(\.deviceName) == [Self.label.name])
     #expect(Self.fetchCount(setup.fake) == 2)
     #expect(setup.model.activity.task(on: Self.tablet.id) == nil)
     #expect(setup.model.notices.isEmpty)
@@ -107,10 +112,8 @@ struct AndroidDevicesLaunchAppTests: AndroidDevicesTesting {
 
   @Test("실행이 실패하면 알린다")
   func launchFails() async {
-    let setup = await Self.loadedFixture {
-      $0.setInstalledPackages(.success([Self.packages[0]]))
-      $0.setLaunchError(.launchFailed(.notInstalled))
-    }
+    let setup = await Self.loadedFixture { $0.setInstalledPackages(.success([Self.packages[0]])) }
+    setup.launchErrors.set(.appNotInstalled)
     await setup.sheets.launchAppTapped(Self.tablet.id)
     await setup.sheets.launchAppConfirmTapped()
     #expect(Self.notices(setup.model) == [.launchFailed(Self.label, .emulator(.launchFailed(.notInstalled)))])
@@ -128,7 +131,7 @@ struct AndroidDevicesLaunchAppTests: AndroidDevicesTesting {
     await setup.sheets.launchAppConfirmTapped()
     #expect(setup.sheets.launchAppDraft == nil)
     #expect(Self.notices(setup.model) == [.launchFailed(Self.label, .deviceNotReady(.notBooted))])
-    #expect(!setup.fake.calls.contains(.launch(Self.packages[0], Self.tablet.id)))
+    #expect(setup.appLog.calls.isEmpty)
   }
 
   @Test("꺼진 기기·작업 중인 기기에서는 열리지 않는다")
@@ -283,7 +286,8 @@ struct AndroidAppSheetRequestTests: AndroidDevicesTesting {
       device: Self.label,
       package: package
     ))
-    #expect(setup.fake.calls == [.fetchDevices, .launch(package, Self.tablet.id), .fetchDevices])
+    #expect(setup.fake.calls == [.fetchDevices, .fetchDevices])
+    #expect(setup.appLog.calls == [.launchAndroidApp(package, Self.tablet.id)])
     #expect(setup.model.activity.task(on: Self.tablet.id) == nil)
     #expect(setup.model.notices.isEmpty)
   }
@@ -300,6 +304,7 @@ struct AndroidAppSheetRequestTests: AndroidDevicesTesting {
     ))
     #expect(Self.notices(setup.model) == [.launchFailed(AndroidDeviceLabel(phone), .deviceNotReady(.notBooted))])
     #expect(setup.fake.calls == [.fetchDevices])
+    #expect(setup.appLog.calls.isEmpty)
   }
 
   @Test("링크 열기 요청: 링크를 열고 다시 읽으며, 기기가 목록에서 사라졌으면 이유를 알리고 열지 않는다")
@@ -332,7 +337,7 @@ struct AndroidAppSheetRequestTests: AndroidDevicesTesting {
       package: package
     ))
     await setup.model.openURLRequested(AndroidOpenURLRequest(deviceID: Self.tablet.id, device: Self.label, link: link))
-    #expect(!setup.fake.calls.contains(.launch(package, Self.tablet.id)))
+    #expect(!setup.appLog.calls.contains(.launchAndroidApp(package, Self.tablet.id)))
     #expect(!setup.fake.calls.contains(.openURL(link, Self.tablet.id)))
     #expect(setup.model.notices.isEmpty)
     setup.fake.resumeInstalls()

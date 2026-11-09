@@ -30,12 +30,32 @@ public extension AndroidEmulatorClientImpl {
     try ADBAppCommands.parseInstall(result).get()
   }
 
-  /// resolve → 화면이 있으면 `am start -n`. 기기가 하나로 고르지 못하면(launcher 가 둘 이상) `query-activities` 의 첫 화면을 띄운다.
-  /// 화면이 없으면(질의 사이에 지워진 경우 포함) `pm path` 로 설치 여부를 가린다.
   @concurrent
-  func launch(_ package: AndroidPackageName, on id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError) {
+  func openURL(_ link: DeepLink, on id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError) {
     let tools = try await SDKTools.resolve(self.sdkRoot())
     let serial = try await self.bootedSerial(id, tools: tools)
+    let result = try await self.runApp(ADBAppCommands.openURLArguments(serial: serial, link: link), tools: tools)
+    try ADBAppCommands.parseStart(result).get()
+  }
+
+  @concurrent
+  func installedPackages(on id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError)
+    -> [AndroidPackageName]
+  {
+    let tools = try await SDKTools.resolve(self.sdkRoot())
+    let serial = try await self.bootedSerial(id, tools: tools)
+    let result = try await self.runApp(ADBAppCommands.listPackagesArguments(serial: serial), tools: tools)
+    return try ADBAppCommands.parsePackages(result).get()
+  }
+
+  /// launcher 화면 찾기 (`launchWithLogcat` 의 앞 단계): resolve → 기기가 하나로 고르지 못하면(launcher 가 둘 이상) `query-activities` 의
+  /// 첫 화면. 화면이 없으면(질의 사이에 지워진 경우 포함) `pm path` 로 설치 여부를 가려 `.launchFailed(.notInstalled)`·
+  /// `.launchFailed(.noLauncherActivity)`.
+  internal func launcherComponent(
+    _ package: AndroidPackageName,
+    serial: String,
+    tools: SDKTools
+  ) async throws(AndroidEmulatorError) -> String {
     let resolved = try await self.runApp(
       ADBAppCommands.resolveArguments(serial: serial, package: package),
       tools: tools
@@ -61,29 +81,7 @@ public extension AndroidEmulatorClientImpl {
       let installed = try ADBAppCommands.parsePackagePath(path).get()
       throw .launchFailed(installed ? .noLauncherActivity : .notInstalled)
     }
-    let started = try await self.runApp(
-      ADBAppCommands.startArguments(serial: serial, component: component),
-      tools: tools
-    )
-    try ADBAppCommands.parseStart(started).get()
-  }
-
-  @concurrent
-  func openURL(_ link: DeepLink, on id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError) {
-    let tools = try await SDKTools.resolve(self.sdkRoot())
-    let serial = try await self.bootedSerial(id, tools: tools)
-    let result = try await self.runApp(ADBAppCommands.openURLArguments(serial: serial, link: link), tools: tools)
-    try ADBAppCommands.parseStart(result).get()
-  }
-
-  @concurrent
-  func installedPackages(on id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError)
-    -> [AndroidPackageName]
-  {
-    let tools = try await SDKTools.resolve(self.sdkRoot())
-    let serial = try await self.bootedSerial(id, tools: tools)
-    let result = try await self.runApp(ADBAppCommands.listPackagesArguments(serial: serial), tools: tools)
-    return try ADBAppCommands.parsePackages(result).get()
+    return component
   }
 
   /// 다시 읽기 → 쓸 수 없으면 `.deviceUnavailable` → adb 로 본 상태가 켜짐이면 serial. 잠금만으로 켜짐이 된 경우(adb 가 답하지 않음)는

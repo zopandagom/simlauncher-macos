@@ -1,4 +1,5 @@
 import AppLogInterface
+import Core
 import Foundation
 import Testing
 @testable import DeviceLogFeature
@@ -41,15 +42,54 @@ struct DeviceLogResourcesTests {
 
   @Test("끝남 이유마다 다른 상태 글자이고, 다시 설치·실행으로 끝난 세션은 SimLauncher 가 했다고 말한다")
   func endStateTexts() {
-    let states = DeviceLogTextCatalog.states.map(DeviceLogText.state)
-    #expect(Set(states).count == states.count)
-    #expect(DeviceLogText.state(.ended(.replaced)).contains("다시 설치·실행"))
+    for platform in [AppLogTarget.Platform.iOS, .android] {
+      let states = DeviceLogTextCatalog.states.map { DeviceLogText.state($0, platform: platform) }
+      #expect(Set(states).count == states.count)
+      #expect(DeviceLogText.state(.ended(.replaced), platform: platform).contains("다시 설치·실행"))
+    }
     #expect(DeviceLogText.shortState(.ended(.deviceShutDown)) == DeviceLogText.shortState(.ended(.appExited)))
+  }
+
+  @Test("Android 세션의 기기 꺼짐은 연결 끊김도 말하고, 그 밖의 상태 글자는 iOS 와 같다")
+  func androidStateTexts() {
+    #expect(DeviceLogText.state(.ended(.deviceShutDown), platform: .iOS) == "끝남 — 기기가 꺼졌습니다")
+    #expect(DeviceLogText.state(.ended(.deviceShutDown), platform: .android) == "끝남 — 기기가 꺼졌거나 연결이 끊겼습니다")
+    for state in DeviceLogTextCatalog.states where state != .ended(.deviceShutDown) {
+      #expect(DeviceLogText.state(state, platform: .android) == DeviceLogText.state(state, platform: .iOS))
+    }
+  }
+
+  @Test("다시 실행 실패 문구는 케이스마다 다르고, 개발 도구 문구만 플랫폼별이다 (iOS 는 Xcode, Android 는 Android 도구)")
+  func relaunchFailureTexts() {
+    for platform in [AppLogTarget.Platform.iOS, .android] {
+      let texts = DeviceLogTextCatalog.errors.map { DeviceLogText.relaunchFailed($0, platform: platform) }
+      #expect(Set(texts).count == texts.count)
+    }
+    #expect(DeviceLogText.relaunchFailed(.developerToolsUnavailable, platform: .iOS).contains("Xcode"))
+    let android = DeviceLogText.relaunchFailed(.developerToolsUnavailable, platform: .android)
+    #expect(android.contains("Android 도구"))
+    #expect(!android.contains("Xcode"))
+    for error in DeviceLogTextCatalog.errors where error != .developerToolsUnavailable {
+      let ios = DeviceLogText.relaunchFailed(error, platform: .iOS)
+      #expect(DeviceLogText.relaunchFailed(error, platform: .android) == ios)
+    }
+    #expect(
+      DeviceLogText.relaunchFailed(.deviceUnavailable(.folderMissing), platform: .android)
+        == DeviceLogText.relaunchFailed(.deviceUnavailable(.unsupportedName), platform: .android)
+    )
   }
 
   @Test("여러 줄 print 안내는 실측대로 줄마다 따로 걸러진다고 말한다")
   func multilineGuide() {
-    #expect(DeviceLogText.filterHelp.contains("여러 줄 print 는 줄마다 따로 걸러집니다"))
+    #expect(DeviceLogText.filterHelp(platform: .iOS).contains("여러 줄 print 는 줄마다 따로 걸러집니다"))
+  }
+
+  @Test("Android 필터 안내는 iOS 머리말·print 를 말하지 않고, '시작' 이 태그부터라고 말한다")
+  func androidFilterGuide() {
+    let help = DeviceLogText.filterHelp(platform: .android)
+    #expect(help.contains("태그부터"))
+    #expect(!help.contains("print"))
+    #expect(!help.contains("NSLog"))
   }
 }
 
@@ -61,7 +101,7 @@ enum DeviceLogTextCatalog {
 
   static let errors: [AppLogLaunchError] = [
     .developerToolsUnavailable, .deviceNotFound, .deviceNotBooted, .appNotInstalled, .appLaunchFailed, .commandFailed,
-    .sessionNotFound,
+    .sessionNotFound, .deviceUnavailable(.folderMissing), .noLauncherActivity, .adbUnavailable,
   ]
 
   /// 보간 없는 문구. 카탈로그 키와 값이 문구 그대로다.
@@ -72,11 +112,14 @@ enum DeviceLogTextCatalog {
       DeviceLogText.noSessionsGuide, DeviceLogText.noMatchingLines, DeviceLogText.kindLabel,
       DeviceLogText.conditionPrompt, DeviceLogText.excludeToggle, DeviceLogText.excludeHelp,
       DeviceLogText.removeCondition, DeviceLogText.addCondition, DeviceLogText.caseSensitiveToggle,
-      DeviceLogText.invalidRegex, DeviceLogText.filterHelp, DeviceLogText.pauseButton, DeviceLogText.resumeButton,
+      DeviceLogText.invalidRegex, DeviceLogText.filterHelp(platform: .iOS),
+      DeviceLogText.filterHelp(platform: .android), DeviceLogText.pauseButton, DeviceLogText.resumeButton,
       DeviceLogText.followToggle, DeviceLogText.followHelp, DeviceLogText.clearButton, DeviceLogText.clearHelp,
     ]
-    texts += self.states.map(DeviceLogText.state)
-    texts += self.errors.map(DeviceLogText.relaunchFailed)
+    texts += self.states.map { DeviceLogText.state($0, platform: .iOS) }
+    texts.append(DeviceLogText.state(.ended(.deviceShutDown), platform: .android))
+    texts += self.errors.map { DeviceLogText.relaunchFailed($0, platform: .iOS) }
+    texts.append(DeviceLogText.relaunchFailed(.developerToolsUnavailable, platform: .android))
     texts += LogFilter.Kind.allCases.map(DeviceLogText.kind)
     return texts
   }

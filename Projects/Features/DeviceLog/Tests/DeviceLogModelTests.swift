@@ -453,8 +453,8 @@ struct DeviceLogModelRelaunchTests {
       #expect(model.window(for: Support.target).relaunch == .failed(error))
       #expect(model.window(for: Support.target).selectedSessionID == session.id)
     }
-    #expect(Set(errors.map(DeviceLogText.relaunchFailed)).count == errors.count)
-    #expect(DeviceLogText.relaunchFailed(.deviceNotBooted).contains("기기가 꺼져 있어"))
+    #expect(Set(errors.map { DeviceLogText.relaunchFailed($0, platform: .iOS) }).count == errors.count)
+    #expect(DeviceLogText.relaunchFailed(.deviceNotBooted, platform: .iOS).contains("기기가 꺼져 있어"))
     let other = Support.summary("com.example.other", at: -10, state: .ended(.appExited))
     fake.publish(other)
     await Support.waitUntil { model.sessions.count == 2 }

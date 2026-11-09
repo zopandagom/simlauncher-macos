@@ -36,6 +36,41 @@ struct AppLogClientFakeTests {
     ])
   }
 
+  @Test("launchAndroidApp·Android 대체 호출은 기록하고, 성공하면 .android 대상의 받는 중 요약을 더한다, 처리기가 던지면 세션이 없다")
+  func launchAndroid() async throws {
+    let package = try #require(AndroidPackageName("com.example.app"))
+    let failing = try #require(AndroidPackageName("com.example.fail"))
+    let avd = AndroidVirtualDevice.ID("Pixel_9")
+    let fake = AppLogClientFake(androidLaunchHandler: { package, _ throws(AppLogLaunchError) in
+      if package.rawValue == "com.example.fail" {
+        throw .noLauncherActivity
+      }
+    })
+
+    await fake.replacementWillStart(package, on: avd)
+    let id = try await fake.launchAndroidApp(package, appName: "com.example.app", on: avd, deviceName: "Pixel 9")
+    await #expect(throws: AppLogLaunchError.noLauncherActivity) {
+      try await fake.launchAndroidApp(failing, appName: "F", on: avd, deviceName: "Pixel 9")
+    }
+    await fake.replacementCancelled(package, on: avd)
+
+    #expect(fake.sessions.map(\.id) == [id])
+    let summary = try #require(fake.sessions.first)
+    #expect(summary.target == .android(avd))
+    #expect(summary.appID == "com.example.app")
+    #expect(summary.deviceName == "Pixel 9")
+    #expect(summary.state == .receiving)
+    #expect(fake.calls == [
+      .androidReplacementWillStart(package, avd),
+      .launchAndroidApp(package, avd),
+      .launchAndroidApp(failing, avd),
+      .androidReplacementCancelled(package, avd),
+    ])
+
+    let relaunched = try await fake.relaunch(id)
+    #expect(fake.sessions.first { $0.id == relaunched }?.target == .android(avd))
+  }
+
   @Test("sessionUpdates 는 지금 목록부터, lineUpdates 는 스냅숏부터 보내고 구독 끝을 센다")
   func streams() async throws {
     let id = AppLogSessionID(UUID())

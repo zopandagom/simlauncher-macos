@@ -7,7 +7,7 @@ struct AppLogTargetTests {
   func codableRoundTrip() throws {
     let targets = [
       AppLogTarget.iOS(VirtualDevice.ID("00000000-0000-0000-0000-000000000001")),
-      AppLogTarget(platform: .android, deviceID: "Pixel_9"),
+      AppLogTarget.android(AndroidVirtualDevice.ID("Pixel_9")),
     ]
 
     let decoded = try JSONDecoder().decode([AppLogTarget].self, from: JSONEncoder().encode(targets))
@@ -22,5 +22,14 @@ struct AppLogTargetTests {
     #expect(target == AppLogTarget(platform: .iOS, deviceID: "ABC"))
     #expect(AppLogTarget.windowID == "device-log")
     #expect(AppLogTarget.Platform.iOS.rawValue == "ios")
+  }
+
+  @Test("android(_:) 는 플랫폼 android 와 AVD 이름")
+  func androidTarget() {
+    let target = AppLogTarget.android(AndroidVirtualDevice.ID("Pixel_9"))
+
+    #expect(target.platform == .android)
+    #expect(target.deviceID == "Pixel_9")
+    #expect(target != AppLogTarget.iOS(VirtualDevice.ID("Pixel_9")))
   }
 }

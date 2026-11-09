@@ -4,7 +4,8 @@ import Foundation
 import Synchronization
 
 /// 테스트·Example 용 `AppLogClient`. 호출을 기록하고, 세션·줄을 테스트가 직접 넣는다.
-/// `launchIOSApp` 은 처리기가 성공하면 받는 중 요약을 만들어 목록에 더하고 그 ID 를 돌려준다.
+/// `launchIOSApp`·`launchAndroidApp` 은 처리기가 성공하면(없으면 성공) 받는 중 요약(대상 `.iOS`·`.android`)을 만들어 목록에 더하고
+/// 그 ID 를 돌려준다.
 /// `relaunch` 는 `setRelaunchResult` 로 정한 결과를 쓰고, 없으면 원래 세션과 같은 기기·앱의 받는 중 요약을 더한다(없는 세션이면 `.sessionNotFound`).
 public final class AppLogClientFake: AppLogClient {
   public enum Call: Hashable, Sendable {
@@ -12,10 +13,18 @@ public final class AppLogClientFake: AppLogClient {
     case relaunch(AppLogSessionID)
     case replacementWillStart(AppBundleID, VirtualDevice.ID)
     case replacementCancelled(AppBundleID, VirtualDevice.ID)
+    case launchAndroidApp(AndroidPackageName, AndroidVirtualDevice.ID)
+    case androidReplacementWillStart(AndroidPackageName, AndroidVirtualDevice.ID)
+    case androidReplacementCancelled(AndroidPackageName, AndroidVirtualDevice.ID)
   }
 
   /// `launchIOSApp` 처리기. 던지면 실행 실패이고 세션은 생기지 않는다.
   public typealias LaunchHandler = @Sendable (AppBundleID, VirtualDevice.ID) async throws(AppLogLaunchError) -> Void
+  /// `launchAndroidApp` 처리기. 던지면 실행 실패이고 세션은 생기지 않는다.
+  public typealias AndroidLaunchHandler = @Sendable (
+    AndroidPackageName,
+    AndroidVirtualDevice.ID
+  ) async throws(AppLogLaunchError) -> Void
 
   private struct LineStore {
     var lines: [AppLogLine] = []
@@ -37,10 +46,16 @@ public final class AppLogClientFake: AppLogClient {
 
   private let state: Mutex<State>
   private let launchHandler: LaunchHandler?
+  private let androidLaunchHandler: AndroidLaunchHandler?
 
-  public init(sessions: [AppLogSessionSummary] = [], launchHandler: LaunchHandler? = nil) {
+  public init(
+    sessions: [AppLogSessionSummary] = [],
+    launchHandler: LaunchHandler? = nil,
+    androidLaunchHandler: AndroidLaunchHandler? = nil
+  ) {
     self.state = Mutex(State(sessions: sessions))
     self.launchHandler = launchHandler
+    self.androidLaunchHandler = androidLaunchHandler
   }
 
   /// 들어온 호출 순서대로 (`stopAll` 은 `stopAllCount`).
@@ -166,6 +181,27 @@ public final class AppLogClientFake: AppLogClient {
     return summary.id
   }
 
+  public func launchAndroidApp(
+    _ package: AndroidPackageName,
+    appName: String,
+    on device: AndroidVirtualDevice.ID,
+    deviceName: String
+  ) async throws(AppLogLaunchError) -> AppLogSessionID {
+    self.state.withLock { $0.calls.append(.launchAndroidApp(package, device)) }
+    try await self.androidLaunchHandler?(package, device)
+    let summary = AppLogSessionSummary(
+      id: AppLogSessionID(UUID()),
+      target: .android(device),
+      deviceName: deviceName,
+      appID: package.rawValue,
+      appName: appName,
+      startedAt: Date(),
+      state: .receiving
+    )
+    self.publish(summary)
+    return summary.id
+  }
+
   public func relaunch(_ session: AppLogSessionID) async throws(AppLogLaunchError) -> AppLogSessionID {
     self.state.withLock { $0.calls.append(.relaunch(session)) }
     await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
@@ -208,6 +244,14 @@ public final class AppLogClientFake: AppLogClient {
 
   public func replacementCancelled(_ bundleID: AppBundleID, on device: VirtualDevice.ID) async {
     self.state.withLock { $0.calls.append(.replacementCancelled(bundleID, device)) }
+  }
+
+  public func replacementWillStart(_ package: AndroidPackageName, on device: AndroidVirtualDevice.ID) async {
+    self.state.withLock { $0.calls.append(.androidReplacementWillStart(package, device)) }
+  }
+
+  public func replacementCancelled(_ package: AndroidPackageName, on device: AndroidVirtualDevice.ID) async {
+    self.state.withLock { $0.calls.append(.androidReplacementCancelled(package, device)) }
   }
 
   /// 첫 알림은 지금 목록, 그 뒤는 `publish`·`remove`·실행 성공마다.

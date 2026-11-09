@@ -3,8 +3,8 @@ import CommandInterface
 import Core
 import Foundation
 
-/// `~/.android/avd` 의 파일을 읽고 쓰며, SDK 의 emulator(`launch`)·adb(`runCancellable`)를 `CommandClient` 로 실행하는
-/// `AndroidEmulatorClient`. emulator 의 실패 문구는 원인과 맞지 않아(실측) 출력을 해석하지 않고 켜기 전에 파일로 검사한다.
+/// `~/.android/avd` 의 파일을 읽고 쓰며, SDK 의 emulator(`launch`)·adb(`runCancellable`, 앱 로그 받기는 `streamCancellable`)를
+/// `CommandClient` 로 실행하는 `AndroidEmulatorClient`. emulator 의 실패 문구는 원인과 맞지 않아(실측) 출력을 해석하지 않고 켜기 전에 파일로 검사한다.
 /// 이 앱이 띄운 에뮬레이터는 앱이 끝나도 남는다 (종료 때 끄지 않는다).
 public struct AndroidEmulatorClientImpl: AndroidEmulatorClient {
   /// 확인 간격과 제한 시간. 테스트가 줄인다.
@@ -31,6 +31,9 @@ public struct AndroidEmulatorClientImpl: AndroidEmulatorClient {
     var recordingSettle: Duration = .seconds(2)
     /// 녹화 파일 `adb pull` 하나의 한도 (실측 7.7 MB 0.07초).
     var transferTimeout: Duration = .seconds(600)
+    /// 앱 실행의 pid 기다림 명령 하나의 한도. 기기 안 루프는 약 7.5초에 스스로 끝나므로(실측 비례) 넘으면 adb 서버가 멈춘 것으로 보고
+    /// `.adbUnavailable`.
+    var pidWaitTimeout: Duration = .seconds(30)
 
     static let standard = Timing(
       pollInterval: .seconds(1),

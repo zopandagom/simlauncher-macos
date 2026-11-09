@@ -221,6 +221,25 @@ final class OrderRecordingAppLog: AppLogClient {
     self.record(.replacementCancelled(bundleID, device))
   }
 
+  // Android 실행은 Launcher 에서 부르지 않는다. 프로토콜을 채우려고 기록만 하고 넘긴다.
+  func launchAndroidApp(
+    _ package: AndroidPackageName,
+    appName: String,
+    on device: AndroidVirtualDevice.ID,
+    deviceName: String
+  ) async throws(AppLogLaunchError) -> AppLogSessionID {
+    self.record(.launchAndroidApp(package, device))
+    return try await self.base.launchAndroidApp(package, appName: appName, on: device, deviceName: deviceName)
+  }
+
+  func replacementWillStart(_ package: AndroidPackageName, on device: AndroidVirtualDevice.ID) async {
+    self.record(.androidReplacementWillStart(package, device))
+  }
+
+  func replacementCancelled(_ package: AndroidPackageName, on device: AndroidVirtualDevice.ID) async {
+    self.record(.androidReplacementCancelled(package, device))
+  }
+
   func sessionUpdates() async -> AsyncStream<[AppLogSessionSummary]> {
     self.subscriptions.withLock { $0 += 1 }
     return await self.base.sessionUpdates()

@@ -2,13 +2,14 @@ import AndroidEmulatorInterface
 import AndroidEmulatorTesting
 import AndroidPackageInterface
 import AndroidPackageTesting
+import AppLogTesting
 import Core
 import Foundation
 import Testing
 @testable import AndroidDevicesFeature
 
 /// 툴바 "선택한 기기에 앱 설치" > "파일에서 고르기…" (`selectedAppFileChosen`): 한 번 검사 → 켜진 기기마다 동시에 대상 확인 →
-/// 기기 값 → 판정 → 설치 → 실행 → 다시 읽기 → 결과 알림 하나 (실패·건너뜀이 있을 때만).
+/// 기기 값 → 판정 → 설치 → 실행(앱 로그 받기와 함께, `AppLogClient`) → 다시 읽기 → 결과 알림 하나 (실패·건너뜀이 있을 때만).
 @MainActor
 struct AndroidDevicesBatchInstallTests: AndroidDevicesTesting {
   static let tablet = AndroidVirtualDevice.bootedTabletSample
@@ -28,14 +29,30 @@ struct AndroidDevicesBatchInstallTests: AndroidDevicesTesting {
   ) -> [AndroidEmulatorClientFake.Call] {
     fake.calls.filter { call in
       switch call {
-      case let .deviceTraits(target), let .install(_, target), let .launch(_, target): target == id
+      case let .deviceTraits(target), let .install(_, target): target == id
       default: false
       }
     }
   }
 
-  static func installedAndLaunched(on id: AndroidVirtualDevice.ID) -> [AndroidEmulatorClientFake.Call] {
-    [.deviceTraits(id), .install(self.info.location, id), .launch(self.info.packageName, id)]
+  /// 그 기기에서 앱 실행(AppLog)을 부른 기록.
+  static func launches(
+    _ appLog: AppLogClientFake,
+    on id: AndroidVirtualDevice.ID
+  ) -> [AppLogClientFake.Call] {
+    appLog.calls.filter { call in
+      if case let .launchAndroidApp(_, target) = call {
+        target == id
+      } else {
+        false
+      }
+    }
+  }
+
+  /// 그 기기에 기기 값 → 설치를 하고 앱을 로그 받기와 함께 한 번 실행했다.
+  static func installedAndLaunched(_ setup: AndroidDevicesFixture, on id: AndroidVirtualDevice.ID) -> Bool {
+    self.appCalls(setup.fake, on: id) == [.deviceTraits(id), .install(self.info.location, id)]
+      && self.launches(setup.appLog, on: id) == [.launchAndroidApp(self.info.packageName, id)]
   }
 
   static func entry(
@@ -70,8 +87,8 @@ struct AndroidDevicesBatchInstallTests: AndroidDevicesTesting {
     setup.model.selectionChanged([Self.tablet.id, Self.second.id])
     await setup.model.selectedAppFileChosen(Self.apk)
     #expect(setup.package.calls == [Self.apk])
-    #expect(Self.appCalls(setup.fake, on: Self.tablet.id) == Self.installedAndLaunched(on: Self.tablet.id))
-    #expect(Self.appCalls(setup.fake, on: Self.second.id) == Self.installedAndLaunched(on: Self.second.id))
+    #expect(Self.installedAndLaunched(setup, on: Self.tablet.id))
+    #expect(Self.installedAndLaunched(setup, on: Self.second.id))
     #expect(Self.fetchCount(setup.fake) >= 2)
     #expect(Self.notices(setup.model).isEmpty)
     #expect(setup.model.activity.busyDeviceIDs.isEmpty)
@@ -89,7 +106,7 @@ struct AndroidDevicesBatchInstallTests: AndroidDevicesTesting {
 
     setup.model.selectionChanged([Self.tablet.id])
     await setup.model.selectedAppFileChosen(Self.apk)
-    #expect(Self.appCalls(setup.fake, on: Self.tablet.id) == Self.installedAndLaunched(on: Self.tablet.id))
+    #expect(Self.installedAndLaunched(setup, on: Self.tablet.id))
     #expect(Self.notices(setup.model).count == 1)
   }
 
@@ -134,7 +151,7 @@ struct AndroidDevicesBatchInstallTests: AndroidDevicesTesting {
     setup.model.selectionChanged([Self.tablet.id, Self.second.id])
     await setup.model.selectedAppFileChosen(Self.apk)
     #expect(Self.appCalls(setup.fake, on: Self.second.id) == [.deviceTraits(Self.second.id)])
-    #expect(Self.appCalls(setup.fake, on: Self.tablet.id) == Self.installedAndLaunched(on: Self.tablet.id))
+    #expect(Self.installedAndLaunched(setup, on: Self.tablet.id))
     #expect(Self.notices(setup.model) == [.batchInstallFinished(Self.report([
       (Self.tablet, .succeeded),
       (Self.second, .installFailed(.rejected(.requiresNewerAPI(required: 24, device: 23)))),
@@ -145,8 +162,8 @@ struct AndroidDevicesBatchInstallTests: AndroidDevicesTesting {
   func perDeviceInstallAndLaunchFailures() async {
     let setup = await Self.loadedFixture(Self.inventory) {
       $0.setInstallError(.installFailed(.updateIncompatible), for: Self.tablet.id)
-      $0.setLaunchError(.launchFailed(.noLauncherActivity), for: Self.second.id)
     }
+    setup.launchErrors.set(.noLauncherActivity, for: Self.second.id)
     setup.model.selectionChanged([Self.tablet.id, Self.second.id])
     await setup.model.selectedAppFileChosen(Self.apk)
     let report = Self.report([
@@ -155,6 +172,11 @@ struct AndroidDevicesBatchInstallTests: AndroidDevicesTesting {
     ], in: setup.model)
     #expect(Self.notices(setup.model) == [.batchInstallFinished(report)])
     #expect(report.successCount == 1)
+    #expect(Self.launches(setup.appLog, on: Self.second.id) == [.launchAndroidApp(
+      Self.info.packageName,
+      Self.second.id
+    )])
+    #expect(Self.launches(setup.appLog, on: Self.tablet.id).isEmpty)
   }
 
   @Test("검사 실패는 공통 알림 하나이고 기기에 명령을 보내지 않으며 다시 읽지 않는다")
@@ -177,7 +199,7 @@ struct AndroidDevicesBatchInstallTests: AndroidDevicesTesting {
     let batch = Self.start { await setup.model.selectedAppFileChosen(Self.apk) }
     // 묶음이 시작되기 전에도 태블릿 기록은 없으므로, 태블릿 실행이 끝난 뒤 풀린 것을 기다린다.
     await Self.waitUntil {
-      setup.fake.calls.contains(.launch(Self.info.packageName, Self.tablet.id))
+      setup.appLog.calls.contains(.launchAndroidApp(Self.info.packageName, Self.tablet.id))
         && setup.model.activity.task(on: Self.tablet.id) == nil
     }
     #expect(setup.model.activity.task(on: Self.second.id) == .installApp)
