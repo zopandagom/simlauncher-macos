@@ -12,7 +12,9 @@ import DeviceLogFeature
 import DownloadImpl
 import Foundation
 import LauncherFeature
+import LayoutInspectorFeature
 import PreferencesImpl
+import ScreenLayoutImpl
 import SettingsFeature
 import SetupFeature
 import SimulatorImpl
@@ -39,6 +41,9 @@ import WorkspaceImpl
 /// 기기당 창 하나, 복원 끔)을 연다. 모든 로그 창이 App 이 소유한 `DeviceLogModel` 하나를 함께 쓰고, 창을 닫아도 받기와 앱은 계속된다.
 /// 앱 로그 받기는 종료 요청 때 묻지 않고, 종료가 정해지면 `AppDelegate` 가 `stopAll()` 로 기다리지 않고 멈춘다 (iOS 앱은 꺼지고
 /// Android 앱은 남는다).
+/// Android 기기 행 "레이아웃 보기" 는 레이아웃 창(`WindowGroup(id: LayoutTarget.windowID, for: LayoutTarget.self)`, 기기당 창 하나,
+/// 복원 끔. 같은 기기라도 로그 창과 다른 창)을 연다. 모든 레이아웃 창이 App 이 소유한 `LayoutInspectorModel` 하나를 함께 쓰고,
+/// 창을 닫으면 읽기를 취소하고 스냅샷을 버린다 (스냅샷은 메모리에만 있다). 종료 요청 때 묻지 않는다.
 /// Android 기기(에뮬레이터)는 녹화 밖에는 종료 요청 때 보지 않는다 (켜진 에뮬레이터는 앱이 끝나도 남는다.
 /// apk 받기·설치·실행·링크 열기도 묻지 않는다. 남은 받기 폴더는 다음에 iOS 기기 목록·Android 기기 목록·Android 도구 화면 중 하나가
 /// 열릴 때 지운다).
@@ -55,6 +60,7 @@ struct SimLauncherApp: App {
   @State private var androidDownloadInstallModel: AndroidDownloadInstallModel
   @State private var androidAppSheetsModel: AndroidAppSheetsModel
   @State private var deviceLogModel: DeviceLogModel
+  @State private var layoutInspectorModel: LayoutInspectorModel
 
   /// 명령 실행 Client 하나를 개발 환경·시뮬레이터·앱 번들 Client 가 함께 쓰고,
   /// 개발 환경 Client 하나를 Setup 과 시뮬레이터의 개발자 디렉터리가 함께 쓰며,
@@ -70,7 +76,7 @@ struct SimLauncherApp: App {
   /// (같은 프로세스의 쓰기를 Impl 안의 `Mutex` 로 묶는다). 앱 번들 Client 하나를 Launcher 와 Android SDK Client 의 호스트
   /// 아키텍처(Rosetta 로 돌아도 arm64)에 함께 쓴다. Android SDK Client 도 받기 Client 를 Launcher 와 함께 쓴다.
   /// Android 기기 Client 는 명령 실행 Client·SDK 위치 provider·호스트 아키텍처를 Android SDK Client 와 함께 쓴다. Android 기기 Client
-  /// 하나를 Android 기기 목록·앱 실행 시트와 앱 로그 Client 가 함께 쓴다 (Impl 은 이 앱이 띄운 에뮬레이터 표를 가져 하나만 만든다).
+  /// 하나를 Android 기기 목록·앱 실행 시트와 앱 로그 Client·레이아웃 Client(레이아웃 창)가 함께 쓴다 (Impl 은 이 앱이 띄운 에뮬레이터 표를 가져 하나만 만든다).
   init() {
     let command = CommandClientImpl()
     let devEnvironment = DevEnvironmentClientImpl(command: command)
@@ -90,6 +96,10 @@ struct SimLauncherApp: App {
     // 앱 로그 Client 생성자는 명령을 실행하지 않는다. 받기는 설치 후 실행·행의 "앱 실행…"·창의 "다시 실행" 때만 시작한다.
     // Android 기기 Client 는 Android 기기 목록·앱 실행 시트와 같은 인스턴스다 (Impl 은 이 앱이 띄운 에뮬레이터 표를 가져 하나만 만든다).
     let appLog = AppLogClientImpl(simulator: simulator, androidEmulator: androidClients.emulator)
+    // 레이아웃 창의 Client 도 같은 Android 기기 Client 를 조합한다 (생성자는 명령을 실행하지 않는다. 읽기는 창이 열릴 때와
+    // "새로 고침" 때만).
+    let screenLayout = ScreenLayoutClientImpl(androidEmulator: androidClients.emulator)
+    self._layoutInspectorModel = State(initialValue: LayoutInspectorModel(screenLayout: screenLayout))
     let android = Self.makeAndroid(shared, clients: androidClients, appLog: appLog)
     self._androidSetupModel = State(initialValue: android.setup)
     self._androidDevicesModel = State(initialValue: android.devices)
@@ -312,6 +322,15 @@ struct SimLauncherApp: App {
       }
     }
     .defaultSize(width: 900, height: 600)
+    .restorationBehavior(.disabled)
+    // Android 기기 행 "레이아웃 보기" 가 여는 레이아웃 창. 같은 기기(값)면 창 하나이고, 스냅샷은 메모리에만 있어 되살리지 않는다.
+    // 창을 닫으면 읽기를 취소하고 스냅샷을 버린다 (LayoutInspectorView 의 onDisappear).
+    WindowGroup(id: LayoutTarget.windowID, for: LayoutTarget.self) { $target in
+      if let target {
+        LayoutInspectorView(model: self.layoutInspectorModel, target: target)
+      }
+    }
+    .defaultSize(width: 1100, height: 760)
     .restorationBehavior(.disabled)
     // 창을 닫으면 진행 중인 등록 확인을 취소한다 (SettingsView 의 onDisappear).
     Settings {

@@ -12,6 +12,7 @@ let project = Project.app(
     .feature(.androidSetup),
     .feature(.androidDevices),
     .feature(.deviceLog),
+    .feature(.layoutInspector),
     .client(impl: .command),
     .client(impl: .devEnvironment),
     .client(impl: .simulator),
@@ -23,6 +24,7 @@ let project = Project.app(
     .client(impl: .androidEmulator),
     .client(impl: .androidPackage),
     .client(impl: .appLog),
+    .client(impl: .screenLayout),
     .shared(.core),
   ]
 )
