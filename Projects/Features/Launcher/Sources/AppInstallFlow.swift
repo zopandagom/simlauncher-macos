@@ -496,7 +496,7 @@ private final class BatchResultCollector {
 
 private extension SimulatorError {
   /// 로그 받기와 함께 한 실행의 실패를 Simulator 의 실행 실패로 (알림 문구를 지금과 같게). 이름이 같은 6개는 그대로,
-  /// 다시 실행할 세션 없음(설치 흐름에서는 나오지 않는다)은 명령 실패로 본다.
+  /// 다시 실행할 세션 없음(설치 흐름에서는 나오지 않는다)과 Android 전용 실패(iOS 에서는 나오지 않는다)는 명령 실패로 본다.
   init(_ error: AppLogLaunchError) {
     switch error {
     case .developerToolsUnavailable: self = .developerToolsUnavailable
@@ -504,7 +504,8 @@ private extension SimulatorError {
     case .deviceNotBooted: self = .deviceNotBooted
     case .appNotInstalled: self = .appNotInstalled
     case .appLaunchFailed: self = .appLaunchFailed
-    case .commandFailed, .sessionNotFound: self = .commandFailed
+    case .commandFailed, .sessionNotFound, .deviceUnavailable, .noLauncherActivity, .adbUnavailable:
+      self = .commandFailed
     }
   }
 }
