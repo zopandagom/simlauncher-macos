@@ -1,0 +1,336 @@
+{
+  "sourceLanguage" : "ko",
+  "strings" : {
+    "%@ 레이아웃" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 레이아웃"
+          }
+        }
+      }
+    },
+    "Android 도구(adb)를 쓸 수 없습니다. 메인 창의 Android 화면에서 도구 상태를 확인하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Android 도구(adb)를 쓸 수 없습니다. 메인 창의 Android 화면에서 도구 상태를 확인하세요."
+          }
+        }
+      }
+    },
+    "iOS 레이아웃 보기를 준비하지 못했습니다. 다시 시도하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS 레이아웃 보기를 준비하지 못했습니다. 다시 시도하세요."
+          }
+        }
+      }
+    },
+    "Xcode 가 준비되지 않아 iOS 레이아웃을 읽을 수 없습니다. 메인 창의 개발 환경에서 Xcode 를 확인하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xcode 가 준비되지 않아 iOS 레이아웃을 읽을 수 없습니다. 메인 창의 개발 환경에서 Xcode 를 확인하세요."
+          }
+        }
+      }
+    },
+    "기기 화면이 꺼져 있습니다. 에뮬레이터 창의 전원 버튼으로 화면을 켠 뒤 새로 고치세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기기 화면이 꺼져 있습니다. 에뮬레이터 창의 전원 버튼으로 화면을 켠 뒤 새로 고치세요."
+          }
+        }
+      }
+    },
+    "기기가 제때 답하지 않았습니다. 잠시 뒤 새로 고치세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기기가 제때 답하지 않았습니다. 잠시 뒤 새로 고치세요."
+          }
+        }
+      }
+    },
+    "기기가 켜져 있지 않습니다. 기기를 켠 뒤 새로 고치세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기기가 켜져 있지 않습니다. 기기를 켠 뒤 새로 고치세요."
+          }
+        }
+      }
+    },
+    "기기를 찾을 수 없거나 지금 쓸 수 없습니다. 메인 창의 기기 목록을 확인하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기기를 찾을 수 없거나 지금 쓸 수 없습니다. 메인 창의 기기 목록을 확인하세요."
+          }
+        }
+      }
+    },
+    "기기에 앞에 떠 있는 앱이 없습니다. 볼 앱을 띄운 뒤 새로 고치세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기기에 앞에 떠 있는 앱이 없습니다. 볼 앱을 띄운 뒤 새로 고치세요."
+          }
+        }
+      }
+    },
+    "기기의 지금 화면을 다시 읽습니다. 화면이 바뀌어도 저절로 따라가지 않습니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기기의 지금 화면을 다시 읽습니다. 화면이 바뀌어도 저절로 따라가지 않습니다."
+          }
+        }
+      }
+    },
+    "너비" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "너비"
+          }
+        }
+      }
+    },
+    "높이" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "높이"
+          }
+        }
+      }
+    },
+    "다른 도구가 이 기기의 화면 정보를 읽고 있어 레이아웃을 읽지 못했습니다. UI 테스트 같은 자동화 도구를 멈춘 뒤 새로 고치세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다른 도구가 이 기기의 화면 정보를 읽고 있어 레이아웃을 읽지 못했습니다. UI 테스트 같은 자동화 도구를 멈춘 뒤 새로 고치세요."
+          }
+        }
+      }
+    },
+    "다시 시도" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다시 시도"
+          }
+        }
+      }
+    },
+    "마지막 갱신 %@" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "마지막 갱신 %@"
+          }
+        }
+      }
+    },
+    "마지막 화면: %@" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "마지막 화면: %@"
+          }
+        }
+      }
+    },
+    "새로 고침" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "새로 고침"
+          }
+        }
+      }
+    },
+    "설명" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "설명"
+          }
+        }
+      }
+    },
+    "속성" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "속성"
+          }
+        }
+      }
+    },
+    "식별자" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "식별자"
+          }
+        }
+      }
+    },
+    "이 기기의 레이아웃 보기는 아직 지원하지 않습니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 기기의 레이아웃 보기는 아직 지원하지 않습니다."
+          }
+        }
+      }
+    },
+    "이 위치의 뷰" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 위치의 뷰"
+          }
+        }
+      }
+    },
+    "읽은 뷰가 없습니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "읽은 뷰가 없습니다."
+          }
+        }
+      }
+    },
+    "잠금 화면이나 알림 창 같은 시스템 화면의 레이아웃입니다. 앱을 보려면 기기에서 앱을 앞으로 가져온 뒤 새로 고치세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "잠금 화면이나 알림 창 같은 시스템 화면의 레이아웃입니다. 앱을 보려면 기기에서 앱을 앞으로 가져온 뒤 새로 고치세요."
+          }
+        }
+      }
+    },
+    "종류" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "종류"
+          }
+        }
+      }
+    },
+    "처음 한 번 레이아웃 보기를 준비하고 있습니다. 1분쯤 걸릴 수 있습니다…" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "처음 한 번 레이아웃 보기를 준비하고 있습니다. 1분쯤 걸릴 수 있습니다…"
+          }
+        }
+      }
+    },
+    "텍스트" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "텍스트"
+          }
+        }
+      }
+    },
+    "화면 레이아웃" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "화면 레이아웃"
+          }
+        }
+      }
+    },
+    "화면 밀도를 읽지 못해 px 로만 보입니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "화면 밀도를 읽지 못해 px 로만 보입니다."
+          }
+        }
+      }
+    },
+    "화면 정보를 읽지 못했습니다. 다시 시도하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "화면 정보를 읽지 못했습니다. 다시 시도하세요."
+          }
+        }
+      }
+    },
+    "화면을 읽는 중…" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "화면을 읽는 중…"
+          }
+        }
+      }
+    },
+    "화면을 클릭해 뷰를 고르세요" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "화면을 클릭해 뷰를 고르세요"
+          }
+        }
+      }
+    },
+    "화면이 계속 바뀌고 있어(애니메이션·동영상 등) 레이아웃을 읽지 못했습니다. 화면이 멈춘 뒤 새로 고치세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "화면이 계속 바뀌고 있어(애니메이션·동영상 등) 레이아웃을 읽지 못했습니다. 화면이 멈춘 뒤 새로 고치세요."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}
