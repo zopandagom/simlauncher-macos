@@ -28,15 +28,34 @@ enum AppLogReplacementMark: Hashable, Sendable {
   case launch(AppLogSessionID)
 }
 
-/// 다시 실행에 쓰는 iOS 실행 정보.
+/// 다시 실행에 쓰는 실행 정보 (플랫폼별 앱·기기).
 struct AppLogLaunchSpec: Hashable, Sendable {
-  let bundleID: AppBundleID
+  enum App: Hashable, Sendable {
+    case iOS(AppBundleID, VirtualDevice.ID)
+    case android(AndroidPackageName, AndroidVirtualDevice.ID)
+  }
+
+  let app: App
   let appName: String
-  let device: VirtualDevice.ID
   let deviceName: String
 
+  var target: AppLogTarget {
+    switch self.app {
+    case let .iOS(_, device): .iOS(device)
+    case let .android(_, device): .android(device)
+    }
+  }
+
+  /// iOS 는 번들 ID, Android 는 패키지 이름.
+  var appID: String {
+    switch self.app {
+    case let .iOS(bundleID, _): bundleID.rawValue
+    case let .android(package, _): package.rawValue
+    }
+  }
+
   var key: AppLogSessionKey {
-    AppLogSessionKey(target: .iOS(self.device), appID: self.bundleID.rawValue)
+    AppLogSessionKey(target: self.target, appID: self.appID)
   }
 }
 
