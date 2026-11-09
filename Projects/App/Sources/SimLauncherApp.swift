@@ -97,7 +97,7 @@ struct SimLauncherApp: App {
     self._androidAppSheetsModel = State(initialValue: android.appSheets)
     let setup = SetupModel(devEnvironment: devEnvironment, simulator: simulator)
     self._setupModel = State(initialValue: setup)
-    self._deviceLogModel = State(initialValue: DeviceLogModel(appLog: appLog))
+    self._deviceLogModel = State(initialValue: DeviceLogModel(appLog: appLog, preferences: preferences))
     let launcherAssembly = Self.makeLauncher(
       simulator: simulator,
       appBundle: appBundle,
