@@ -17,13 +17,14 @@ struct ScreenshotActivityTests {
     }
   }
 
-  @Test("같은 기기의 앱 설치·링크 열기 중에는 찍을 수 있고, 켜기·끄기·삭제·초기화 중에는 찍을 수 없다")
+  @Test("같은 기기의 앱 설치·링크 열기·앱 실행 중에는 찍을 수 있고, 켜기·끄기·삭제·초기화 중에는 찍을 수 없다")
   func canStartDuringDeviceTask() {
     let activity = ScreenshotActivity()
     let device = Self.device(state: .booted)
 
     #expect(activity.canStart(on: device, during: .installApp))
     #expect(activity.canStart(on: device, during: .openURL))
+    #expect(activity.canStart(on: device, during: .launchApp))
     // 켜기는 켠 뒤 다시 읽기가 끝날 때까지 작업이 남아 목록 값이 켜짐일 수 있다. 그래도 막는다.
     #expect(!activity.canStart(on: device, during: .boot))
     #expect(!activity.canStart(on: device, during: .shutdown))

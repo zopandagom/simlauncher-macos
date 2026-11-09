@@ -190,9 +190,11 @@ struct LauncherRecordingTests: LauncherRecordingTesting {
     let tap = await Self.startRecording(id, in: model)
 
     await model.appFileSelected(LauncherInstallTests.picked, for: id)
-    model.openURLButtonTapped(id)
-    model.openURLTextChanged(LauncherOpenURLTests.raw)
-    await model.openURLConfirmTapped()
+    await model.openURLRequested(OpenURLRequest(
+      deviceID: id,
+      device: Self.label(id),
+      link: LauncherOpenURLTests.link
+    ))
     await model.screenshotButtonTapped(id)
 
     #expect(LauncherInstallTests.installCount(in: simulator) == 1)

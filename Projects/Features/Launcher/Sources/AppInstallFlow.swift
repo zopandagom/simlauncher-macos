@@ -9,8 +9,8 @@ import SimulatorInterface
 /// 실행은 앱 로그 받기와 함께 한다(`AppLogClient.launchIOSApp`: 실행 신호나 실패까지만 기다리고, 받기는 AppLog Client 의 작업에서
 /// 앱이 끝날 때까지 이어진다). 설치가 실행 중인 같은 앱을 끝내므로(측정) 설치 전에 `replacementWillStart` 로 알리고, 설치가
 /// 실패하면 `replacementCancelled` 로 되돌린다 (앞 세션의 끝난 이유를 "다시 설치·실행됨" 으로 가른다).
-/// 첫 단계인 켜기·Simulator 앱 열기(`bootIfNeededAndShowSimulator`)는 켜기 버튼·링크 열기도 함께 쓴다.
-/// 링크 열기와 받기 결과 해석도 같은 창구를 쓰므로 여기에 둔다.
+/// 첫 단계인 켜기·Simulator 앱 열기(`bootIfNeededAndShowSimulator`)는 켜기 버튼·링크 열기·설치된 앱 실행도 함께 쓴다.
+/// 링크 열기, 설치된 앱 실행("앱 실행…": 시트의 준비 판정·알림 없는 켜기, 실행)과 받기 결과 해석도 같은 창구를 쓰므로 여기에 둔다.
 /// 여러 기기 설치는 받기·풀기·검사를 한 번만 하고, 기기별 판정 → 켜기 → 설치 → 실행을 동시에 돌려 끝나는 대로 그 기기를
 /// `finished` 로 풀고, 결과를 알림 하나(`.batchFinished`)에 모은다. 여러 기기 켜기도 같은 방식이다.
 /// `LauncherModel` 이 `private` 으로 소유하고, 진행 기록(`activity`)을 시작한 Model 메서드(이벤트 메서드와 그것이 부르는
@@ -55,11 +55,11 @@ struct AppInstallFlow {
   }
 
   /// 링크 열기 대상: 시트를 연 사이 바뀌었을 수 있어 지금 목록으로 다시 확인한다. 열 수 없으면 알림을 쌓고 nil.
-  func openLinkTarget(_ draft: OpenURLDraft, host: Host) -> VirtualDevice? {
-    let target = AppInstallTarget.current(draft.deviceID, in: host.listState())
+  func openLinkTarget(_ id: VirtualDevice.ID, label: LauncherNotice.Device, host: Host) -> VirtualDevice? {
+    let target = AppInstallTarget.current(id, in: host.listState())
     guard case let .ready(device) = target else {
       if let failure = target.openURLFailure {
-        host.enqueue(.openURLFailed(draft.device, failure))
+        host.enqueue(.openURLFailed(label, failure))
       }
       return nil
     }
@@ -379,6 +379,75 @@ extension AppInstallFlow {
   private func notify(_ report: BatchReport?, host: Host) {
     guard let report, report.needsNotice else { return }
     host.enqueue(.batchFinished(report))
+  }
+}
+
+// MARK: - 설치된 앱 실행
+
+/// 앱 실행 시트가 목록을 읽기 전 준비 판정 (`AppInstallFlow.appListPreparation`).
+enum AppListPreparation: Hashable, Sendable {
+  /// 시트에 보일 실패 (목록 없음·기기 없음·켜는 중·쓸 수 없음).
+  case failed(LaunchAppPreparationFailure)
+  /// 켜져 있어 곧바로 읽는다.
+  case ready
+  /// 꺼져 있어 켠 뒤 읽는다.
+  case needsBoot(VirtualDevice)
+}
+
+// 실행 실패 변환(`SimulatorError(AppLogLaunchError)`)을 `private` 그대로 쓰려고 같은 파일에 둔다.
+extension AppInstallFlow {
+  /// 앱 실행 시트의 준비 판정: 지금 목록으로 기기를 확인한다. 목록이 없거나 기기가 없으면 `.deviceNotFound`,
+  /// 켜는 중·쓸 수 없으면 `.deviceNotReady`, 꺼져 있으면 켜야 한다.
+  func appListPreparation(_ id: VirtualDevice.ID, host: Host) -> AppListPreparation {
+    switch AppInstallTarget.current(id, in: host.listState()) {
+    case .notLoaded, .notFound: .failed(LaunchAppPreparationFailure(.simulator(.deviceNotFound), stage: .list))
+    case let .blocked(reason): .failed(LaunchAppPreparationFailure(.deviceNotReady(reason), stage: .list))
+    case let .ready(device): device.state == .shutdown ? .needsBoot(device) : .ready
+    }
+  }
+
+  /// 앱 실행 시트가 떠 있는 동안 꺼진 기기를 켜고 다시 읽는다. 실패도 다시 읽고 시트에 보일 실패를 돌려준다.
+  /// Simulator 앱은 열지 않고(창이 시트를 가리지 않게. 실행 단계에서 연다) 알림도 쌓지 않는다.
+  func bootForAppList(_ device: VirtualDevice, host: Host) async -> LaunchAppPreparationFailure? {
+    do throws(SimulatorError) {
+      try await self.simulator.boot(device.id)
+    } catch {
+      await host.reload()
+      return LaunchAppPreparationFailure(.simulator(error), stage: .boot)
+    }
+    await host.reload()
+    return nil
+  }
+
+  /// 설치된 앱 실행 대상: 시트를 연 사이 바뀌었을 수 있어 지금 목록으로 다시 확인한다. 실행할 수 없으면 알림을 쌓고 nil.
+  func launchAppTarget(_ request: LaunchAppRequest, host: Host) -> VirtualDevice? {
+    let target = AppInstallTarget.current(request.deviceID, in: host.listState())
+    guard case let .ready(device) = target else {
+      if let failure = target.launchAppFailure {
+        host.enqueue(.installedAppLaunchFailed(request.device, failure))
+      }
+      return nil
+    }
+    return device
+  }
+
+  /// 꺼져 있으면 켜고, Simulator 앱을 연 뒤 로그 받기와 함께 앱을 실행하고 다시 읽는다. 실패하면 알림을 쌓는다.
+  /// 설치가 아니라 `replacementWillStart` 는 부르지 않는다 (같은 앱의 앞 세션은 `launchIOSApp` 이 "다시 실행됨" 으로 끝낸다).
+  func launchInstalledApp(_ request: LaunchAppRequest, on device: VirtualDevice, host: Host) async {
+    let app = request.app
+    let label = request.device
+    guard await self.bootIfNeededAndShowSimulator(device, label: label, host: host) else { return }
+    do throws(AppLogLaunchError) {
+      _ = try await self.appLog.launchIOSApp(
+        app.bundleID,
+        appName: app.displayName,
+        on: device.id,
+        deviceName: device.name
+      )
+    } catch {
+      host.enqueue(.installedAppLaunchFailed(label, .simulator(SimulatorError(error))))
+    }
+    await host.reload()
   }
 }
 

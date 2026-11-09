@@ -9,6 +9,9 @@ public enum DeviceTask: Hashable, Sendable {
   case installApp
   /// 링크 열기 흐름 전체 (필요하면 켜기 → Simulator 앱 열기 → 링크 열기 → 다시 읽기).
   case openURL
+  /// 설치된 앱 실행 흐름 전체 (필요하면 켜기 → Simulator 앱 열기 → 로그 받기와 함께 실행 → 다시 읽기).
+  /// 앱 실행 시트를 열기 전(목록을 읽으려고) 꺼진 기기를 켜는 것은 `.boot` 기록이다.
+  case launchApp
 }
 
 /// URL·카탈로그 버전 설치의 받기 단계. 받기가 끝나면(성공) 단계가 사라지고 task `.installApp` 만 남는다(풀기·검사·설치·실행).
@@ -50,7 +53,7 @@ public struct DeviceActivity: Hashable, Sendable {
 
   /// 진행 중인 작업이 없고 기기 규칙이 허용하면 true. 기기 규칙: boot = 쓸 수 있고 `.shutdown`,
   /// shutdown = `.booted`, delete = `deleteAvailability == .allowed`, erase = `eraseAvailability == .allowed`,
-  /// installApp·openURL = `appInstallAvailability == .allowed` (링크 열기도 설치와 같이 꺼져 있으면 켜고 연다).
+  /// installApp·openURL·launchApp = `appInstallAvailability == .allowed` (링크 열기·앱 실행도 설치와 같이 꺼져 있으면 켜고 연다).
   public func canStart(_ task: DeviceTask, on device: VirtualDevice) -> Bool {
     guard self.tasks[device.id] == nil else { return false }
     return switch task {
@@ -58,7 +61,7 @@ public struct DeviceActivity: Hashable, Sendable {
     case .shutdown: device.state == .booted
     case .delete: device.deleteAvailability == .allowed
     case .erase: device.eraseAvailability == .allowed
-    case .installApp, .openURL: device.appInstallAvailability == .allowed
+    case .installApp, .openURL, .launchApp: device.appInstallAvailability == .allowed
     }
   }
 

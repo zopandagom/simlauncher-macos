@@ -10,6 +10,8 @@ public struct LauncherView: View {
   let model: LauncherModel
   /// 카탈로그에서 설치 시트. 기기 목록 상태를 함께 쓰지 않아 따로 둔 Model 이다 (App 이 소유한다).
   let catalogModel: CatalogInstallModel
+  /// 행의 "앱 실행…"·"링크 열기…" 시트. 목록 읽기라는 자기 비동기 흐름이 있어 따로 둔 Model 이다 (App 이 소유한다).
+  let appSheetsModel: LauncherAppSheetsModel
   /// 지금 띄운 알림. 닫히는 동안 Model 의 줄에서 빠져도 글자가 비지 않도록 View 가 들고 있는다.
   @State private var presentedNotice: LauncherNoticeItem?
   /// 알림을 띄웠는지. 다음 알림을 띄울 때 false → true 전이가 생기도록 Model 의 줄과 따로 둔다.
@@ -23,9 +25,10 @@ public struct LauncherView: View {
   /// 기기 행 "로그 보기" 가 로그 창(`AppLogTarget.windowID`)을 연다. 같은 기기면 SwiftUI 가 그 창을 앞으로 가져온다.
   @Environment(\.openWindow) private var openWindow
 
-  public init(model: LauncherModel, catalogModel: CatalogInstallModel) {
+  public init(model: LauncherModel, catalogModel: CatalogInstallModel, appSheetsModel: LauncherAppSheetsModel) {
     self.model = model
     self.catalogModel = catalogModel
+    self.appSheetsModel = appSheetsModel
   }
 
   public var body: some View {
@@ -114,20 +117,34 @@ public struct LauncherView: View {
       ) {
         DeviceCreationSheet(model: self.model)
       }
-      // 생성·링크·URL 설치·카탈로그 시트는 같은 체인에 둔다. 앞의 셋은 Model 이 둘 이상 함께 열리지 않게 막고, 카탈로그 시트는
-      // 다른 Model 이라 시트가 창을 막는 모달과 행 메뉴의 비활성에 기댄다. 툴바 "카탈로그에서…" 는 작업 중인 기기도 대상에
-      // 넣으므로, 그 기기는 설치를 시작할 때 LauncherModel 의 시작 판정이 이유(다른 작업 중)와 함께 건너뛴다.
+      // 생성·링크·앱 실행·URL 설치·카탈로그 시트는 같은 체인에 둔다. 생성·URL 설치 시트와 앱 실행·링크 열기 시트(`appSheetsModel`)는
+      // 두 Model 이 App 이 이은 클로저(`appSheetPresented`·`target`)로 서로 막아 둘 이상 함께 열리지 않는다. 카탈로그 시트는
+      // 다른 Model 이라 시트가 창을 막는 모달과 행 메뉴의 비활성에 기댄다 (앱 실행 시트도 켜기 전에 곧바로 열려 같다).
+      // 툴바 "카탈로그에서…" 는 작업 중인 기기도 대상에 넣으므로, 그 기기는 설치를 시작할 때 LauncherModel 의 시작 판정이
+      // 이유(다른 작업 중)와 함께 건너뛴다.
       .sheet(
         isPresented: Binding(
-          get: { self.model.openURLDraft != nil },
+          get: { self.appSheetsModel.openURLDraft != nil },
           set: { isPresented in
             if !isPresented {
-              self.model.openURLSheetDismissed()
+              self.appSheetsModel.openURLSheetDismissed()
             }
           }
         )
       ) {
-        OpenURLSheet(model: self.model)
+        OpenURLSheet(model: self.appSheetsModel)
+      }
+      .sheet(
+        isPresented: Binding(
+          get: { self.appSheetsModel.launchAppDraft != nil },
+          set: { isPresented in
+            if !isPresented {
+              self.appSheetsModel.launchAppSheetDismissed()
+            }
+          }
+        )
+      ) {
+        LaunchAppSheet(model: self.appSheetsModel)
       }
       .sheet(
         isPresented: Binding(
@@ -343,7 +360,8 @@ extension LauncherView {
       installFromCatalogTapped: { Task { await self.catalogModel.menuTapped(device) } },
       cancelDownloadTapped: { self.model.downloadCancelTapped(device.id) },
       appDropped: { urls in Task { await self.model.appDropped(urls, on: device.id) } },
-      openURLTapped: { self.model.openURLButtonTapped(device.id) },
+      launchAppTapped: { Task { await self.appSheetsModel.launchAppTapped(device.id) } },
+      openURLTapped: { self.appSheetsModel.openURLTapped(device.id) },
       hasLog: self.model.logDevices.contains(device.id),
       logTapped: { self.openWindow(id: AppLogTarget.windowID, value: AppLogTarget.iOS(device.id)) },
       canTakeScreenshot: self.model.screenshots.canStart(on: device, during: task),

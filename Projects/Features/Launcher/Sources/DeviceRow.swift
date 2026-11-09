@@ -3,8 +3,9 @@ import DownloadInterface
 import Foundation
 import SwiftUI
 
-/// 기기 한 줄: 종류 아이콘, 이름, 상태, 앱 설치 메뉴(파일에서 고르기… / URL 에서… / 카탈로그에서…)와 드롭, 링크 열기 버튼(시트),
-/// 로그 보기 버튼(늘 보이고, 이 기기에 앱 로그 세션이 있으면 기기 상태·작업과 관계없이 누를 수 있다. 없으면 비활성으로 두고 이유를 툴팁으로),
+/// 기기 한 줄: 종류 아이콘, 이름, 상태, 앱 설치 메뉴(파일에서 고르기… / URL 에서… / 카탈로그에서…)와 드롭, 앱 실행 버튼(설치한 앱을 고르는 시트),
+/// 링크 열기 버튼(시트), 로그 보기 버튼(늘 보이고, 이 기기에 앱 로그 세션이 있으면 기기 상태·작업과 관계없이 누를 수 있다. 없으면 비활성으로 두고
+/// 이유("앱 실행…" 안내)를 툴팁으로),
 /// 스크린샷 버튼(켜진 기기만, 찍는 중이면 작은 진행 표시), 녹화 표시(켜진 기기만: "녹화" 버튼, 녹화 중이면 경과 시간과 "중지",
 /// 저장 중이면 작은 진행 표시), 켜기·끄기 버튼(받는 중이면 진행 막대와 받기 취소 버튼, 녹화 중이면 끄기 비활성),
 /// 기기 작업 메뉴(… 버튼과 컨텍스트 메뉴: 초기화·삭제).
@@ -24,12 +25,13 @@ struct DeviceRow: View {
   let installFromCatalogTapped: () -> Void
   let cancelDownloadTapped: () -> Void
   let appDropped: ([URL]) -> Void
+  let launchAppTapped: () -> Void
   let openURLTapped: () -> Void
   /// 이 기기에 앱 로그 세션(받는 중·끝남)이 있다 (`LauncherModel.logDevices`). 있으면 "로그 보기" 를 누를 수 있다.
   let hasLog: Bool
   /// 이 기기의 로그 창을 연다 (View 가 `openWindow` 로 연다).
   let logTapped: () -> Void
-  /// 스크린샷 버튼을 누를 수 있다 (`ScreenshotActivity.canStart`: 켜진 기기, 찍는 중이 아님, 기기 작업이 없거나 앱 설치·링크 열기).
+  /// 스크린샷 버튼을 누를 수 있다 (`ScreenshotActivity.canStart`: 켜진 기기, 찍는 중이 아님, 기기 작업이 없거나 앱 설치·링크 열기·앱 실행).
   let canTakeScreenshot: Bool
   /// 이 기기의 스크린샷을 찍는 중이다 (버튼 자리에 진행 표시).
   let isTakingScreenshot: Bool
@@ -74,7 +76,10 @@ struct DeviceRow: View {
       .fixedSize()
       .disabled(!self.canInstall)
       .help(self.installBlockReason ?? LauncherText.installAppHelp)
-      // 링크 열기도 설치와 같은 규칙이다 (꺼져 있으면 켜고 연다).
+      // 앱 실행·링크 열기도 설치와 같은 규칙이다 (꺼져 있으면 켜고 실행하거나 연다).
+      Button(LauncherText.launchAppButton, action: self.launchAppTapped)
+        .disabled(!self.canInstall)
+        .help(self.launchAppBlockReason ?? LauncherText.launchAppHelp)
       Button(LauncherText.openURLButton, action: self.openURLTapped)
         .disabled(!self.canInstall)
         .help(self.openURLBlockReason ?? LauncherText.openURLHelp)
@@ -208,7 +213,7 @@ struct DeviceRow: View {
     self.task != nil
   }
 
-  /// 앱 설치 메뉴·드롭과 링크 열기 버튼을 받을 수 있다: 진행 중인 작업이 없고 설치할 수 있는 기기다.
+  /// 앱 설치 메뉴·드롭과 앱 실행·링크 열기 버튼을 받을 수 있다: 진행 중인 작업이 없고 설치할 수 있는 기기다.
   private var canInstall: Bool {
     !self.isBusy && self.device.appInstallAvailability == .allowed
   }
@@ -223,6 +228,12 @@ struct DeviceRow: View {
   private var openURLBlockReason: String? {
     guard case let .blocked(reason) = self.device.appInstallAvailability else { return nil }
     return LauncherText.openURLBlockReason(reason)
+  }
+
+  /// 앱 실행 버튼 툴팁에 보일 막힌 이유. 진행 중이면 행의 진행 표시가 이유라 따로 보이지 않는다.
+  private var launchAppBlockReason: String? {
+    guard case let .blocked(reason) = self.device.appInstallAvailability else { return nil }
+    return LauncherText.launchAppBlockReason(reason)
   }
 
   /// 스크린샷 버튼 툴팁에 보일 막힌 이유. 진행 중이면 행의 진행 표시가 이유라 따로 보이지 않는다.
@@ -261,6 +272,8 @@ struct DeviceRow: View {
       return LauncherText.installingLabel
     case .openURL:
       return LauncherText.openingURLLabel
+    case .launchApp:
+      return LauncherText.launchingAppLabel
     case .boot, .shutdown, .delete, .erase, .none:
       break
     }

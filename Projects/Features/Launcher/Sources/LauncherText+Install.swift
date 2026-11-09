@@ -38,7 +38,8 @@ extension LauncherText {
 
   // MARK: - 알림
 
-  /// 기기 행 작업(설치·실행·링크 열기·스크린샷·녹화) 알림의 제목. `title(for:)` 가 아홉 케이스를 한 줄로 넘긴다 (복잡도를 나눈다).
+  /// 기기 행 작업(설치·실행·링크 열기·앱 실행·스크린샷·녹화) 알림의 제목. `title(for:)` 가 열 케이스를 한 줄로 넘긴다 (복잡도를 나눈다).
+  /// `default` 가 설치 문구라 새 케이스는 여기에 명시한다.
   static func rowTaskNoticeTitle(for notice: LauncherNotice?, device: LauncherNotice.Device) -> String {
     switch notice {
     case .launchFailed:
@@ -48,6 +49,8 @@ extension LauncherText {
       )
     case .openURLFailed:
       self.openURLNoticeTitle(for: device)
+    case .installedAppLaunchFailed:
+      self.installedAppLaunchNoticeTitle(for: device)
     case .screenshotFailed, .screenshotRevealFailed:
       self.screenshotNoticeTitle(for: notice, device: device)
     case .recordingFailed, .recordingInterrupted, .recordingStoppedByDevice, .recordingRevealFailed:

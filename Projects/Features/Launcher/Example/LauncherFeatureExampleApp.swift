@@ -1,4 +1,5 @@
 import AppBundleTesting
+import AppLogInterface
 import AppLogTesting
 import Core
 import DownloadInterface
@@ -17,7 +18,10 @@ import WorkspaceTesting
 /// 1초 지연), `DownloadClientFake`(어떤 주소든 0.3초마다 48 MB 까지 진행을 알린 뒤 zip 을 받은 것으로 끝나고,
 /// `AppBundleClientFake` 가 그 zip 을 샘플 앱으로 푼다)를 주입한다. Setup 화면이 없으므로 Setup 진입 버튼("개발 환경"·"iOS 설치"·"다른 iOS 버전 설치"·
 /// "개발 환경 열기")은 눌러도 아무 일도 하지 않는다.
-/// 실행은 `AppLogClientFake`(실행은 늘 성공하고 받는 중 세션을 만든다)로 해, 설치 후 실행한 기기 행의 "로그 보기" 가 눌린다 (그 전에는 비활성).
+/// 실행은 `AppLogClientFake`(실행은 늘 성공하고 받는 중 세션을 만든다)로 해, 설치 후 실행하거나 "앱 실행…" 으로 실행한 기기 행의
+/// "로그 보기" 가 눌린다 (그 전에는 비활성). "앱 실행…" 시트는 `LauncherAppSheetsModel` 이 같은 `SimulatorClientFake` 에서 설치된 앱
+/// 목록(모든 샘플 기기에 `ExampleInstalledApps.all`: 표시 이름이 같은 두 앱, 버전 없는 앱 포함)을 읽는다. 꺼진 기기는 시트가 열린 채
+/// 켜는 중을 보이다 켜진 뒤 목록을 보인다. "링크 열기…" 시트도 같은 Model 이다.
 /// 로그 창 씬이 없어 눌러도 창은 열리지 않는다 (창은 DeviceLog Feature 의 Example 에서 본다).
 /// "카탈로그에서…" 시트는 `PreferencesClientFake`(카탈로그 2개 + http 주소 + 앞 항목과 같은 카탈로그)와 카탈로그 전용
 /// `DownloadClientFake`(주소별 카탈로그 내용, 1초 지연)로 읽고, 고른 버전은 같은 `LauncherModel` 이 받아 설치한다.
@@ -31,42 +35,62 @@ import WorkspaceTesting
 struct LauncherFeatureExampleApp: App {
   @State private var model: LauncherModel
   @State private var catalogModel: CatalogInstallModel
+  @State private var appSheetsModel: LauncherAppSheetsModel
 
   init() {
-    let launcher = Self.makeModel()
+    let (launcher, appSheets) = Self.makeModels()
     self._model = State(initialValue: launcher)
+    self._appSheetsModel = State(initialValue: appSheets)
     self._catalogModel = State(initialValue: makeCatalogModel(.exampleCatalogs, installingWith: launcher))
   }
 
   var body: some Scene {
     WindowGroup {
-      LauncherView(model: self.model, catalogModel: self.catalogModel)
+      LauncherView(model: self.model, catalogModel: self.catalogModel, appSheetsModel: self.appSheetsModel)
     }
   }
 
-  private static func makeModel() -> LauncherModel {
+  private static func makeModels() -> (LauncherModel, LauncherAppSheetsModel) {
     let fake = SimulatorClientFake(inventory: .sample)
     fake.setDelay(.seconds(1))
+    ExampleInstalledApps.install(on: fake)
     let appBundle = AppBundleClientFake()
     appBundle.setDelay(.seconds(1))
     let download = DownloadClientFake()
     download.setDownloadScript(progress: DownloadProgress.example, result: nil)
     download.setDelay(.milliseconds(300))
-    return LauncherModel(
+    let box = ExampleAppSheetsBox()
+    let launcher = LauncherModel(
       simulator: fake,
       appBundle: appBundle,
       download: download,
       workspace: WorkspaceClientFake(),
-      appLog: AppLogClientFake()
+      appLog: AppLogClientFake(),
+      appSheetPresented: { box.model?.hasPresentedSheet ?? false }
     )
+    let appSheets = makeAppSheetsModel(simulator: fake, launcher: launcher)
+    box.model = appSheets
+    return (launcher, appSheets)
   }
 }
 
-extension DownloadProgress {
-  /// 48 MB 를 4.8 MB 씩 받는 진행 (Example·프리뷰가 행의 바이트·진행 막대를 보이게).
-  static let example: [DownloadProgress] = (0 ... 10).map { (step: Int64) -> DownloadProgress in
-    DownloadProgress(receivedBytes: step * 4_800_000, expectedBytes: 48_000_000)
-  }
+/// App 처럼 두 Model 을 클로저로 잇는다 (시트를 열 기기·켜기·다시 읽기·실행은 `launcher`).
+@MainActor
+private func makeAppSheetsModel(simulator: SimulatorClientFake, launcher: LauncherModel) -> LauncherAppSheetsModel {
+  LauncherAppSheetsModel(
+    simulator: simulator,
+    target: { id, task in launcher.appSheetTarget(id, for: task) },
+    prepareRequested: { id in await launcher.launchAppPreparationRequested(id) },
+    refreshRequested: { await launcher.refreshButtonTapped() },
+    launchRequested: { request in await launcher.launchAppRequested(request) },
+    openURLRequested: { request in await launcher.openURLRequested(request) }
+  )
+}
+
+/// 기기 목록 Model 이 뒤에 만든 시트 Model 을 읽게 넘기는 상자 (App 의 `LauncherAppSheetsBox` 와 같다).
+@MainActor
+private final class ExampleAppSheetsBox {
+  weak var model: LauncherAppSheetsModel?
 }
 
 /// 카탈로그에서 설치 시트의 Model. 저장된 목록은 `setting`, 카탈로그 받기는 따로 만든 `DownloadClientFake`(1초 지연,
@@ -92,7 +116,8 @@ private func makeCatalogModel(
 }
 
 /// Fake 를 만들어 설정한 뒤 화면을 만든다. 카탈로그 시트는 기본이 빈 목록이고, `catalogs`·`catalogDownload` 로 바꾼다.
-/// 스크린샷·녹화 저장은 `workspace` 로 바꾼다 (기본: 늘 예약·보이기에 성공하는 Fake).
+/// 스크린샷·녹화 저장은 `workspace` 로 바꾼다 (기본: 늘 예약·보이기에 성공하는 Fake). 실행(로그 받기와 함께)은 `appLog` 로 바꾼다
+/// (기본: 늘 성공).
 @MainActor
 private func previewLauncher(
   _ inventory: DeviceInventory = .sample,
@@ -101,9 +126,11 @@ private func previewLauncher(
   download configureDownload: (DownloadClientFake) -> Void = { _ in },
   workspace configureWorkspace: (WorkspaceClientFake) -> Void = { _ in },
   catalogs: CatalogURLSetting = CatalogURLSetting(urls: [], isLocked: false),
-  catalogDownload configureCatalogDownload: (DownloadClientFake) -> Void = { _ in }
+  catalogDownload configureCatalogDownload: (DownloadClientFake) -> Void = { _ in },
+  appLog: AppLogClientFake = AppLogClientFake()
 ) -> LauncherView {
   let fake = SimulatorClientFake(inventory: inventory)
+  ExampleInstalledApps.install(on: fake)
   configure(fake)
   let appBundle = AppBundleClientFake()
   configureAppBundle(appBundle)
@@ -113,15 +140,19 @@ private func previewLauncher(
   configureDownload(download)
   let workspace = WorkspaceClientFake()
   configureWorkspace(workspace)
+  let box = ExampleAppSheetsBox()
   let launcher = LauncherModel(
     simulator: fake,
     appBundle: appBundle,
     download: download,
     workspace: workspace,
-    appLog: AppLogClientFake()
+    appLog: appLog,
+    appSheetPresented: { box.model?.hasPresentedSheet ?? false }
   )
   let catalogModel = makeCatalogModel(catalogs, installingWith: launcher, catalogDownload: configureCatalogDownload)
-  return LauncherView(model: launcher, catalogModel: catalogModel)
+  let appSheets = makeAppSheetsModel(simulator: fake, launcher: launcher)
+  box.model = appSheets
+  return LauncherView(model: launcher, catalogModel: catalogModel, appSheetsModel: appSheets)
 }
 
 #Preview("목록") {
@@ -228,6 +259,30 @@ private func previewLauncher(
 
 #Preview("링크 열 앱 없음 (링크 열기… → 열기)") {
   previewLauncher { $0.setOpenURLError(.urlNotHandled) }
+}
+
+#Preview("앱 실행 (켜진·꺼진 기기의 앱 실행… → 앱 고르기 → 실행)") {
+  previewLauncher { $0.setDelay(.seconds(1)) }
+}
+
+#Preview("설치한 앱 없음 (앱 실행…)") {
+  previewLauncher { ExampleInstalledApps.install(on: $0, apps: []) }
+}
+
+#Preview("앱 목록 읽기 실패 (켜진 기기의 앱 실행…)") {
+  previewLauncher { $0.setInstalledAppsError(.commandFailed) }
+}
+
+#Preview("앱 목록 읽는 중 (켜진 기기의 앱 실행…, 끝나지 않음)") {
+  previewLauncher { $0.suspendInstalledApps() }
+}
+
+#Preview("앱 실행 시트에서 켜기 실패 (꺼진 기기의 앱 실행…)") {
+  previewLauncher { $0.setBootError(.commandFailed) }
+}
+
+#Preview("설치된 앱 실행 실패: 앱이 지워짐 (앱 실행… → 실행)") {
+  previewLauncher(appLog: AppLogClientFake { _, _ throws(AppLogLaunchError) in throw .appNotInstalled })
 }
 
 /// 설치가 3초 걸려 실패하는 동안 다른 기기의 링크 시트를 열어, 설치 실패 알림과 링크 시트가 함께 나와도 깨지지 않는지 본다.
