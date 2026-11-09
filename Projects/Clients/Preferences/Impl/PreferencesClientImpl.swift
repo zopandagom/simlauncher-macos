@@ -2,7 +2,7 @@ import Core
 import PreferencesInterface
 import Synchronization
 
-/// UserDefaults 표준 도메인(앱 번들 ID)의 `CatalogURLs`·`AndroidSDKPath`·`AcceptedAndroidLicenses` 키를 읽고 쓴다.
+/// UserDefaults 표준 도메인(앱 번들 ID)의 `CatalogURLs`·`AndroidSDKPath`·`AcceptedAndroidLicenses`·`LogFilters` 키를 읽고 쓴다.
 /// 쓰기 전에 키마다 강제 여부(`objectIsForced`)를 본다:
 /// 강제 중에 쓰면 화면에는 변화가 없는데 사용자 도메인에 값이 남아 프로필을 지우는 순간 나타나므로 쓰지 않는다.
 public final class PreferencesClientImpl: PreferencesClient {
@@ -81,6 +81,47 @@ public final class PreferencesClientImpl: PreferencesClient {
         return
       }
       self.store.setAcceptedAndroidLicenses(stored + added)
+    }
+  }
+
+  public func savedLogFilters() -> SavedLogFilterSetting {
+    SavedLogFilterSetting(
+      filters: SavedLogFilterList.visible(self.store.logFilters()),
+      isLocked: self.store.isLogFiltersForced()
+    )
+  }
+
+  public func saveLogFilter(
+    _ filter: SavedLogFilter,
+    replacingSameName: Bool
+  ) throws(PreferencesError) -> SavedLogFilterSetting {
+    try self.lock.withLock { _ throws(PreferencesError) in
+      guard !self.store.isLogFiltersForced() else {
+        throw .locked
+      }
+      let items = try self.store.updateLogFilters { (items: [SavedLogFilter?]) throws(PreferencesError) in
+        switch SavedLogFilterList.saveChange(filter, replacingSameName: replacingSameName, in: items) {
+        case let .success(change):
+          return change
+        case .failure(.sameName):
+          throw .duplicate
+        case .failure(.limitReached):
+          throw .limitReached
+        }
+      }
+      return SavedLogFilterSetting(filters: SavedLogFilterList.visible(items), isLocked: false)
+    }
+  }
+
+  public func removeLogFilter(named name: String) throws(PreferencesError) -> SavedLogFilterSetting {
+    try self.lock.withLock { _ throws(PreferencesError) in
+      guard !self.store.isLogFiltersForced() else {
+        throw .locked
+      }
+      let items = try self.store.updateLogFilters { (items: [SavedLogFilter?]) throws(PreferencesError) in
+        SavedLogFilterList.removeChange(named: name, in: items)
+      }
+      return SavedLogFilterSetting(filters: SavedLogFilterList.visible(items), isLocked: false)
     }
   }
 }

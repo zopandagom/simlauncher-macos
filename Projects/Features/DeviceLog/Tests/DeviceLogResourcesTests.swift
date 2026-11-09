@@ -121,6 +121,12 @@ enum DeviceLogTextCatalog {
     texts += self.errors.map { DeviceLogText.relaunchFailed($0, platform: .iOS) }
     texts.append(DeviceLogText.relaunchFailed(.developerToolsUnavailable, platform: .android))
     texts += LogFilter.Kind.allCases.map(DeviceLogText.kind)
+    texts += [
+      DeviceLogText.savedFiltersMenu, DeviceLogText.noSavedFilters, DeviceLogText.saveCurrentFilter,
+      DeviceLogText.deleteMenu, DeviceLogText.saveSheetTitle, DeviceLogText.saveNameLabel, DeviceLogText.saveButton,
+      DeviceLogText.cancelButton, DeviceLogText.replaceMessage, DeviceLogText.replaceButton,
+    ]
+    texts += [LogFilterSaveBlock.locked, .emptyFilter, .invalidRegex].map(DeviceLogText.saveBlocked)
     return texts
   }
 
@@ -147,6 +153,26 @@ enum DeviceLogTextCatalog {
       ),
       FormatSample(key: "버퍼가 차서 앞 %lld줄을 버렸습니다", arguments: [5], text: DeviceLogText.discarded(5)),
       FormatSample(key: "새 줄 %lld", arguments: [7], text: DeviceLogText.newWhilePaused(7)),
+      FormatSample(
+        key: "조건은 %lld개까지 저장할 수 있습니다.", arguments: [SavedLogFilter.maxConditions],
+        text: DeviceLogText.saveBlocked(.tooManyConditions)
+      ),
+      FormatSample(
+        key: "조건 글자는 %lld자까지 저장할 수 있습니다.", arguments: [SavedLogFilter.maxTextLength],
+        // 화면 문구는 천 단위 구분("1,000")이 붙고 String(format:) 은 붙이지 않아 구분 기호만 뺀다.
+        text: DeviceLogText.saveBlocked(.textTooLong).replacingOccurrences(of: ",", with: "")
+      ),
+      FormatSample(
+        key: "저장된 필터는 %lld개까지입니다.", arguments: [SavedLogFilter.maxCount],
+        text: DeviceLogText.savedFilterLimit
+      ),
+      FormatSample(
+        key: "이름은 %lld자까지 쓸 수 있습니다.", arguments: [SavedLogFilter.maxNameLength],
+        text: DeviceLogText.nameTooLong
+      ),
+      FormatSample(
+        key: "‘%@’ 필터가 이미 있습니다", arguments: ["Errors"], text: DeviceLogText.replaceTitle(existingName: "Errors")
+      ),
     ]
   }
 }

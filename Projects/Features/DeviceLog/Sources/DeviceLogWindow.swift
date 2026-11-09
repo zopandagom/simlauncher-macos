@@ -2,9 +2,9 @@ import AppLogInterface
 import Foundation
 
 /// 로그 창 하나(대상 하나)의 상태: 고른 세션, 필터, 일시정지·따라가기, 받은 줄과 보이는 줄, 지운 지점, 다시 실행 상태,
-/// 전체 다시 거르기 기다림.
+/// 전체 다시 거르기 기다림, 필터 저장 시트(`LogFilterSaveDraft`).
 /// 규칙만 담은 값이고, Client 구독과 메인 밖 거르기(`CompiledLogFilter.filtered`, 줄 맞춤과 강조 범위 계산)는 `DeviceLogModel` 이 한다.
-/// 창을 닫으면 줄은 버리고(`close()`) 필터·따라가기·지운 지점·다시 실행 상태는 SimLauncher 가 켜져 있는 동안 남긴다.
+/// 창을 닫으면 줄과 저장 시트는 버리고(`close()`) 필터·따라가기·지운 지점·다시 실행 상태는 SimLauncher 가 켜져 있는 동안 남긴다.
 public struct DeviceLogWindow: Sendable {
   public enum RelaunchState: Hashable, Sendable {
     case idle
@@ -50,6 +50,8 @@ public struct DeviceLogWindow: Sendable {
   public private(set) var displayGeneration = 0
   public private(set) var relaunch = RelaunchState.idle
   public private(set) var isOpen = false
+  /// 필터 저장 시트 상태. nil 이면 시트가 없다.
+  public private(set) var saveDraft: LogFilterSaveDraft?
   /// 전체 다시 거르기(스냅숏 뒤·필터 바꿈 뒤)를 요청했고 그 결과가 아직 적용되지 않았다. 그동안 보이는 줄은 앞 결과이거나 비어 있어
   /// "맞는 줄 없음" 안내와 빈 줄 수를 숨긴다. 결과를 버리는 경로는 모두 새 전체 거르기나 `resetLines` 로 이어져 갇히지 않는다.
   private(set) var isAwaitingFullFilter = false
@@ -99,8 +101,10 @@ public struct DeviceLogWindow: Sendable {
   }
 
   /// 창을 닫는다: 줄을 버리고 고른 세션과 일시정지도 놓는다 (다시 열면 가장 늦은 세션을 받는 대로 보인다).
+  /// 저장 시트도 저장하지 않고 버린다.
   mutating func close() {
     self.isOpen = false
+    self.saveDraft = nil
     self.selectedSessionID = nil
     self.pausedThrough = nil
     self.resetLines(cleared: -1)
@@ -251,6 +255,31 @@ public struct DeviceLogWindow: Sendable {
     if self.isPaused {
       self.pausedThrough = cleared
     }
+  }
+
+  // MARK: - 필터 저장 시트
+
+  /// 빈 이름으로 이름 입력을 시작한다.
+  mutating func beginSave() {
+    self.saveDraft = LogFilterSaveDraft()
+  }
+
+  mutating func setSaveName(_ name: String) {
+    self.saveDraft?.setName(name)
+  }
+
+  /// 같은 이름이 있어 바꿀지 묻는다 (입력한 이름은 그대로 둔다).
+  mutating func askReplace(existingName: String) {
+    self.saveDraft?.setStep(.confirmingReplace(existingName: existingName))
+  }
+
+  /// 이름 입력으로 돌아간다 (입력한 이름은 그대로 둔다).
+  mutating func backToNaming() {
+    self.saveDraft?.setStep(.naming)
+  }
+
+  mutating func endSave() {
+    self.saveDraft = nil
   }
 
   // MARK: - 도움

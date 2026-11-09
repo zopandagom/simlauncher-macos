@@ -2,6 +2,7 @@ import AppLogInterface
 import AppLogTesting
 import Core
 import Foundation
+import PreferencesTesting
 import Testing
 @testable import DeviceLogFeature
 
@@ -35,10 +36,13 @@ enum DeviceLogTestSupport {
     let session: AppLogSessionSummary
   }
 
-  /// 세션을 넣은 Fake 와 Model.
-  static func fixture(_ sessions: [AppLogSessionSummary]) -> (DeviceLogModel, AppLogClientFake) {
+  /// 세션을 넣은 Fake 와 Model. 저장된 필터를 보는 테스트는 Preferences Fake 를 만들어 넘기고 직접 들고 검사한다.
+  static func fixture(
+    _ sessions: [AppLogSessionSummary],
+    preferences: PreferencesClientFake = PreferencesClientFake()
+  ) -> (DeviceLogModel, AppLogClientFake) {
     let fake = AppLogClientFake(sessions: sessions)
-    return (DeviceLogModel(appLog: fake), fake)
+    return (DeviceLogModel(appLog: fake, preferences: preferences), fake)
   }
 
   /// 창을 열고 그 세션을 골라 보이는 줄이 `visible` 개가 되기까지 기다린다.

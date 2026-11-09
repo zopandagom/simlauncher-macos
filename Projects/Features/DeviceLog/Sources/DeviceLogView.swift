@@ -4,7 +4,7 @@ import SwiftUI
 
 /// 기기 하나의 로그 창 내용: 위는 앱(세션) 고르기·상태·다시 실행, 가운데 필터와 줄 목록, 아래 줄 수와 일시정지·따라가기·지우기.
 /// App 이 `WindowGroup(id: AppLogTarget.windowID, for: AppLogTarget.self)` 로 대상마다 창 하나를 띄운다.
-/// 창을 닫으면(onDisappear) 줄만 버리고 앱과 받기는 계속된다.
+/// 창을 닫으면(onDisappear) 줄과 필터 저장 시트만 버리고 앱과 받기는 계속된다.
 public struct DeviceLogView: View {
   let model: DeviceLogModel
   let target: AppLogTarget
@@ -39,6 +39,16 @@ public struct DeviceLogView: View {
     }
     .frame(minWidth: 640, minHeight: 360)
     .navigationTitle(self.model.title(for: self.target))
+    .sheet(isPresented: Binding(
+      get: { self.model.window(for: self.target).saveDraft != nil },
+      set: { isPresented in
+        if !isPresented {
+          self.model.saveCancelled(in: self.target)
+        }
+      }
+    )) {
+      LogFilterSaveSheet(model: self.model, target: self.target)
+    }
     .onAppear { self.model.windowAppeared(self.target) }
     .onDisappear { self.model.windowDisappeared(self.target) }
   }

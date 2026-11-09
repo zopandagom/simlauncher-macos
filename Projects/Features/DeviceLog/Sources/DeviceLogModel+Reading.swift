@@ -1,6 +1,7 @@
 import AppLogInterface
 import Core
 import Foundation
+import PreferencesInterface
 
 /// 상태를 바꾸지 않는 읽기. View 가 쓴다.
 public extension DeviceLogModel {
@@ -26,5 +27,17 @@ public extension DeviceLogModel {
       return DeviceLogText.defaultWindowTitle
     }
     return DeviceLogText.windowTitle(deviceName: deviceName)
+  }
+
+  /// "지금 필터 저장…" 을 막는 이유 (창 필터·정규식 문제·저장된 필터 잠금). nil 이면 저장할 수 있다.
+  func saveBlock(for target: AppLogTarget) -> LogFilterSaveBlock? {
+    let window = self.window(for: target)
+    return LogFilterSaveBlock.reason(filter: window.filter, problem: window.filterProblem, saved: self.savedFilters)
+  }
+
+  /// 저장 시트에 넣은 이름이 새 이름이고 저장된 필터가 50개라 저장할 수 없다.
+  func isSaveOverLimit(for target: AppLogTarget) -> Bool {
+    guard let draft = self.windows[target]?.saveDraft else { return false }
+    return LogFilterSaveDraft.isOverLimit(name: draft.name, saved: self.savedFilters)
   }
 }

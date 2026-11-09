@@ -3,6 +3,7 @@ import AppLogTesting
 import Core
 import DeviceLogFeature
 import Foundation
+import PreferencesTesting
 import SwiftUI
 
 /// App 없이 로그 창만 띄우는 데모 앱. Preview 도 여기에 둔다.
@@ -11,6 +12,9 @@ import SwiftUI
 /// 부하 확인: "5만 줄 넣기" 는 받는 중 세션에 한 번에 5만 줄을, "초당 1000줄" 은 100ms 마다 100줄을 넣는다. 넣은 줄이 5만 줄을
 /// 넘으면 Client 처럼 앞을 버린 것으로 알린다 (`setDropped`). 이 상태로 필터 입력·스크롤·일시정지가 멈추지 않는지 본다.
 /// "다시 실행" 은 Fake 기본 동작(같은 기기·앱의 받는 중 세션을 새로 더함)이다.
+/// 저장된 필터: `PreferencesClientFake` 에 샘플 셋(오류만, HTTP 4xx·5xx, 깨진 정규식)과 읽을 수 없는 항목 하나를 넣는다.
+/// "저장된 필터 잠금" 은 관리자 강제를 흉내 낸다. Model 은 정한 때(창 열기·저장된 필터 메뉴 동작)만 다시 읽으므로, 켠 직후에는
+/// 메뉴가 그대로이고 "지금 필터 저장…" 을 한 번 누르면(시트는 열리지 않는다) 또는 창을 다시 열면 잠금이 보인다.
 @main
 struct DeviceLogFeatureExampleApp: App {
   @State private var demo = ExampleDemo()
@@ -38,9 +42,12 @@ final class ExampleDemo {
   static let maxLines = 50000
 
   let fake: AppLogClientFake
+  let preferences = PreferencesClientFake(logFilters: [.sampleErrors, .sampleHTTP, .sampleInvalidRegex, nil])
   let model: DeviceLogModel
   let receivingSession = AppLogSessionID(UUID())
   private(set) var isStreaming = false
+  /// 토글 표시를 다시 그리게 하는 값 (Fake 는 관찰되지 않는다).
+  private(set) var savedFilterLockChanges = 0
   @ObservationIgnored private var streamTask: Task<Void, Never>?
   @ObservationIgnored private var appended = 0
 
@@ -55,9 +62,19 @@ final class ExampleDemo {
       appID: "dev.simlauncher.logprobe", appName: "LogProbe", startedAt: started, state: .receiving
     )
     self.fake = AppLogClientFake(sessions: [ended, receiving])
-    self.model = DeviceLogModel(appLog: self.fake)
+    self.model = DeviceLogModel(appLog: self.fake, preferences: self.preferences)
     self.fake.append(ExampleLines.endedSession, to: ended.id)
     self.append(ExampleLines.start)
+  }
+
+  var isSavedFilterLocked: Bool {
+    self.preferences.storedLogFiltersLocked
+  }
+
+  /// 바깥(관리자) 잠금을 흉내 낸다. 목록은 그대로 두고 잠금만 바꾼다.
+  func setSavedFilterLocked(_ isLocked: Bool) {
+    self.preferences.setStoredLogFilters(self.preferences.storedLogFilters, isLocked: isLocked)
+    self.savedFilterLockChanges += 1
   }
 
   func appendFiftyThousand() {
@@ -108,6 +125,17 @@ struct ExampleControls: View {
       Toggle(isOn: Binding(get: { self.demo.isStreaming }, set: { self.demo.setStreaming($0) })) {
         Text(verbatim: "초당 1000줄")
       }
+      Toggle(
+        isOn: Binding(
+          get: {
+            _ = self.demo.savedFilterLockChanges
+            return self.demo.isSavedFilterLocked
+          },
+          set: { self.demo.setSavedFilterLocked($0) }
+        )
+      ) {
+        Text(verbatim: "저장된 필터 잠금")
+      }
     }
     .padding()
     .frame(minWidth: 280)
@@ -152,7 +180,7 @@ enum ExampleLines {
 
 #Preview("세션 없음") {
   DeviceLogView(
-    model: DeviceLogModel(appLog: AppLogClientFake()),
+    model: DeviceLogModel(appLog: AppLogClientFake(), preferences: PreferencesClientFake()),
     target: .iOS(VirtualDevice.ID("5C0F3A2E-0000-4000-8000-000000000009"))
   )
 }

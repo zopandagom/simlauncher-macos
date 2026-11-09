@@ -1,6 +1,16 @@
 {
   "sourceLanguage" : "ko",
   "strings" : {
+    "‘%@’ 필터가 이미 있습니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "‘%@’ 필터가 이미 있습니다"
+          }
+        }
+      }
+    },
     "%@ · 시작 %@ · %@" : {
       "localizations" : {
         "ko" : {
@@ -67,6 +77,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "계속"
+          }
+        }
+      }
+    },
+    "관리자가 정한 필터 목록이라 저장하거나 지울 수 없습니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "관리자가 정한 필터 목록이라 저장하거나 지울 수 없습니다."
           }
         }
       }
@@ -221,6 +241,16 @@
         }
       }
     },
+    "바꾸기" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "바꾸기"
+          }
+        }
+      }
+    },
     "받는 중" : {
       "localizations" : {
         "ko" : {
@@ -247,6 +277,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "보이는 %lld줄 / 전체 %lld줄"
+          }
+        }
+      }
+    },
+    "삭제" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "삭제"
           }
         }
       }
@@ -341,12 +381,72 @@
         }
       }
     },
+    "이름은 %lld자까지 쓸 수 있습니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이름은 %lld자까지 쓸 수 있습니다."
+          }
+        }
+      }
+    },
     "일시정지" : {
       "localizations" : {
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "일시정지"
+          }
+        }
+      }
+    },
+    "읽을 수 없는 정규식을 고치면 저장할 수 있습니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "읽을 수 없는 정규식을 고치면 저장할 수 있습니다."
+          }
+        }
+      }
+    },
+    "저장" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "저장"
+          }
+        }
+      }
+    },
+    "저장된 필터" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "저장된 필터"
+          }
+        }
+      }
+    },
+    "저장된 필터가 없습니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "저장된 필터가 없습니다"
+          }
+        }
+      }
+    },
+    "저장된 필터는 %lld개까지입니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "저장된 필터는 %lld개까지입니다."
           }
         }
       }
@@ -381,6 +481,26 @@
         }
       }
     },
+    "조건 글자는 %lld자까지 저장할 수 있습니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "조건 글자는 %lld자까지 저장할 수 있습니다."
+          }
+        }
+      }
+    },
+    "조건 글자를 입력하면 저장할 수 있습니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "조건 글자를 입력하면 저장할 수 있습니다."
+          }
+        }
+      }
+    },
     "조건 더하기" : {
       "localizations" : {
         "ko" : {
@@ -401,6 +521,36 @@
         }
       }
     },
+    "조건은 %lld개까지 저장할 수 있습니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "조건은 %lld개까지 저장할 수 있습니다."
+          }
+        }
+      }
+    },
+    "지금 필터 저장…" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "지금 필터 저장…"
+          }
+        }
+      }
+    },
+    "지금 필터로 바꿀까요?" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "지금 필터로 바꿀까요?"
+          }
+        }
+      }
+    },
     "지금까지 받은 줄을 창에서 지웁니다. 앱과 로그 받기는 계속됩니다." : {
       "localizations" : {
         "ko" : {
@@ -417,6 +567,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "지우기"
+          }
+        }
+      }
+    },
+    "취소" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "취소"
           }
         }
       }
@@ -477,6 +637,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "포함 조건은 하나라도 맞으면 보이고, 제외 조건이 맞으면 숨깁니다. 여러 줄 print 는 줄마다 따로 걸러집니다(Logger·NSLog 머리말은 첫 줄에만 붙습니다). '시작' 은 머리말 뒤 메시지와 비교합니다."
+          }
+        }
+      }
+    },
+    "필터 이름" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "필터 이름"
+          }
+        }
+      }
+    },
+    "필터 저장" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "필터 저장"
           }
         }
       }

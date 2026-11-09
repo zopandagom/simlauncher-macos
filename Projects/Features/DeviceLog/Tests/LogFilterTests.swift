@@ -1,5 +1,8 @@
 import AppLogInterface
+import Core
 import Foundation
+import PreferencesInterface
+import PreferencesTesting
 import Testing
 @testable import DeviceLogFeature
 
@@ -323,5 +326,117 @@ extension LogFilterTests {
     #expect(highlights == [LogHighlight(location: Int32(LogLineHeader.messageOffset(in: line)), length: 14)])
     #expect(try await !self.shows(self.compiled([Spec(.prefix, "11-09", false)]), line))
     #expect(try await !self.shows(self.compiled([Spec(.prefix, "FATAL", false)]), line))
+  }
+}
+
+/// 저장된 필터와의 변환·저장 막힘 이유·50개 상한.
+extension LogFilterTests {
+  private static func make(_ conditions: [Spec], caseSensitive: Bool = false) throws -> LogFilter {
+    var filter = LogFilter()
+    for (offset, condition) in conditions.enumerated() {
+      if offset > 0 {
+        filter.addCondition()
+      }
+      let id = try #require(filter.conditions.last).id
+      filter.setKind(condition.kind, of: id)
+      filter.setText(condition.text, of: id)
+      filter.setExcluded(condition.isExcluded, of: id)
+    }
+    filter.setCaseSensitive(caseSensitive)
+    return filter
+  }
+
+  /// 글자 하나짜리 포함 조건으로 저장한 필터 n개 (이름 f0, f1, …).
+  private static func savedFilters(_ count: Int) -> [SavedLogFilter] {
+    (0 ..< count).map { number in
+      SavedLogFilter(
+        name: "f\(number)", conditions: [.init(kind: .contains, text: "x", isExcluded: false)], isCaseSensitive: false
+      )!
+    }
+  }
+
+  @Test("저장 조건은 빈 조건을 빼고 순서·종류·제외를 그대로 옮긴다")
+  func savedConditions() throws {
+    let filter = try Self.make([
+      Spec(.prefix, "app", false), Spec(.contains, "", true), Spec(.regex, "b+", true), Spec(.contains, "c", false),
+    ])
+    #expect(filter.savedConditions() == [
+      SavedLogFilter.Condition(kind: .prefix, text: "app", isExcluded: false),
+      SavedLogFilter.Condition(kind: .regex, text: "b+", isExcluded: true),
+      SavedLogFilter.Condition(kind: .contains, text: "c", isExcluded: false),
+    ])
+    #expect(LogFilter().savedConditions().isEmpty)
+    for kind in LogFilter.Kind.allCases {
+      #expect(LogFilter.Kind(kind.saved) == kind)
+    }
+  }
+
+  @Test("불러오기는 조건·대소문자를 통째로 바꾸고 앞 조건 id 를 다시 쓰지 않는다")
+  func loadReplacesWholeFilter() throws {
+    var filter = try Self.make([Spec(.contains, "x", true), Spec(.prefix, "y", false), Spec(.contains, "z", false)])
+    let oldIDs = Set(filter.conditions.map(\.id))
+    filter.load(.sampleHTTP)
+    #expect(filter.savedConditions() == SavedLogFilter.sampleHTTP.conditions)
+    #expect(filter.conditions.count == SavedLogFilter.sampleHTTP.conditions.count)
+    #expect(filter.isCaseSensitive)
+    #expect(oldIDs.isDisjoint(with: filter.conditions.map(\.id)))
+    filter.load(.sampleErrors)
+    #expect(filter.savedConditions() == SavedLogFilter.sampleErrors.conditions)
+    #expect(!filter.isCaseSensitive)
+    let ids = filter.conditions.map(\.id)
+    filter.addCondition()
+    #expect(Set(filter.conditions.map(\.id)).count == ids.count + 1)
+  }
+
+  @Test("저장 막힘 이유 순서: 잠김 → 빈 필터 → 정규식 오류 → 조건 수 → 글자 수, 50개는 막힘 이유가 아니다")
+  func saveBlockOrder() throws {
+    let open = SavedLogFilterSetting(filters: [], isLocked: false)
+    let locked = SavedLogFilterSetting(filters: [], isLocked: true)
+    let empty = try Self.make([Spec(.contains, "", false), Spec(.regex, "", true)])
+    let invalid = try Self.make([Spec(.regex, "(", false)])
+    let problem = invalid.compiled().failure
+    #expect(problem != nil)
+    let longText = String(repeating: "a", count: SavedLogFilter.maxTextLength + 1)
+    let tooMany = try Self.make(
+      Array(repeating: Spec(.contains, longText, false), count: SavedLogFilter.maxConditions + 1)
+    )
+    let tooLong = try Self.make([Spec(.contains, "ok", false), Spec(.contains, longText, true)])
+    let valid = try Self.make([Spec(.contains, "error", false)])
+    let maxed = try Self.make(Array(
+      repeating: Spec(.contains, String(repeating: "a", count: SavedLogFilter.maxTextLength), false),
+      count: SavedLogFilter.maxConditions
+    ))
+
+    #expect(LogFilterSaveBlock.reason(filter: empty, problem: nil, saved: locked) == .locked)
+    #expect(LogFilterSaveBlock.reason(filter: invalid, problem: problem, saved: locked) == .locked)
+    #expect(LogFilterSaveBlock.reason(filter: empty, problem: nil, saved: open) == .emptyFilter)
+    #expect(LogFilterSaveBlock.reason(filter: invalid, problem: problem, saved: open) == .invalidRegex)
+    #expect(LogFilterSaveBlock.reason(filter: tooMany, problem: nil, saved: open) == .tooManyConditions)
+    #expect(LogFilterSaveBlock.reason(filter: tooLong, problem: nil, saved: open) == .textTooLong)
+    #expect(LogFilterSaveBlock.reason(filter: valid, problem: nil, saved: open) == nil)
+    #expect(LogFilterSaveBlock.reason(filter: maxed, problem: nil, saved: open) == nil)
+    let full = SavedLogFilterSetting(filters: Self.savedFilters(SavedLogFilter.maxCount), isLocked: false)
+    #expect(LogFilterSaveBlock.reason(filter: valid, problem: nil, saved: full) == nil)
+  }
+
+  @Test("50개 상한은 새 이름에만 걸리고 같은 이름(대소문자 무시)·49개·빈 이름에는 걸리지 않는다")
+  func overLimit() {
+    let full = SavedLogFilterSetting(filters: Self.savedFilters(SavedLogFilter.maxCount), isLocked: false)
+    let almost = SavedLogFilterSetting(filters: Self.savedFilters(SavedLogFilter.maxCount - 1), isLocked: false)
+    #expect(LogFilterSaveDraft.isOverLimit(name: "new", saved: full))
+    #expect(!LogFilterSaveDraft.isOverLimit(name: "F3", saved: full))
+    #expect(!LogFilterSaveDraft.isOverLimit(name: "  f49 ", saved: full))
+    #expect(!LogFilterSaveDraft.isOverLimit(name: "", saved: full))
+    #expect(!LogFilterSaveDraft.isOverLimit(name: "   ", saved: full))
+    #expect(!LogFilterSaveDraft.isOverLimit(name: "new", saved: almost))
+  }
+}
+
+private extension Result {
+  var failure: Failure? {
+    if case let .failure(error) = self {
+      return error
+    }
+    return nil
   }
 }
