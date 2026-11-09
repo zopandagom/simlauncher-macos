@@ -42,6 +42,12 @@ enum SimctlCommand {
     ["simctl", "erase", udid]
   }
 
+  /// 기기에 설치된 앱 목록 (OpenStep plist). `udid` 는 `validatedUDID(_:)` 를 거친 값만 넘긴다.
+  /// `--` 는 붙이지 않는다 (다른 기기 명령과 같이 기기 인자 하나만 받는다. 붙여 보지는 않았다).
+  static func listApps(udid: String) -> [String] {
+    ["simctl", "listapps", udid]
+  }
+
   /// `udid` 는 `validatedUDID(_:)` 를 거친 값, `appPath` 는 파일 URL 의 표준화한 절대 경로만 넘긴다 (`/` 로 시작해 옵션으로
   /// 읽히지 않는다). install 은 `--` 를 경로로 보므로 붙이지 않는다.
   static func install(udid: String, appPath: String) -> [String] {

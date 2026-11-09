@@ -37,6 +37,11 @@ struct SimctlCommandTests {
     #expect(SimctlCommand.openURL(udid: "A", url: "myapp://item/1") == ["simctl", "openurl", "A", "myapp://item/1"])
   }
 
+  @Test("listapps 는 -- 없이 기기만 넘긴다")
+  func listAppsArguments() {
+    #expect(SimctlCommand.listApps(udid: "A") == ["simctl", "listapps", "A"])
+  }
+
   @Test("screenshot 은 기기 뒤에 io screenshot 과 옵션, 마지막에 경로를 넘긴다")
   func screenshotArguments() {
     #expect(SimctlCommand.screenshot(udid: "A", path: "/P/한글 (1).png") == [

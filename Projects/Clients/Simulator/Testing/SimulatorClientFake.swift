@@ -12,6 +12,7 @@ import Synchronization
 /// recordVideo 는 기본으로 바로 시작 신호를 보내고 호출한 Task 가 취소될 때까지 기다린 뒤 `.saved` 를 돌려준다. launch 는 설치 여부를 보지 않고 설정한 에러가 없으면 성공한다.
 /// launchWithConsole 은 처리기(`setConsoleHandler`)가 없으면 launch 의 에러를 던지거나, `.launched` 를 보내고 호출한 Task 가 취소될 때까지 기다린 뒤
 /// `.stopped`.
+/// installedApps 도 install 과 같은 순서로 기기 상태를 보고, 기기별로 설정한 앱 목록(기본 빈 목록)을 그대로 돌려준다.
 /// 런타임 이미지 목록은 기기 목록과 따로 저장하고(기본값 `RuntimeImage.samples`), 어떤 호출도 그 목록을 바꾸지 않는다.
 public final class SimulatorClientFake: SimulatorClient {
   public enum Call: Hashable, Sendable {
@@ -24,6 +25,7 @@ public final class SimulatorClientFake: SimulatorClient {
     case delete(VirtualDevice.ID)
     case erase(VirtualDevice.ID)
     case install(URL, VirtualDevice.ID)
+    case installedApps(VirtualDevice.ID)
     case launch(AppBundleID, VirtualDevice.ID)
     case launchWithConsole(AppBundleID, VirtualDevice.ID)
     case openURL(DeepLink, VirtualDevice.ID)
@@ -32,7 +34,7 @@ public final class SimulatorClientFake: SimulatorClient {
   }
 
   private enum SuspendableCall: Hashable {
-    case fetch, boot, create, delete, erase, install, openURL, screenshot, recordVideo
+    case fetch, boot, create, delete, erase, install, installedApps, openURL, screenshot, recordVideo
     case bootOf(VirtualDevice.ID)
   }
 
@@ -49,6 +51,8 @@ public final class SimulatorClientFake: SimulatorClient {
     var deleteError: SimulatorError?
     var eraseError: SimulatorError?
     var installError: SimulatorError?
+    var installedApps: [VirtualDevice.ID: [InstalledApp]] = [:]
+    var installedAppsError: SimulatorError?
     var launchError: SimulatorError?
     var consoleHandler: ConsoleHandler?
     var openURLError: SimulatorError?
@@ -320,35 +324,7 @@ public final class SimulatorClientFake: SimulatorClient {
   }
 }
 
-// MARK: - 목록 갱신 (기기만 바꾸고 런타임·기기 종류는 그대로)
-
-private extension SimulatorClientFake {
-  static func inventory(
-    _ inventory: DeviceInventory,
-    setting id: VirtualDevice.ID,
-    to newState: VirtualDevice.State
-  ) -> DeviceInventory {
-    let devices = inventory.devices.map { device in
-      guard device.id == id else { return device }
-      return VirtualDevice(
-        id: device.id,
-        name: device.name,
-        family: device.family,
-        state: newState,
-        availability: device.availability,
-        runtime: device.runtime
-      )
-    }
-    return Self.inventory(inventory, devices: devices)
-  }
-
-  /// 기기만 바꾸고 런타임·기기 종류는 그대로 둔 목록.
-  static func inventory(_ inventory: DeviceInventory, devices: [VirtualDevice]) -> DeviceInventory {
-    DeviceInventory(devices: devices, runtimes: inventory.runtimes, deviceTypes: inventory.deviceTypes)
-  }
-}
-
-// MARK: - 앱 설치·실행·링크 열기·스크린샷·녹화
+// MARK: - 앱 설치·목록·실행·링크 열기·스크린샷·녹화
 
 public extension SimulatorClientFake {
   func setInstallError(_ error: SimulatorError?) {
@@ -378,6 +354,36 @@ public extension SimulatorClientFake {
     if let error = self.bootedDeviceError(id, configured: \.installError) {
       throw error
     }
+  }
+
+  /// 이 기기의 `installedApps(on:)` 결과. 설정하지 않은 기기는 빈 목록이다. 설치·실행 호출은 이 목록을 바꾸지 않는다.
+  func setInstalledApps(_ apps: [InstalledApp], on id: VirtualDevice.ID) {
+    self.state.withLock { $0.installedApps[id] = apps }
+  }
+
+  func setInstalledAppsError(_ error: SimulatorError?) {
+    self.state.withLock { $0.installedAppsError = error }
+  }
+
+  /// 이후 `installedApps(on:)` 이 기록만 하고 `resumeInstalledApps()` 까지 기다린다.
+  func suspendInstalledApps() {
+    self.suspend(.installedApps)
+  }
+
+  /// 기다리는 `installedApps(on:)` 을 모두 깨우고, 이후 호출은 기다리지 않는다.
+  func resumeInstalledApps() {
+    self.resume(.installedApps)
+  }
+
+  /// `install(_:on:)` 과 같은 순서로 기록·멈춤·지연·에러·기기 상태를 보고, 설정한 목록을 그대로 돌려준다 (정렬하지 않는다).
+  func installedApps(on id: VirtualDevice.ID) async throws(SimulatorError) -> [InstalledApp] {
+    self.record(.installedApps(id))
+    await self.waitIfSuspended(.installedApps)
+    await self.sleepIfNeeded()
+    if let error = self.bootedDeviceError(id, configured: \.installedAppsError) {
+      throw error
+    }
+    return self.state.withLock { $0.installedApps[id] ?? [] }
   }
 
   /// 기록 → 지연 → 설정된 에러면 던짐 → 성공. 설치 여부는 보지 않는다.
