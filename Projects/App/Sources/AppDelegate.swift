@@ -28,7 +28,7 @@ import SetupFeature
 /// 끝나면 `NSApp.reply(toApplicationShouldTerminate: true)` 로 답한다 (사용자가 모르는 조용한 정리라 로그아웃을 취소하지 않으려고).
 /// 그동안 다시 종료를 요청해 AppKit 이 곧바로 끝내도 xcodebuild 에는 이미 끝내기 요청·SIGTERM 이 갔거나 러너의 10분 유휴 제한으로
 /// 끝나고, 기기에 남은 러너 앱은 다음에 기기 목록이 그 기기를 켜진 것으로 읽을 때 지워진다. 녹화·설치를 기다릴 때는 러너 정리도
-/// 위 기다림에 함께 시작한다.
+/// 위 기다림에 함께 시작하고, 기다린 뒤 다시 종료할 때는 러너 정리를 다시 기다리지 않는다(이미 5초 상한을 썼다).
 /// 신호는 보내지 않는다: 설치·녹화를 멈추는 일은 각 Model 의 Task 취소로 하고, 프로세스 신호는 Command Client Impl 이 보낸다.
 /// 앱 로그 받기는 묻지도 기다리지도 않는다: 종료가 정해지면(`applicationWillTerminate`. 바로 끝낼 때와 위 기다림 뒤 다시 종료할 때
 /// 모두 지난다) `AppLogClient.stopAll()` 이 모든 받기 작업을 취소하고, 그 취소가 받던 simctl·adb 마다 그 자리에서 SIGINT 를 보낸다.
@@ -51,6 +51,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   var screenLayout: ScreenLayoutClientImpl?
   /// 녹화 저장·설치가 끝나기를 기다리는 중. 그동안 온 종료 요청은 거절한다 (기다림이 끝나면 앱이 스스로 종료한다).
   private var isWaitingToTerminate = false
+  /// 녹화·설치를 기다리는 종료에서 러너 정리(5초 상한)를 이미 기다렸다. 다시 종료할 때 상한을 한 번 더 쓰지 않는다
+  /// (그때까지 멈추지 않은 러너는 SIGTERM 을 받았거나 10분 유휴 제한으로 끝나고, 남은 앱은 다음 켜짐 정리가 지운다).
+  private var didWaitForLayoutRunners = false
 
   func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
     guard !self.isWaitingToTerminate else { return .terminateCancel }
@@ -78,7 +81,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   /// 녹화·설치를 기다리지 않을 때: iOS 레이아웃 러너가 있으면 묻지 않고 멈춘 뒤 종료를 허락한다 (`.terminateLater`, 5초 상한).
   /// 없으면 곧바로 끝낸다.
   private func stopLayoutRunnersThenTerminate() -> NSApplication.TerminateReply {
-    guard let screenLayout = self.screenLayout, screenLayout.hasActiveIOSRunners else { return .terminateNow }
+    guard !self.didWaitForLayoutRunners, let screenLayout = self.screenLayout, screenLayout.hasActiveIOSRunners else {
+      return .terminateNow
+    }
     Task {
       await screenLayout.stopAllIOSRunners()
       NSApp.reply(toApplicationShouldTerminate: true)
@@ -113,6 +118,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       await runtime.value
       await android.value
       await layoutRunners.value
+      self.didWaitForLayoutRunners = true
       self.isWaitingToTerminate = false
       NSApp.terminate(nil)
     }
