@@ -3,7 +3,7 @@ import Foundation
 import Testing
 @testable import CommandImpl
 
-/// `launch`·`waitForExit`·`exitStatus`·`interrupt`. 실제 `/bin/sh` 를 실행한다.
+/// `launch`·`waitForExit`·`exitStatus`·`interrupt`·`terminate`. 실제 `/bin/sh` 를 실행한다.
 struct CommandClientImplLaunchTests {
   @Test("launch 는 프로세스가 끝나기 전에 돌아오고, 도는 동안 exitStatus 는 nil")
   func returnsBeforeExit() async throws {
@@ -65,6 +65,28 @@ struct CommandClientImplLaunchTests {
     #expect(await client.waitForExit(process) == 0)
 
     client.interrupt(process)
+
+    #expect(client.exitStatus(process) == 0)
+    #expect(await client.waitForExit(process) == 0)
+  }
+
+  @Test("terminate 는 SIGTERM 을 보낸다 (sleep 이 128+15 로 끝난다)")
+  func terminateSendsSIGTERM() async throws {
+    let client = CommandClientImpl()
+    let process = try await client.launch(URL(filePath: "/bin/sleep"), ["30"], environment: [:])
+
+    client.terminate(process)
+
+    #expect(await client.waitForExit(process) == 128 + SIGTERM)
+  }
+
+  @Test("끝난 뒤의 terminate 는 아무것도 하지 않는다")
+  func terminateAfterExit() async throws {
+    let client = CommandClientImpl()
+    let process = try await client.launch(Shell.shell, ["-c", "exit 0"], environment: [:])
+    #expect(await client.waitForExit(process) == 0)
+
+    client.terminate(process)
 
     #expect(client.exitStatus(process) == 0)
     #expect(await client.waitForExit(process) == 0)
@@ -133,12 +155,13 @@ struct CommandClientImplLaunchTests {
     }
   }
 
-  @Test("띄우지 않은 값은 끝난 것으로 본다 (-1), interrupt 는 아무것도 하지 않는다")
+  @Test("띄우지 않은 값은 끝난 것으로 본다 (-1), interrupt·terminate 는 아무것도 하지 않는다")
   func unknownProcess() async {
     let client = CommandClientImpl()
     let unknown = LaunchedProcess(id: UUID())
 
     client.interrupt(unknown)
+    client.terminate(unknown)
 
     #expect(client.exitStatus(unknown) == -1)
     #expect(await client.waitForExit(unknown) == -1)

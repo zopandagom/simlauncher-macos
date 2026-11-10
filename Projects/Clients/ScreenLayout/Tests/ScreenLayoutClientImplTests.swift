@@ -1,8 +1,12 @@
 import AndroidEmulatorInterface
 import AndroidEmulatorTesting
+import CommandInterface
+import CommandTesting
 import Core
+import DevEnvironmentTesting
 import Foundation
 import ScreenLayoutInterface
+import SimulatorTesting
 import Synchronization
 import Testing
 @testable import ScreenLayoutImpl
@@ -20,10 +24,21 @@ struct ScreenLayoutClientImplTests {
     }
   }
 
+  /// Android 만 쓰는 Client (iOS 의존은 아무것도 하지 않는 Fake).
+  static func client(_ android: AndroidEmulatorClientFake) -> ScreenLayoutClientImpl {
+    ScreenLayoutClientImpl(
+      androidEmulator: android,
+      simulator: SimulatorClientFake(),
+      devEnvironment: DevEnvironmentClientFake(),
+      command: CommandClientFake { _ in CommandResult(exitCode: 0, stdout: Data(), stderr: Data()) },
+      runnerDirectory: FileManager.default.temporaryDirectory.appending(path: "LayoutRunnerUnused-\(UUID().uuidString)")
+    )
+  }
+
   @Test("Android 대상: .reading 을 한 번 알린 뒤 AVD ID 로 맡기고 그 스냅샷을 돌려준다")
   func android() async throws {
     let android = AndroidEmulatorClientFake()
-    let client = ScreenLayoutClientImpl(androidEmulator: android)
+    let client = Self.client(android)
     let phases = Phases()
 
     let snapshot = try await client.snapshot(of: .android(AndroidVirtualDevice.ID("Pixel_9"))) { phases.add($0) }
@@ -37,24 +52,11 @@ struct ScreenLayoutClientImplTests {
   func androidFailure() async throws {
     let android = AndroidEmulatorClientFake()
     android.setLayoutSnapshotResult(.failure(.layoutNotIdle))
-    let client = ScreenLayoutClientImpl(androidEmulator: android)
+    let client = Self.client(android)
 
     await #expect(throws: ScreenLayoutError.screenNotIdle) {
       try await client.snapshot(of: .android(AndroidVirtualDevice.ID("Pixel_9"))) { _ in }
     }
-  }
-
-  @Test("iOS 대상은 아직 unsupportedPlatform (단계를 알리지 않고 Android 를 부르지 않는다)")
-  func iOSUnsupported() async throws {
-    let android = AndroidEmulatorClientFake()
-    let client = ScreenLayoutClientImpl(androidEmulator: android)
-    let phases = Phases()
-
-    await #expect(throws: ScreenLayoutError.unsupportedPlatform) {
-      try await client.snapshot(of: .iOS(VirtualDevice.ID("ABC"))) { phases.add($0) }
-    }
-    #expect(phases.all.isEmpty)
-    #expect(android.calls.isEmpty)
   }
 
   @Test(

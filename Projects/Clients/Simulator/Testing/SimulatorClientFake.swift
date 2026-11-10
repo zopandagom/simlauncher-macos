@@ -8,11 +8,13 @@ import Synchronization
 /// create 가 성공하면 꺼진 새 기기를 목록 끝에 더하고, delete 가 성공하면 그 기기를 뺀다. 꺼짐 여부는 검사하지 않는다.
 /// 목록을 다시 만들 때 런타임·기기 종류는 그대로 둔다.
 /// install·openURL 은 실제처럼 목록의 기기 상태를 본다(없으면 `.deviceNotFound`, 켜져 있지 않으면 `.deviceNotBooted`),
-/// 성공해도 목록은 바꾸지 않는다. screenshot·recordVideo 도 install 과 같은 순서로 기기 상태를 보고, 파일은 만들지 않는다.
+/// 성공해도 목록은 바꾸지 않는다. screenshot·recordVideo 도 install 과 같은 순서로 기기 상태를 보고, 파일은 만들지 않는다
+/// (screenshot 은 `setScreenshotPNG` 로 바이트를 정하면 그것을 파일에 쓴다).
 /// recordVideo 는 기본으로 바로 시작 신호를 보내고 호출한 Task 가 취소될 때까지 기다린 뒤 `.saved` 를 돌려준다. launch 는 설치 여부를 보지 않고 설정한 에러가 없으면 성공한다.
 /// launchWithConsole 은 처리기(`setConsoleHandler`)가 없으면 launch 의 에러를 던지거나, `.launched` 를 보내고 호출한 Task 가 취소될 때까지 기다린 뒤
 /// `.stopped`.
 /// installedApps 도 install 과 같은 순서로 기기 상태를 보고, 기기별로 설정한 앱 목록(기본 빈 목록)을 그대로 돌려준다.
+/// runningApplications·uninstall 도 같은 순서로 기기 상태를 본다 (`SimulatorClientFake+Layout.swift`).
 /// 런타임 이미지 목록은 기기 목록과 따로 저장하고(기본값 `RuntimeImage.samples`), 어떤 호출도 그 목록을 바꾸지 않는다.
 public final class SimulatorClientFake: SimulatorClient {
   public enum Call: Hashable, Sendable {
@@ -31,14 +33,17 @@ public final class SimulatorClientFake: SimulatorClient {
     case openURL(DeepLink, VirtualDevice.ID)
     case screenshot(VirtualDevice.ID, URL)
     case recordVideo(VirtualDevice.ID, URL)
+    case runningApplications(VirtualDevice.ID)
+    case uninstall(AppBundleID, VirtualDevice.ID)
   }
 
-  private enum SuspendableCall: Hashable {
+  enum SuspendableCall: Hashable {
     case fetch, boot, create, delete, erase, install, installedApps, openURL, screenshot, recordVideo
+    case runningApplications, uninstall
     case bootOf(VirtualDevice.ID)
   }
 
-  private struct State {
+  struct State {
     var inventory: DeviceInventory
     var runtimeImages: [RuntimeImage] = RuntimeImage.samples
     var calls: [Call] = []
@@ -57,6 +62,10 @@ public final class SimulatorClientFake: SimulatorClient {
     var consoleHandler: ConsoleHandler?
     var openURLError: SimulatorError?
     var screenshotError: SimulatorError?
+    var screenshotPNG: Data?
+    var runningApplications: [VirtualDevice.ID: [AppBundleID]] = [:]
+    var runningApplicationsError: SimulatorError?
+    var uninstallError: SimulatorError?
     var recordingStartError: SimulatorError?
     var recordingStopOutcome: Result<ScreenRecordingResult, SimulatorError>?
     var recordingSignalsStart = true
@@ -66,7 +75,7 @@ public final class SimulatorClientFake: SimulatorClient {
     var waiters: [SuspendableCall: [CheckedContinuation<Void, Never>]] = [:]
   }
 
-  private let state: Mutex<State>
+  let state: Mutex<State>
 
   public init(inventory: DeviceInventory = DeviceInventory(devices: [], runtimes: [], deviceTypes: [])) {
     self.state = Mutex(State(inventory: inventory))
@@ -142,36 +151,6 @@ public final class SimulatorClientFake: SimulatorClient {
   /// 기다리는 이 기기의 `boot(_:)` 를 깨우고, 이후 호출은 기다리지 않는다.
   public func resumeBoot(of id: VirtualDevice.ID) {
     self.resume(.bootOf(id))
-  }
-
-  /// 이후 `create(name:deviceType:runtime:)` 가 기록만 하고 `resumeCreates()` 까지 기다린다.
-  public func suspendCreates() {
-    self.suspend(.create)
-  }
-
-  /// 기다리는 `create(name:deviceType:runtime:)` 를 모두 깨우고, 이후 호출은 기다리지 않는다.
-  public func resumeCreates() {
-    self.resume(.create)
-  }
-
-  /// 이후 `delete(_:)` 가 기록만 하고 `resumeDeletes()` 까지 기다린다.
-  public func suspendDeletes() {
-    self.suspend(.delete)
-  }
-
-  /// 기다리는 `delete(_:)` 를 모두 깨우고, 이후 호출은 기다리지 않는다.
-  public func resumeDeletes() {
-    self.resume(.delete)
-  }
-
-  /// 이후 `erase(_:)` 가 기록만 하고 `resumeErases()` 까지 기다린다.
-  public func suspendErases() {
-    self.suspend(.erase)
-  }
-
-  /// 기다리는 `erase(_:)` 를 모두 깨우고, 이후 호출은 기다리지 않는다.
-  public func resumeErases() {
-    self.resume(.erase)
   }
 
   public func fetchInventory() async throws(SimulatorError) -> DeviceInventory {
@@ -285,21 +264,21 @@ public final class SimulatorClientFake: SimulatorClient {
     }
   }
 
-  private func record(_ call: Call) {
+  func record(_ call: Call) {
     self.state.withLock { $0.calls.append(call) }
   }
 
-  private func sleepIfNeeded() async {
+  func sleepIfNeeded() async {
     if let delay = self.state.withLock({ $0.delay }) {
       try? await Task.sleep(for: delay)
     }
   }
 
-  private func suspend(_ call: SuspendableCall) {
+  func suspend(_ call: SuspendableCall) {
     self.state.withLock { _ = $0.suspended.insert(call) }
   }
 
-  private func resume(_ call: SuspendableCall) {
+  func resume(_ call: SuspendableCall) {
     let waiters = self.state.withLock { state in
       state.suspended.remove(call)
       return state.waiters.removeValue(forKey: call) ?? []
@@ -309,7 +288,7 @@ public final class SimulatorClientFake: SimulatorClient {
     }
   }
 
-  private func waitIfSuspended(_ call: SuspendableCall) async {
+  func waitIfSuspended(_ call: SuspendableCall) async {
     // 플래그 확인과 continuation 저장을 한 lock 안에서 해야 resume 이 저장보다 먼저 와도 놓치지 않는다.
     await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
       let wait = self.state.withLock { state in
@@ -461,6 +440,11 @@ public extension SimulatorClientFake {
     self.state.withLock { $0.screenshotError = error }
   }
 
+  /// 설정하면 이후 성공한 `screenshot(on:to:)` 가 이 바이트를 `file` 에 쓴다 (쓰지 못하면 `.commandFailed`). nil(기본)이면 파일을 만들지 않는다.
+  func setScreenshotPNG(_ data: Data?) {
+    self.state.withLock { $0.screenshotPNG = data }
+  }
+
   /// 이후 `screenshot(on:to:)` 가 기록만 하고 `resumeScreenshots()` 까지 기다린다.
   func suspendScreenshots() {
     self.suspend(.screenshot)
@@ -471,13 +455,20 @@ public extension SimulatorClientFake {
     self.resume(.screenshot)
   }
 
-  /// `install(_:on:)` 과 같은 순서로 기록·멈춤·지연·에러·기기 상태를 본다. 파일은 만들지 않고 성공해도 목록은 바꾸지 않는다.
+  /// `install(_:on:)` 과 같은 순서로 기록·멈춤·지연·에러·기기 상태를 본다. 성공하면 `setScreenshotPNG` 바이트를 파일에 쓰고
+  /// (설정하지 않았으면 파일을 만들지 않는다), 목록은 바꾸지 않는다.
   func screenshot(on id: VirtualDevice.ID, to file: URL) async throws(SimulatorError) {
     self.record(.screenshot(id, file))
     await self.waitIfSuspended(.screenshot)
     await self.sleepIfNeeded()
     if let error = self.bootedDeviceError(id, configured: \.screenshotError) {
       throw error
+    }
+    guard let png = self.state.withLock({ $0.screenshotPNG }) else { return }
+    do {
+      try png.write(to: file)
+    } catch {
+      throw .commandFailed
     }
   }
 
@@ -536,7 +527,7 @@ public extension SimulatorClientFake {
   }
 
   /// 설정한 에러, 없으면 목록의 기기 상태: 없으면 `.deviceNotFound`, `.booted` 가 아니면 `.deviceNotBooted`.
-  private func bootedDeviceError(
+  internal func bootedDeviceError(
     _ id: VirtualDevice.ID,
     configured: KeyPath<State, SimulatorError?>
   ) -> SimulatorError? {

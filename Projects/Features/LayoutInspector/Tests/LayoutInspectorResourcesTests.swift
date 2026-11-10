@@ -44,6 +44,14 @@ struct LayoutInspectorResourcesTests {
     #expect(LayoutInspectorText.failure(.automationBusy).contains("UI 테스트"))
     #expect(LayoutInspectorText.failure(.screenNotIdle).contains("화면이 멈춘 뒤"))
   }
+
+  @Test("iOS 문구: 준비 중은 iOS 와 걸리는 시간을, 시스템 화면은 홈 화면을, 앞 앱 사라짐은 읽는 동안 사라졌음을 말한다")
+  func iOSTexts() {
+    #expect(LayoutInspectorText.preparing.contains("iOS"))
+    #expect(LayoutInspectorText.preparing.contains("1~2분"))
+    #expect(LayoutInspectorText.systemScreen.contains("홈 화면"))
+    #expect(LayoutInspectorText.failure(.appNotInForeground).contains("읽는 동안"))
+  }
 }
 
 /// 문구 함수가 돌려주는 값과 그 카탈로그 키.

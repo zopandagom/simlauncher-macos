@@ -42,6 +42,36 @@ struct SimulatorClientFakeScreenshotTests {
     try await fake.screenshot(on: SampleID.iPhoneOn, to: Self.file)
   }
 
+  @Test("setScreenshotPNG 를 정하면 성공한 screenshot 이 그 바이트를 파일에 쓰고, 실패하면 쓰지 않는다")
+  func writesConfiguredPNG() async throws {
+    let directory = FileManager.default.temporaryDirectory.appending(path: "SimulatorFakePNG-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let written = directory.appending(path: "on.png")
+    let skipped = directory.appending(path: "off.png")
+    let png = Data([0x89, 0x50, 0x4E, 0x47])
+    let fake = SimulatorClientFake(inventory: .sample)
+
+    fake.setScreenshotPNG(png)
+    try await fake.screenshot(on: SampleID.iPhoneOn, to: written)
+    await #expect(throws: SimulatorError.deviceNotBooted) {
+      try await fake.screenshot(on: SampleID.iPhoneOff, to: skipped)
+    }
+
+    #expect(try Data(contentsOf: written) == png)
+    #expect(!FileManager.default.fileExists(atPath: skipped.path(percentEncoded: false)))
+  }
+
+  @Test("setScreenshotPNG 를 정하지 않으면 파일을 만들지 않는다")
+  func noPNGByDefault() async throws {
+    let file = FileManager.default.temporaryDirectory.appending(path: "SimulatorFakePNG-\(UUID().uuidString).png")
+    let fake = SimulatorClientFake(inventory: .sample)
+
+    try await fake.screenshot(on: SampleID.iPhoneOn, to: file)
+
+    #expect(!FileManager.default.fileExists(atPath: file.path(percentEncoded: false)))
+  }
+
   @Test("멈춘 screenshot 은 기록된 뒤 resume 까지 기다리고, 깨어난 뒤의 설정을 쓴다")
   func suspendScreenshots() async throws {
     let fake = SimulatorClientFake(inventory: .sample)

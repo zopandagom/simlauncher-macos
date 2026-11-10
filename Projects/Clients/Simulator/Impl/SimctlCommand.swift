@@ -48,6 +48,18 @@ enum SimctlCommand {
     ["simctl", "listapps", udid]
   }
 
+  /// 기기 안 launchd 의 작업 목록 (탭으로 나눈 `PID Status Label` 줄). 떠 있는 앱은 `UIKitApplication:<번들 ID>[…]` 레이블이다.
+  /// `udid` 는 `validatedUDID(_:)` 를 거친 값만 넘긴다. 뒤 인자는 고정 값이다.
+  static func spawnLaunchctlList(udid: String) -> [String] {
+    ["simctl", "spawn", udid, "launchctl", "list"]
+  }
+
+  /// 앱 지우기. 인자 규칙은 `launch(udid:bundleID:)` 와 같다 (`udid` 는 `validatedUDID(_:)`, `bundleID` 는 `AppBundleID` 형식 검사를 거친 값,
+  /// `--` 없음).
+  static func uninstall(udid: String, bundleID: String) -> [String] {
+    ["simctl", "uninstall", udid, bundleID]
+  }
+
   /// `udid` 는 `validatedUDID(_:)` 를 거친 값, `appPath` 는 파일 URL 의 표준화한 절대 경로만 넘긴다 (`/` 로 시작해 옵션으로
   /// 읽히지 않는다). install 은 `--` 를 경로로 보므로 붙이지 않는다.
   static func install(udid: String, appPath: String) -> [String] {

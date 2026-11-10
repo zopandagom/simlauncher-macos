@@ -81,7 +81,13 @@ struct LauncherResourcesTests {
       #expect(table[key] == key, "\(key)")
       #expect(String(format: table[key] ?? "", code) == LauncherText.httpStatusMessage(code), "\(key)")
     }
-    return Set([osKey, bothKey, receivedKey] + versionKeys + httpKeys.map(\.key))
+    let layoutOSKey = "iOS %lld 이상 기기에서만 레이아웃을 볼 수 있습니다"
+    #expect(table[layoutOSKey] == layoutOSKey)
+    #expect(
+      String(format: table[layoutOSKey] ?? "", IOSLayoutRunner.minimumOSVersion.major)
+        == LauncherText.layoutUnsupportedOS
+    )
+    return Set([osKey, bothKey, receivedKey, layoutOSKey] + versionKeys + httpKeys.map(\.key))
   }
 
   /// 카탈로그에서 설치 문구(`CatalogTextCatalog` 의 78개)가 표에 있고, 표의 값(보간 키는 인자를 넣은 값)이 코드 결과와 같은지 보고
@@ -517,6 +523,8 @@ enum LauncherTextCatalog {
     texts += self.recordingTexts
     texts += self.launchAppTexts
     texts += [LauncherText.viewLogButton, LauncherText.viewLogHelp, LauncherText.viewLogUnavailableHelp]
+    texts += [LauncherText.layoutButton, LauncherText.layoutHelp]
+    texts += self.screenshotBlockReasons.map { LauncherText.layoutBlockReason($0) }
     texts += [
       LauncherText.okButton, LauncherText.unavailableLabel, LauncherText.bootButton, LauncherText.shutdownButton,
       LauncherText.loading, LauncherText.loadFailedTitle, LauncherText.refreshButton, LauncherText.retryButton,

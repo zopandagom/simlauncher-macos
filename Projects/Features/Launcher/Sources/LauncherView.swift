@@ -371,6 +371,8 @@ extension LauncherView {
       canStartRecording: self.model.recordings.canStart(on: device, during: task),
       recordTapped: { Task { await self.model.recordButtonTapped(device.id) } },
       stopRecordingTapped: { self.model.recordingStopTapped(device.id) },
+      canViewLayout: IOSLayoutAvailability.canOpen(device: device, during: task),
+      layoutTapped: { self.openWindow(id: LayoutTarget.windowID, value: LayoutTarget.iOS(device.id)) },
       bootTapped: { Task { await self.model.bootButtonTapped(device.id) } },
       shutdownTapped: { Task { await self.model.shutdownButtonTapped(device.id) } },
       eraseTapped: { self.model.eraseButtonTapped(device.id) },

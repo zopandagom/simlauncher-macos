@@ -8,7 +8,7 @@ import SimulatorInterface
 enum SimctlAppListDecoder {
   /// 최상위가 사전이 아니거나 plist 가 아니면 `.unexpectedOutput`.
   /// `ApplicationType` 이 `User` 인 항목만, 번들 ID 는 최상위 키를 `AppBundleID` 로 읽어 형식 밖이면 뺀다
-  /// (그 값이 `simctl launch` 인자로 가므로). 정보가 사전이 아닌 항목도 뺀다.
+  /// (그 값이 `simctl launch` 인자로 가므로). 정보가 사전이 아닌 항목과 SimLauncher 레이아웃 러너(`IOSLayoutRunner.appBundleID`)도 뺀다.
   /// 결과는 표시 이름(`localizedStandardCompare`) → 번들 ID 순이다.
   static func apps(from data: Data) throws(SimulatorError) -> [InstalledApp] {
     let root: Any
@@ -30,7 +30,11 @@ enum SimctlAppListDecoder {
   }
 
   private static func app(key: String, info: [String: Any]) -> InstalledApp? {
-    guard info["ApplicationType"] as? String == "User", let bundleID = AppBundleID(key) else { return nil }
+    guard
+      key != IOSLayoutRunner.appBundleID,
+      info["ApplicationType"] as? String == "User",
+      let bundleID = AppBundleID(key)
+    else { return nil }
     let name = Self.nonEmptyString(info["CFBundleDisplayName"])
       ?? Self.nonEmptyString(info["CFBundleName"])
       ?? bundleID.rawValue

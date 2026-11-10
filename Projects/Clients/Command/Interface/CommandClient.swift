@@ -75,4 +75,8 @@ public protocol CommandClient: Sendable {
   /// 아직 끝나지 않았으면 SIGINT 를 한 번 보낸다. 끝난 뒤(종료 처리 뒤)거나 이 Client 가 띄우지 않은 값이면 아무것도 하지 않는다.
   /// 끝날 때까지 기다리지 않는다 (`waitForExit` 로 기다린다).
   func interrupt(_ process: LaunchedProcess)
+
+  /// 아직 끝나지 않았으면 SIGTERM 을 한 번 보낸다. 끝난 뒤(종료 처리 뒤)거나 이 Client 가 띄우지 않은 값이면 아무것도 하지 않는다.
+  /// 끝날 때까지 기다리지 않는다 (`waitForExit` 로 기다린다). SIGINT 로 늦게 끝나는 프로세스(xcodebuild test-without-building)에 쓴다.
+  func terminate(_ process: LaunchedProcess)
 }

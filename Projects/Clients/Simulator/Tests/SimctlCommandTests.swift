@@ -37,6 +37,14 @@ struct SimctlCommandTests {
     #expect(SimctlCommand.openURL(udid: "A", url: "myapp://item/1") == ["simctl", "openurl", "A", "myapp://item/1"])
   }
 
+  @Test("실행 중 앱 목록은 기기 안 launchctl list, 앱 지우기는 기기·번들 ID 를 -- 없이 넘긴다")
+  func layoutArguments() {
+    #expect(SimctlCommand.spawnLaunchctlList(udid: "A") == ["simctl", "spawn", "A", "launchctl", "list"])
+    #expect(SimctlCommand.uninstall(udid: "A", bundleID: "com.example.app") == [
+      "simctl", "uninstall", "A", "com.example.app",
+    ])
+  }
+
   @Test("listapps 는 -- 없이 기기만 넘긴다")
   func listAppsArguments() {
     #expect(SimctlCommand.listApps(udid: "A") == ["simctl", "listapps", "A"])

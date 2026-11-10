@@ -1,11 +1,12 @@
 import Core
 
 /// 켜진 기기 화면의 뷰 계층과 스크린샷을 한 번에 읽는다 (레이아웃 창). 결과는 메모리에만 둔다.
-/// Android 는 AndroidEmulator Client 의 `layoutSnapshot` 을 조합한다. iOS 는 아직 읽지 못한다(`.unsupportedPlatform`).
+/// Android 는 AndroidEmulator Client 의 `layoutSnapshot` 을 조합한다. iOS 는 SimLauncher 가 빌드해 띄운 XCUITest 러너로 읽는다.
 public protocol ScreenLayoutClient: Sendable {
   /// 대상 기기의 레이아웃 스냅샷. 호출한 Task 가 취소되면 `.cancelled`.
-  /// `onPhase` 는 단계가 바뀔 때마다(돌아오기 전에만) 부른다. Android 는 `.reading` 한 번. iOS 는 읽을 준비를 처음 할 때
-  /// `.preparing` 뒤 `.reading`.
+  /// `onPhase` 는 단계가 바뀔 때마다(돌아오기 전에만) 부른다. Android 는 `.reading` 한 번. iOS 는 러너를 새로 띄워야 할 때
+  /// (첫 사용, 러너가 멈춘 뒤 — 10분 유휴·기기 끄기나 다시 켜기·요청 시간 초과·러너 종료 — , Xcode 교체 뒤)
+  /// `.preparing` 뒤 `.reading`, 아니면 `.reading` 한 번.
   func snapshot(
     of target: LayoutTarget,
     onPhase: @escaping @Sendable (LayoutReadPhase) async -> Void
@@ -14,7 +15,7 @@ public protocol ScreenLayoutClient: Sendable {
 
 /// 레이아웃 읽기의 단계.
 public enum LayoutReadPhase: Hashable, Sendable {
-  /// 처음 한 번 읽을 준비를 한다 (iOS: 러너 빌드·설치, 수십 초). Android 는 보내지 않는다.
+  /// 읽을 준비를 한다 (iOS: 러너 빌드·설치·실행, 수 초~2분). Android 는 보내지 않는다.
   case preparing
   /// 화면을 읽는다.
   case reading
@@ -22,13 +23,13 @@ public enum LayoutReadPhase: Hashable, Sendable {
 
 /// 레이아웃 읽기 실패. 화면 문구는 Feature 가 정한다.
 public enum ScreenLayoutError: Error, Hashable, Sendable {
-  // MARK: iOS 전용 (iOS 경로가 만든다. 지금 Impl 은 만들지 않는다)
+  // MARK: iOS 전용 (iOS 경로가 만든다)
 
   /// 쓸 Xcode 가 없거나 준비되지 않았다.
   case xcodeUnavailable
   /// 레이아웃을 읽을 준비(러너 빌드·설치·실행)를 하지 못했다.
   case inspectorSetupFailed
-  /// 기기에 앞에 떠 있는 앱이 없다.
+  /// 읽는 동안 앞 앱이 사라졌다 (앞 앱이 없으면 홈 화면 같은 시스템 화면을 읽는다).
   case appNotInForeground
 
   // MARK: 공용
@@ -51,6 +52,6 @@ public enum ScreenLayoutError: Error, Hashable, Sendable {
   /// 화면 정보·스크린샷을 해석하지 못했다.
   case unreadable
   case cancelled
-  /// 이 빌드가 아직 읽지 못하는 플랫폼 (지금은 iOS. 진입점은 없다).
+  /// 이 빌드가 읽지 못하는 플랫폼. 지금은 만들지 않는다 (남겨 둔 case).
   case unsupportedPlatform
 }

@@ -12,11 +12,12 @@ public enum LayoutInspectorFailure: Hashable, Sendable, CaseIterable {
   case automationBusy
   case timedOut
   case unreadable
-  /// 이 빌드가 아직 읽지 못하는 플랫폼.
+  /// 이 빌드가 읽지 못하는 플랫폼 (지금은 나오지 않는다. 남겨 둔 case).
   case unsupported
-  // iOS (지금은 나오지 않지만 문구는 둔다)
+  // iOS (XCUITest 러너 경로가 만든다)
   case xcodeUnavailable
   case setupFailed
+  /// 읽는 동안 앞 앱이 사라졌다 (앞 앱이 없으면 시스템 화면을 읽으므로 실패가 아니다).
   case appNotInForeground
 
   /// 실패 분류. `.cancelled` 는 화면에 보일 실패가 아니라 nil.

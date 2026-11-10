@@ -39,7 +39,7 @@ enum LayoutInspectorText {
   }
 
   static var preparing: String {
-    String(localized: "처음 한 번 레이아웃 보기를 준비하고 있습니다. 1분쯤 걸릴 수 있습니다…", bundle: .module)
+    String(localized: "iOS 레이아웃 보기를 준비하고 있습니다. 최대 1~2분 걸릴 수 있습니다…", bundle: .module)
   }
 
   // MARK: - 캔버스
@@ -54,7 +54,7 @@ enum LayoutInspectorText {
 
   static var systemScreen: String {
     String(
-      localized: "잠금 화면이나 알림 창 같은 시스템 화면의 레이아웃입니다. 앱을 보려면 기기에서 앱을 앞으로 가져온 뒤 새로 고치세요.",
+      localized: "홈 화면·잠금 화면·알림 창 같은 시스템 화면의 레이아웃입니다. 앱을 보려면 기기에서 앱을 앞으로 가져온 뒤 새로 고치세요.",
       bundle: .module
     )
   }
@@ -145,7 +145,7 @@ enum LayoutInspectorText {
     case .setupFailed:
       String(localized: "iOS 레이아웃 보기를 준비하지 못했습니다. 다시 시도하세요.", bundle: .module)
     default:
-      String(localized: "기기에 앞에 떠 있는 앱이 없습니다. 볼 앱을 띄운 뒤 새로 고치세요.", bundle: .module)
+      String(localized: "읽는 동안 앱이 화면에서 사라져 레이아웃을 읽지 못했습니다. 볼 앱을 앞에 띄운 뒤 새로 고치세요.", bundle: .module)
     }
   }
 }

@@ -12,7 +12,7 @@ enum CaptureTextCatalog {
 
   static let device = AndroidDeviceLabel(.bootedTabletSample)
 
-  /// iOS 기기 목록(Launcher)의 `LauncherText+Screenshot`·`+Recording` 과 같은 키·값으로 둔 문구.
+  /// iOS 기기 목록(Launcher)의 `LauncherText+Screenshot`·`+Recording`·`+Layout` 과 같은 키·값으로 둔 문구.
   static func sharedChecks(_ table: [String: String]) -> [Check] {
     var pairs: [(String, String)] = [
       ("스크린샷", AndroidDevicesText.screenshotButton),
@@ -51,7 +51,21 @@ enum CaptureTextCatalog {
       ),
     ]
     pairs += self.folderPairs
+    pairs += self.layoutPairs
     return pairs.map { DownloadTextCatalog.check(table, $0.0, $0.1) }
+  }
+
+  /// 행 "레이아웃 보기" 문구 넷 (Launcher 의 `LauncherText+Layout` 과 같은 키·값).
+  private static var layoutPairs: [(String, String)] {
+    [
+      ("레이아웃 보기", AndroidDevicesText.layoutButton),
+      ("앱 화면의 뷰 테두리와 위치·크기를 봅니다", AndroidDevicesText.layoutHelp),
+      (
+        "켜진 기기에서만 레이아웃을 볼 수 있습니다. 기기를 켠 뒤 다시 시도하세요",
+        AndroidDevicesText.layoutBlockReason(.notBooted)
+      ),
+      ("사용할 수 없는 기기에서는 레이아웃을 볼 수 없습니다", AndroidDevicesText.layoutBlockReason(.unavailable)),
+    ]
   }
 
   /// 저장 폴더(사진·동영상) 실패 문구 여섯.

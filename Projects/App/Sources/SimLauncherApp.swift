@@ -41,9 +41,12 @@ import WorkspaceImpl
 /// 기기당 창 하나, 복원 끔)을 연다. 모든 로그 창이 App 이 소유한 `DeviceLogModel` 하나를 함께 쓰고, 창을 닫아도 받기와 앱은 계속된다.
 /// 앱 로그 받기는 종료 요청 때 묻지 않고, 종료가 정해지면 `AppDelegate` 가 `stopAll()` 로 기다리지 않고 멈춘다 (iOS 앱은 꺼지고
 /// Android 앱은 남는다).
-/// Android 기기 행 "레이아웃 보기" 는 레이아웃 창(`WindowGroup(id: LayoutTarget.windowID, for: LayoutTarget.self)`, 기기당 창 하나,
+/// iOS·Android 기기 행 "레이아웃 보기" 는 레이아웃 창(`WindowGroup(id: LayoutTarget.windowID, for: LayoutTarget.self)`, 기기당 창 하나,
 /// 복원 끔. 같은 기기라도 로그 창과 다른 창)을 연다. 모든 레이아웃 창이 App 이 소유한 `LayoutInspectorModel` 하나를 함께 쓰고,
 /// 창을 닫으면 읽기를 취소하고 스냅샷을 버린다 (스냅샷은 메모리에만 있다). 종료 요청 때 묻지 않는다.
+/// iOS 레이아웃은 레이아웃 Client 가 기기마다 띄워 두는 XCUITest 러너로 읽는다. 기기 목록(`LauncherModel`)의 기기 수명 알림
+/// (`LauncherDeviceHooks`: "끄기" 전후·목록 읽기)을 App 이 레이아웃 Client 에 잇고(끄기 전에 러너를 멈추고 지움, 켜진 기기의 남은 러너
+/// 정리), 앱 종료 때는 `AppDelegate` 가 묻지 않고 러너를 멈춘다.
 /// Android 기기(에뮬레이터)는 녹화 밖에는 종료 요청 때 보지 않는다 (켜진 에뮬레이터는 앱이 끝나도 남는다.
 /// apk 받기·설치·실행·링크 열기도 묻지 않는다. 남은 받기 폴더는 다음에 iOS 기기 목록·Android 기기 목록·Android 도구 화면 중 하나가
 /// 열릴 때 지운다).
@@ -77,6 +80,9 @@ struct SimLauncherApp: App {
   /// 아키텍처(Rosetta 로 돌아도 arm64)에 함께 쓴다. Android SDK Client 도 받기 Client 를 Launcher 와 함께 쓴다.
   /// Android 기기 Client 는 명령 실행 Client·SDK 위치 provider·호스트 아키텍처를 Android SDK Client 와 함께 쓴다. Android 기기 Client
   /// 하나를 Android 기기 목록·앱 실행 시트와 앱 로그 Client·레이아웃 Client(레이아웃 창)가 함께 쓴다 (Impl 은 이 앱이 띄운 에뮬레이터 표를 가져 하나만 만든다).
+  /// 레이아웃 Client 는 iOS 쪽에 시뮬레이터·개발 환경·명령 실행 Client 도 함께 쓰고(러너 빌드는 DevEnvironment 가 고른 Xcode),
+  /// 러너 빌드 캐시는 `~/Library/Caches/<번들 ID>/LayoutRunner` 에 둔다. 레이아웃 Client 하나를 레이아웃 창·기기 목록의 기기 수명 알림·
+  /// 종료 처리(`AppDelegate`)가 함께 쓴다 (Impl 이 기기별 러너 표를 가져 하나만 만든다).
   init() {
     let command = CommandClientImpl()
     let devEnvironment = DevEnvironmentClientImpl(command: command)
@@ -96,9 +102,15 @@ struct SimLauncherApp: App {
     // 앱 로그 Client 생성자는 명령을 실행하지 않는다. 받기는 설치 후 실행·행의 "앱 실행…"·창의 "다시 실행" 때만 시작한다.
     // Android 기기 Client 는 Android 기기 목록·앱 실행 시트와 같은 인스턴스다 (Impl 은 이 앱이 띄운 에뮬레이터 표를 가져 하나만 만든다).
     let appLog = AppLogClientImpl(simulator: simulator, androidEmulator: androidClients.emulator)
-    // 레이아웃 창의 Client 도 같은 Android 기기 Client 를 조합한다 (생성자는 명령을 실행하지 않는다. 읽기는 창이 열릴 때와
-    // "새로 고침" 때만).
-    let screenLayout = ScreenLayoutClientImpl(androidEmulator: androidClients.emulator)
+    // 레이아웃 창의 Client 도 같은 Android 기기 Client 와 시뮬레이터·개발 환경·명령 실행 Client 를 조합한다 (생성자는 명령을
+    // 실행하지 않고 폴더도 만들지 않는다. 읽기는 창이 열릴 때와 "새로 고침" 때만). 기기 목록이 기기 수명을 알려야 해서 Launcher 보다 먼저 만든다.
+    let screenLayout = ScreenLayoutClientImpl(
+      androidEmulator: androidClients.emulator,
+      simulator: simulator,
+      devEnvironment: devEnvironment,
+      command: command,
+      runnerDirectory: Self.layoutRunnerDirectory()
+    )
     self._layoutInspectorModel = State(initialValue: LayoutInspectorModel(screenLayout: screenLayout))
     let android = Self.makeAndroid(shared, clients: androidClients, appLog: appLog)
     self._androidSetupModel = State(initialValue: android.setup)
@@ -109,11 +121,11 @@ struct SimLauncherApp: App {
     self._setupModel = State(initialValue: setup)
     self._deviceLogModel = State(initialValue: DeviceLogModel(appLog: appLog, preferences: preferences))
     let launcherAssembly = Self.makeLauncher(
+      shared: shared,
       simulator: simulator,
-      appBundle: appBundle,
-      download: download,
       appLog: appLog,
-      setup: setup
+      setup: setup,
+      screenLayout: screenLayout
     )
     let launcher = launcherAssembly.model
     self._launcherModel = State(initialValue: launcher)
@@ -131,11 +143,33 @@ struct SimLauncherApp: App {
     // 종료한다.
     // Android 도구 화면에는 설치 상태를 묻는다: 받기·확인·풀기 중이면 확인을 받아 멈추게 하고, 마무리 단계면 끝나기를 기다린다.
     // 앱 로그 받기는 묻지 않고, 종료가 정해지면 모두 멈춘다 (SIGINT 를 보내고 기다리지 않는다. iOS 앱은 꺼지고 Android 앱은 남는다).
+    // iOS 레이아웃 러너는 묻지 않고 멈춘 뒤 끝낸다 (5초 상한).
+    self.wireAppDelegate(setup: setup, appLog: appLog, launcher: launcher, android: android, screenLayout: screenLayout)
+  }
+
+  private func wireAppDelegate(
+    setup: SetupModel,
+    appLog: AppLogClientImpl,
+    launcher: LauncherModel,
+    android: AndroidAssembly,
+    screenLayout: ScreenLayoutClientImpl
+  ) {
     self.appDelegate.setupModel = setup
     self.appDelegate.appLog = appLog
     self.appDelegate.launcherModel = launcher
     self.appDelegate.androidSetupModel = android.setup
     self.appDelegate.androidDevicesModel = android.devices
+    self.appDelegate.screenLayout = screenLayout
+  }
+
+  /// iOS 레이아웃 러너의 빌드 캐시·세션 폴더 뿌리: `~/Library/Caches/<번들 ID>/LayoutRunner` (다시 만들 수 있는 산출물).
+  /// 여기서는 경로만 정하고 만들지 않는다 (처음 iOS 레이아웃을 읽을 때 레이아웃 Client 가 만든다).
+  private static func layoutRunnerDirectory() -> URL {
+    let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
+      ?? FileManager.default.homeDirectoryForCurrentUser.appending(path: "Library/Caches", directoryHint: .isDirectory)
+    let bundleID = Bundle.main.bundleIdentifier ?? "com.zopandagom.simlauncher"
+    return caches.appending(path: bundleID, directoryHint: .isDirectory)
+      .appending(path: "LayoutRunner", directoryHint: .isDirectory)
   }
 
   /// iOS 기기 목록과 앱 실행·링크 열기 시트의 Model 을 조립한다 (`init` 안에서 쓰는 값 묶음).
@@ -145,23 +179,30 @@ struct SimLauncherApp: App {
   }
 
   private static func makeLauncher(
+    shared: SharedClients,
     simulator: SimulatorClientImpl,
-    appBundle: AppBundleClientImpl,
-    download: DownloadClientImpl,
     appLog: AppLogClientImpl,
-    setup: SetupModel
+    setup: SetupModel,
+    screenLayout: ScreenLayoutClientImpl
   ) -> LauncherAssembly {
     // 스크린샷·녹화 저장 폴더는 "스크린샷"·"녹화" 를 누를 때 만든다 (Workspace Client 생성자는 파일을 건드리지 않는다).
     // 앱 실행·링크 열기 시트가 떠 있으면 만들기·삭제·초기화·URL 설치 시트를 막는다. 시트 Model 은 뒤에 만들어 상자로 넘긴다.
     let launcherSheetsBox = LauncherAppSheetsBox()
     let launcher = LauncherModel(
       simulator: simulator,
-      appBundle: appBundle,
-      download: download,
+      appBundle: shared.appBundle,
+      download: shared.download,
       workspace: WorkspaceClientImpl(),
       appLog: appLog,
       setupRequested: { setup.reopened() },
-      appSheetPresented: { launcherSheetsBox.model?.hasPresentedSheet ?? false }
+      appSheetPresented: { launcherSheetsBox.model?.hasPresentedSheet ?? false },
+      // "끄기" 전에 그 기기의 레이아웃 러너를 멈추고 지운다(꺼진 기기에서는 지울 수 없다). 목록에서 켜진 기기를 보면 남은 러너를
+      // 백그라운드로 지운다 (목록 갱신은 기다리지 않는다).
+      deviceHooks: LauncherDeviceHooks(
+        willShutDown: { await screenLayout.iOSDeviceWillShutDown($0) },
+        didShutDown: { await screenLayout.iOSDeviceDidShutDown($0) },
+        listed: { screenLayout.iOSDevicesListed(booted: $0) }
+      )
     )
     // 앱 실행·링크 열기 시트. 열 수 있는 기기는 기기 목록에 묻고(만들기·URL 설치 시트·확인 대화상자·작업 중이면 열지 않는다),
     // 앱 실행 시트의 켜기·다시 읽기와 확정한 앱·링크의 실행은 기기 목록이 한다. 목록 읽기(`simctl listapps`)는 시트를 열 때만 한다.
@@ -323,7 +364,7 @@ struct SimLauncherApp: App {
     }
     .defaultSize(width: 900, height: 600)
     .restorationBehavior(.disabled)
-    // Android 기기 행 "레이아웃 보기" 가 여는 레이아웃 창. 같은 기기(값)면 창 하나이고, 스냅샷은 메모리에만 있어 되살리지 않는다.
+    // iOS·Android 기기 행 "레이아웃 보기" 가 여는 레이아웃 창. 같은 기기(값)면 창 하나이고, 스냅샷은 메모리에만 있어 되살리지 않는다.
     // 창을 닫으면 읽기를 취소하고 스냅샷을 버린다 (LayoutInspectorView 의 onDisappear).
     WindowGroup(id: LayoutTarget.windowID, for: LayoutTarget.self) { $target in
       if let target {
