@@ -1,7 +1,8 @@
 import Core
 import Foundation
 
-/// Android 기기(AVD) 목록·상태와 켜기·끄기·만들기·삭제·초기화, 켜진 기기에 apk 설치·앱 실행(logcat 받기)·링크 열기·스크린샷·녹화.
+/// Android 기기(AVD) 목록·상태와 켜기·끄기·만들기·삭제·초기화, 켜진 기기에 apk 설치·앱 실행(logcat 받기)·링크 열기·스크린샷·녹화·
+/// 화면 레이아웃 읽기.
 /// AVD 폴더는 `$HOME/.android/avd` (Android Studio 와 함께 쓴다. ANDROID_AVD_HOME 은 보지 않는다).
 /// SDK 위치는 App 이 주입한 provider 를 공개 메서드 한 번에 한 번 부른다. 명령은 CommandClient 로
 /// `<SDK>/emulator/emulator` 와 `<SDK>/platform-tools/adb` 만 실행한다. 네트워크 API 를 쓰지 않는다
@@ -107,6 +108,16 @@ public protocol AndroidEmulatorClient: Sendable {
     to file: URL,
     onStarted: @escaping @Sendable () async -> Void
   ) async throws(AndroidEmulatorError) -> AndroidScreenRecordingResult
+
+  /// 켜진 기기의 화면 레이아웃: 사전 확인(앱 작업과 같다) → `exec-out wm density`(실패해도 계속, 밀도 nil)
+  /// → `exec-out uiautomator dump /dev/tty`(30초 제한, 넘으면 `.layoutTimedOut`) → 덤프 판정·해석
+  /// → `exec-out 'screencap -p 2>/dev/null'`(메모리, 실패·PNG 아님·시간 초과는 `.captureFailed`). 기기에 파일을 남기지 않는다.
+  /// 덤프는 실패해도 종료 코드 0 이라 `</hierarchy>` 유무로 가른다: 화면이 계속 바뀜 `.layoutNotIdle`(약 11초 뒤), 화면 꺼짐
+  /// `.layoutDisplayOff`(약 2초), 다른 uiautomator 가 도는 중 `.layoutBusy`, 덤프 중 끊김 `.deviceNotBooted`, 그 밖·해석 실패·
+  /// 상한(8 MiB·노드 2만·깊이 512) 초과 `.layoutUnreadable`. 자동으로 다시 시도하지 않는다.
+  /// 같은 기기의 레이아웃 읽기는 앞 호출이 끝날 때까지 기다린다(한 번에 하나). 호출한 Task 가 취소되면 `.cancelled`.
+  /// 좌표는 스크린샷 px, `unit` 은 `.dp`, `pixelsPerUnit` 은 밀도/160, `deviceName` 은 다시 읽은 기기의 표시 이름.
+  func layoutSnapshot(on id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError) -> LayoutSnapshot
 }
 
 /// `launchWithLogcat` 이 넘기는 알림.
@@ -219,6 +230,16 @@ public enum AndroidEmulatorError: Error, Hashable, Sendable {
   case recordingLost
   /// 녹화 파일 가져오기가 시간 제한(600초) 안에 끝나지 않았다 (기기 임시 파일은 남는다).
   case recordingTransferTimedOut
+  /// 레이아웃: 화면이 계속 바뀌어(애니메이션·동영상) 덤프가 idle 을 기다리다 포기했다 (`could not get idle state`).
+  case layoutNotIdle
+  /// 레이아웃: 기기 화면이 꺼져 있다 (`null root node returned by UiTestAutomationBridge`).
+  case layoutDisplayOff
+  /// 레이아웃: 같은 기기에서 다른 uiautomator(UI 테스트 도구 등)가 돌고 있어 덤프가 죽었다 (`Killed`).
+  case layoutBusy
+  /// 레이아웃: 덤프를 해석하지 못했다 (그 밖의 출력, `</hierarchy>` 없음, XML 오류, 상한 초과).
+  case layoutUnreadable
+  /// 레이아웃: 덤프가 시간 제한(30초) 안에 끝나지 않았다.
+  case layoutTimedOut
 }
 
 /// adb install 실패 원인 (`Failure [<코드>: …]` 의 코드).

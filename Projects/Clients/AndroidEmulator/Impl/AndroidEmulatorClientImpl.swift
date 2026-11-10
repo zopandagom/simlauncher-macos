@@ -34,6 +34,8 @@ public struct AndroidEmulatorClientImpl: AndroidEmulatorClient {
     /// 앱 실행의 pid 기다림 명령 하나의 한도. 기기 안 루프는 약 7.5초에 스스로 끝나므로(실측 비례) 넘으면 adb 서버가 멈춘 것으로 보고
     /// `.adbUnavailable`.
     var pidWaitTimeout: Duration = .seconds(30)
+    /// 레이아웃 덤프(`uiautomator dump`) 하나의 한도 (실측: 성공 약 2초, 화면이 계속 바뀌면 약 11초 뒤 스스로 실패). 넘으면 `.layoutTimedOut`.
+    var layoutDumpTimeout: Duration = .seconds(30)
 
     static let standard = Timing(
       pollInterval: .seconds(1),
@@ -61,6 +63,8 @@ public struct AndroidEmulatorClientImpl: AndroidEmulatorClient {
   let host: AndroidHostArchitecture
   let timing: Timing
   let launched = LaunchedEmulators()
+  /// 기기별 레이아웃 읽기 차례 (같은 기기의 덤프가 겹치면 뒤의 것이 죽는다, 실측).
+  let layoutQueue = LayoutReadQueue()
 
   /// App 은 이 Impl 을 하나만 만든다 (이 앱이 띄운 에뮬레이터 표를 함께 쓴다).
   /// - Parameters:

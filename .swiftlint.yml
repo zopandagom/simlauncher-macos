@@ -36,9 +36,9 @@ line_length:
 file_length:
   warning: 600
 
-# CPU 아키텍처 이름 `x86_64` (예: CPUArchitecture.x86_64) 는 그대로 쓴다
+# CPU 아키텍처 이름 `x86_64` (예: CPUArchitecture.x86_64) 와 화면 단위 `dp`·`pt` (LayoutUnit) 는 그대로 쓴다
 identifier_name:
-  excluded: [id, x, y, tv, x86_64]
+  excluded: [id, x, y, tv, x86_64, dp, pt]
 
 # 식별자 래퍼 타입 이름 `ID` (예: VirtualDevice.ID) 는 Identifiable 관례를 따른다
 type_name:

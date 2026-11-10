@@ -31,6 +31,9 @@ extension AndroidDevicesText {
     case .captureFailed, .captureFileUnwritable, .recordingFailed, .recordingEmpty, .recordingDisplayOff,
          .recordingLost, .recordingTransferTimedOut:
       self.captureMessage(for: error)
+    case .layoutNotIdle, .layoutDisplayOff, .layoutBusy, .layoutUnreadable, .layoutTimedOut:
+      // AndroidDevices 는 `layoutSnapshot` 을 부르지 않는다. 레이아웃 창은 ScreenLayoutError 로 문구를 정한다.
+      nil
     case .cancelled:
       nil
     }

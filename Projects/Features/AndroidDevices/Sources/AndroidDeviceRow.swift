@@ -5,7 +5,8 @@ import SwiftUI
 /// 기기 한 줄: 모양 아이콘, 표시 이름, "API · 상태" 글자(쓸 수 없으면 이유 줄), 앱 설치 메뉴(파일에서 고르기…·URL 에서…·
 /// 카탈로그에서…)와 드롭,
 /// "앱 실행…"·"링크 열기…" 버튼(시트), "로그 보기" 버튼(늘 보이고, 앱 로그 세션이 없으면 비활성 + 안내 툴팁. 기기 상태·작업과
-/// 관계없이 세션이 있으면 눌린다), "스크린샷"·"녹화" 버튼(찍는 중·녹화 단계 표시), 켜기·끄기 버튼(앱 작업 중이면 진행 표시),
+/// 관계없이 세션이 있으면 눌린다), "스크린샷"·"녹화" 버튼(찍는 중·녹화 단계 표시), "레이아웃 보기" 버튼(레이아웃 창. 켜진 기기,
+/// 스크린샷과 같은 작업 규칙이고 찍는 중·녹화 중에도 된다), 켜기·끄기 버튼(앱 작업 중이면 진행 표시),
 /// 기기 작업 메뉴(… 버튼과 컨텍스트 메뉴: 초기화·삭제).
 /// 스크린샷·녹화는 켜진 기기만 되고 앱 작업 중에도 된다. 녹화 중(저장 중 포함)이면 끄기·초기화·삭제를 막고 이유를 보인다.
 /// 앱 설치·실행·링크 열기는 켜진 기기만 된다 (꺼진·켜는 중·쓸 수 없는 행은 비활성이고 도움말에 이유를 보이며, 드롭을 거절한다).
@@ -48,6 +49,10 @@ struct AndroidDeviceRow: View {
   let canStartRecording: Bool
   let recordTapped: () -> Void
   let stopRecordingTapped: () -> Void
+  /// "레이아웃 보기" 를 누를 수 있다 (`AndroidLayoutAvailability.canOpen`: 스크린샷과 같은 기기·작업 규칙).
+  let canViewLayout: Bool
+  /// 이 기기의 레이아웃 창을 연다 (View 가 `openWindow` 로 연다).
+  let layoutTapped: () -> Void
   /// 끌어다 놓는 항목이 이 줄 위에 있고 설치할 수 있다 (줄을 강조한다).
   @State private var isDropTargeted = false
 
@@ -95,6 +100,9 @@ struct AndroidDeviceRow: View {
         recordTapped: self.recordTapped,
         stopTapped: self.stopRecordingTapped
       )
+      Button(AndroidDevicesText.layoutButton, action: self.layoutTapped)
+        .disabled(!self.canViewLayout)
+        .help(self.captureBlockReason(AndroidDevicesText.layoutBlockReason) ?? AndroidDevicesText.layoutHelp)
       self.action
       Menu {
         self.menuItems

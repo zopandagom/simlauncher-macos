@@ -63,6 +63,11 @@ struct AndroidDevicesTextTests {
     #expect(messages.allSatisfy { $0?.isEmpty == false })
     #expect(Set(messages).count == messages.count)
     #expect(AndroidDevicesText.message(for: .cancelled) == nil)
+    // 레이아웃 읽기 실패는 이 화면이 부르지 않는 메서드의 것이라 본문이 없다 (레이아웃 창이 따로 정한다).
+    let layoutErrors: [AndroidEmulatorError] = [
+      .layoutNotIdle, .layoutDisplayOff, .layoutBusy, .layoutUnreadable, .layoutTimedOut,
+    ]
+    #expect(layoutErrors.allSatisfy { AndroidDevicesText.message(for: $0) == nil })
     // 앱이 띄우지 않은 에뮬레이터가 끝난 경우도 같은 문구다.
     #expect(AndroidDevicesText.message(for: .emulatorExited(nil)) == AndroidDevicesText
       .message(for: .emulatorExited(1)))
@@ -344,9 +349,10 @@ enum AndroidDevicesTextCatalog {
       AndroidDevicesText.openURLButton, AndroidDevicesText.openURLHelp, AndroidDevicesText.linkField,
       AndroidDevicesText.linkPrompt, AndroidDevicesText.openURLConfirmButton, AndroidDevicesText.urlNotHandledMessage,
       AndroidDevicesText.viewLogButton, AndroidDevicesText.viewLogHelp, AndroidDevicesText.viewLogUnavailableHelp,
-      AndroidDevicesText.launchAppSheetNote,
+      AndroidDevicesText.launchAppSheetNote, AndroidDevicesText.layoutButton, AndroidDevicesText.layoutHelp,
     ]
     texts += [AndroidAppActionBlockReason.notBooted, .unavailable].map { AndroidDevicesText.appActionBlockReason($0) }
+    texts += [AndroidAppActionBlockReason.notBooted, .unavailable].map { AndroidDevicesText.layoutBlockReason($0) }
     texts += [DeepLinkProblem.malformed, .missingScheme].compactMap { AndroidDevicesText.linkProblem($0) }
     texts += self.packageErrors.map { AndroidDevicesText.message(for: $0) }
     texts += [AndroidVirtualDevice.State.shutdown, .booting, .booted].map { AndroidDevicesText.stateLabel(for: $0) }

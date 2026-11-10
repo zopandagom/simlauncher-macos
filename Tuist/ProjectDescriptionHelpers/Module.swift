@@ -55,7 +55,8 @@ public extension Client {
   /// 끄기(adb emu kill, 앱이 띄운 프로세스는 SIGINT)·만들기(설정 파일 직접 쓰기, 덮어쓰지 않음)·삭제·초기화,
   /// 켜진 기기의 API 수준·ABI 읽기와 앱 설치(adb install)·실행(launcher 화면을 찾아 떠 있는 앱을 끄고(force-stop) am start 로 새로 실행하며
   /// 메인 프로세스 logcat 받기, `launchWithLogcat`)·링크 열기·사용자 설치 앱 목록,
-  /// 화면 스크린샷(adb exec-out screencap)·녹화(기기 안 screenrecord → kill -2 로 멈춤 → adb pull 로 예약 파일에 가져오기).
+  /// 화면 스크린샷(adb exec-out screencap)·녹화(기기 안 screenrecord → kill -2 로 멈춤 → adb pull 로 예약 파일에 가져오기),
+  /// 화면 레이아웃 읽기(wm density → uiautomator dump /dev/tty → screencap, 기기별 한 번에 하나, 메모리에만).
   /// SDK 위치는 AndroidSDK 와 같은 provider 를 App 이 준다. 명령은 CommandClient 로 SDK 의 emulator·adb 만 실행한다.
   static let androidEmulator = Client("AndroidEmulator")
   /// 로컬 .apk 검사: zipinfo 목록·서명 유무·AndroidManifest.xml(AXML) 의 package·minSdk·네이티브 ABI.
@@ -65,6 +66,9 @@ public extension Client {
   /// iOS 는 Simulator Client 의 `launchWithConsole` 을, Android 는 AndroidEmulator Client 의 `launchWithLogcat` 을 조합한다.
   /// 앱 출력은 화면에만 보인다 (파일·Logger 없음).
   static let appLog = Client("AppLog")
+  /// 켜진 기기 화면의 뷰 계층과 스크린샷을 한 번에 읽는다 (레이아웃 창). Android 는 AndroidEmulator Client 의 `layoutSnapshot` 을
+  /// 조합한다 (iOS 는 아직 `.unsupportedPlatform`). 결과는 메모리에만.
+  static let screenLayout = Client("ScreenLayout")
 }
 
 /// 화면 단위 기능 모듈. Feature 끼리는 서로 의존하지 않는다.
@@ -85,6 +89,8 @@ public enum Feature: String, CaseIterable {
   /// 기기별 앱 로그 창(iOS·Android 공용): 세션 고르기, 필터(포함·시작·정규식·제외)·강조, 일시정지·따라가기·지우기,
   /// 끝난 세션 다시 실행.
   case deviceLog = "DeviceLog"
+  /// 기기별 화면 레이아웃 창(iOS·Android 공용): 스크린샷 위 뷰 테두리, 클릭한 점의 노드 고르기와 속성(dp/pt·px), 새로 고침.
+  case layoutInspector = "LayoutInspector"
 
   public var name: String { "\(self.rawValue)Feature" }
   public var tests: String { "\(self.name)Tests" }
