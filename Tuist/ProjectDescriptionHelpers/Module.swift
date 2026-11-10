@@ -23,13 +23,14 @@ public struct Client: Hashable, Sendable {
 // 새 Client 는 이 extension 에 static 상수로 추가한다.
 public extension Client {
   /// iOS 시뮬레이터 기기·런타임 목록과 런타임 디스크 이미지 목록, 켜기·끄기·만들기·삭제·초기화, 앱 설치·실행
-  /// (콘솔을 붙인 실행 `--console-pty` 포함), 화면 찍기·녹화, Simulator 앱 열기 (`xcrun simctl`).
+  /// (콘솔을 붙인 실행 `--console-pty` 포함)·지우기(`simctl uninstall`), 설치된 앱·실행 중인 앱 목록(`simctl spawn launchctl list`),
+  /// 화면 찍기·녹화, Simulator 앱 열기 (`xcrun simctl`).
   static let simulator = Client("Simulator")
   /// 로컬 iOS 앱 번들(.app) 검사와 zip 풀기.
   static let appBundle = Client("AppBundle")
   /// 실행 파일을 인자 배열로 실행하고 종료 코드·stdout·stderr 를 돌려준다 (셸을 거치지 않는다).
   /// 끝날 때까지 기다리는 실행, 취소·시간 제한으로 멈추고 출력을 받는 대로 넘기는 실행, 그 가운데 stdout 을 쌓지 않는 오래 사는 실행
-  /// (`streamCancellable`), 띄우고 곧바로 돌아오는 실행.
+  /// (`streamCancellable`), 띄우고 곧바로 돌아오는 실행과 그 프로세스에 SIGINT·SIGTERM 보내기.
   /// 인자 구성·결과 해석은 이것을 조합하는 Client Impl 이 한다.
   static let command = Client("Command")
   /// 쓸 Xcode 확인·선택(xcode-select, /Applications), 라이선스·첫 실행 준비 확인, Xcode·App Store 열기,
@@ -67,7 +68,8 @@ public extension Client {
   /// 앱 출력은 화면에만 보인다 (파일·Logger 없음).
   static let appLog = Client("AppLog")
   /// 켜진 기기 화면의 뷰 계층과 스크린샷을 한 번에 읽는다 (레이아웃 창). Android 는 AndroidEmulator Client 의 `layoutSnapshot` 을
-  /// 조합한다 (iOS 는 아직 `.unsupportedPlatform`). 결과는 메모리에만.
+  /// 조합한다. iOS 는 SimLauncher 가 빌드해 띄운 XCUITest 러너(xcodebuild, DevEnvironment 가 고른 Xcode, CommandClient)와
+  /// Simulator Client(실행 중 앱 목록·스크린샷·지우기)를 조합한다. 결과는 메모리에만.
   static let screenLayout = Client("ScreenLayout")
 }
 

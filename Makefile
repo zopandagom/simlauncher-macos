@@ -19,7 +19,8 @@ CATALOG_FIXTURES := .github/scripts/Fixtures
 # make release 가 쓰는 공증 키체인 프로필 이름 (xcrun notarytool store-credentials 로 저장, docs/RELEASING.md)
 NOTARY_PROFILE ?= simlauncher-notary
 
-.PHONY: bootstrap generate project build test test-hooks lint format clean sample catalog-check catalog-test release
+.PHONY: bootstrap generate project build test test-hooks lint format clean sample catalog-check catalog-test release \
+	layout-runner-check
 
 ## 최초 1회: 도구 설치 + git 훅 연결
 bootstrap:
@@ -71,6 +72,21 @@ sample:
 		-derivedDataPath $(SAMPLE_DERIVED_DATA) \
 		CODE_SIGNING_ALLOWED=NO CURRENT_PROJECT_VERSION=$(SAMPLE_BUILD_NUMBER) | $(MISE) xcbeautify
 	ditto -c -k --norsrc --noextattr --noacl --keepParent $(SAMPLE_APP) $(SAMPLE_ZIP)
+
+## iOS 레이아웃 러너 소스(ScreenLayout Impl 의 LayoutRunnerSource)를 폴더로 내보내 실제로 빌드해 본다. 러너 소스·Xcode 를 바꿀 때 실행한다
+## (make test·CI 에는 넣지 않는다: iOS 시뮬레이터 SDK 가 필요하고 러너는 사용자 Mac 에서 처음 쓸 때 빌드된다).
+## 내보내기는 환경 값이 있을 때만 도는 단위 테스트(LayoutRunnerSourceExportTests)가 한다. 그 테스트가 건너뛰어지면 둘째 xcodebuild 가
+## 프로젝트를 찾지 못해 실패하므로 조용히 통과하지 않는다. 러너 빌드 출력(build.log)에 warning:·error: 줄이 있으면 실패한다
+LAYOUT_RUNNER_EXPORT ?= build/layout-runner
+layout-runner-check: project
+	rm -rf $(LAYOUT_RUNNER_EXPORT) && mkdir -p $(LAYOUT_RUNNER_EXPORT)
+	TEST_RUNNER_SIMLAUNCHER_EXPORT_LAYOUT_RUNNER=$(abspath $(LAYOUT_RUNNER_EXPORT))/Source $(MISE) xcodebuild test \
+		-workspace $(WORKSPACE) -scheme $(SCHEME) -destination '$(DESTINATION)' \
+		-only-testing:ScreenLayoutTests/LayoutRunnerSourceExportTests CODE_SIGNING_ALLOWED=NO -quiet
+	set -o pipefail && $(MISE) xcodebuild build-for-testing -project $(LAYOUT_RUNNER_EXPORT)/Source/LayoutRunner.xcodeproj \
+		-scheme LayoutRunner -destination 'generic/platform=iOS Simulator' -derivedDataPath $(LAYOUT_RUNNER_EXPORT)/DerivedData \
+		CODE_SIGNING_ALLOWED=NO -quiet 2>&1 | tee $(LAYOUT_RUNNER_EXPORT)/build.log
+	! grep -E 'warning:|error:' $(LAYOUT_RUNNER_EXPORT)/build.log
 
 $(CATALOG_VALIDATOR): .github/scripts/validate-catalog.swift $(wildcard Projects/Shared/Core/Sources/*.swift)
 	mkdir -p $(@D)
