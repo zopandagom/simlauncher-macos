@@ -11,7 +11,7 @@ import Testing
 struct SimulatorClientImplNoXcodeTests {
   enum Operation: String, CaseIterable, Sendable {
     case fetchInventory, boot, shutdown, create, delete, erase, openSimulatorApp, install, installedApps, launch,
-         openURL
+         openURL, runningApplications, uninstall
   }
 
   private static let udid = VirtualDevice.ID("B66201ED-154C-4F97-A6C7-C88F42E8D3A7")
@@ -72,7 +72,7 @@ struct SimulatorClientImplNoXcodeTests {
       try await client.delete(self.udid)
     case .erase:
       try await client.erase(self.udid)
-    case .openSimulatorApp, .install, .installedApps, .launch, .openURL:
+    case .openSimulatorApp, .install, .installedApps, .launch, .openURL, .runningApplications, .uninstall:
       try await self.performApp(operation, on: client)
     }
   }
@@ -89,6 +89,10 @@ struct SimulatorClientImplNoXcodeTests {
       try await client.launch(AppBundleID("com.example.ok")!, on: self.udid)
     case .openURL:
       try await client.openURL(DeepLink("https://example.com")!, on: self.udid)
+    case .runningApplications:
+      _ = try await client.runningApplications(on: self.udid)
+    case .uninstall:
+      try await client.uninstall(AppBundleID("com.example.ok")!, on: self.udid)
     default:
       break
     }

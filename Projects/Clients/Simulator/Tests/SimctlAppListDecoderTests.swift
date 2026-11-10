@@ -71,6 +71,26 @@ struct SimctlAppListDecoderTests {
     #expect(Array(names.prefix(4)) == ["App2", "app3", "App10", "Beta"])
   }
 
+  @Test("SimLauncher 레이아웃 러너는 User 앱이어도 빼고, 다른 UI 테스트 러너는 남긴다")
+  func excludesLayoutRunner() throws {
+    let text = """
+    {
+        "\(IOSLayoutRunner.appBundleID)" =     {
+            ApplicationType = User;
+            CFBundleDisplayName = "SimLauncherLayout-Runner";
+        };
+        "com.example.uitests.xctrunner" =     {
+            ApplicationType = User;
+            CFBundleDisplayName = "ExampleUITests-Runner";
+        };
+    }
+    """
+
+    let apps = try SimctlAppListDecoder.apps(from: Data(text.utf8))
+
+    #expect(apps.map(\.bundleID.rawValue) == ["com.example.uitests.xctrunner"])
+  }
+
   @Test("빈 사전은 빈 목록")
   func emptyDictionary() throws {
     #expect(try SimctlAppListDecoder.apps(from: Data("{}".utf8)).isEmpty)
