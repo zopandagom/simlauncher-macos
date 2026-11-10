@@ -53,10 +53,20 @@ public struct LayoutInspectorView: View {
       }
       .disabled(window.isLoading)
       .help(LayoutInspectorText.refreshHelp)
+      // 이전 화면이 있으면 그대로 두고 여기에 진행을 보인다. iOS 러너를 다시 준비하면(10분 유휴·기기 다시 켜기 뒤 등, 최대 1~2분)
+      // 작은 진행 표시만으로는 오래 도는 이유를 모르므로 준비 문구도 함께 보인다.
       if window.isLoading, window.snapshot != nil {
         ProgressView()
           .controlSize(.small)
-          .accessibilityLabel(LayoutInspectorText.reading)
+          .accessibilityLabel(window.loading == .preparing ? LayoutInspectorText.preparing : LayoutInspectorText
+            .reading)
+        if window.loading == .preparing {
+          Text(LayoutInspectorText.preparing)
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .truncationMode(.tail)
+            .help(LayoutInspectorText.preparing)
+        }
       }
       if let snapshot = window.snapshot {
         Text(LayoutInspectorText.lastUpdated(snapshot.capturedAt))
