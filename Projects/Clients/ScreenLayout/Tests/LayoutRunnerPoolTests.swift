@@ -42,6 +42,29 @@ struct LayoutRunnerPoolTests {
     #expect(try await waitUntil { !harness.client.hasActiveIOSRunners })
   }
 
+  @Test("읽은 응답 파일은 곧바로 지우고, 멈추면 요청·결과 번들도 지우되 ready.json 은 남긴다")
+  func screenDataIsNotKept() async throws {
+    let harness = RunnerHarness()
+    _ = try await harness.read().get()
+    let session = harness.root.appending(path: "sessions/\(Self.device.rawValue)", directoryHint: .isDirectory)
+    let fileManager = FileManager.default
+    func exists(_ name: String) -> Bool {
+      fileManager.fileExists(atPath: session.appending(path: name).path(percentEncoded: false))
+    }
+    #expect(!exists(LayoutRunnerProtocol.responseFile))
+
+    try Data("{}".utf8).write(to: session.appending(path: LayoutRunnerProtocol.requestFile))
+    for folder in [LayoutRunnerProtocol.resultBundle, "DerivedData/Logs/Test"] {
+      try fileManager.createDirectory(at: session.appending(path: folder), withIntermediateDirectories: true)
+    }
+    harness.exitAll()
+    #expect(try await waitUntil { harness.uninstalls == [Self.device] })
+
+    #expect(try fileManager.contentsOfDirectory(atPath: session.path(percentEncoded: false)) == [
+      LayoutRunnerProtocol.readyFile,
+    ])
+  }
+
   @Test("감시가 알아채기 전에 xcodebuild 가 끝났으면 요청하지 않고 .preparing 뒤 새로 준비해 읽는다")
   func exitedBeforeMonitorNotices() async throws {
     var timing = RunnerHarness.timing
@@ -80,6 +103,51 @@ struct LayoutRunnerPoolTests {
     #expect(phases.all == [.preparing, .reading])
   }
 
+  @Test("SIGTERM 뒤에도 늦게 끝나는 xcodebuild 가 쓴 파일은 끝난 뒤 지운다 (ready.json 만 남는다)")
+  func lateExitFilesAreRemoved() async throws {
+    let harness = RunnerHarness()
+    _ = try await harness.read().get()
+    harness.update {
+      $0.responder = { _ in .silent }
+      $0.terminateExits = false
+    }
+
+    await harness.client.iOSDeviceWillShutDown(Self.device)
+    #expect(harness.uninstalls == [Self.device])
+    let session = harness.root.appending(path: "sessions/\(Self.device.rawValue)", directoryHint: .isDirectory)
+    // 끝나며 결과 번들을 쓰는 xcodebuild 흉내.
+    try FileManager.default.createDirectory(
+      at: session.appending(path: LayoutRunnerProtocol.resultBundle), withIntermediateDirectories: true
+    )
+    harness.exitAll(status: 143)
+
+    #expect(try await waitUntil {
+      (try? FileManager.default.contentsOfDirectory(atPath: session.path(percentEncoded: false)))
+        == [LayoutRunnerProtocol.readyFile]
+    })
+  }
+
+  @Test("늦은 파일 정리는 그 뒤에 준비된 다른 세션의 폴더를 비우지 않고, 상태가 비면 비운다")
+  func lateCleanupKeepsNewSession() async throws {
+    let harness = RunnerHarness()
+    _ = try await harness.read().get()
+    let pool = harness.client.pool
+    let session = harness.root.appending(path: "sessions/\(Self.device.rawValue)", directoryHint: .isDirectory)
+    let marker = session.appending(path: LayoutRunnerProtocol.resultBundle)
+    try FileManager.default.createDirectory(at: marker, withIntermediateDirectories: true)
+
+    await pool.removeScreenDataIfOwned(Self.device, owner: .stop(UUID()))
+    await pool.removeScreenDataIfOwned(Self.device, owner: .attempt(UUID()))
+    #expect(FileManager.default.fileExists(atPath: marker.path(percentEncoded: false)))
+    _ = try await harness.read().get()
+
+    harness.exitAll()
+    #expect(try await waitUntil { !harness.client.hasActiveIOSRunners })
+    try FileManager.default.createDirectory(at: marker, withIntermediateDirectories: true)
+    await pool.removeScreenDataIfOwned(Self.device, owner: .stop(UUID()))
+    #expect(!FileManager.default.fileExists(atPath: marker.path(percentEncoded: false)))
+  }
+
   @Test("끄기 직전: 러너가 quit 에 답하지 않으면 quitGrace 뒤 SIGTERM")
   func willShutDownIgnoresQuit() async throws {
     let harness = RunnerHarness()
@@ -92,18 +160,22 @@ struct LayoutRunnerPoolTests {
     #expect(harness.uninstalls == [Self.device])
   }
 
-  @Test("준비 중(ready 대기) 끄기: SIGTERM, 기다리던 호출은 기기 꺼짐, uninstall")
+  @Test("준비 중(ready 대기) 끄기: SIGTERM, 기다리던 호출은 기기 꺼짐, 결과 번들을 지우고 uninstall")
   func willShutDownWhilePreparing() async throws {
     let harness = RunnerHarness(timing: Self.longReadyTiming)
     harness.update { $0.launch = .neverReady }
     let task = harness.readTask()
     #expect(try await waitUntil { harness.launches.count == 1 })
+    let session = harness.root.appending(path: "sessions/\(Self.device.rawValue)", directoryHint: .isDirectory)
+    let bundle = session.appending(path: LayoutRunnerProtocol.resultBundle)
+    try FileManager.default.createDirectory(at: bundle, withIntermediateDirectories: true)
 
     await harness.client.iOSDeviceWillShutDown(Self.device)
 
     #expect(harness.command.terminates.count == 1)
     #expect(await task.value == .failure(.deviceNotBooted))
     #expect(harness.uninstalls == [Self.device])
+    #expect(!FileManager.default.fileExists(atPath: bundle.path(percentEncoded: false)))
   }
 
   static let longReadyTiming: IOSLayoutTiming = {
@@ -233,7 +305,9 @@ struct LayoutRunnerPoolTests {
     timing.requestTimeout = .seconds(30)
     return timing
   }()
+}
 
+extension LayoutRunnerPoolTests {
   // MARK: 취소
 
   @Test("준비 중 호출 취소는 곧바로 cancelled, 준비는 계속해 다음 호출은 준비 없이 읽는다")
@@ -279,6 +353,8 @@ struct LayoutRunnerPoolTests {
     #expect(harness.launches.count == 1)
   }
 
+  // MARK: 켜짐 정리
+
   @Test("멈추는 중을 기다리는 호출 취소는 곧바로 cancelled, 멈춘 뒤에도 새 준비를 만들지 않는다")
   func cancelWhileWaitingForStop() async throws {
     let harness = RunnerHarness()
@@ -300,10 +376,6 @@ struct LayoutRunnerPoolTests {
     #expect(harness.launches.count == 1)
     #expect(!harness.client.hasActiveIOSRunners)
   }
-}
-
-extension LayoutRunnerPoolTests {
-  // MARK: 켜짐 정리
 
   @Test("켜짐 정리: 처음 본 켜진 기기마다 한 번 uninstall, 꺼진 것으로 본 뒤 다시 켜지면 한 번 더")
   func cleaningOncePerBoot() async throws {

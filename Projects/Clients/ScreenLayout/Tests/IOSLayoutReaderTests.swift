@@ -223,6 +223,8 @@ struct IOSLayoutReaderTests {
 
     #expect(await harness.read() == .failure(.unreadable))
     #expect(ContinuousClock.now - start < .seconds(5))
+    let response = harness.root.appending(path: "sessions/\(RunnerHarness.device.rawValue)/response.json")
+    #expect(!FileManager.default.fileExists(atPath: response.path(percentEncoded: false)))
   }
 
   static let longRequestTiming: IOSLayoutTiming = {
@@ -259,6 +261,16 @@ struct IOSLayoutReaderTests {
     #expect(await task.value == .failure(.cancelled))
     #expect(harness.command.terminates.isEmpty)
     #expect(harness.client.hasActiveIOSRunners)
+
+    // 다른 id 의 응답(새 요청의 것)은 건드리지 않고, 러너가 취소된 요청의 응답을 늦게 쓰면 남기지 않는다.
+    let request = try #require(harness.requests.first)
+    let response = harness.root.appending(path: "sessions/\(RunnerHarness.device.rawValue)/response.json")
+    try RunnerHarness.json(["id": "other", "ok": true]).write(to: response)
+    try await Task.sleep(for: .milliseconds(100))
+    #expect(FileManager.default.fileExists(atPath: response.path(percentEncoded: false)))
+    guard case let .data(data) = RunnerHarness.snapshotReply(request) else { return }
+    try data.write(to: response)
+    #expect(try await waitUntil { !FileManager.default.fileExists(atPath: response.path(percentEncoded: false)) })
   }
 
   @Test("같은 기기 두 호출은 빌드·launch 한 번, 다른 기기는 빌드 한 번·launch 두 번")

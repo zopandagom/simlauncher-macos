@@ -19,18 +19,24 @@ extension LayoutRunnerPool {
   }
 
   private func stop(_ session: Session, mode: StopMode, stopID: UUID) async {
+    var exited = true
     switch mode {
     case .graceful:
       try? Self.writeRequest(.quit, id: UUID().uuidString, in: session.directory)
+      try? FileManager.default.removeItem(at: session.directory.appending(path: LayoutRunnerProtocol.responseFile))
       if await !self.waitForExit(session.process, within: self.timing.quitGrace) {
         self.command.terminate(session.process)
-        _ = await self.waitForExit(session.process, within: self.timing.terminateGrace)
+        exited = await self.waitForExit(session.process, within: self.timing.terminateGrace)
       }
     case .terminate:
       self.command.terminate(session.process)
-      _ = await self.waitForExit(session.process, within: self.timing.terminateGrace)
+      exited = await self.waitForExit(session.process, within: self.timing.terminateGrace)
     case .exited:
       break
+    }
+    Self.removeScreenData(in: session.directory)
+    if !exited {
+      self.removeScreenDataAfterExit(session.process, session.deviceID, owner: .stop(stopID))
     }
     await self.uninstallRunner(session.deviceID)
     if case let .stopping(current, _) = self.runners[session.deviceID], current == stopID {
@@ -69,6 +75,63 @@ extension LayoutRunnerPool {
     let finished = await CancellableWait.finished(waiter, timeout: limit)
     waiter.cancel()
     return finished
+  }
+
+  // MARK: 늦게 쓰이는 화면 데이터 정리
+
+  /// 취소한 요청의 늦은 응답을 지운다: 그 id 의 응답이 오면 지우고, 세션이 바뀌거나(멈춤이 폴더를 비운다) `requestTimeout` 이
+  /// 지나면 그만둔다. 다른 id 의 응답(새 요청)은 건드리지 않는다. 상태를 바꾸지 않는 정리 Task 다.
+  func discardLateResponse(_ requestID: String, session: Session) {
+    Task { await self.awaitLateResponse(requestID, session: session) }
+  }
+
+  private func awaitLateResponse(_ requestID: String, session: Session) async {
+    let response = session.directory.appending(path: LayoutRunnerProtocol.responseFile)
+    let clock = ContinuousClock()
+    let deadline = clock.now + self.timing.requestTimeout
+    while clock.now < deadline, self.isCurrent(session) {
+      try? await Task.sleep(for: self.timing.responsePollInterval)
+      guard self.isCurrent(session) else { return }
+      switch await Self.readResponse(at: response, id: requestID) {
+      case .pending:
+        continue
+      case .rejected:
+        // id 를 확인하기 전에 거절되는 응답(빈 id·크기 초과)은 새 요청의 것일 수 있어 건드리지 않는다 (새 요청이 판정해 지운다).
+        return
+      case .response:
+        try? FileManager.default.removeItem(at: response)
+        return
+      }
+    }
+  }
+
+  /// 늦은 파일 정리를 맡긴 쪽. 그 기기 상태가 아직 이 주인이거나 비어 있을 때만 지운다 (그 뒤의 새 세션 파일은 건드리지 않는다).
+  enum ScreenDataOwner: Equatable {
+    case stop(UUID)
+    case attempt(UUID)
+  }
+
+  /// SIGTERM 뒤 상한 안에 끝나지 않은 xcodebuild 가 끝나며 쓰는 파일(결과 번들·로그)도 지운다: 끝나기를 기다렸다가
+  /// `removeScreenDataIfOwned` 로 세션 폴더를 다시 비운다. 상태를 바꾸지 않는다.
+  func removeScreenDataAfterExit(_ process: LaunchedProcess, _ id: VirtualDevice.ID, owner: ScreenDataOwner) {
+    let command = self.command
+    Task {
+      _ = await command.waitForExit(process)
+      await self.removeScreenDataIfOwned(id, owner: owner)
+    }
+  }
+
+  /// 기기 상태가 비었거나 아직 `owner`(그 멈춤·그 준비)이면 세션 폴더를 비운다. 다른 세션의 준비·준비됨·멈춤·정리 중이면 그대로 둔다.
+  func removeScreenDataIfOwned(_ id: VirtualDevice.ID, owner: ScreenDataOwner) {
+    let owned = switch self.runners[id] {
+    case nil: true
+    case let .stopping(stopID, _): owner == .stop(stopID)
+    case let .preparing(attempt): owner == .attempt(attempt.id)
+    case .ready, .cleaning: false
+    }
+    if owned {
+      Self.removeScreenData(in: self.sessionDirectory(id))
+    }
   }
 
   // MARK: 켜진 기기의 남은 러너 정리

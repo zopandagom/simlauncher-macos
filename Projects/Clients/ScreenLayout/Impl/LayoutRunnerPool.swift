@@ -214,6 +214,9 @@ actor LayoutRunnerPool {
       do {
         try await Task.sleep(for: self.timing.responsePollInterval)
       } catch {
+        // 취소해도 러너는 그 요청을 끝까지 처리해 응답을 늦게 쓴다: 지금 있는 것은 지우고, 늦은 응답도 지울 정리를 남긴다.
+        try? FileManager.default.removeItem(at: response)
+        self.discardLateResponse(requestID, session: session)
         throw .cancelled
       }
       guard self.isCurrent(session) else { throw await self.lostSessionError(session.deviceID) }
@@ -221,8 +224,11 @@ actor LayoutRunnerPool {
       case .pending:
         break
       case .rejected:
+        try? FileManager.default.removeItem(at: response)
         throw .unreadable
       case let .response(value):
+        // 읽은 화면(라벨·값·식별자)은 메모리에만 둔다: 판정하자마자 파일을 지운다.
+        try? FileManager.default.removeItem(at: response)
         return value
       }
       if clock.now - start >= self.timing.requestTimeout {
@@ -278,6 +284,17 @@ actor LayoutRunnerPool {
     self.sessionsRoot.appending(path: id.rawValue, directoryHint: .isDirectory)
   }
 
+  /// 모든 세션 폴더에 `removeScreenData` (앱 종료 상한이 지났을 때: 아직 멈추는 중인 러너의 파일도 남기지 않는다).
+  func removeAllScreenData() {
+    let fileManager = FileManager.default
+    guard let names = try? fileManager.contentsOfDirectory(atPath: self.sessionsRoot.path(percentEncoded: false)) else {
+      return
+    }
+    for name in names {
+      Self.removeScreenData(in: self.sessionsRoot.appending(path: name, directoryHint: .isDirectory))
+    }
+  }
+
   /// 러너 앱을 지운다. 실패(SimLauncher 밖에서 꺼진 기기 405 등)는 사용자에게 알리지 않고, 정리 표시를 지워
   /// 다음에 목록이 그 기기를 켜진 것으로 읽을 때 다시 정리하게 한다 (목록을 다시 읽기 전에 밖에서 다시 켜도 남지 않게).
   func uninstallRunner(_ id: VirtualDevice.ID) async {
@@ -287,39 +304,6 @@ actor LayoutRunnerPool {
     } catch {
       self.cleanedThisBoot.remove(id)
     }
-  }
-
-  /// 이 Xcode 와 동봉 소스의 빌드 키 (version.plist 를 읽는다).
-  static func buildKey(for xcode: XcodeInstallation) -> String {
-    let plist = try? Data(contentsOf: LayoutRunnerCommands.versionPlist(xcode))
-    return LayoutRunnerCommands.buildKey(
-      productBuildVersion: plist.flatMap(LayoutRunnerCommands.productBuildVersion(fromVersionPlist:)),
-      sourceDigest: LayoutRunnerSource.digest,
-      xcodePath: xcode.bundleURL.path(percentEncoded: false)
-    )
-  }
-
-  /// `request.json.tmp` 에 쓰고 `rename(2)` 로 내놓는다 (있는 파일도 원자적으로 바뀐다).
-  static func writeRequest(_ command: LayoutRunnerProtocol.Command, id: String, in directory: URL) throws {
-    let destination = directory.appending(path: LayoutRunnerProtocol.requestFile)
-    let temporary = directory.appending(path: LayoutRunnerProtocol.requestFile + ".tmp")
-    try LayoutRunnerProtocol.requestData(id: id, command: command).write(to: temporary)
-    guard rename(temporary.path(percentEncoded: false), destination.path(percentEncoded: false)) == 0 else {
-      throw CocoaError(.fileWriteUnknown)
-    }
-  }
-
-  /// 크기를 먼저 보고(상한을 넘으면 거절) 읽어 해석한다. 메인·actor 밖에서 돈다.
-  @concurrent
-  nonisolated static func readResponse(at url: URL, id: String) async -> LayoutRunnerProtocol.ResponseRead {
-    guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path(percentEncoded: false)),
-          let size = attributes[.size] as? Int
-    else {
-      return .pending
-    }
-    guard size <= LayoutRunnerProtocol.maxResponseBytes else { return .rejected }
-    guard let data = try? Data(contentsOf: url) else { return .pending }
-    return LayoutRunnerProtocol.response(from: data, id: id)
   }
 }
 
@@ -397,5 +381,51 @@ extension LayoutRunnerPool {
       }
     }
     _ = await CancellableWait.finished(all, timeout: self.timing.stopAllLimit)
+    self.removeAllScreenData()
+  }
+
+  /// 세션 폴더에서 `ready.json`(러너 pid·토큰. SimLauncher 가 비정상 종료한 뒤 남은 러너를 찾는 데 쓴다) 밖의 모든 것을 지운다:
+  /// 요청·응답(`.tmp` 포함), 결과 번들(실패 때 자동 화면 캡처가 남을 수 있다), xcodebuild 의 DerivedData(로그·결과 사본).
+  /// 읽은 화면을 디스크에 남기지 않으려고, 러너를 멈추거나 준비가 실패할 때·앱 종료 상한 때 부른다.
+  static func removeScreenData(in directory: URL) {
+    let fileManager = FileManager.default
+    guard let names = try? fileManager.contentsOfDirectory(atPath: directory.path(percentEncoded: false))
+    else { return }
+    for name in names where name != LayoutRunnerProtocol.readyFile {
+      try? fileManager.removeItem(at: directory.appending(path: name))
+    }
+  }
+
+  /// 이 Xcode 와 동봉 소스의 빌드 키 (version.plist 를 읽는다).
+  static func buildKey(for xcode: XcodeInstallation) -> String {
+    let plist = try? Data(contentsOf: LayoutRunnerCommands.versionPlist(xcode))
+    return LayoutRunnerCommands.buildKey(
+      productBuildVersion: plist.flatMap(LayoutRunnerCommands.productBuildVersion(fromVersionPlist:)),
+      sourceDigest: LayoutRunnerSource.digest,
+      xcodePath: xcode.bundleURL.path(percentEncoded: false)
+    )
+  }
+
+  /// `request.json.tmp` 에 쓰고 `rename(2)` 로 내놓는다 (있는 파일도 원자적으로 바뀐다).
+  static func writeRequest(_ command: LayoutRunnerProtocol.Command, id: String, in directory: URL) throws {
+    let destination = directory.appending(path: LayoutRunnerProtocol.requestFile)
+    let temporary = directory.appending(path: LayoutRunnerProtocol.requestFile + ".tmp")
+    try LayoutRunnerProtocol.requestData(id: id, command: command).write(to: temporary)
+    guard rename(temporary.path(percentEncoded: false), destination.path(percentEncoded: false)) == 0 else {
+      throw CocoaError(.fileWriteUnknown)
+    }
+  }
+
+  /// 크기를 먼저 보고(상한을 넘으면 거절) 읽어 해석한다. 메인·actor 밖에서 돈다.
+  @concurrent
+  nonisolated static func readResponse(at url: URL, id: String) async -> LayoutRunnerProtocol.ResponseRead {
+    guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path(percentEncoded: false)),
+          let size = attributes[.size] as? Int
+    else {
+      return .pending
+    }
+    guard size <= LayoutRunnerProtocol.maxResponseBytes else { return .rejected }
+    guard let data = try? Data(contentsOf: url) else { return .pending }
+    return LayoutRunnerProtocol.response(from: data, id: id)
   }
 }

@@ -53,7 +53,11 @@ extension LayoutRunnerPool {
       if self.command.exitStatus(process) == nil {
         self.command.terminate(process)
       }
-      _ = await self.waitForExit(process, within: self.timing.terminateGrace)
+      let exited = await self.waitForExit(process, within: self.timing.terminateGrace)
+      Self.removeScreenData(in: self.sessionDirectory(id))
+      if !exited {
+        self.removeScreenDataAfterExit(process, id, owner: .attempt(attemptID))
+      }
       await self.uninstallRunner(id)
     }
     let classified = await self.classify(error, for: id)

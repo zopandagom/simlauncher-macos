@@ -9,6 +9,8 @@ enum LayoutRunnerProtocol {
   static let readyFile = "ready.json"
   static let requestFile = "request.json"
   static let responseFile = "response.json"
+  /// xcodebuild 결과 번들 (호스트만 쓴다. 러너가 SIGTERM 등으로 실패하면 자동 화면 캡처가 남을 수 있다).
+  static let resultBundle = "result.xcresult"
 
   /// 러너 안에서 보이는 환경 이름. xcodebuild 에는 `TEST_RUNNER_` 를 붙여 넘긴다 (러너 안에서는 떼고 보인다, 실측).
   static let directoryVariable = "SIMLAUNCHER_LAYOUT_DIR"

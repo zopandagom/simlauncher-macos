@@ -39,7 +39,8 @@ enum LayoutRunnerCommands {
       "-xctestrun", xctestrun.path(percentEncoded: false),
       "-destination", "id=\(udid)",
       "-derivedDataPath", sessionDirectory.appending(path: "DerivedData").path(percentEncoded: false),
-      "-resultBundlePath", sessionDirectory.appending(path: "result.xcresult").path(percentEncoded: false),
+      "-resultBundlePath",
+      sessionDirectory.appending(path: LayoutRunnerProtocol.resultBundle).path(percentEncoded: false),
       "-test-timeouts-enabled", "NO",
     ]
   }
