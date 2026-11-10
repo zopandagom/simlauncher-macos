@@ -90,6 +90,7 @@ public final class LauncherModel {
     appLog: any AppLogClient,
     setupRequested: @escaping @MainActor () -> Void = {},
     appSheetPresented: @escaping @MainActor () -> Bool = { false },
+    deviceHooks: LauncherDeviceHooks = .none,
     now: @escaping @Sendable () -> Date = { Date() }
   ) {
     self.simulator = simulator
@@ -97,7 +98,7 @@ public final class LauncherModel {
     self.download = download
     self.appLog = appLog
     self.installFlow = AppInstallFlow(simulator: simulator, appBundle: appBundle, download: download, appLog: appLog)
-    self.commandFlow = DeviceCommandFlow(simulator: simulator)
+    self.commandFlow = DeviceCommandFlow(simulator: simulator, hooks: deviceHooks)
     self.captureFlow = ScreenCaptureFlow(simulator: simulator, workspace: workspace, now: now)
     self.setupRequested = setupRequested
     self.appSheetPresented = appSheetPresented
@@ -237,6 +238,7 @@ public final class LauncherModel {
           let inventory = try await self.simulator.fetchInventory()
           let list = DeviceList(inventory: inventory)
           self.listState = .loaded(list)
+          self.commandFlow.devicesListed(list)
           self.selection.formIntersection(list.deviceIDs)
           // 녹화 중인 기기가 켜져 있지 않거나 없으면 멈춘다 (simctl 은 기기가 꺼져도 끝나지 않는다, 측정).
           for id in self.recordings.requestStops(notBootedIn: list) {

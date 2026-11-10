@@ -7,7 +7,9 @@ import SwiftUI
 /// 링크 열기 버튼(시트), 로그 보기 버튼(늘 보이고, 이 기기에 앱 로그 세션이 있으면 기기 상태·작업과 관계없이 누를 수 있다. 없으면 비활성으로 두고
 /// 이유("앱 실행…" 안내)를 툴팁으로),
 /// 스크린샷 버튼(켜진 기기만, 찍는 중이면 작은 진행 표시), 녹화 표시(켜진 기기만: "녹화" 버튼, 녹화 중이면 경과 시간과 "중지",
-/// 저장 중이면 작은 진행 표시), 켜기·끄기 버튼(받는 중이면 진행 막대와 받기 취소 버튼, 녹화 중이면 끄기 비활성),
+/// 저장 중이면 작은 진행 표시), 레이아웃 보기 버튼(레이아웃 창. 켜진 기기, 스크린샷과 같은 작업 규칙이고 찍는 중·녹화 중에도 된다.
+/// 러너의 최소 iOS 보다 낮은 기기는 막고 이유를 툴팁으로),
+/// 켜기·끄기 버튼(받는 중이면 진행 막대와 받기 취소 버튼, 녹화 중이면 끄기 비활성),
 /// 기기 작업 메뉴(… 버튼과 컨텍스트 메뉴: 초기화·삭제).
 /// 여러 기기가 함께 받는 중(받기 묶음)이면 대상 행 모두에 같은 진행이 보이고, 취소 툴팁이 함께 멈추는 기기 수를 알린다.
 /// 행의 버튼·메뉴·드롭·컨텍스트 메뉴는 목록 선택과 관계없이 이 기기 하나에만 동작한다.
@@ -42,6 +44,10 @@ struct DeviceRow: View {
   let canStartRecording: Bool
   let recordTapped: () -> Void
   let stopRecordingTapped: () -> Void
+  /// "레이아웃 보기" 를 누를 수 있다 (`IOSLayoutAvailability.canOpen`: 스크린샷과 같은 기기·작업 규칙).
+  let canViewLayout: Bool
+  /// 이 기기의 레이아웃 창을 연다 (View 가 `openWindow` 로 연다).
+  let layoutTapped: () -> Void
   let bootTapped: () -> Void
   let shutdownTapped: () -> Void
   let eraseTapped: () -> Void
@@ -94,6 +100,9 @@ struct DeviceRow: View {
         recordTapped: self.recordTapped,
         stopTapped: self.stopRecordingTapped
       )
+      Button(LauncherText.layoutButton, action: self.layoutTapped)
+        .disabled(!self.canViewLayout)
+        .help(self.layoutBlockReason ?? LauncherText.layoutHelp)
       self.action
       Menu {
         self.menuItems
@@ -240,6 +249,14 @@ struct DeviceRow: View {
   private var screenshotBlockReason: String? {
     guard case let .blocked(reason) = self.device.screenshotAvailability else { return nil }
     return LauncherText.screenshotBlockReason(reason)
+  }
+
+  /// "레이아웃 보기" 버튼 툴팁에 보일 막힌 이유. 기기 규칙은 스크린샷과 같고, 러너보다 낮은 iOS 도 막는다.
+  private var layoutBlockReason: String? {
+    if case let .blocked(reason) = self.device.screenshotAvailability {
+      return LauncherText.layoutBlockReason(reason)
+    }
+    return IOSLayoutAvailability.supportsRunner(self.device) ? nil : LauncherText.layoutUnsupportedOS
   }
 
   /// 녹화 버튼 툴팁에 보일 막힌 이유. 기기 규칙은 스크린샷과 같다.
