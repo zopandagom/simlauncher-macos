@@ -221,6 +221,10 @@ public struct CommandClientImpl: CommandClient {
     self.launchedProcesses.interrupt(process.id)
   }
 
+  public func terminate(_ process: LaunchedProcess) {
+    self.launchedProcesses.terminate(process.id)
+  }
+
   /// 정상 종료면 종료 코드, 신호로 끝났으면 128+신호 번호 (셸과 같다).
   private static func exitStatus(of process: Process) -> Int32 {
     switch process.terminationReason {

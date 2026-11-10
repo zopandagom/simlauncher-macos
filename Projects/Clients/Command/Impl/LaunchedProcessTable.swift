@@ -4,7 +4,7 @@ import Synchronization
 
 /// `launch` 가 띄운 프로세스 표. `CommandClientImpl` 은 복사되는 struct 라 표는 참조 타입에 두고 복사본끼리 같은 표를 쓴다.
 /// 항목은 종료 뒤에도 종료 상태를 남긴다 (앱 수명 동안 작은 값). `Process` 는 끝날 때까지만 붙잡는다.
-/// SIGINT 는 lock 안에서 종료 처리(`terminationHandler`)가 오기 전에만 보낸다. 종료 처리가 온 뒤에는 보내지 않지만,
+/// SIGINT·SIGTERM 은 lock 안에서 종료 처리(`terminationHandler`)가 오기 전에만 보낸다. 종료 처리가 온 뒤에는 보내지 않지만,
 /// Foundation 이 프로세스를 거둔 뒤 종료 처리가 오기 전의 짧은 틈(그 사이 pid 가 재사용될 수 있다)은 막지 못한다 (`ProcessControl` 과 같다).
 final class LaunchedProcessTable: Sendable {
   private enum Phase {
@@ -114,6 +114,16 @@ final class LaunchedProcessTable: Sendable {
         return
       }
       process.interrupt()
+    }
+  }
+
+  /// 돌고 있으면 SIGTERM 을 보낸다. 끝났거나 아직 표에 넣지 않았거나 모르는 값이면 아무것도 하지 않는다.
+  func terminate(_ id: UUID) {
+    self.entries.withLock { entries in
+      guard let entry = entries[id], case let .running(process) = entry.phase else {
+        return
+      }
+      process.terminate()
     }
   }
 }

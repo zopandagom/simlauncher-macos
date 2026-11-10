@@ -62,8 +62,10 @@ public final class CommandClientFake: CommandClient {
   private let cancellableHandler: CancellableHandler?
   private let launchHandler: LaunchHandler?
   private let interruptHandler: (@Sendable (LaunchedProcess) -> Void)?
+  private let terminateHandler: (@Sendable (LaunchedProcess) -> Void)?
   private let recorded = Mutex<[Invocation]>([])
   private let recordedInterrupts = Mutex<[LaunchedProcess]>([])
+  private let recordedTerminates = Mutex<[LaunchedProcess]>([])
   private let launched = Mutex<[UUID: LaunchedEntry]>([:])
 
   /// - Parameter cancellableHandler: `runCancellable` 처리기. nil 이면 `handler` 결과의 stdout·stderr 를
@@ -71,16 +73,19 @@ public final class CommandClientFake: CommandClient {
   ///   `.cancelled` 를 던지는 식으로 한다.
   /// - Parameter launchHandler: `launch` 처리기. nil 이면 띄우기는 성공하고 프로세스는 `exit(_:status:)` 를 부를 때까지 돈다.
   /// - Parameter interruptHandler: 아직 끝나지 않은 프로세스에 `interrupt` 가 오면 부른다 (SIGINT 를 받고 끝나는 흉내는 여기서 `exit` 를 부른다).
+  /// - Parameter terminateHandler: 아직 끝나지 않은 프로세스에 `terminate` 가 오면 부른다 (SIGTERM 을 받고 끝나는 흉내는 여기서 `exit` 를 부른다).
   public init(
     handler: @escaping @Sendable (Invocation) throws(CommandError) -> CommandResult,
     cancellableHandler: CancellableHandler? = nil,
     launchHandler: LaunchHandler? = nil,
-    interruptHandler: (@Sendable (LaunchedProcess) -> Void)? = nil
+    interruptHandler: (@Sendable (LaunchedProcess) -> Void)? = nil,
+    terminateHandler: (@Sendable (LaunchedProcess) -> Void)? = nil
   ) {
     self.handler = handler
     self.cancellableHandler = cancellableHandler
     self.launchHandler = launchHandler
     self.interruptHandler = interruptHandler
+    self.terminateHandler = terminateHandler
   }
 
   /// 받은 요청, 순서대로.
@@ -91,6 +96,11 @@ public final class CommandClientFake: CommandClient {
   /// `interrupt` 로 받은 프로세스, 순서대로 (끝났거나 모르는 값도 기록한다).
   public var interrupts: [LaunchedProcess] {
     self.recordedInterrupts.withLock { $0 }
+  }
+
+  /// `terminate` 로 받은 프로세스, 순서대로 (끝났거나 모르는 값도 기록한다).
+  public var terminates: [LaunchedProcess] {
+    self.recordedTerminates.withLock { $0 }
   }
 
   public func run(
@@ -257,6 +267,17 @@ public final class CommandClientFake: CommandClient {
     }
     if isRunning {
       self.interruptHandler?(process)
+    }
+  }
+
+  /// 기록하고, 아직 끝나지 않은 프로세스면 `terminateHandler` 를 부른다.
+  public func terminate(_ process: LaunchedProcess) {
+    self.recordedTerminates.withLock { $0.append(process) }
+    let isRunning = self.launched.withLock { entries in
+      entries[process.id].map { $0.status == nil } ?? false
+    }
+    if isRunning {
+      self.terminateHandler?(process)
     }
   }
 }
