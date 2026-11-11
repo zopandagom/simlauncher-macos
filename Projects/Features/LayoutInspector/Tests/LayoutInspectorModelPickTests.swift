@@ -129,6 +129,26 @@ struct LayoutInspectorModelPickTests {
     #expect(model.title(for: self.target) == "Pixel_9 레이아웃")
   }
 
+  @Test("이름을 묻는 중에 닫고 다시 열면, 앞 창의 늦은 이름은 들어오지 않고 새로 물은 이름만 쓴다")
+  func lateNameAfterReopenIgnored() async {
+    let client = ControlledScreenLayoutClient(holdsNames: true)
+    let model = LayoutInspectorModel(screenLayout: client)
+    model.windowAppeared(self.target)
+    await Support.waitUntil { client.waitingNameCount == 1 && client.waitingCount == 1 }
+    model.windowDisappeared(self.target)
+    model.windowAppeared(self.target)
+    await Support.waitUntil { client.waitingNameCount == 2 && client.waitingCount == 2 }
+    // 앞 창의 이름 묻기(취소를 보지 않는다)가 이제야 답한다.
+    client.finishName(call: 0, with: "Old Name")
+    await Support.settle()
+    #expect(model.window(for: self.target).deviceName == nil)
+    client.finishName(call: 1, with: "Pixel 9")
+    await Support.waitUntil { model.window(for: self.target).deviceName != nil }
+    #expect(model.title(for: self.target) == "Pixel 9 레이아웃")
+    client.finish(call: 0, with: .failure(.cancelled))
+    client.finish(call: 1, with: .failure(.cancelled))
+  }
+
   @Test("두 기기의 창은 서로의 읽기·고름에 영향이 없다")
   func windowsAreIndependent() async {
     let (model, fake) = Support.fixture()
