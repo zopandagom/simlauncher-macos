@@ -45,14 +45,14 @@ final class DownloadTransfer: NSObject, URLSessionDataDelegate, Sendable {
   private let availableCapacity: @Sendable () -> Int64?
   private let openSink: @Sendable (URL) throws -> any FileSink
   private let now: @Sendable () -> ContinuousClock.Instant
-  private let progress: AsyncStream<DownloadProgress>.Continuation
+  private let progress: ProgressChannel
 
   init(
     target: Target,
     availableCapacity: @escaping @Sendable () -> Int64?,
     openSink: @escaping @Sendable (URL) throws -> any FileSink,
     now: @escaping @Sendable () -> ContinuousClock.Instant,
-    progress: AsyncStream<DownloadProgress>.Continuation
+    progress: ProgressChannel
   ) {
     self.target = target
     self.availableCapacity = availableCapacity
@@ -162,7 +162,7 @@ final class DownloadTransfer: NSObject, URLSessionDataDelegate, Sendable {
   ) {
     switch self.accept(response) {
     case let .success(first):
-      self.progress.yield(first)
+      self.progress.yieldFirst(first)
       completionHandler(.allow)
     case let .failure(error):
       completionHandler(.cancel)
