@@ -10,12 +10,12 @@ import Testing
 /// recordVideo 의 인자·환경·사전 확인·시작 신호·결과 판정. 목록은 `simctl-list` 픽스처다 (…0001 켜짐, …0002 꺼짐).
 /// 녹화 명령은 `runCancellable` 처리기로 흉내 낸다: Task 취소로 멈춘 것은 처리기가 `.cancelled` 를 던지는 것으로 본다.
 struct SimulatorClientImplRecordingTests {
-  private static let list = ["simctl", "list", "-j"]
-  private static let booted = VirtualDevice.ID("00000000-0000-0000-0000-000000000001")
+  static let list = ["simctl", "list", "-j"]
+  static let booted = VirtualDevice.ID("00000000-0000-0000-0000-000000000001")
   private static let shutdown = VirtualDevice.ID("00000000-0000-0000-0000-000000000002")
   private static let missing = VirtualDevice.ID("00000000-0000-0000-0000-0000000000FF")
   private static let developer = URL(filePath: "/X/Xcode.app/Contents/Developer", directoryHint: .isDirectory)
-  private static let file = URL(filePath: "/M/SimLauncher/iPhone 17 (iOS 27.0) 2026-10-26 13.41.00.mov")
+  static let file = URL(filePath: "/M/SimLauncher/iPhone 17 (iOS 27.0) 2026-10-26 13.41.00.mov")
   private static let note = "Note: No display specified. Defaulting to display: 11111111-2222-3333-4444-555555555555 "
     + "(screenID: 1, name: LCD)\n"
 
@@ -89,8 +89,7 @@ struct SimulatorClientImplRecordingTests {
     #expect(command.invocations.map(\.arguments) == [
       Self.list,
       [
-        "simctl", "io", Self.booted.rawValue, "recordVideo", "--codec=h264", "--mask=ignored", "--display=primary",
-        "--force",
+        "simctl", "io", Self.booted.rawValue, "recordVideo", "--codec=h264", "--mask=ignored", "--force",
         "/M/SimLauncher/a b.mov",
       ],
     ])
@@ -275,12 +274,12 @@ struct SimulatorClientImplRecordingTests {
   }
 
   /// 스스로 끝난 녹화.
-  private static func exited(_ result: CommandResult) -> CommandClientFake.CancellableHandler {
+  static func exited(_ result: CommandResult) -> CommandClientFake.CancellableHandler {
     { _, _ throws(CommandError) in result }
   }
 
   /// 목록은 `run` 으로 픽스처, 녹화는 `runCancellable` 처리기로 답한다.
-  private static func command(
+  static func command(
     recording: @escaping CommandClientFake.CancellableHandler
   ) throws -> CommandClientFake {
     let fixture = try Fixture.data("simctl-list")
@@ -296,7 +295,7 @@ struct SimulatorClientImplRecordingTests {
     )
   }
 
-  private static func client(
+  static func client(
     _ command: CommandClientFake,
     provider: ProviderCounter? = nil,
     fileSize: Int? = nil

@@ -87,22 +87,33 @@ enum SimctlCommand {
 
   /// `udid` 는 `validatedUDID(_:)` 를 거친 값, `path` 는 파일 URL 의 표준화한 절대 경로만 넘긴다 (`/` 로 시작해 옵션으로
   /// 읽히지 않는다). `--mask=ignored` 는 기본값과 같지만 simctl 기본이 바뀌어도 사각 전체 화면이 되게 명시한다.
-  /// `--display=primary` 는 화면이 둘인 기기(iPhone Duo)에서도 한 화면을 고른다: 없으면 "Cannot choose between 2 displays"(22)로
-  /// 실패하고, primary 는 접힌 상태에서 내용이 보이는 바깥 화면이다. 화면이 하나인 기기는 주지 않을 때와 같다 (실측 Xcode 27.2).
-  static func screenshot(udid: String, path: String) -> [String] {
-    ["simctl", "io", udid, "screenshot", "--type=png", "--mask=ignored", self.displayOption, path]
+  /// `display` 는 화면을 고르지 않아 실패했을 때(`needsDisplay`)만 `displayOption` 을 넘긴다 (`screenshotDisplayRetry`).
+  static func screenshot(udid: String, path: String, display: String? = nil) -> [String] {
+    ["simctl", "io", udid, "screenshot", "--type=png", "--mask=ignored"] + (display.map { [$0] } ?? []) + [path]
   }
 
   /// `udid` 는 `validatedUDID(_:)` 를 거친 값, `path` 는 파일 URL 의 표준화한 절대 경로만 넘긴다 (`/` 로 시작해 옵션으로
   /// 읽히지 않는다). `--codec=h264` 는 QuickTime 에서 바로 재생되는 코덱을 고정하고, `--mask=ignored` 는 스크린샷과 같은
   /// 사각 전체 화면, `--force` 는 호출한 쪽이 예약한 빈 파일을 덮어쓰게 한다 (없으면 있는 파일에 쓰지 않고 exit 17, 측정).
-  /// `--display=primary` 는 스크린샷과 같은 화면을 고른다 (`screenshot(udid:path:)`).
-  static func recordVideo(udid: String, path: String) -> [String] {
-    ["simctl", "io", udid, "recordVideo", "--codec=h264", "--mask=ignored", self.displayOption, "--force", path]
+  /// `display` 는 스크린샷과 같다 (`screenshot(udid:path:display:)`).
+  static func recordVideo(udid: String, path: String, display: String? = nil) -> [String] {
+    ["simctl", "io", udid, "recordVideo", "--codec=h264", "--mask=ignored"] + (display.map { [$0] } ?? [])
+      + ["--force", path]
   }
 
-  /// screenshot·recordVideo 가 찍을 화면: 기본 화면.
+  /// 화면이 둘인 기기(iPhone Duo)에서 다시 시도할 때 고를 화면: 기본 화면(접힌 상태에서 내용이 보이는 바깥 화면, 실측 Xcode 27.2).
+  /// 처음부터 넘기지 않는 것은 실측한 Xcode 밖에서 `primary` 를 받는지 모르기 때문이다 (화면이 하나인 기기는 예전 명령 그대로).
   static let displayOption = "--display=primary"
+
+  /// screenshot·recordVideo 가 화면을 고르지 않아 실패했다: 종료 코드 22 이고, 앞 공백을 뺀 줄 머리가
+  /// "Cannot choose between " 인 줄이 있다 (실측 Xcode 27.2: "Cannot choose between 2 displays. Specify one with --display:").
+  /// 줄 머리만 보는 것은 다른 줄에 경로(기기 이름이 든 파일 이름)가 나오기 때문이다 (파일 이름에는 Core 규칙으로 개행이 없다).
+  static func needsDisplay(exitCode: Int32, stderr: String) -> Bool {
+    guard exitCode == 22 else { return false }
+    return stderr.split(whereSeparator: \.isNewline).contains { line in
+      line.drop(while: \.isWhitespace).hasPrefix("Cannot choose between ")
+    }
+  }
 
   /// create 성공 stdout("UUID\n")에서 UDID. 앞뒤 공백·개행을 자르고 UUID 형식이어야 한다. 아니면 nil.
   static func createdUDID(fromStdout data: Data) -> String? {

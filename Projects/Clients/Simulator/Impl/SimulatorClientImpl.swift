@@ -299,6 +299,7 @@ public struct SimulatorClientImpl: SimulatorClient {
 public extension SimulatorClientImpl {
   /// 같은 디렉터리로 목록을 다시 읽어 켜진 기기일 때만 실행한다 (꺼진 기기에서는 simctl 이 약 60초 기다린다).
   /// 확인과 실행 사이에 꺼지는 드문 경우는 막지 못하고, 실패 뒤 재조회는 하지 않는다.
+  /// 화면을 고르지 않아 실패하면(화면이 둘인 iPhone Duo, `SimctlCommand.needsDisplay`) 기본 화면을 골라 한 번 더 찍는다.
   func screenshot(on id: VirtualDevice.ID, to file: URL) async throws(SimulatorError) {
     guard let udid = SimctlCommand.validatedUDID(id.rawValue) else {
       throw .deviceNotFound
@@ -308,12 +309,22 @@ public extension SimulatorClientImpl {
     }
     let directory = try await self.resolveDeveloperDirectory()
     try await self.requireBootedDevice(udid, developerDirectory: directory)
-    let result = try await self.run(
+    let path = file.standardizedFileURL.path(percentEncoded: false)
+    var result = try await self.run(
       SimctlCommand.xcrun,
-      SimctlCommand.screenshot(udid: udid, path: file.standardizedFileURL.path(percentEncoded: false)),
+      SimctlCommand.screenshot(udid: udid, path: path),
       developerDirectory: directory,
       launchFailure: .developerToolsUnavailable
     )
+    // 화면이 둘인 기기(iPhone Duo): 화면을 고르지 않으면 실패한다 → 기본 화면으로 한 번 더.
+    if SimctlCommand.needsDisplay(exitCode: result.exitCode, stderr: Self.stderr(result)) {
+      result = try await self.run(
+        SimctlCommand.xcrun,
+        SimctlCommand.screenshot(udid: udid, path: path, display: SimctlCommand.displayOption),
+        developerDirectory: directory,
+        launchFailure: .developerToolsUnavailable
+      )
+    }
     guard result.exitCode == 0 else {
       throw SimctlErrorClassifier.screenshotError(exitCode: result.exitCode, stderr: Self.stderr(result))
     }
