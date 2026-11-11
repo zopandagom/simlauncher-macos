@@ -11,6 +11,10 @@ public protocol ScreenLayoutClient: Sendable {
     of target: LayoutTarget,
     onPhase: @escaping @Sendable (LayoutReadPhase) async -> Void
   ) async throws(ScreenLayoutError) -> LayoutSnapshot
+
+  /// 창 제목에 쓸 기기 이름 (첫 스냅샷 전, iOS 는 러너 준비로 수 초~2분이 걸린다). 모르면(목록을 읽지 못함·기기 없음) nil.
+  /// iOS 는 시뮬레이터 기기 목록의 이름. Android 는 nil (목록 읽기가 무겁고, 스냅샷이 약 2초 안에 이름을 가져온다).
+  func deviceName(of target: LayoutTarget) async -> String?
 }
 
 /// 레이아웃 읽기의 단계.

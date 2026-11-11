@@ -22,6 +22,18 @@ struct ScreenLayoutClientFakeTests {
   static let pixel = LayoutTarget.android(AndroidVirtualDevice.ID("Pixel"))
   static let tablet = LayoutTarget.android(AndroidVirtualDevice.ID("Tablet"))
 
+  @Test("기기 이름은 대상별로 정한 값이고, 정하지 않았거나 지우면 nil. 스냅샷 호출로 기록하지 않는다")
+  func deviceName() async {
+    let fake = ScreenLayoutClientFake()
+    #expect(await fake.deviceName(of: Self.pixel) == nil)
+    fake.setDeviceName("Pixel 9", for: Self.pixel)
+    #expect(await fake.deviceName(of: Self.pixel) == "Pixel 9")
+    #expect(await fake.deviceName(of: Self.tablet) == nil)
+    fake.setDeviceName(nil, for: Self.pixel)
+    #expect(await fake.deviceName(of: Self.pixel) == nil)
+    #expect(fake.calls.isEmpty)
+  }
+
   @Test("대상별 결과를 넣은 순서대로 돌려주고, 비면 기본 결과. 호출과 자동 단계를 기록한다")
   func results() async throws {
     let fake = ScreenLayoutClientFake()

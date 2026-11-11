@@ -84,8 +84,7 @@ struct SimulatorClientImplScreenshotTests {
     #expect(command.invocations.map(\.arguments) == [
       Self.list,
       [
-        "simctl", "io", Self.booted.rawValue, "screenshot", "--type=png", "--mask=ignored",
-        "/P/SimLauncher/a b.png",
+        "simctl", "io", Self.booted.rawValue, "screenshot", "--type=png", "--mask=ignored", "/P/SimLauncher/a b.png",
       ],
     ])
     #expect(command.invocations.map(\.executable) == [SimctlCommand.xcrun, SimctlCommand.xcrun])
@@ -93,6 +92,55 @@ struct SimulatorClientImplScreenshotTests {
       "/X/Xcode.app/Contents/Developer/", "/X/Xcode.app/Contents/Developer/",
     ])
     #expect(counter.calls == 1)
+  }
+
+  @Test("화면을 고르지 않아 실패하면(iPhone Duo) 기본 화면을 골라 한 번 더 찍는다")
+  func retriesWithPrimaryDisplay() async throws {
+    let fixture = try Fixture.data("simctl-list")
+    let command = CommandClientFake { invocation in
+      if invocation.arguments == Self.list {
+        return .success(fixture)
+      }
+      return invocation.arguments.contains(SimctlCommand.displayOption)
+        ? .success() : .failure(22, SimctlCommandTests.chooseDisplay)
+    }
+
+    try await Self.client(command).screenshot(on: Self.booted, to: Self.file)
+
+    let path = Self.file.path(percentEncoded: false)
+    #expect(command.invocations.map(\.arguments) == [
+      Self.list,
+      ["simctl", "io", Self.booted.rawValue, "screenshot", "--type=png", "--mask=ignored", path],
+      ["simctl", "io", Self.booted.rawValue, "screenshot", "--type=png", "--mask=ignored", "--display=primary", path],
+    ])
+  }
+
+  @Test("기본 화면으로 다시 찍어도 실패하면 다시 찍은 결과로 분류하고 더 시도하지 않는다")
+  func retryFailureIsClassified() async throws {
+    let stderr = "An error was encountered processing the command (domain=NSPOSIXErrorDomain, code=60):\n"
+    let fixture = try Fixture.data("simctl-list")
+    let command = CommandClientFake { invocation in
+      if invocation.arguments == Self.list {
+        return .success(fixture)
+      }
+      return invocation.arguments.contains(SimctlCommand.displayOption)
+        ? .failure(60, stderr) : .failure(22, SimctlCommandTests.chooseDisplay)
+    }
+
+    await #expect(throws: SimulatorError.deviceNotBooted) {
+      try await Self.client(command).screenshot(on: Self.booted, to: Self.file)
+    }
+    #expect(command.invocations.count == 3)
+  }
+
+  @Test("종료 코드 22 라도 화면 고르기 줄이 없으면 다시 찍지 않는다")
+  func noRetryWithoutChooseLine() async throws {
+    let command = try Self.command(returning: .failure(22, "Invalid argument\n"))
+
+    await #expect(throws: SimulatorError.self) {
+      try await Self.client(command).screenshot(on: Self.booted, to: Self.file)
+    }
+    #expect(command.invocations.count == 2)
   }
 
   @Test("촬영 실패는 줄 머리 domain 으로 분류하고 재조회하지 않는다")

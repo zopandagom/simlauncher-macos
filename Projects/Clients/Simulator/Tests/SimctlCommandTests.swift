@@ -3,6 +3,13 @@ import Testing
 @testable import SimulatorImpl
 
 struct SimctlCommandTests {
+  /// 화면이 둘인 기기(iPhone Duo)에서 화면을 고르지 않았을 때의 stderr (실측 Xcode 27.2).
+  static let chooseDisplay = "An error was encountered processing the command (domain=NSPOSIXErrorDomain, code=22):\n"
+    + "Cannot choose between 2 displays. Specify one with --display:\n"
+    + "    --display=3  LCD-1 (primary-1) 2007x2853\n"
+    + "    --display=1  LCD (primary) 1398x2034\n"
+    + "Invalid argument\n"
+
   @Test("명령 경로와 인자")
   func arguments() {
     #expect(SimctlCommand.xcrun.path(percentEncoded: false) == "/usr/bin/xcrun")
@@ -57,10 +64,31 @@ struct SimctlCommandTests {
     ])
   }
 
+  @Test("화면을 고를 때는 --display 를 경로·--force 앞에 넣는다")
+  func displayArguments() {
+    #expect(SimctlCommand.screenshot(udid: "A", path: "/P/a.png", display: SimctlCommand.displayOption) == [
+      "simctl", "io", "A", "screenshot", "--type=png", "--mask=ignored", "--display=primary", "/P/a.png",
+    ])
+    #expect(SimctlCommand.recordVideo(udid: "A", path: "/M/a.mov", display: SimctlCommand.displayOption) == [
+      "simctl", "io", "A", "recordVideo", "--codec=h264", "--mask=ignored", "--display=primary", "--force", "/M/a.mov",
+    ])
+  }
+
+  @Test("화면 고르기 실패는 종료 코드 22 와 줄 머리 'Cannot choose between ' 이 함께일 때만이다")
+  func needsDisplay() {
+    #expect(SimctlCommand.needsDisplay(exitCode: 22, stderr: Self.chooseDisplay))
+    #expect(SimctlCommand.needsDisplay(exitCode: 22, stderr: "  Cannot choose between 3 displays.\r\n"))
+    #expect(!SimctlCommand.needsDisplay(exitCode: 1, stderr: Self.chooseDisplay))
+    #expect(!SimctlCommand.needsDisplay(exitCode: 22, stderr: "Invalid argument\n"))
+    // 경로(기기 이름)에 같은 글자가 줄 중간에 나와도 아니다.
+    #expect(!SimctlCommand.needsDisplay(exitCode: 22, stderr: "Wrote to /P/Cannot choose between .png\n"))
+  }
+
   @Test("recordVideo 는 기기 뒤에 io recordVideo 와 h264·사각 전체 화면·덮어쓰기 옵션, 마지막에 경로를 넘긴다")
   func recordVideoArguments() {
     #expect(SimctlCommand.recordVideo(udid: "A", path: "/M/한글 (1).mov") == [
-      "simctl", "io", "A", "recordVideo", "--codec=h264", "--mask=ignored", "--force", "/M/한글 (1).mov",
+      "simctl", "io", "A", "recordVideo", "--codec=h264", "--mask=ignored", "--force",
+      "/M/한글 (1).mov",
     ])
   }
 

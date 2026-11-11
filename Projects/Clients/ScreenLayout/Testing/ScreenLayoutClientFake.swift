@@ -22,6 +22,7 @@ public final class ScreenLayoutClientFake: ScreenLayoutClient {
     var results: [LayoutTarget: [Result<LayoutSnapshot, ScreenLayoutError>]] = [:]
     var defaultResult: Result<LayoutSnapshot, ScreenLayoutError>
     var automaticPhases: [LayoutReadPhase]
+    var deviceNames: [LayoutTarget: String] = [:]
     var holding = false
     var held: [Held] = []
     var heldWaiters: [CheckedContinuation<Void, Never>] = []
@@ -54,6 +55,11 @@ public final class ScreenLayoutClientFake: ScreenLayoutClient {
   /// 결과 큐가 비었을 때의 결과를 바꾼다.
   public func setDefaultResult(_ result: Result<LayoutSnapshot, ScreenLayoutError>) {
     self.state.withLock { $0.defaultResult = result }
+  }
+
+  /// `deviceName(of:)` 이 돌려줄 이름을 정한다 (nil 이면 지운다. 기본은 모두 nil).
+  public func setDeviceName(_ name: String?, for target: LayoutTarget) {
+    self.state.withLock { $0.deviceNames[target] = name }
   }
 
   /// 호출마다 자동으로 보낼 단계를 바꾼다.
@@ -137,6 +143,10 @@ public final class ScreenLayoutClientFake: ScreenLayoutClient {
       return state.defaultResult
     }
     return try result.get()
+  }
+
+  public func deviceName(of target: LayoutTarget) async -> String? {
+    self.state.withLock { $0.deviceNames[target] }
   }
 
   /// `release` 면 true, 취소면 false.

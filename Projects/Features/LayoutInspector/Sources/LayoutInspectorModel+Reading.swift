@@ -8,9 +8,11 @@ public extension LayoutInspectorModel {
     self.windows[target] ?? LayoutInspectorWindow()
   }
 
-  /// 창 제목: "<기기 이름> 레이아웃". 스냅샷 전(처음 읽는 중·첫 실패)에는 기기 ID(Android 는 AVD 이름)로 여러 기기 창을 구별한다.
+  /// 창 제목: "<기기 이름> 레이아웃". 이름은 스냅샷의 것, 스냅샷 전(처음 읽는 중·첫 실패)에는 창을 열 때 Client 에 물은 것
+  /// (iOS), 그것도 모르면 기기 ID(Android 는 AVD 이름)로 여러 기기 창을 구별한다.
   func title(for target: LayoutTarget) -> String {
-    let name = self.windows[target]?.snapshot?.deviceName ?? target.deviceID
+    let window = self.windows[target]
+    let name = window?.snapshot?.deviceName ?? window?.deviceName ?? target.deviceID
     return LayoutInspectorText.windowTitle(deviceName: name)
   }
 

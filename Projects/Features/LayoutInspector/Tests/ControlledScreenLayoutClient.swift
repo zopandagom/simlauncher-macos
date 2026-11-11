@@ -5,6 +5,7 @@ import Synchronization
 
 /// 취소를 보지 않고, 테스트가 정한 때에 결과를 돌려주는 `ScreenLayoutClient`.
 /// 창을 닫은 뒤에 끝난 앞 읽기(늦은 결과·늦은 단계 알림)를 흉내 낸다. 호출마다 `onPhase` 와 결과 대기를 기록한다.
+/// `holdsNames` 면 `deviceName(of:)` 도 테스트가 `finishName(call:with:)` 로 답할 때까지 기다린다 (아니면 곧바로 nil).
 final class ControlledScreenLayoutClient: ScreenLayoutClient {
   private struct Call {
     let target: LayoutTarget
@@ -13,6 +14,12 @@ final class ControlledScreenLayoutClient: ScreenLayoutClient {
   }
 
   private let calls = Mutex<[Call]>([])
+  private let holdsNames: Bool
+  private let nameCalls = Mutex<[CheckedContinuation<String?, Never>?]>([])
+
+  init(holdsNames: Bool = false) {
+    self.holdsNames = holdsNames
+  }
 
   var callCount: Int {
     self.calls.withLock { $0.count }
@@ -35,6 +42,28 @@ final class ControlledScreenLayoutClient: ScreenLayoutClient {
       self.calls.withLock { $0[index].continuation = continuation }
     }
     return try result.get()
+  }
+
+  /// 이름을 기다리는 중인 `deviceName(of:)` 호출 수 (`holdsNames` 일 때만 생긴다).
+  var waitingNameCount: Int {
+    self.nameCalls.withLock { calls in calls.count { $0 != nil } }
+  }
+
+  func deviceName(of _: LayoutTarget) async -> String? {
+    guard self.holdsNames else { return nil }
+    return await withCheckedContinuation { continuation in
+      self.nameCalls.withLock { $0.append(continuation) }
+    }
+  }
+
+  /// `index` 번째 `deviceName(of:)` 호출에 이름을 준다.
+  func finishName(call index: Int, with name: String?) {
+    let continuation = self.nameCalls.withLock { calls in
+      let continuation = calls[index]
+      calls[index] = nil
+      return continuation
+    }
+    continuation?.resume(returning: name)
   }
 
   /// `index` 번째 호출의 `onPhase` 를 부른다.
