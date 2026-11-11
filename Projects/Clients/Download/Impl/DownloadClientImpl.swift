@@ -120,7 +120,8 @@ public struct DownloadClientImpl: DownloadClient {
     )
   }
 
-  /// `download`·`fetchData` 공용. 진행 값은 가장 최근 하나만 버퍼에 두고(`bufferingNewest(1)`), 앞 콜백이 끝난 뒤 다음을 넘긴다.
+  /// `download`·`fetchData` 공용. 진행 값은 `ProgressChannel` 로 받는다: 첫 값 (0, 전체) 은 버리지 않고, 그 뒤 값은 가장 최근
+  /// 하나만 두며, 앞 콜백이 끝난 뒤 다음을 넘긴다.
   /// 취소되면 남은 값은 넘기지 않고, 전송이 끝나기(`didCompleteWithError`)를 취소와 무관하게 기다린 뒤 돌아간다
   /// (취소된 Task 에서는 스트림 반복이 완료보다 먼저 끝나므로, 기다리지 않으면 delegate 가 쓰는 중에 폴더를 지운다).
   private func run(
@@ -133,13 +134,13 @@ public struct DownloadClientImpl: DownloadClient {
     guard !Task.isCancelled else {
       throw .cancelled
     }
-    let (stream, continuation) = AsyncStream<DownloadProgress>.makeStream(bufferingPolicy: .bufferingNewest(1))
+    let progress = ProgressChannel()
     let transfer = DownloadTransfer(
       target: target,
       availableCapacity: availableCapacity,
       openSink: self.openSink,
       now: self.now,
-      progress: continuation
+      progress: progress
     )
     let session = URLSession(
       configuration: self.configuration(resourceTimeout: resourceTimeout),
@@ -152,14 +153,7 @@ public struct DownloadClientImpl: DownloadClient {
         session.invalidateAndCancel()
         return .failure(.cancelled)
       }
-      // 시작과 첫 `next()` 사이에 suspend 지점(await)을 두지 않는다. 소비자가 먼저 기다려야 첫 값 (0, 전체) 이
-      // 버퍼를 거치지 않고 넘어간다. 사이에 await 가 있으면 `bufferingNewest(1)` 이 첫 값을 덮을 수 있다.
-      for await progress in stream {
-        guard !Task.isCancelled else {
-          break
-        }
-        await onProgress(progress)
-      }
+      await progress.forEach(onProgress)
       await transfer.waitForCompletion()
       return transfer.outcome()
     } onCancel: {
