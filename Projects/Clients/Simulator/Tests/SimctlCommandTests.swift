@@ -53,14 +53,15 @@ struct SimctlCommandTests {
   @Test("screenshot 은 기기 뒤에 io screenshot 과 옵션, 마지막에 경로를 넘긴다")
   func screenshotArguments() {
     #expect(SimctlCommand.screenshot(udid: "A", path: "/P/한글 (1).png") == [
-      "simctl", "io", "A", "screenshot", "--type=png", "--mask=ignored", "/P/한글 (1).png",
+      "simctl", "io", "A", "screenshot", "--type=png", "--mask=ignored", "--display=primary", "/P/한글 (1).png",
     ])
   }
 
-  @Test("recordVideo 는 기기 뒤에 io recordVideo 와 h264·사각 전체 화면·덮어쓰기 옵션, 마지막에 경로를 넘긴다")
+  @Test("recordVideo 는 기기 뒤에 io recordVideo 와 h264·사각 전체 화면·기본 화면·덮어쓰기 옵션, 마지막에 경로를 넘긴다")
   func recordVideoArguments() {
     #expect(SimctlCommand.recordVideo(udid: "A", path: "/M/한글 (1).mov") == [
-      "simctl", "io", "A", "recordVideo", "--codec=h264", "--mask=ignored", "--force", "/M/한글 (1).mov",
+      "simctl", "io", "A", "recordVideo", "--codec=h264", "--mask=ignored", "--display=primary", "--force",
+      "/M/한글 (1).mov",
     ])
   }
 

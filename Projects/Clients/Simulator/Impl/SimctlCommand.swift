@@ -87,16 +87,22 @@ enum SimctlCommand {
 
   /// `udid` 는 `validatedUDID(_:)` 를 거친 값, `path` 는 파일 URL 의 표준화한 절대 경로만 넘긴다 (`/` 로 시작해 옵션으로
   /// 읽히지 않는다). `--mask=ignored` 는 기본값과 같지만 simctl 기본이 바뀌어도 사각 전체 화면이 되게 명시한다.
+  /// `--display=primary` 는 화면이 둘인 기기(iPhone Duo)에서도 한 화면을 고른다: 없으면 "Cannot choose between 2 displays"(22)로
+  /// 실패하고, primary 는 접힌 상태에서 내용이 보이는 바깥 화면이다. 화면이 하나인 기기는 주지 않을 때와 같다 (실측 Xcode 27.2).
   static func screenshot(udid: String, path: String) -> [String] {
-    ["simctl", "io", udid, "screenshot", "--type=png", "--mask=ignored", path]
+    ["simctl", "io", udid, "screenshot", "--type=png", "--mask=ignored", self.displayOption, path]
   }
 
   /// `udid` 는 `validatedUDID(_:)` 를 거친 값, `path` 는 파일 URL 의 표준화한 절대 경로만 넘긴다 (`/` 로 시작해 옵션으로
   /// 읽히지 않는다). `--codec=h264` 는 QuickTime 에서 바로 재생되는 코덱을 고정하고, `--mask=ignored` 는 스크린샷과 같은
   /// 사각 전체 화면, `--force` 는 호출한 쪽이 예약한 빈 파일을 덮어쓰게 한다 (없으면 있는 파일에 쓰지 않고 exit 17, 측정).
+  /// `--display=primary` 는 스크린샷과 같은 화면을 고른다 (`screenshot(udid:path:)`).
   static func recordVideo(udid: String, path: String) -> [String] {
-    ["simctl", "io", udid, "recordVideo", "--codec=h264", "--mask=ignored", "--force", path]
+    ["simctl", "io", udid, "recordVideo", "--codec=h264", "--mask=ignored", self.displayOption, "--force", path]
   }
+
+  /// screenshot·recordVideo 가 찍을 화면: 기본 화면.
+  static let displayOption = "--display=primary"
 
   /// create 성공 stdout("UUID\n")에서 UDID. 앞뒤 공백·개행을 자르고 UUID 형식이어야 한다. 아니면 nil.
   static func createdUDID(fromStdout data: Data) -> String? {

@@ -84,7 +84,7 @@ struct SimulatorClientImplScreenshotTests {
     #expect(command.invocations.map(\.arguments) == [
       Self.list,
       [
-        "simctl", "io", Self.booted.rawValue, "screenshot", "--type=png", "--mask=ignored",
+        "simctl", "io", Self.booted.rawValue, "screenshot", "--type=png", "--mask=ignored", "--display=primary",
         "/P/SimLauncher/a b.png",
       ],
     ])

@@ -2,7 +2,8 @@ import Foundation
 import SimulatorInterface
 
 /// `simctl io recordVideo` 의 stderr 조각에서 시작 신호(`Recording started` 줄)를 찾는다 (순수).
-/// 실측(Xcode 27.1): 첫 화면을 처리하면 stderr 에 `Recording started` 한 줄을 찍는다. 그 앞에 `Note: No display specified…` 줄이 온다.
+/// 실측(Xcode 27.1·27.2): 첫 화면을 처리하면 stderr 에 `Recording started` 한 줄을 찍는다. `--display` 를 주지 않으면 그 앞에
+/// `Note: No display specified…` 줄이 온다 (지금은 `--display=primary` 를 줘 오지 않지만, 앞에 다른 줄이 와도 찾는다).
 /// 앞뒤 공백·`\r` 을 뺀 줄 전체가 같아야 한다 (줄 일부만 같은 줄은 아니다). 조각이 줄 중간에서 끊겨도 이어 붙여 본다.
 /// stdout(`Wrote video to: <경로>`, 기기 이름이 섞인다)은 넣지 않는다.
 struct RecordingStartDetector {

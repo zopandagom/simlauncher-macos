@@ -89,7 +89,8 @@ struct SimulatorClientImplRecordingTests {
     #expect(command.invocations.map(\.arguments) == [
       Self.list,
       [
-        "simctl", "io", Self.booted.rawValue, "recordVideo", "--codec=h264", "--mask=ignored", "--force",
+        "simctl", "io", Self.booted.rawValue, "recordVideo", "--codec=h264", "--mask=ignored", "--display=primary",
+        "--force",
         "/M/SimLauncher/a b.mov",
       ],
     ])
