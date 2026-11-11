@@ -96,6 +96,7 @@ public protocol SimulatorClient: Sendable {
   func openURL(_ link: DeepLink, on id: VirtualDevice.ID) async throws(SimulatorError)
 
   /// 켜진 기기 화면을 PNG 로 `file` 에 저장한다 (`simctl io <기기> screenshot --type=png --mask=ignored <경로>`, 사각 전체 화면).
+  /// 화면이 둘인 기기에서 화면을 고르지 않아 실패하면(rc 22) `--display=primary` 를 붙여 한 번 더 실행한다.
   /// 있는 파일은 덮어쓴다 (호출한 쪽이 예약한 빈 파일). 실행 직전에 같은 개발자 디렉터리로 목록을 다시 읽어 없으면 `.deviceNotFound`,
   /// `.booted` 가 아니면 실행하지 않고 `.deviceNotBooted` (꺼진 기기에서는 simctl 이 약 60초 기다린 뒤 실패한다).
   /// 파일 URL 이 아니면 실행하지 않고 `.commandFailed`. 확인과 실행 사이에 꺼지는 드문 경우는 약 60초 뒤 `.deviceNotBooted`.
@@ -103,6 +104,7 @@ public protocol SimulatorClient: Sendable {
 
   /// 켜진 기기 화면을 H.264 QuickTime 동영상으로 `file` 에 녹화한다
   /// (`simctl io <기기> recordVideo --codec=h264 --mask=ignored --force <경로>`, 사각 전체 화면, 소리 없음).
+  /// 화면이 둘인 기기에서 화면을 고르지 않아 시작 전에 실패하면(rc 22) `--display=primary` 를 붙여 한 번 더 띄운다.
   /// **호출한 Task 의 취소가 멈춤이다**: 취소하면 SIGINT 로 멈추고 마무리를 기다린 뒤 돌아온다(취소는 실패가 아니다).
   /// 취소하지 않으면 simctl 이 스스로 끝날 때(시작 실패, 녹화 중 실패, 드물게 exit 0)까지 돌아오지 않는다
   /// (기기가 꺼져도 simctl 은 끝나지 않는다, 측정).
