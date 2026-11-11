@@ -87,7 +87,8 @@ enum SimctlCommand {
 
   /// `udid` 는 `validatedUDID(_:)` 를 거친 값, `path` 는 파일 URL 의 표준화한 절대 경로만 넘긴다 (`/` 로 시작해 옵션으로
   /// 읽히지 않는다). `--mask=ignored` 는 기본값과 같지만 simctl 기본이 바뀌어도 사각 전체 화면이 되게 명시한다.
-  /// `display` 는 화면을 고르지 않아 실패했을 때(`needsDisplay`)만 `displayOption` 을 넘긴다 (`screenshotDisplayRetry`).
+  /// `display` 는 화면을 고르지 않아 실패했을 때(`needsDisplay`)만 `displayOption` 을 넘긴다 (다시 시도는
+  /// `SimulatorClientImpl.screenshot(on:to:)`·`recordVideo(on:to:onStarted:)` 가 한다).
   static func screenshot(udid: String, path: String, display: String? = nil) -> [String] {
     ["simctl", "io", udid, "screenshot", "--type=png", "--mask=ignored"] + (display.map { [$0] } ?? []) + [path]
   }
