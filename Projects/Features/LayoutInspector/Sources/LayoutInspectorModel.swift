@@ -14,6 +14,8 @@ public final class LayoutInspectorModel {
 
   @ObservationIgnored private let screenLayout: any ScreenLayoutClient
   @ObservationIgnored private var tasks: [LayoutTarget: Task<Void, Never>] = [:]
+  /// 창을 열 때 기기 이름을 묻는 Task (창을 닫으면 취소한다).
+  @ObservationIgnored private var nameTasks: [LayoutTarget: Task<Void, Never>] = [:]
   /// 대상별 마지막으로 시작한(또는 닫으며 무효로 한) 읽기 번호.
   @ObservationIgnored private var tokens: [LayoutTarget: Int] = [:]
 
@@ -23,17 +25,21 @@ public final class LayoutInspectorModel {
 
   // MARK: - 창 열기·닫기
 
-  /// 창이 열렸다: 창 값을 만들고 읽는다. 이미 창 값이 있으면(같은 창의 onAppear 가 다시 온 경우) 아무것도 하지 않는다.
+  /// 창이 열렸다: 창 값을 만들고 읽으며, 첫 스냅샷 전 제목에 쓸 기기 이름도 함께 묻는다.
+  /// 이미 창 값이 있으면(같은 창의 onAppear 가 다시 온 경우) 아무것도 하지 않는다.
   public func windowAppeared(_ target: LayoutTarget) {
     guard self.windows[target] == nil else { return }
     self.windows[target] = LayoutInspectorWindow()
     self.startReading(target)
+    self.resolveDeviceName(target)
   }
 
   /// 창을 닫았다: 읽기를 취소하고 창 값(스냅샷)을 버린다. 늦게 끝난 결과는 번호가 달라 버려진다.
   public func windowDisappeared(_ target: LayoutTarget) {
     self.tasks[target]?.cancel()
     self.tasks[target] = nil
+    self.nameTasks[target]?.cancel()
+    self.nameTasks[target] = nil
     self.tokens[target, default: 0] += 1
     self.windows[target] = nil
   }
@@ -61,6 +67,17 @@ public final class LayoutInspectorModel {
   }
 
   // MARK: - 읽기
+
+  /// 기기 이름을 묻고 창에 넣는다. 창을 닫으면 취소하므로 닫은 뒤 늦게 온 이름은 버린다.
+  private func resolveDeviceName(_ target: LayoutTarget) {
+    self.nameTasks[target] = Task { [weak self, screenLayout] in
+      let name = await screenLayout.deviceName(of: target)
+      guard let self, !Task.isCancelled else { return }
+      self.nameTasks[target] = nil
+      guard let name else { return }
+      self.windows[target]?.deviceNameResolved(name)
+    }
+  }
 
   private func startReading(_ target: LayoutTarget) {
     self.tokens[target, default: 0] += 1

@@ -57,6 +57,8 @@ public struct LayoutInspectorWindow: Hashable, Sendable {
   public private(set) var failure: LayoutInspectorFailure?
   /// 클릭한 점과 고른 노드. 새 스냅샷을 읽으면 같은 점으로 다시 고른다.
   public private(set) var pick: LayoutPick?
+  /// 첫 스냅샷 전 제목에 쓸 기기 이름 (Client 의 `deviceName(of:)`). 모르면 nil.
+  public private(set) var deviceName: String?
 
   public init() {}
 
@@ -68,6 +70,11 @@ public struct LayoutInspectorWindow: Hashable, Sendable {
   mutating func beginReading() {
     self.loading = .reading
     self.failure = nil
+  }
+
+  /// 기기 이름을 알았다.
+  mutating func deviceNameResolved(_ name: String) {
+    self.deviceName = name
   }
 
   /// 읽는 중일 때만 단계를 바꾼다.

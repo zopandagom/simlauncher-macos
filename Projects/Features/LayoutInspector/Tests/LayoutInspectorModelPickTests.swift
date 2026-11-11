@@ -73,7 +73,7 @@ struct LayoutInspectorModelPickTests {
 
   // MARK: - 제목·여러 창
 
-  @Test("제목은 스냅샷 전에는 기기 ID, 뒤에는 기기 이름이다")
+  @Test("기기 이름을 모르면 제목은 스냅샷 전에는 기기 ID, 뒤에는 스냅샷의 기기 이름이다")
   func title() async {
     let (model, fake) = Support.fixture()
     fake.setHolding(true)
@@ -84,6 +84,49 @@ struct LayoutInspectorModelPickTests {
     fake.release(self.target)
     await Support.waitUntil { model.window(for: self.target).snapshot != nil }
     #expect(model.title(for: self.target) == "Pixel 9 레이아웃")
+  }
+
+  @Test("스냅샷 전에 Client 가 기기 이름을 알려 주면 제목에 쓰고, 첫 읽기가 실패해도 그 이름이다")
+  func titleUsesResolvedNameBeforeSnapshot() async {
+    let (model, fake) = Support.fixture()
+    let iOS = LayoutTarget.iOS(VirtualDevice.ID("11111111-2222-3333-4444-555555555555"))
+    fake.setDeviceName("Design iPhone", for: iOS)
+    fake.setHolding(true)
+    fake.enqueue(.failure(.inspectorSetupFailed), for: iOS)
+    model.windowAppeared(iOS)
+    await fake.waitUntilHeld(iOS)
+    await Support.waitUntil { model.window(for: iOS).deviceName != nil }
+    #expect(model.title(for: iOS) == "Design iPhone 레이아웃")
+    fake.release(iOS)
+    await Support.waitUntil { !model.window(for: iOS).isLoading }
+    #expect(model.window(for: iOS).failure != nil)
+    #expect(model.title(for: iOS) == "Design iPhone 레이아웃")
+  }
+
+  @Test("스냅샷의 기기 이름이 창을 열 때 물은 이름보다 앞선다 (그 사이 이름을 바꾼 경우)")
+  func snapshotNameWinsOverResolvedName() async {
+    let (model, fake) = Support.fixture()
+    fake.setDeviceName("Old Name", for: self.target)
+    fake.enqueue(.success(.sample(deviceName: "Pixel 9")), for: self.target)
+    await Support.open(model)
+    await Support.waitUntil { model.window(for: self.target).deviceName != nil }
+    #expect(model.title(for: self.target) == "Pixel 9 레이아웃")
+  }
+
+  @Test("창을 닫으면 기기 이름도 버리고, 다시 열면 다시 묻는다")
+  func closeDropsResolvedName() async {
+    let (model, fake) = Support.fixture()
+    fake.setDeviceName("Pixel 9", for: self.target)
+    fake.setHolding(true)
+    model.windowAppeared(self.target)
+    await Support.waitUntil { model.window(for: self.target).deviceName != nil }
+    model.windowDisappeared(self.target)
+    #expect(model.window(for: self.target).deviceName == nil)
+    fake.setDeviceName(nil, for: self.target)
+    model.windowAppeared(self.target)
+    await fake.waitUntilHeld(self.target)
+    await Support.settle()
+    #expect(model.title(for: self.target) == "Pixel_9 레이아웃")
   }
 
   @Test("두 기기의 창은 서로의 읽기·고름에 영향이 없다")

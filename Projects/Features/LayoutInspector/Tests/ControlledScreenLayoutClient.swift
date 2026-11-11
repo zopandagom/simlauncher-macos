@@ -37,6 +37,10 @@ final class ControlledScreenLayoutClient: ScreenLayoutClient {
     return try result.get()
   }
 
+  func deviceName(of _: LayoutTarget) async -> String? {
+    nil
+  }
+
   /// `index` 번째 호출의 `onPhase` 를 부른다.
   func sendPhase(_ phase: LayoutReadPhase, toCall index: Int) async {
     let onPhase = self.calls.withLock { $0[index].onPhase }

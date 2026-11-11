@@ -12,6 +12,7 @@ import SimulatorInterface
 /// 러너 수명 알림(끄기 전후·목록 읽기·앱 종료)은 Interface 밖 공개 메서드로 App 이 잇는다.
 public struct ScreenLayoutClientImpl: ScreenLayoutClient {
   let androidEmulator: any AndroidEmulatorClient
+  let simulator: any SimulatorClient
   let iOSReader: IOSLayoutReader
   let pool: LayoutRunnerPool
 
@@ -47,6 +48,7 @@ public struct ScreenLayoutClientImpl: ScreenLayoutClient {
     baseEnvironment: [String: String]
   ) {
     self.androidEmulator = androidEmulator
+    self.simulator = simulator
     let pool = LayoutRunnerPool(
       simulator: simulator,
       command: command,
@@ -82,6 +84,18 @@ public struct ScreenLayoutClientImpl: ScreenLayoutClient {
       } catch {
         throw ScreenLayoutError(error)
       }
+    }
+  }
+
+  /// iOS: 시뮬레이터 기기 목록(`simctl list`)에서 그 UDID 의 이름. 읽지 못하거나 없으면 nil. Android: nil.
+  @concurrent
+  public func deviceName(of target: LayoutTarget) async -> String? {
+    guard target.platform == .iOS else { return nil }
+    do throws(SimulatorError) {
+      let inventory = try await self.simulator.fetchInventory()
+      return inventory.devices.first { $0.id.rawValue == target.deviceID }?.name
+    } catch {
+      return nil
     }
   }
 
