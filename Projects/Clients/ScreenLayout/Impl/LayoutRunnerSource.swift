@@ -241,65 +241,136 @@ extension LayoutRunnerSource {
     }
 
     /// 후보(SpringBoard 제외) 중 runningForeground 가 하나 이하가 될 때까지 0.2초 간격으로 settle 초까지 기다린다
-    /// (앱 전환 직후 약 1~2.5초 동안 이전 앱과 새 앱이 함께 runningForeground 다). 앞 앱이 모두 화면에 카드로만
-    /// 있으면(`cardOnlyApps`, 앱 전환기) 없는 것으로 본다. 앞 앱이 없으면 SpringBoard 를 읽는다.
+    /// (앱 전환 직후 약 1~2.5초 동안 이전 앱과 새 앱이 함께 runningForeground 다). 그 사이 앞 앱이 여럿이어도
+    /// 윈도우형 앱·스테이지 매니저에서 창이 겹친 상태(`frontWindowApp`)면 기다리지 않고 맨 앞 창의 앱만 읽는다.
+    /// 앞 앱이 모두 화면에 카드로만 있으면(`AppCards.cardOnly`, 앱 전환기) 없는 것으로 본다. 앞 앱이 없으면 SpringBoard 를 읽는다.
     func snapshotForeground(candidates: [String], settle: Double) -> [String: Any] {
       let apps = candidates.filter { $0 != Self.springBoard }
       let deadline = Date().addingTimeInterval(settle)
       var foreground: [String] = []
+      // 맨 앞 창을 고른 카드를 그대로 판정·좌표에 쓴다 (다시 읽으면 그 사이 창이 바뀌거나 읽기가 실패할 수 있다).
+      var chosen: AppCards?
       while true {
         foreground = apps.filter { XCUIApplication(bundleIdentifier: $0).state == .runningForeground }
         if foreground.count <= 1 || Date() >= deadline {
           break
         }
+        let cards = appCards()
+        if let front = frontWindowApp(of: foreground, cards: cards) {
+          foreground = [front]
+          chosen = cards
+          break
+        }
         RunLoop.current.run(until: Date().addingTimeInterval(0.2))
       }
-      if !foreground.isEmpty, cardOnlyApps().isSuperset(of: foreground) {
+      let cards = chosen ?? (foreground.isEmpty ? AppCards() : appCards())
+      if !foreground.isEmpty, cards.cardOnly.isSuperset(of: foreground) {
         foreground = []
       }
       if foreground.isEmpty {
         return snapshot(of: [Self.springBoard], system: true)
       }
-      return snapshot(of: foreground.sorted(), system: false)
+      return snapshot(of: foreground.sorted(), system: false, cards: cards)
     }
 
-    /// SpringBoard 의 앱 카드(식별자 `card:<번들 ID>:…`)가 모두 자식 없는 잎인 앱. 앱이 실제로 보이면 카드 아래에
-    /// 앱 장면이 붙고, 앱 전환기의 카드는 잎이다. 앱 전환기에서도 마지막 앱은 runningForeground 로
-    /// 남는다 (실측 iOS 27.0 iPad·iPhone, 전체 화면·윈도우형 앱, 세로·가로, iOS 27.1 iPhone Duo 바깥 화면). 앱을 띄운
-    /// 직후(홈 아이콘 탭·simctl launch·앱에서 앱으로)에도 앞 앱이 된 첫 판정부터 카드에 앱 장면이 붙어 있었다 (iPhone 17, 23번).
-    /// 윈도우형 앱에서 완전히 가려진 창의 카드도 잎이었지만 일부만 가려진 창은 확인하지 못해, 앞 앱이 모두 잎일 때만
-    /// 쓴다 (보이는 앱이 하나라도 있으면 모두 읽는다).
-    /// 카드가 없는 앱(Spotlight)은 넣지 않고, SpringBoard 를 읽지 못하면 빈 집합이다 (앞 앱을 그대로 읽는다).
-    func cardOnlyApps() -> Set<String> {
-      guard let root = try? XCUIApplication(bundleIdentifier: Self.springBoard).snapshot() else { return [] }
+    /// SpringBoard 의 앱 카드(식별자 `card:<번들 ID>:…`). 앱이 실제로 보이면 카드 아래에 앱 장면이 붙고(`live`),
+    /// 앱 전환기의 카드는 자식 없는 잎(`leaf`)이다. SpringBoard 를 읽지 못하면 모두 비어 있다.
+    struct AppCards {
       var leaf: Set<String> = []
       var live: Set<String> = []
+      /// 번들 ID 별 카드 frame (SpringBoard 좌표: 돌린 iPad 에서는 기기의 세로 좌표).
+      var frames: [String: [CGRect]] = [:]
+      /// SpringBoard 좌표 → 화면 좌표.
+      var toScreen: (CGRect) -> CGRect = { $0 }
+
+      /// 카드가 모두 잎인 앱. 앱 전환기에서도 마지막 앱은 runningForeground 로 남는다 (실측 iOS 27.0 iPad·iPhone,
+      /// 전체 화면·윈도우형 앱, 세로·가로, iOS 27.1 iPhone Duo 바깥 화면). 앱을 띄운 직후(홈 아이콘 탭·simctl launch·
+      /// 앱에서 앱으로)에도 앞 앱이 된 첫 판정부터 카드에 앱 장면이 붙어 있었다 (iPhone 17, 23번). 윈도우형 앱에서는 다른 창 뒤의
+      /// 창 카드도 (일부만 가려져 보여도) 잎이라, 앞 앱이 모두 잎일 때만 쓴다 (맨 앞 창이 있으면 읽는다. 겹친 창은
+      /// `frontWindowApp` 이 맨 앞 창의 앱만 고른다). 카드가 없는 앱(Spotlight)은 넣지 않는다 (앞 앱을 그대로 읽는다).
+      var cardOnly: Set<String> {
+        self.leaf.subtracting(self.live)
+      }
+    }
+
+    /// 앞 앱 가운데 카드에 앱 장면이 붙은(`live`) 앱이 하나뿐이고 나머지 앞 앱은 모두 카드가 잎뿐이면 그 앱 (아니면 nil).
+    /// 윈도우형 앱·스테이지 매니저에서 창이 겹치면 겹친 창의 앱이 모두 runningForeground 로 계속 남고, 앱 장면은 맨 앞 창의
+    /// 카드에만 붙는다 (일부만 가려져 보이는 뒤 창도 잎. 실측 iOS 27.0 iPad Pro 11, 세로·가로). 전체 화면 앱을 바꾸는 중에는
+    /// 이전 앱의 카드가 잎으로 남지 않고 사라지고 두 카드에 모두 장면이 붙는 때도 있어(실측 6번) 여기에 들지 않는다 (지금처럼 기다린다).
+    /// 카드가 없는 앱(Spotlight)이 섞이거나 SpringBoard 를 읽지 못해도 nil 이다.
+    func frontWindowApp(of foreground: [String], cards: AppCards) -> String? {
+      let front = foreground.filter { cards.live.contains($0) }
+      guard front.count == 1 else { return nil }
+      let others = foreground.filter { $0 != front[0] }
+      guard others.allSatisfy({ cards.cardOnly.contains($0) }) else { return nil }
+      return front[0]
+    }
+
+    /// SpringBoard 를 읽어 앱 카드를 모은다. 카드 아래는 내려가지 않고, 그 밖의 상태 막대로 화면 방향(`screenTransform`)을 정한다.
+    func appCards() -> AppCards {
+      guard let root = try? XCUIApplication(bundleIdentifier: Self.springBoard).snapshot() else { return AppCards() }
+      var cards = AppCards()
+      var statusBars: [CGRect] = []
       var stack: [XCUIElementSnapshot] = [root]
       while let element = stack.popLast() {
         let parts = element.identifier.split(separator: ":", omittingEmptySubsequences: false)
         if parts.count >= 2, parts[0] == "card" {
+          let id = String(parts[1])
           if element.children.isEmpty {
-            leaf.insert(String(parts[1]))
+            cards.leaf.insert(id)
           } else {
-            live.insert(String(parts[1]))
+            cards.live.insert(id)
           }
+          cards.frames[id, default: []].append(element.frame)
           continue
         }
-        stack.append(contentsOf: element.children)
+        if element.elementType == .statusBar {
+          statusBars.append(element.frame)
+        }
+        stack.append(contentsOf: element.children.reversed())
       }
-      return leaf.subtracting(live)
+      cards.toScreen = Self.screenTransform(statusBars: statusBars, root: root.frame)
+      return cards
+    }
+
+    /// SpringBoard 좌표 → 화면 좌표. 돌린 iPad 의 SpringBoard 는 루트 밖 노드를 기기의 세로 좌표로 보고하므로, 전위 순서로 처음 나오는
+    /// 띠 모양 상태 막대(짧은 변이 세로 폭의 ¼ 미만, 긴 변이 세로 크기의 한 변과 같고(0.5 안) 그 변에 붙음)가 붙은 쪽으로 방향을 정한다
+    /// (호스트 `IOSLayoutConversion.rotation(of:root:)` 와 같은 규칙). 없으면 그대로 둔다.
+    static func screenTransform(statusBars: [CGRect], root: CGRect) -> (CGRect) -> CGRect {
+      let width = min(root.width, root.height)
+      let height = max(root.width, root.height)
+      let near = { (value: CGFloat, target: CGFloat) in abs(value - target) <= 0.5 }
+      for bar in statusBars {
+        if near(bar.width, width), bar.height < width / 4 {
+          if near(bar.minY, 0) {
+            return { $0 }
+          }
+          if near(bar.maxY, height) {
+            return { CGRect(x: width - $0.maxX, y: height - $0.maxY, width: $0.width, height: $0.height) }
+          }
+        } else if near(bar.height, height), bar.width < width / 4 {
+          if near(bar.minX, 0) {
+            return { CGRect(x: height - $0.maxY, y: $0.minX, width: $0.height, height: $0.width) }
+          }
+          if near(bar.maxX, width) {
+            return { CGRect(x: $0.minY, y: width - $0.maxX, width: $0.height, height: $0.width) }
+          }
+        }
+      }
+      return { $0 }
     }
 
     /// 앞 앱이 여럿이면 차례로 읽고, 읽지 못한 앱이 이제 앞에 없으면 빼고 계속한다 (전환이 settle 보다 길었던 경우).
-    /// 모두 빠지면 notForeground.
-    func snapshot(of bundleIDs: [String], system: Bool) -> [String: Any] {
+    /// 모두 빠지면 notForeground. 앱(시스템 화면이 아님)은 `windowOffset` 만큼 옮겨 화면 좌표로 쓴다.
+    func snapshot(of bundleIDs: [String], system: Bool, cards: AppCards = AppCards()) -> [String: Any] {
       var nodes: [[String: Any]] = []
       var read: [String] = []
       for id in bundleIDs {
         let app = XCUIApplication(bundleIdentifier: id)
         do {
           let root = try app.snapshot()
-          self.walk(root, depth: 0, into: &nodes)
+          let offset = system ? CGVector.zero : windowOffset(of: id, root: root, cards: cards)
+          self.walk(root, depth: 0, offset: offset, into: &nodes)
           read.append(id)
         } catch {
           if !system, app.state != .runningForeground { continue }
@@ -315,15 +386,30 @@ extension LayoutRunnerSource {
       ]
     }
 
-    /// 전위 순서로 평평하게 쓴다 (d = 깊이, t = elementType 원시 값, 좌표는 pt).
-    func walk(_ element: XCUIElementSnapshot, depth: Int, into nodes: inout [[String: Any]]) {
+    /// 앱 스냅샷 좌표 → 화면 좌표로 옮길 양. 윈도우형 앱·스테이지 매니저의 앱 스냅샷은 창 안 좌표(창 왼쪽 위가 0,0)로 오고,
+    /// 그 앱의 SpringBoard 카드 frame 이 창 위치다 (실측 iOS 27.0 iPad Pro 11: 세로 230,305, 가로는 기기 세로 좌표로 와
+    /// 화면 418,135. 전체 화면 앱은 카드가 화면 전체라 옮기지 않는다). 카드가 하나가 아니거나, 화면 좌표로 돌린 카드 크기가
+    /// 스냅샷의 첫 창과 0.5pt 넘게 다르면 옮기지 않는다 (뒤 창의 잎 카드는 조금 작게 온 적이 있다).
+    /// 창 질의 `windows.firstMatch` 의 frame 도 화면 좌표지만 쓰지 않는다: 없는 요소의 frame 은 테스트를 실패시켜 러너가 끝나고,
+    /// 창 요소의 스냅샷 frame 은 창 안 좌표(0,0)다.
+    func windowOffset(of id: String, root: XCUIElementSnapshot, cards: AppCards) -> CGVector {
+      guard let local = root.children.first(where: { $0.elementType == .window })?.frame,
+            let frames = cards.frames[id], frames.count == 1
+      else { return .zero }
+      let screen = cards.toScreen(frames[0])
+      guard abs(local.width - screen.width) <= 0.5, abs(local.height - screen.height) <= 0.5 else { return .zero }
+      return CGVector(dx: screen.minX - local.minX, dy: screen.minY - local.minY)
+    }
+
+    /// 전위 순서로 평평하게 쓴다 (d = 깊이, t = elementType 원시 값, 좌표는 pt, `offset` 만큼 옮긴다).
+    func walk(_ element: XCUIElementSnapshot, depth: Int, offset: CGVector, into nodes: inout [[String: Any]]) {
       guard nodes.count <= Self.maxNodes else { return }
       let frame = element.frame
       var node: [String: Any] = [
         "d": depth,
         "t": Int(element.elementType.rawValue),
-        "x": Double(frame.origin.x),
-        "y": Double(frame.origin.y),
+        "x": Double(frame.origin.x + offset.dx),
+        "y": Double(frame.origin.y + offset.dy),
         "w": Double(frame.size.width),
         "h": Double(frame.size.height),
       ]
@@ -344,7 +430,7 @@ extension LayoutRunnerSource {
       }
       nodes.append(node)
       for child in element.children {
-        walk(child, depth: depth + 1, into: &nodes)
+        walk(child, depth: depth + 1, offset: offset, into: &nodes)
       }
     }
 
