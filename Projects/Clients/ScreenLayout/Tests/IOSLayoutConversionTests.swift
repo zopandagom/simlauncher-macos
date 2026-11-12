@@ -140,7 +140,7 @@ struct IOSLayoutConversionTests {
     #expect(nodes.map(\.label) == [nil, nil, "둘째 앱 창"])
   }
 
-  @Test("앱 스냅샷은 루트보다 큰 창도 빼지 않는다 (멀티태스킹 등 실측하지 않은 상태)")
+  @Test("앱 스냅샷은 루트보다 큰 창도 빼지 않는다 (시스템 화면에만 하는 규칙)")
   func appSnapshotKeepsWindows() throws {
     let nodes = try IOSLayoutConversion.nodes(
       from: [

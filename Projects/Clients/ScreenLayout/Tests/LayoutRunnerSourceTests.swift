@@ -61,19 +61,70 @@ struct LayoutRunnerSourceTests {
   func allCardOnlyReadsSpringBoard() throws {
     let tests = LayoutRunnerSource.tests
     for token in [
-      "func cardOnlyApps() -> Set<String>", "XCUIApplication(bundleIdentifier: Self.springBoard).snapshot()",
-      "parts[0] == \"card\"", "element.children.isEmpty", "leaf.subtracting(live)",
+      "func appCards() -> AppCards", "XCUIApplication(bundleIdentifier: Self.springBoard).snapshot()",
+      "parts[0] == \"card\"", "element.children.isEmpty", "self.leaf.subtracting(self.live)",
     ] {
       #expect(tests.contains(token), "\(token)")
     }
     // 판정은 settle 대기 뒤, SpringBoard 로 넘어가는 판정 앞에 있다.
     let filter = try #require(tests
-      .range(of: "if !foreground.isEmpty, cardOnlyApps().isSuperset(of: foreground) {\n      foreground = []"))
+      .range(of: "if !foreground.isEmpty, cards.cardOnly.isSuperset(of: foreground) {\n      foreground = []"))
     let settle = try #require(tests.range(of: "if foreground.count <= 1 || Date() >= deadline"))
     let fallback = try #require(tests
       .range(of: "if foreground.isEmpty {\n      return snapshot(of: [Self.springBoard]"))
     #expect(settle.upperBound < filter.lowerBound)
     #expect(filter.upperBound < fallback.lowerBound)
+  }
+
+  @Test("러너는 겹친 창의 앞 앱 중 맨 앞 창(카드에 장면이 붙은 앱 하나, 나머지는 잎)이 있으면 기다리지 않고 그 앱만 읽는다")
+  func frontWindowReadsOnlyFrontApp() throws {
+    let tests = LayoutRunnerSource.tests
+    for token in [
+      "func frontWindowApp(of foreground: [String], cards: AppCards) -> String?",
+      "guard front.count == 1 else { return nil }", "others.allSatisfy({ cards.cardOnly.contains($0) })",
+    ] {
+      #expect(tests.contains(token), "\(token)")
+    }
+    // 판정은 settle 대기 루프 안, 앞 앱이 하나 이하인지·기한인지 본 뒤 0.2초 대기 앞에 있다.
+    let settle = try #require(tests.range(of: "if foreground.count <= 1 || Date() >= deadline"))
+    let front = try #require(tests.range(
+      of: "if let front = frontWindowApp(of: foreground, cards: cards) {\n"
+        + "        foreground = [front]\n        chosen = cards\n        break"
+    ))
+    // 고른 카드를 루프 뒤 판정·좌표에 그대로 쓴다 (다시 읽지 않는다).
+    #expect(tests.contains("let cards = chosen ?? (foreground.isEmpty ? AppCards() : appCards())"))
+    let wait = try #require(tests.range(of: "RunLoop.current.run(until: Date().addingTimeInterval(0.2))"))
+    #expect(settle.upperBound < front.lowerBound)
+    #expect(front.upperBound < wait.lowerBound)
+  }
+
+  @Test("러너는 앱 노드를 화면 좌표로 돌린 카드 위치만큼 옮기고, 시스템 화면·카드 크기가 다른 앱은 옮기지 않는다")
+  func appNodesMoveByCardOrigin() {
+    let tests = LayoutRunnerSource.tests
+    for token in [
+      "return snapshot(of: foreground.sorted(), system: false, cards: cards)",
+      "let offset = system ? CGVector.zero : windowOffset(of: id, root: root, cards: cards)",
+      "let frames = cards.frames[id], frames.count == 1",
+      "guard abs(local.width - screen.width) <= 0.5, abs(local.height - screen.height) <= 0.5 else { return .zero }",
+      "cards.toScreen = Self.screenTransform(statusBars: statusBars, root: root.frame)",
+      "\"x\": Double(frame.origin.x + offset.dx)", "\"y\": Double(frame.origin.y + offset.dy)",
+      "walk(child, depth: depth + 1, offset: offset, into: &nodes)",
+    ] {
+      #expect(tests.contains(token), "\(token)")
+    }
+    // 방향 판정과 변환식은 호스트 `IOSLayoutConversion.rotation(of:root:)`·`ScreenRotation.apply` 와 같다.
+    for token in [
+      "if near(bar.width, width), bar.height < width / 4 {", "if near(bar.minY, 0) {", "if near(bar.maxY, height) {",
+      "return { CGRect(x: width - $0.maxX, y: height - $0.maxY, width: $0.width, height: $0.height) }",
+      "} else if near(bar.height, height), bar.width < width / 4 {", "if near(bar.minX, 0) {",
+      "return { CGRect(x: height - $0.maxY, y: $0.minX, width: $0.height, height: $0.width) }",
+      "if near(bar.maxX, width) {",
+      "return { CGRect(x: $0.minY, y: width - $0.maxX, width: $0.height, height: $0.width) }",
+    ] {
+      #expect(tests.contains(token), "\(token)")
+    }
+    // 없는 요소의 frame 은 테스트를 실패시켜 러너가 끝나므로 창 질의 frame 을 쓰지 않는다.
+    #expect(!tests.contains(".firstMatch.frame"))
   }
 
   @Test("호스트가 쓰는 파일·환경·키·명령·실패 값이 모두 러너 원문에 따옴표 문자열로 있다")
