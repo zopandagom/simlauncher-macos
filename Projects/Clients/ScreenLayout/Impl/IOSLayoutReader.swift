@@ -91,7 +91,11 @@ struct IOSLayoutReader: Sendable {
     let snapshot = try Self.snapshot(from: response)
     let png = try await self.screenshot(session.deviceID)
     guard let size = Self.pngSize(png) else { throw .unreadable }
-    let nodes = try IOSLayoutConversion.nodes(from: snapshot.nodes, scale: session.scale)
+    let nodes = try IOSLayoutConversion.nodes(
+      from: snapshot.nodes,
+      scale: session.scale,
+      system: snapshot.system
+    )
     return .snapshot(LayoutSnapshot(
       deviceName: deviceName,
       capturedAt: Date(),
