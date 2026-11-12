@@ -24,6 +24,7 @@ func waitUntil(_ limit: Duration = .seconds(3), _ condition: () async -> Bool) a
 /// 테스트가 여는 문. 열 때까지 기다린다.
 final class Gate: Sendable {
   private let opened = Mutex(false)
+  private let waiting = Mutex(false)
 
   func open() {
     self.opened.withLock { $0 = true }
@@ -33,7 +34,13 @@ final class Gate: Sendable {
     self.opened.withLock { $0 }
   }
 
+  /// 누군가 `wait()` 에 들어왔다 (열린 뒤에도 true).
+  var isWaiting: Bool {
+    self.waiting.withLock { $0 }
+  }
+
   func wait() async {
+    self.waiting.withLock { $0 = true }
     while !self.isOpen {
       try? await Task.sleep(for: .milliseconds(5))
     }

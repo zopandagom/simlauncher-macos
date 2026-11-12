@@ -6,38 +6,46 @@ import ScreenLayoutInterface
 /// 러너 빌드 캐시 (모든 기기가 함께 쓴다). `<뿌리>/<빌드 키>/Products` 에 `.xctestrun` 이 정확히 하나면 빌드된 것이다.
 /// 빌드는 키마다 Task 하나를 함께 기다린다: 남은 `*.partial-*` 지우기 → `<키>.partial-<UUID>/Source` 에 소스 쓰기 →
 /// `xcodebuild build-for-testing`(시간 제한) → 성공하면 `DerivedData/Build/Products` 만 `Products` 로 옮기고(116 MB → 3 MB, 실측)
-/// 폴더 이름을 `<키>` 로 바꾼 뒤 쓰지 않는 다른 키 폴더를 지운다. 실패하면 partial 을 지운다 (실패는 디스크에 남지 않는다).
+/// 폴더 이름을 `<키>` 로 바꾼 뒤 쓰지 않는 다른 키 폴더를 지운다 (쓰는 키는 지우는 순간 풀에 묻는다).
+/// 실패하면 partial 을 지운다 (실패는 디스크에 남지 않는다).
 actor LayoutRunnerBuildCache {
   private let root: URL
   private let command: any CommandClient
   private let baseEnvironment: [String: String]
   private let timeout: Duration
+  private let keptKeys: @Sendable () -> Set<String>
   private var builds: [String: Task<Result<URL, ScreenLayoutError>, Never>] = [:]
   /// 이 캐시가 지금 빌드 중인 partial 폴더 이름 (남은 partial 지우기에서 뺀다).
   private var activePartials: Set<String> = []
 
-  /// - Parameter root: `<러너 폴더>/builds`. 만들지 않는다 (처음 빌드할 때 만든다).
-  init(root: URL, command: any CommandClient, baseEnvironment: [String: String], timeout: Duration) {
+  /// - Parameters:
+  ///   - root: `<러너 폴더>/builds`. 만들지 않는다 (처음 빌드할 때 만든다).
+  ///   - keptKeys: 지우지 않을 다른 빌드 키를 지우는 순간 묻는다 (준비 중·준비됨 러너가 쓰는 키). 동기여야 한다: 비동기로 풀에
+  ///     물으면 답을 받고 돌아오는 사이 다른 준비가 그 키로 `.preparing` 이 되어 이 캐시에서 xctestrun 을 받아 갈 수 있다
+  ///     (준비 시작 때 값을 쓰면 그 사이 Xcode 를 바꿔 다른 키로 준비 중인 기기의 빌드를 지운다).
+  init(
+    root: URL,
+    command: any CommandClient,
+    baseEnvironment: [String: String],
+    timeout: Duration,
+    keptKeys: @escaping @Sendable () -> Set<String>
+  ) {
     self.root = root
     self.command = command
     self.baseEnvironment = baseEnvironment
     self.timeout = timeout
+    self.keptKeys = keptKeys
   }
 
   /// 빌드된 `.xctestrun`. 없으면 빌드한다 (같은 키의 빌드가 돌고 있으면 그것을 기다린다).
-  /// - Parameter keep: 지우지 않을 다른 빌드 키 (살아 있는 러너가 쓰는 것).
-  func xctestrun(
-    key: String,
-    xcode: XcodeInstallation,
-    keep: Set<String>
-  ) async -> Result<URL, ScreenLayoutError> {
+  func xctestrun(key: String, xcode: XcodeInstallation) async -> Result<URL, ScreenLayoutError> {
     if let running = self.builds[key] {
       return await running.value
     }
     if let built = self.builtXCTestRun(key: key) {
       return .success(built)
     }
-    let task = Task { await self.build(key: key, xcode: xcode, keep: keep) }
+    let task = Task { await self.build(key: key, xcode: xcode) }
     self.builds[key] = task
     return await task.value
   }
@@ -51,7 +59,7 @@ actor LayoutRunnerBuildCache {
 
   // MARK: - 빌드
 
-  private func build(key: String, xcode: XcodeInstallation, keep: Set<String>) async -> Result<URL, ScreenLayoutError> {
+  private func build(key: String, xcode: XcodeInstallation) async -> Result<URL, ScreenLayoutError> {
     let partialName = "\(key).partial-\(UUID().uuidString)"
     let partial = self.root.appending(path: partialName, directoryHint: .isDirectory)
     self.activePartials.insert(partialName)
@@ -61,7 +69,10 @@ actor LayoutRunnerBuildCache {
     }
     let result = await self.buildInto(partial, key: key, xcode: xcode)
     if case .success = result {
-      self.removeUnusedBuilds(keeping: keep.union([key]))
+      // `keptKeys()` 와 지우기 사이에 await 가 없다 (이 actor 의 한 구간): 새 준비는 풀에서 `.preparing` 이 되는 순간 키가 들어가고
+      // 그 뒤에야 이 캐시에 xctestrun 을 묻는다. 키가 들어가기 전에 지우면 그 준비는 뒤에 폴더 없음을 보고 새로 빌드하고,
+      // `.preparing` → `.ready` 는 풀의 한 구간에서 바뀌어 키가 빠지는 때가 없다.
+      self.removeUnusedBuilds(keeping: self.keptKeys().union([key]))
     } else {
       try? FileManager.default.removeItem(at: partial)
     }

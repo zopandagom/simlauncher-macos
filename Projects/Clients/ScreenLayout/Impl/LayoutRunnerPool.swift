@@ -33,7 +33,7 @@ actor LayoutRunnerPool {
   /// 준비 한 번. `process` 는 launch 뒤에 채운다. `stopRequested` 는 끄기·앱 종료가 세운다.
   struct Attempt: Sendable {
     let id: UUID
-    /// 이 준비가 쓰는 빌드 키 (다른 기기의 빌드가 옛 키 빌드를 지우지 않게 `keep` 에 넣는다).
+    /// 이 준비가 쓰는 빌드 키 (다른 기기의 빌드가 지우지 않게 사용 중 빌드 키에 들어간다).
     let key: String
     let task: Task<Result<Session, ScreenLayoutError>, Never>
     var process: LaunchedProcess?
@@ -66,7 +66,10 @@ actor LayoutRunnerPool {
   let sessionsRoot: URL
 
   var runners: [VirtualDevice.ID: Runner] = [:] {
-    didSet { self.updateActiveCount() }
+    didSet {
+      self.updateActiveCount()
+      self.updateBuildKeysInUse()
+    }
   }
 
   /// Launcher "끄기" 진행 중 (willShutDown ~ didShutDown). 새 준비·정리를 받지 않는다.
@@ -80,6 +83,8 @@ actor LayoutRunnerPool {
   /// 준비 중·준비됨·멈추는 중 수 (정리 중은 세지 않는다). 동기 읽기용.
   private let activeCount = Mutex<Int>(0)
   private let listedSequence = Mutex<UInt64>(0)
+  /// 준비 중·준비됨 러너가 쓰는 빌드 키 (`runners` 에서 파생, 빌드 캐시가 다른 키 빌드를 지우는 순간 동기로 읽는다).
+  private let buildKeysInUse: BuildKeysInUse
 
   /// 파일·명령을 건드리지 않는다.
   init(
@@ -94,11 +99,15 @@ actor LayoutRunnerPool {
     self.timing = timing
     self.baseEnvironment = baseEnvironment
     self.sessionsRoot = runnerDirectory.appending(path: "sessions", directoryHint: .isDirectory)
+    // init 안에서 self 를 잡지 않으려고 상자를 잡는다.
+    let keysInUse = BuildKeysInUse()
+    self.buildKeysInUse = keysInUse
     self.buildCache = LayoutRunnerBuildCache(
       root: runnerDirectory.appending(path: "builds", directoryHint: .isDirectory),
       command: command,
       baseEnvironment: baseEnvironment,
-      timeout: timing.buildTimeout
+      timeout: timing.buildTimeout,
+      keptKeys: { keysInUse.current }
     )
   }
 
@@ -270,6 +279,19 @@ actor LayoutRunnerPool {
     self.activeCount.withLock { $0 = count }
   }
 
+  /// 준비 중(`attempt.key`)·준비됨(`session.buildKey`) 러너의 빌드 키. 멈추는 중·정리 중은 넣지 않는다
+  /// (ready 뒤라 빌드 폴더를 지워도 응답·quit 에 해가 없다, 실측).
+  private func updateBuildKeysInUse() {
+    let keys = Set(self.runners.values.compactMap { runner -> String? in
+      switch runner {
+      case let .ready(session, _): session.buildKey
+      case let .preparing(attempt): attempt.key
+      case .stopping, .cleaning: nil
+      }
+    })
+    self.buildKeysInUse.set(keys)
+  }
+
   /// 목록에서 그 기기가 켜져 있는지. 목록을 읽지 못하면 켜진 것으로 본다 (모르면 멈추지 않는다).
   func isBooted(_ id: VirtualDevice.ID) async -> Bool {
     do throws(SimulatorError) {
@@ -427,5 +449,18 @@ extension LayoutRunnerPool {
     guard size <= LayoutRunnerProtocol.maxResponseBytes else { return .rejected }
     guard let data = try? Data(contentsOf: url) else { return .pending }
     return LayoutRunnerProtocol.response(from: data, id: id)
+  }
+}
+
+/// 사용 중 빌드 키의 동기 읽기 사본 (`activeCount` 와 같은 패턴). 빌드 캐시 actor 가 await 없이 읽는다.
+final class BuildKeysInUse: Sendable {
+  private let keys = Mutex<Set<String>>([])
+
+  func set(_ keys: Set<String>) {
+    self.keys.withLock { $0 = keys }
+  }
+
+  var current: Set<String> {
+    self.keys.withLock { $0 }
   }
 }
