@@ -95,6 +95,10 @@ final class RunnerHarness: Sendable {
     case silent
     /// quit 처럼 ok 를 쓰고 끝난다.
     case quitAndExit
+    /// 응답을 쓰지 않고 종료 코드 0 으로 끝난다 (유휴 종료 틈 흉내: 틈의 요청은 응답 없이 xcodebuild 가 0 으로 끝난다, 실측).
+    case exitWithoutReply
+    /// 응답을 쓰고 곧바로 종료 코드 0 으로 끝난다.
+    case dataAndExit(Data)
   }
 
   typealias Responder = @Sendable (Request) -> Reply
@@ -416,14 +420,7 @@ extension RunnerHarness {
     let requestURL = directory.appending(path: "request.json")
     while !state.withLock({ $0.exited.contains(process.id) }) {
       try? await Task.sleep(for: .milliseconds(5))
-      guard let data = try? Data(contentsOf: requestURL) else { continue }
-      try? FileManager.default.removeItem(at: requestURL)
-      guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
-      let request = Request(
-        id: object["id"] as? String ?? "",
-        command: object["command"] as? String ?? "",
-        bundleIDs: object["bundleIDs"] as? [String] ?? []
-      )
+      guard let request = self.takeRequest(at: requestURL) else { continue }
       let responder = state.withLock { state in
         state.requests.append(request)
         return state.responder
@@ -437,8 +434,26 @@ extension RunnerHarness {
         self.write(self.json(["id": request.id, "ok": true]), "response.json", in: directory)
         exit(0)
         return
+      case .exitWithoutReply:
+        exit(0)
+        return
+      case let .dataAndExit(reply):
+        self.write(reply, "response.json", in: directory)
+        exit(0)
+        return
       }
     }
+  }
+
+  private static func takeRequest(at url: URL) -> Request? {
+    guard let data = try? Data(contentsOf: url) else { return nil }
+    try? FileManager.default.removeItem(at: url)
+    guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+    return Request(
+      id: object["id"] as? String ?? "",
+      command: object["command"] as? String ?? "",
+      bundleIDs: object["bundleIDs"] as? [String] ?? []
+    )
   }
 
   private static func write(_ data: Data, _ name: String, in directory: URL) {

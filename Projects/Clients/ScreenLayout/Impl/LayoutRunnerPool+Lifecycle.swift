@@ -188,4 +188,32 @@ extension LayoutRunnerPool {
       return true
     }
   }
+
+  /// 응답 폴링 간격만큼 기다린다. 취소되면 러너는 그 요청을 끝까지 처리해 응답을 늦게 쓴다: 지금 있는 것은 지우고, 늦은 응답도 지울 정리를 남긴다.
+  func pollSleep(response: URL, requestID: String, session: Session) async throws(ScreenLayoutError) {
+    do {
+      try await Task.sleep(for: self.timing.responsePollInterval)
+    } catch {
+      try? FileManager.default.removeItem(at: response)
+      self.discardLateResponse(requestID, session: session)
+      throw .cancelled
+    }
+  }
+
+  /// 응답 전에 세션이 끝났을 때 다시 읽으면 안 되는 이유: 앱 종료 중 `.inspectorSetupFailed`, 끄는 중 `.deviceNotBooted`.
+  /// 다시 읽어도 되면 nil. 목록(켜짐)은 읽지 않는다: 꺼진 기기는 다시 읽기의 기기 확인이 `.preparing` 없이 끝낸다.
+  func sessionEndedError(_ id: VirtualDevice.ID) -> ScreenLayoutError? {
+    if self.terminating {
+      return .inspectorSetupFailed
+    }
+    if self.shuttingDown.contains(id) {
+      return .deviceNotBooted
+    }
+    return nil
+  }
+
+  /// 세션을 잃은 이유: 끄는 중이거나 목록에서 켜져 있지 않으면 `.deviceNotBooted`, 아니면 `.inspectorSetupFailed`.
+  func lostSessionError(_ id: VirtualDevice.ID) async -> ScreenLayoutError {
+    await self.classify(.inspectorSetupFailed, for: id)
+  }
 }

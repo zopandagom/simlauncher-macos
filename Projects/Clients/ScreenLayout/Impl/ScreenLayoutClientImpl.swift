@@ -68,7 +68,9 @@ public struct ScreenLayoutClientImpl: ScreenLayoutClient {
 
   /// Android: `.reading` 을 한 번 알린 뒤 AVD ID 로 읽는다.
   /// iOS: 러너를 새로 띄워야 하면(첫 사용, 러너가 멈춘 뒤 — 10분 유휴·기기 끄기나 다시 켜기·요청 시간 초과·러너 종료 — ,
-  /// Xcode 교체 뒤) `.preparing` 뒤 `.reading`, 아니면 `.reading` 한 번.
+  /// Xcode 교체 뒤) `.preparing` 뒤 `.reading`, 아니면 `.reading` 한 번. 읽는 중 러너가 응답 전에 끝나면(10분 유휴 종료 순간 등)
+  /// 새 러너로 한 번 다시 읽으며(끄는 중·앱 종료 중 제외) `.preparing` 뒤 `.reading` 을 더 알린다
+  /// (같은 기기의 다른 읽기가 이미 새 러너를 준비했으면 더 알리지 않는다).
   @concurrent
   public func snapshot(
     of target: LayoutTarget,

@@ -305,5 +305,215 @@ struct IOSLayoutReaderTests {
     #expect(harness.builds.count == 2)
     #expect(harness.launches.count == 2)
     #expect(harness.launches.last?.executable.path.hasPrefix("/Applications/Xcode-beta.app") == true)
+    // 쓰는 러너가 없는 옛 키 빌드는 지운다 (사용 중 키만 지킨다).
+    let builds = harness.root.appending(path: "builds", directoryHint: .isDirectory)
+    #expect(try FileManager.default.contentsOfDirectory(atPath: builds.path(percentEncoded: false)).count == 1)
+  }
+}
+
+// MARK: - 응답 전 세션 끝남 → 한 번 다시 읽기
+
+extension IOSLayoutReaderTests {
+  /// 감시가 끼지 않게(요청 폴링만 xcodebuild 종료를 보게) 감시 간격을 늘린 값.
+  static let exitTiming: IOSLayoutTiming = {
+    var timing = RunnerHarness.timing
+    timing.monitorInterval = .seconds(30)
+    return timing
+  }()
+
+  /// ready 를 오래 기다리는 값 (`LayoutRunnerPoolTests.longReadyTiming` 과 같은 값, 그 파일은 건드리지 않는다).
+  static let longReadyTiming: IOSLayoutTiming = {
+    var timing = RunnerHarness.timing
+    timing.readyTimeout = .seconds(30)
+    return timing
+  }()
+
+  /// 첫 snapshot 요청에만 응답 없이 끝나고(유휴 종료 틈 흉내), 그 뒤로는 기본대로 답한다.
+  static func exitOnceResponder() -> RunnerHarness.Responder {
+    let once = Gate()
+    return { request in
+      if request.command == "snapshot", !once.isOpen {
+        once.open()
+        return .exitWithoutReply
+      }
+      return RunnerHarness.defaultResponder(request)
+    }
+  }
+
+  /// snapshot 에는 답하지 않고 quit 에는 답하고 끝난다.
+  static let silentSnapshotResponder: RunnerHarness.Responder = { request in
+    request.command == "quit" ? .quitAndExit : .silent
+  }
+
+  @Test("응답 전에 xcodebuild 가 끝나면(유휴 종료 순간) 러너를 정리하고 새 러너로 한 번 다시 읽는다")
+  func retryAfterRunnerExited() async throws {
+    let harness = RunnerHarness(timing: Self.exitTiming)
+    _ = try await harness.read().get()
+    harness.update { $0.responder = Self.exitOnceResponder() }
+    let phases = PhaseLog()
+
+    _ = try await harness.read(phases: phases).get()
+
+    #expect(phases.all == [.reading, .preparing, .reading])
+    #expect(harness.launches.count == 2)
+    #expect(harness.uninstalls == [RunnerHarness.device])
+    #expect(harness.command.terminates.isEmpty)
+    #expect(harness.requests.map(\.command) == ["snapshot", "snapshot", "snapshot"])
+  }
+
+  @Test("응답을 기다리는 중 감시가 러너 죽음으로 멈춰도 한 번 다시 읽는다")
+  func retryAfterMonitorStopsDeadRunner() async throws {
+    let harness = RunnerHarness(timing: Self.longRequestTiming)
+    _ = try await harness.read().get()
+    harness.update { $0.responder = { _ in .silent } }
+    let phases = PhaseLog()
+    let task = harness.readTask(phases: phases)
+    #expect(try await waitUntil { harness.requests.count == 2 })
+
+    harness.update { $0.responder = RunnerHarness.defaultResponder }
+    // xcodebuild 는 SIGTERM 전까지 살아 있어 요청 폴링이 종료를 먼저 볼 수 없다 → 감시 길.
+    harness.killRunners()
+
+    _ = try await task.value.get()
+    #expect(phases.all == [.reading, .preparing, .reading])
+    #expect(harness.command.terminates.count == 1)
+    #expect(harness.launches.count == 2)
+  }
+
+  @Test("다시 읽은 러너도 응답 전에 끝나면 더 다시 읽지 않고 준비 실패")
+  func noSecondRetry() async throws {
+    let harness = RunnerHarness(timing: Self.exitTiming)
+    harness.update { state in
+      state.responder = { request in request.command == "snapshot" ? .exitWithoutReply : .quitAndExit }
+    }
+    let phases = PhaseLog()
+
+    #expect(await harness.read(phases: phases) == .failure(.inspectorSetupFailed))
+
+    #expect(harness.launches.count == 2)
+    #expect(phases.all == [.preparing, .reading, .preparing, .reading])
+    #expect(try await waitUntil { !harness.client.hasActiveIOSRunners })
+    #expect(try await waitUntil { harness.uninstalls.count == 2 })
+  }
+
+  @Test("끄는 중 세션을 잃으면 다시 준비하지 않고 기기 꺼짐")
+  func noRetryWhileShuttingDown() async throws {
+    let harness = RunnerHarness(timing: Self.longRequestTiming)
+    _ = try await harness.read().get()
+    harness.update { $0.responder = Self.silentSnapshotResponder }
+    let phases = PhaseLog()
+    let task = harness.readTask(phases: phases)
+    #expect(try await waitUntil { harness.requests.count == 2 })
+
+    await harness.client.iOSDeviceWillShutDown(RunnerHarness.device)
+
+    #expect(await task.value == .failure(.deviceNotBooted))
+    #expect(phases.all == [.reading])
+    #expect(harness.launches.count == 1)
+  }
+
+  @Test("앱 종료로 세션을 잃으면 다시 준비하지 않는다")
+  func noRetryAfterStopAll() async throws {
+    let harness = RunnerHarness(timing: Self.longRequestTiming)
+    _ = try await harness.read().get()
+    harness.update { $0.responder = Self.silentSnapshotResponder }
+    let phases = PhaseLog()
+    let task = harness.readTask(phases: phases)
+    #expect(try await waitUntil { harness.requests.count == 2 })
+
+    await harness.client.stopAllIOSRunners()
+
+    #expect(await task.value == .failure(.inspectorSetupFailed))
+    #expect(phases.all == [.reading])
+    #expect(harness.launches.count == 1)
+  }
+
+  @Test("응답을 쓰고 곧바로 끝나도 그 응답을 쓰고 다시 읽지 않는다")
+  func responseWrittenBeforeExitIsUsed() async throws {
+    let harness = RunnerHarness(timing: Self.exitTiming)
+    _ = try await harness.read().get()
+    harness.update { state in
+      state.responder = { request in
+        guard request.command == "snapshot", case let .data(data) = RunnerHarness.snapshotReply(request) else {
+          return RunnerHarness.defaultResponder(request)
+        }
+        return .dataAndExit(data)
+      }
+    }
+    let phases = PhaseLog()
+
+    let snapshot = try await harness.read(phases: phases).get()
+
+    #expect(snapshot.appIdentifier == "com.example.app")
+    #expect(phases.all == [.reading])
+    #expect(harness.launches.count == 1)
+  }
+
+  @Test("다시 준비를 기다리는 중 취소하면 곧바로 cancelled, 준비는 계속")
+  func cancelWhileRetryPreparing() async throws {
+    let harness = RunnerHarness(timing: Self.longReadyTiming)
+    _ = try await harness.read().get()
+    harness.update { state in
+      state.responder = Self.exitOnceResponder()
+      state.launch = .neverReady
+    }
+    let task = harness.readTask()
+    #expect(try await waitUntil { harness.launches.count == 2 })
+
+    task.cancel()
+
+    #expect(await task.value == .failure(.cancelled))
+    #expect(harness.client.hasActiveIOSRunners)
+    await harness.client.stopAllIOSRunners()
+  }
+
+  @Test("같은 기기 다른 창이 Xcode 를 바꿔 러너를 멈추면, 응답을 기다리던 창은 새 Xcode 로 한 번 다시 읽는다")
+  func retryAfterOtherWindowChangedXcode() async throws {
+    let harness = RunnerHarness(timing: Self.longRequestTiming)
+    _ = try await harness.read().get()
+    harness.update { $0.responder = Self.silentSnapshotResponder }
+    let phasesA = PhaseLog()
+    let taskA = harness.readTask(phases: phasesA)
+    #expect(try await waitUntil { harness.requests.count == 2 })
+
+    // 새 빌드를 게이트로 막아, A 가 다시 읽기에서 B 의 준비에 합류(.preparing)한 뒤에야 끝나게 한다.
+    let gate = Gate()
+    harness.update { state in
+      state.responder = RunnerHarness.defaultResponder
+      state.buildGate = gate
+    }
+    harness.devEnvironment.setStatus(.ready(.beta))
+    let taskB = harness.readTask()
+    #expect(try await waitUntil { gate.isWaiting && phasesA.all.count == 2 })
+    gate.open()
+
+    _ = try await taskA.value.get()
+    _ = try await taskB.value.get()
+    #expect(phasesA.all == [.reading, .preparing, .reading])
+    #expect(harness.launches.count == 2)
+    // 빌드 호출 기록 수 (첫 읽기 1 + beta 1).
+    #expect(harness.builds.count == 2)
+    #expect(harness.command.terminates.isEmpty)
+    #expect(harness.launches.last?.executable.path.hasPrefix("/Applications/Xcode-beta.app") == true)
+  }
+
+  @Test("같은 기기 두 창이 함께 응답 전 종료에 걸려도 새 러너 하나로 둘 다 읽는다")
+  func twoWindowsCaughtInGapShareOneRunner() async throws {
+    let harness = RunnerHarness(timing: Self.longRequestTiming)
+    _ = try await harness.read().get()
+    harness.update { $0.responder = { _ in .silent } }
+    let taskA = harness.readTask()
+    #expect(try await waitUntil { harness.requests.count == 2 })
+    let taskB = harness.readTask()
+    // 첫 읽기 1 + A + B: B 가 큐 차례에 들어 A 뒤에서 기다린다.
+    #expect(try await waitUntil { await harness.client.iOSReader.queue.runCount == 3 })
+
+    harness.update { $0.responder = RunnerHarness.defaultResponder }
+    harness.exitAll()
+
+    _ = try await taskA.value.get()
+    _ = try await taskB.value.get()
+    #expect(harness.launches.count == 2)
+    #expect(harness.requests.filter { $0.command == "snapshot" }.count >= 4)
   }
 }
