@@ -517,3 +517,23 @@ extension IOSLayoutReaderTests {
     #expect(harness.requests.filter { $0.command == "snapshot" }.count >= 4)
   }
 }
+
+// MARK: - 앞 앱 후보
+
+extension IOSLayoutReaderTests {
+  @Test("앞 앱 후보: 러너와 Duo 안쪽 화면 서비스(DockFolderViewService·WidgetRenderer-Default)는 빼고 순서는 그대로")
+  func candidates() {
+    let running = [
+      "com.apple.chrono.WidgetRenderer-Default",
+      "com.example.b",
+      "com.apple.DocumentManager.DockFolderViewService",
+      IOSLayoutRunner.appBundleID,
+      "com.apple.chrono.WidgetRenderer-Other",
+      "com.example.a",
+    ].compactMap(AppBundleID.init)
+    #expect(running.count == 6)
+    #expect(IOSLayoutReader.candidates(from: running) == [
+      "com.example.b", "com.apple.chrono.WidgetRenderer-Other", "com.example.a",
+    ])
+  }
+}
