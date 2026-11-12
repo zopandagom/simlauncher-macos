@@ -3,6 +3,7 @@ import ScreenLayoutInterface
 /// 키(기기)별 직렬화. iOS 러너의 요청·응답 파일이 기기당 하나라 같은 기기의 요청·스크린샷을 한 번에 하나만 돌린다.
 ///
 /// AndroidEmulator Impl 의 `LayoutReadQueue` 와 같은 "앞 호출의 작업 끝을 이어 붙인다" 규칙이다 (Impl 끼리 import 할 수 없어 따로 둔다):
+/// 0. 이미 취소된 Task 의 호출은 차례에 들지 않고 곧바로 `.cancelled` 다 (`body` 를 실행하지 않는다).
 /// 1. `run` 은 actor 안 한 구간에서 앞 호출의 끝(`tails[key]`)을 읽고, 그것을 기다린 뒤 `body` 를 실행할 작업 Task 를 만들어
 ///    곧바로 `tails[key]` 를 그 작업의 끝으로 바꾼다.
 /// 2. 호출한 쪽은 작업 Task 를 기다리고, 호출한 Task 가 취소되면 작업 Task 도 취소한다. 앞 작업을 기다리는 중에 취소된 작업은 앞 작업이
@@ -23,7 +24,7 @@ actor KeyedSerialQueue<Key: Hashable & Sendable> {
     self.tails.count
   }
 
-  /// 지금까지 들어온 `run` 호출 수 (테스트용).
+  /// 지금까지 차례에 든 `run` 호출 수 (이미 취소된 호출은 세지 않는다, 테스트용).
   var runCount: Int {
     self.nextToken
   }
@@ -34,6 +35,9 @@ actor KeyedSerialQueue<Key: Hashable & Sendable> {
     _ key: Key,
     _ body: @escaping @Sendable () async throws(ScreenLayoutError) -> T
   ) async throws(ScreenLayoutError) -> T {
+    // 이미 취소된 호출은 차례에 들지 않는다: 작업 Task 를 먼저 만들면 아래 `onCancel` 이 닿기 전에 앞 작업 없는 작업 Task 가
+    // 취소 확인을 지나 `body` 를 실행할 수 있다.
+    guard !Task.isCancelled else { throw .cancelled }
     let previous = self.tails[key]?.wait
     let work = Self.startWork(after: previous, body)
     let token = self.nextToken

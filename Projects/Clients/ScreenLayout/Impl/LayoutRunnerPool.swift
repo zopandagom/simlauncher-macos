@@ -7,7 +7,8 @@ import Synchronization
 
 /// 기기별 iOS 레이아웃 러너(상주 `xcodebuild test-without-building`)의 수명.
 ///
-/// 상태: 없음(미실행) → `.preparing`(빌드·남은 러너 정리·launch·ready 대기) → `.ready`(감시 Task 가 2초마다 생존 확인)
+/// 상태: 없음(미실행) → `.preparing`(빌드·남은 러너 정리·launch·ready 대기) → `.ready`(감시 Task 가 2초마다 생존 확인, 요청 폴링도
+/// xcodebuild 종료를 보면 멈춘다)
 /// → `.stopping`(quit/SIGTERM → uninstall) → 없음. 켜진 기기의 남은 러너 정리는 `.cleaning`.
 /// 규칙 (설계 5.0): 상태 판정과 그 결과로 바꿀 상태를 await 없이 한 구간에서 끝낸 뒤에야 await 하고, await 뒤에는 상태를 다시 읽는다.
 /// 상태를 지울 때는 아직 그 Attempt/Task 일 때만 지운다. 준비·멈춤·정리는 호출과 떨어진 비구조 Task 라 호출이 취소돼도 계속한다
@@ -33,7 +34,7 @@ actor LayoutRunnerPool {
   /// 준비 한 번. `process` 는 launch 뒤에 채운다. `stopRequested` 는 끄기·앱 종료가 세운다.
   struct Attempt: Sendable {
     let id: UUID
-    /// 이 준비가 쓰는 빌드 키 (다른 기기의 빌드가 옛 키 빌드를 지우지 않게 `keep` 에 넣는다).
+    /// 이 준비가 쓰는 빌드 키 (다른 기기의 빌드가 지우지 않게 사용 중 빌드 키에 들어간다).
     let key: String
     let task: Task<Result<Session, ScreenLayoutError>, Never>
     var process: LaunchedProcess?
@@ -66,7 +67,10 @@ actor LayoutRunnerPool {
   let sessionsRoot: URL
 
   var runners: [VirtualDevice.ID: Runner] = [:] {
-    didSet { self.updateActiveCount() }
+    didSet {
+      self.updateActiveCount()
+      self.updateBuildKeysInUse()
+    }
   }
 
   /// Launcher "끄기" 진행 중 (willShutDown ~ didShutDown). 새 준비·정리를 받지 않는다.
@@ -80,6 +84,8 @@ actor LayoutRunnerPool {
   /// 준비 중·준비됨·멈추는 중 수 (정리 중은 세지 않는다). 동기 읽기용.
   private let activeCount = Mutex<Int>(0)
   private let listedSequence = Mutex<UInt64>(0)
+  /// 준비 중·준비됨 러너가 쓰는 빌드 키 (`runners` 에서 파생, 빌드 캐시가 다른 키 빌드를 지우는 순간 동기로 읽는다).
+  private let buildKeysInUse: BuildKeysInUse
 
   /// 파일·명령을 건드리지 않는다.
   init(
@@ -94,11 +100,15 @@ actor LayoutRunnerPool {
     self.timing = timing
     self.baseEnvironment = baseEnvironment
     self.sessionsRoot = runnerDirectory.appending(path: "sessions", directoryHint: .isDirectory)
+    // init 안에서 self 를 잡지 않으려고 상자를 잡는다.
+    let keysInUse = BuildKeysInUse()
+    self.buildKeysInUse = keysInUse
     self.buildCache = LayoutRunnerBuildCache(
       root: runnerDirectory.appending(path: "builds", directoryHint: .isDirectory),
       command: command,
       baseEnvironment: baseEnvironment,
-      timeout: timing.buildTimeout
+      timeout: timing.buildTimeout,
+      keptKeys: { keysInUse.current }
     )
   }
 
@@ -192,14 +202,23 @@ actor LayoutRunnerPool {
 
   // MARK: - 요청
 
-  /// 세션에 요청을 쓰고 맞는 id 의 응답을 기다린다. 기다리는 중 세션이 바뀌면(멈춤) 곧바로 실패
-  /// (끄는 중·꺼짐이면 `.deviceNotBooted`, 아니면 `.inspectorSetupFailed`). `requestTimeout` 이 지나면 러너를 SIGTERM 으로
-  /// 멈추고(uninstall 까지 기다린다) `.timedOut`. id 가 빈 응답·형식이 틀린 응답은 곧바로 `.unreadable`.
+  /// 요청 하나의 결과.
+  enum RequestResult: Sendable {
+    case response(LayoutRunnerProtocol.Response)
+    /// 응답 전에 세션이 끝났다 (러너가 스스로 끝남·감시가 멈춤·다른 읽기가 Xcode 를 바꿔 멈춤·끄기·앱 종료). 부른 쪽이 다시 읽을지 정한다.
+    case sessionEnded
+  }
+
+  /// 세션에 요청을 쓰고 맞는 id 의 응답을 기다린다. 기다리는 중 세션이 바뀌거나(멈춤) xcodebuild 가 응답 없이 끝나면
+  /// (유휴 종료 순간 등. 끝난 것을 본 뒤 읽은 응답이 없을 때) `.sessionEnded` (스스로 끝났으면 uninstall 만 하는 멈춤을 시작한다).
+  /// `requestTimeout` 이 지나면 러너를 SIGTERM 으로 멈추고(uninstall 까지 기다린다) `.timedOut`.
+  /// id 가 빈 응답·형식이 틀린 응답은 곧바로 `.unreadable`.
   func request(
     _ command: LayoutRunnerProtocol.Command,
     to session: Session
-  ) async throws(ScreenLayoutError) -> LayoutRunnerProtocol.Response {
-    guard self.isCurrent(session) else { throw await self.lostSessionError(session.deviceID) }
+  ) async throws(ScreenLayoutError) -> RequestResult {
+    // 세션을 받은 뒤 기기 큐에서 기다리는 사이 끝났을 수도 있다.
+    guard self.isCurrent(session) else { return .sessionEnded }
     let requestID = UUID().uuidString
     let response = session.directory.appending(path: LayoutRunnerProtocol.responseFile)
     try? FileManager.default.removeItem(at: response)
@@ -211,25 +230,28 @@ actor LayoutRunnerPool {
     let clock = ContinuousClock()
     let start = clock.now
     while true {
-      do {
-        try await Task.sleep(for: self.timing.responsePollInterval)
-      } catch {
-        // 취소해도 러너는 그 요청을 끝까지 처리해 응답을 늦게 쓴다: 지금 있는 것은 지우고, 늦은 응답도 지울 정리를 남긴다.
-        try? FileManager.default.removeItem(at: response)
-        self.discardLateResponse(requestID, session: session)
-        throw .cancelled
-      }
-      guard self.isCurrent(session) else { throw await self.lostSessionError(session.deviceID) }
+      try await self.pollSleep(response: response, requestID: requestID, session: session)
+      // 감시(또는 `step`)가 먼저 종료를 보고 멈췄으면 러너가 써 둔 응답이 있어도 버리고 `.sessionEnded` 로 한 번 다시 읽게 한다
+      // (무해: 화면 데이터는 멈춤의 `removeScreenData` 가 지우고, 다시 읽기 한 번 더 걸릴 뿐).
+      guard self.isCurrent(session) else { return .sessionEnded }
+      // 종료를 응답 읽기 **전에** 본다: 읽은 뒤에 보면 "읽기 pending → 러너가 응답을 쓰고 끝남 → 끝남 봄" 에서 써 둔 응답을 버린다.
+      // 끝난 러너는 더 쓰지 않으므로(러너 프로세스가 응답을 쓴다, 실측) 끝난 것을 본 뒤 읽은 결과가 최종이다.
+      let exited = self.command.exitStatus(session.process) != nil
       switch await Self.readResponse(at: response, id: requestID) {
       case .pending:
-        break
+        if exited {
+          // readResponse await 사이 다른 쪽(감시·step)이 먼저 멈췄거나 새 세션이 됐을 수 있다: 아직 이 세션일 때만 멈춘다.
+          guard self.isCurrent(session) else { return .sessionEnded }
+          self.beginStop(session.deviceID, mode: .exited)
+          return .sessionEnded
+        }
       case .rejected:
         try? FileManager.default.removeItem(at: response)
         throw .unreadable
       case let .response(value):
         // 읽은 화면(라벨·값·식별자)은 메모리에만 둔다: 판정하자마자 파일을 지운다.
         try? FileManager.default.removeItem(at: response)
-        return value
+        return .response(value)
       }
       if clock.now - start >= self.timing.requestTimeout {
         await self.beginStop(session.deviceID, mode: .terminate)?.value
@@ -241,11 +263,6 @@ actor LayoutRunnerPool {
   func isCurrent(_ session: Session) -> Bool {
     guard case let .ready(current, _) = self.runners[session.deviceID] else { return false }
     return current.token == session.token
-  }
-
-  /// 세션을 잃은 이유: 끄는 중이거나 목록에서 켜져 있지 않으면 `.deviceNotBooted`, 아니면 `.inspectorSetupFailed`.
-  func lostSessionError(_ id: VirtualDevice.ID) async -> ScreenLayoutError {
-    await self.classify(.inspectorSetupFailed, for: id)
   }
 
   /// 준비 실패(`.inspectorSetupFailed`)를 기기 상태로 다시 가린다. 그 밖의 실패는 그대로.
@@ -268,6 +285,19 @@ actor LayoutRunnerPool {
       }
     }
     self.activeCount.withLock { $0 = count }
+  }
+
+  /// 준비 중(`attempt.key`)·준비됨(`session.buildKey`) 러너의 빌드 키. 멈추는 중·정리 중은 넣지 않는다
+  /// (ready 뒤라 빌드 폴더를 지워도 응답·quit 에 해가 없다, 실측).
+  private func updateBuildKeysInUse() {
+    let keys = Set(self.runners.values.compactMap { runner -> String? in
+      switch runner {
+      case let .ready(session, _): session.buildKey
+      case let .preparing(attempt): attempt.key
+      case .stopping, .cleaning: nil
+      }
+    })
+    self.buildKeysInUse.set(keys)
   }
 
   /// 목록에서 그 기기가 켜져 있는지. 목록을 읽지 못하면 켜진 것으로 본다 (모르면 멈추지 않는다).
@@ -427,5 +457,18 @@ extension LayoutRunnerPool {
     guard size <= LayoutRunnerProtocol.maxResponseBytes else { return .rejected }
     guard let data = try? Data(contentsOf: url) else { return .pending }
     return LayoutRunnerProtocol.response(from: data, id: id)
+  }
+}
+
+/// 사용 중 빌드 키의 동기 읽기 사본 (`activeCount` 와 같은 패턴). 빌드 캐시 actor 가 await 없이 읽는다.
+final class BuildKeysInUse: Sendable {
+  private let keys = Mutex<Set<String>>([])
+
+  func set(_ keys: Set<String>) {
+    self.keys.withLock { $0 = keys }
+  }
+
+  var current: Set<String> {
+    self.keys.withLock { $0 }
   }
 }

@@ -4,6 +4,7 @@ import Core
 /// 기기(AVD)별 레이아웃 읽기 차례. 같은 기기의 `uiautomator dump` 가 겹치면 뒤에 시작한 쪽이 죽으므로(실측) 한 번에 하나만 돌린다.
 ///
 /// 허가 토큰·대기열 없이 "앞 호출의 작업 끝을 이어 붙인다":
+/// 0. 이미 취소된 Task 의 호출은 차례에 들지 않고 곧바로 `.cancelled` 다 (`body` 를 실행하지 않는다).
 /// 1. `run` 은 actor 안 한 구간에서 앞 호출의 끝(`tails[id]`)을 읽고, 그것을 기다린 뒤 `body` 를 실행할 작업 Task 를 만들어
 ///    곧바로 `tails[id]` 를 그 작업의 끝으로 바꾼다 (읽기와 바꾸기 사이에 다른 호출이 끼지 않는다).
 /// 2. 호출한 쪽은 작업 Task 를 기다리고, 호출한 Task 가 취소되면 작업 Task 도 취소한다. 앞 작업을 기다리는 중에 취소된 작업은 앞 작업이
@@ -27,7 +28,7 @@ actor LayoutReadQueue {
     self.tails.count
   }
 
-  /// 지금까지 들어온 `run` 호출 수 (테스트용: 차례에 들어간 뒤 취소하려고).
+  /// 지금까지 차례에 든 `run` 호출 수 (이미 취소된 호출은 세지 않는다. 테스트용: 차례에 들어간 뒤 취소하려고).
   var runCount: Int {
     self.nextToken
   }
@@ -38,6 +39,9 @@ actor LayoutReadQueue {
     _ id: AndroidVirtualDevice.ID,
     _ body: @escaping @Sendable () async throws(AndroidEmulatorError) -> T
   ) async throws(AndroidEmulatorError) -> T {
+    // 이미 취소된 호출은 차례에 들지 않는다: 작업 Task 를 먼저 만들면 아래 `onCancel` 이 닿기 전에 앞 작업 없는 작업 Task 가
+    // 취소 확인을 지나 `body` 를 실행할 수 있다.
+    guard !Task.isCancelled else { throw .cancelled }
     let previous = self.tails[id]?.wait
     let work = Self.startWork(after: previous, body)
     let token = self.nextToken

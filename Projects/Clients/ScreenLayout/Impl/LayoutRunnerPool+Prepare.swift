@@ -13,16 +13,8 @@ extension LayoutRunnerPool {
     Never
   > {
     let attemptID = UUID()
-    // 지우지 않을 빌드: 준비됨 러너와 준비 중인 다른 기기가 쓰는 키 (Xcode 를 바꾼 직후 옛 키로 준비 중인 기기가 있을 수 있다).
-    let keep = Set(self.runners.values.compactMap { runner -> String? in
-      switch runner {
-      case let .ready(session, _): session.buildKey
-      case let .preparing(attempt): attempt.key
-      case .stopping, .cleaning: nil
-      }
-    })
     let task = Task {
-      await self.runAttempt(id, attemptID: attemptID, xcode: xcode, key: key, keep: keep)
+      await self.runAttempt(id, attemptID: attemptID, xcode: xcode, key: key)
     }
     self.runners[id] = .preparing(Attempt(id: attemptID, key: key, task: task))
     self.cleanedThisBoot.insert(id)
@@ -34,12 +26,11 @@ extension LayoutRunnerPool {
     _ id: VirtualDevice.ID,
     attemptID: UUID,
     xcode: XcodeInstallation,
-    key: String,
-    keep: Set<String>
+    key: String
   ) async -> Result<Session, ScreenLayoutError> {
     let error: ScreenLayoutError
     do throws(ScreenLayoutError) {
-      let session = try await self.prepare(id, attemptID: attemptID, xcode: xcode, key: key, keep: keep)
+      let session = try await self.prepare(id, attemptID: attemptID, xcode: xcode, key: key)
       if let attempt = self.attempt(id, attemptID), !attempt.stopRequested {
         let monitor = Task { await self.monitor(id, token: session.token) }
         self.runners[id] = .ready(session, monitor: monitor)
@@ -72,12 +63,11 @@ extension LayoutRunnerPool {
     _ id: VirtualDevice.ID,
     attemptID: UUID,
     xcode: XcodeInstallation,
-    key: String,
-    keep: Set<String>
+    key: String
   ) async throws(ScreenLayoutError) -> Session {
     // 시작하자마자 멈추기로 했으면(끄기·앱 종료의 `cancelAll` 이 먼저 지나감) 빌드를 새로 시작하지 않는다 (고아 xcodebuild 방지).
     try self.checkNotStopped(id, attemptID)
-    let xctestrun = try await self.buildCache.xctestrun(key: key, xcode: xcode, keep: keep).get()
+    let xctestrun = try await self.buildCache.xctestrun(key: key, xcode: xcode).get()
     try self.checkNotStopped(id, attemptID)
     let directory = self.sessionDirectory(id)
     await self.quitOrphanRunner(udid: id.rawValue, directory: directory)

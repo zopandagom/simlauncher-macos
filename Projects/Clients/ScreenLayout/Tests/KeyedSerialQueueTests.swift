@@ -181,8 +181,8 @@ struct KeyedSerialQueueTests {
     let queue = KeyedSerialQueue<String>()
     let log = Log()
     let task = Task { () async -> Result<String, ScreenLayoutError> in
-      // 취소되면 곧바로 깨어난다. 어느 쪽이든 run 에 들어갈 때 이 Task 는 취소된 상태다.
-      try? await Task.sleep(for: .seconds(10))
+      // 스스로 취소한 뒤 부른다: 깨어나는 순서에 기대지 않고 run 에 들어갈 때 늘 취소된 상태다.
+      withUnsafeCurrentTask { $0?.cancel() }
       do throws(ScreenLayoutError) {
         return try await .success(queue.run(Self.first) { () async throws(ScreenLayoutError) -> String in
           log.add("start late")
@@ -192,7 +192,6 @@ struct KeyedSerialQueueTests {
         return .failure(error)
       }
     }
-    task.cancel()
 
     #expect(await task.value == .failure(.cancelled))
     #expect(!log.contains("start late"))

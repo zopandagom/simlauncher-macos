@@ -6,7 +6,9 @@ public protocol ScreenLayoutClient: Sendable {
   /// 대상 기기의 레이아웃 스냅샷. 호출한 Task 가 취소되면 `.cancelled`.
   /// `onPhase` 는 단계가 바뀔 때마다(돌아오기 전에만) 부른다. Android 는 `.reading` 한 번. iOS 는 러너를 새로 띄워야 할 때
   /// (첫 사용, 러너가 멈춘 뒤 — 10분 유휴·기기 끄기나 다시 켜기·요청 시간 초과·러너 종료 — , Xcode 교체 뒤)
-  /// `.preparing` 뒤 `.reading`, 아니면 `.reading` 한 번.
+  /// `.preparing` 뒤 `.reading`, 아니면 `.reading` 한 번. 읽는 중 러너가 응답 전에 끝나면(10분 유휴 종료 순간 등) 새 러너로
+  /// 한 번 다시 읽으며(끄는 중·앱 종료 중 제외) `.preparing` 뒤 `.reading` 을 더 알린다
+  /// (같은 기기의 다른 읽기가 이미 새 러너를 준비했으면 더 알리지 않는다).
   func snapshot(
     of target: LayoutTarget,
     onPhase: @escaping @Sendable (LayoutReadPhase) async -> Void
