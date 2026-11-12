@@ -265,8 +265,10 @@ extension LayoutRunnerSource {
 
     /// SpringBoard 의 앱 카드(식별자 `card:<번들 ID>:…`)가 모두 자식 없는 잎인 앱. 앱이 실제로 보이면 카드 아래에
     /// 앱 장면이 붙고, 앱 전환기의 카드는 잎이다. 앱 전환기에서도 마지막 앱은 runningForeground 로
-    /// 남는다 (실측 iOS 27.0 iPad·iPhone, 전체 화면·윈도우형 앱, 세로·가로). 윈도우형 앱에서 완전히 가려진 창의 카드도
-    /// 잎이었지만 일부만 가려진 창은 확인하지 못해, 앞 앱이 모두 잎일 때만 쓴다 (보이는 앱이 하나라도 있으면 모두 읽는다).
+    /// 남는다 (실측 iOS 27.0 iPad·iPhone, 전체 화면·윈도우형 앱, 세로·가로). 앱을 띄운 직후(홈 아이콘 탭·
+    /// simctl launch·앱에서 앱으로)에도 앞 앱이 된 첫 판정부터 카드에 앱 장면이 붙어 있었다 (iPhone 17, 23번).
+    /// 윈도우형 앱에서 완전히 가려진 창의 카드도 잎이었지만 일부만 가려진 창은 확인하지 못해, 앞 앱이 모두 잎일 때만
+    /// 쓴다 (보이는 앱이 하나라도 있으면 모두 읽는다).
     /// 카드가 없는 앱(Spotlight)은 넣지 않고, SpringBoard 를 읽지 못하면 빈 집합이다 (앞 앱을 그대로 읽는다).
     func cardOnlyApps() -> Set<String> {
       guard let root = try? XCUIApplication(bundleIdentifier: Self.springBoard).snapshot() else { return [] }
