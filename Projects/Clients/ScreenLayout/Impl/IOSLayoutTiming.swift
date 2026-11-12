@@ -8,7 +8,7 @@ struct IOSLayoutTiming: Sendable {
   var readyPollInterval: Duration = .milliseconds(200)
   /// 러너가 앞 앱이 하나가 되기를 기다리는 최대 초 (요청에 실어 보낸다). 전환 중 두 앱이 함께 앞인 시간 1~3초 넘음(실측).
   var settleSeconds: Double = 8
-  /// 요청 하나의 응답 제한. settle 8 + 뒤로 간 앱 실패 약 3초 + 읽기 + 여유.
+  /// 요청 하나의 응답 제한. settle 8 + 앱 전환기 판정용 SpringBoard 읽기(0.15~0.3초, 실측) + 뒤로 간 앱 실패 약 3초 + 읽기 + 여유.
   var requestTimeout: Duration = .seconds(40)
   /// response.json 을 확인하는 간격.
   var responsePollInterval: Duration = .milliseconds(50)
