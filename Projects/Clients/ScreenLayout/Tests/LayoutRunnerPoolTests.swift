@@ -53,7 +53,11 @@ struct LayoutRunnerPoolTests {
     }
     #expect(!exists(LayoutRunnerProtocol.responseFile))
 
-    try Data("{}".utf8).write(to: session.appending(path: LayoutRunnerProtocol.requestFile))
+    // 남은 화면 데이터는 흉내 러너가 읽지 않는 이름으로 만든다: request.json 을 쓰면 흉내 러너(5ms 폴링)가 가져가
+    // 폴더 정리 뒤에 response.json 을 쓸 수 있다.
+    for file in [LayoutRunnerProtocol.requestFile + ".tmp", LayoutRunnerProtocol.responseFile] {
+      try Data("{}".utf8).write(to: session.appending(path: file))
+    }
     for folder in [LayoutRunnerProtocol.resultBundle, "DerivedData/Logs/Test"] {
       try fileManager.createDirectory(at: session.appending(path: folder), withIntermediateDirectories: true)
     }
