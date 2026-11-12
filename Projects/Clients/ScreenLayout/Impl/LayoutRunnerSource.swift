@@ -241,7 +241,8 @@ extension LayoutRunnerSource {
     }
 
     /// 후보(SpringBoard 제외) 중 runningForeground 가 하나 이하가 될 때까지 0.2초 간격으로 settle 초까지 기다린다
-    /// (앱 전환 직후 약 1~2.5초 동안 이전 앱과 새 앱이 함께 runningForeground 다). 없으면 SpringBoard 를 읽는다.
+    /// (앱 전환 직후 약 1~2.5초 동안 이전 앱과 새 앱이 함께 runningForeground 다). 앞 앱이 모두 화면에 카드로만
+    /// 있으면(`cardOnlyApps`, 앱 전환기) 없는 것으로 본다. 앞 앱이 없으면 SpringBoard 를 읽는다.
     func snapshotForeground(candidates: [String], settle: Double) -> [String: Any] {
       let apps = candidates.filter { $0 != Self.springBoard }
       let deadline = Date().addingTimeInterval(settle)
@@ -253,10 +254,38 @@ extension LayoutRunnerSource {
         }
         RunLoop.current.run(until: Date().addingTimeInterval(0.2))
       }
+      if !foreground.isEmpty, cardOnlyApps().isSuperset(of: foreground) {
+        foreground = []
+      }
       if foreground.isEmpty {
         return snapshot(of: [Self.springBoard], system: true)
       }
       return snapshot(of: foreground.sorted(), system: false)
+    }
+
+    /// SpringBoard 의 앱 카드(식별자 `card:<번들 ID>:…`)가 모두 자식 없는 잎인 앱. 앱이 실제로 보이면 카드 아래에
+    /// 앱 장면이 붙고, 앱 전환기의 카드는 잎이다. 앱 전환기에서도 마지막 앱은 runningForeground 로
+    /// 남는다 (실측 iOS 27.0 iPad·iPhone, 전체 화면·윈도우형 앱, 세로·가로). 윈도우형 앱에서 완전히 가려진 창의 카드도
+    /// 잎이었지만 일부만 가려진 창은 확인하지 못해, 앞 앱이 모두 잎일 때만 쓴다 (보이는 앱이 하나라도 있으면 모두 읽는다).
+    /// 카드가 없는 앱(Spotlight)은 넣지 않고, SpringBoard 를 읽지 못하면 빈 집합이다 (앞 앱을 그대로 읽는다).
+    func cardOnlyApps() -> Set<String> {
+      guard let root = try? XCUIApplication(bundleIdentifier: Self.springBoard).snapshot() else { return [] }
+      var leaf: Set<String> = []
+      var live: Set<String> = []
+      var stack: [XCUIElementSnapshot] = [root]
+      while let element = stack.popLast() {
+        let parts = element.identifier.split(separator: ":", omittingEmptySubsequences: false)
+        if parts.count >= 2, parts[0] == "card" {
+          if element.children.isEmpty {
+            leaf.insert(String(parts[1]))
+          } else {
+            live.insert(String(parts[1]))
+          }
+          continue
+        }
+        stack.append(contentsOf: element.children)
+      }
+      return leaf.subtracting(live)
     }
 
     /// 앞 앱이 여럿이면 차례로 읽고, 읽지 못한 앱이 이제 앞에 없으면 빼고 계속한다 (전환이 settle 보다 길었던 경우).
