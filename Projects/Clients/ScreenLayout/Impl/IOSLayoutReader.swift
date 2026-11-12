@@ -82,7 +82,7 @@ struct IOSLayoutReader: Sendable {
     } catch {
       throw Self.mapSimulatorError(error)
     }
-    let candidates = running.map(\.rawValue).filter { $0 != IOSLayoutRunner.appBundleID }
+    let candidates = Self.candidates(from: running)
     let result = try await self.pool.request(
       .snapshot(bundleIDs: candidates, settle: self.timing.settleSeconds),
       to: session
@@ -91,7 +91,11 @@ struct IOSLayoutReader: Sendable {
     let snapshot = try Self.snapshot(from: response)
     let png = try await self.screenshot(session.deviceID)
     guard let size = Self.pngSize(png) else { throw .unreadable }
-    let nodes = try IOSLayoutConversion.nodes(from: snapshot.nodes, scale: session.scale)
+    let nodes = try IOSLayoutConversion.nodes(
+      from: snapshot.nodes,
+      scale: session.scale,
+      system: snapshot.system
+    )
     return .snapshot(LayoutSnapshot(
       deviceName: deviceName,
       capturedAt: Date(),
@@ -120,6 +124,21 @@ struct IOSLayoutReader: Sendable {
   }
 
   // MARK: - 순수
+
+  /// 앞 앱 후보에서 빼는 앱: SimLauncher 레이아웃 러너와, 화면이 둘인 iPhone Duo 에서 늘 앞(runningForeground)에 있는
+  /// 안쪽 화면용 시스템 서비스 둘 (실측 Xcode 27.2·iOS 27.1. 바깥 화면에는 보이지 않는데, 빼지 않으면 홈 화면에서 SpringBoard 대신
+  /// 읽히고 앱 화면에서는 앞 앱이 하나가 되기를 settle 끝까지 기다린 뒤 앱 위에 겹쳐 그려졌다. iPhone 17 에서는 WidgetRenderer 가
+  /// 떠 있어도 앞에 있지 않았다. iPad Dock 폴더 팝오버처럼 이 서비스가 실제로 보이는 경우는 확인하지 못했다). 실측한 이름만 적는다.
+  static let excludedCandidates: Set<String> = [
+    IOSLayoutRunner.appBundleID,
+    "com.apple.DocumentManager.DockFolderViewService",
+    "com.apple.chrono.WidgetRenderer-Default",
+  ]
+
+  /// 실행 중 앱 → 러너에 넘길 앞 앱 후보 (`excludedCandidates` 를 뺀다, 순서 유지).
+  static func candidates(from running: [AppBundleID]) -> [String] {
+    running.map(\.rawValue).filter { !self.excludedCandidates.contains($0) }
+  }
 
   /// 러너 응답 → 스냅샷. 실패 값은 6.1 표대로, 노드가 넘쳤으면(`truncated`·상한 초과) `.unreadable`.
   static func snapshot(
