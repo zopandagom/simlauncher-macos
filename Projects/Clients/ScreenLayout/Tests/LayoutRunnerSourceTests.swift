@@ -57,6 +57,25 @@ struct LayoutRunnerSourceTests {
     }
   }
 
+  @Test("러너는 앞 앱이 모두 SpringBoard 카드로만 있으면(앱 전환기) SpringBoard 를 읽는다")
+  func allCardOnlyReadsSpringBoard() throws {
+    let tests = LayoutRunnerSource.tests
+    for token in [
+      "func cardOnlyApps() -> Set<String>", "XCUIApplication(bundleIdentifier: Self.springBoard).snapshot()",
+      "parts[0] == \"card\"", "element.children.isEmpty", "leaf.subtracting(live)",
+    ] {
+      #expect(tests.contains(token), "\(token)")
+    }
+    // 판정은 settle 대기 뒤, SpringBoard 로 넘어가는 판정 앞에 있다.
+    let filter = try #require(tests
+      .range(of: "if !foreground.isEmpty, cardOnlyApps().isSuperset(of: foreground) {\n      foreground = []"))
+    let settle = try #require(tests.range(of: "if foreground.count <= 1 || Date() >= deadline"))
+    let fallback = try #require(tests
+      .range(of: "if foreground.isEmpty {\n      return snapshot(of: [Self.springBoard]"))
+    #expect(settle.upperBound < filter.lowerBound)
+    #expect(filter.upperBound < fallback.lowerBound)
+  }
+
   @Test("호스트가 쓰는 파일·환경·키·명령·실패 값이 모두 러너 원문에 따옴표 문자열로 있다")
   func contract() {
     let tests = LayoutRunnerSource.tests
