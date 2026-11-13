@@ -77,7 +77,7 @@
 | Developer ID 인증서: 앱은 Xcode 자동 서명(클라우드 관리 인증서), dmg 서명용 로컬 Developer ID Application 인증서 하나. `notarytool` 자격 증명은 키체인 프로필 `simlauncher-notary`. 커밋하지 않는다 ([RELEASING.md](RELEASING.md)). CI(릴리스 워크플로)는 같은 Developer ID Application 인증서(.p12)와 App Store Connect API 키를 `release` 환경 시크릿으로 받아 서명·공증한다(2026-11-13). 인증서는 2027-02-01 에 만료되므로 그 전에 새로 만들어 키체인·시크릿을 바꾼다 | 배포 전 | ☑ |
 | `LICENSE`(MIT) | 공개 전 | ☑ |
 | GitHub 설정: 공개 전환, 외부 기여자 워크플로 승인, Secret scanning·push protection, main 룰셋(필수 체크 `ci-result`) | 공개 시 | ☑ |
-| GitHub 릴리스 설정: 버전 태그 룰셋(만들기는 관리자만), `release` 환경(배포는 main·버전 태그만)과 그 환경 시크릿(Developer ID .p12·암호, App Store Connect API 키·키 ID·발급자 ID) ([RELEASING.md](RELEASING.md) 2.1) | 1.2.0 전 | ☐ |
+| GitHub 릴리스 설정: 버전 태그 룰셋(만들기는 관리자만), `release` 환경(배포는 main·버전 태그만)과 그 환경 시크릿(Developer ID .p12·암호, App Store Connect API 키·키 ID·발급자 ID) ([RELEASING.md](RELEASING.md) 2.1, 2026-11-13 설정·시험 실행 확인) | 1.2.0 전 | ☑ |
 | 배포 경로: GitHub Releases 에 공증된 dmg. 버전 태그 push 로 릴리스 워크플로(`.github/workflows/release.yml`)가 게시한다(예비 경로 `make release`). Homebrew Cask 는 하지 않는다 | 6단계 | ☑ |
 
 ## 위험과 대응
