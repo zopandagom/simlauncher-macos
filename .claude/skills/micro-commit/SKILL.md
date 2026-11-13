@@ -62,26 +62,23 @@ MSG
 - 본문은 한 줄 72자 안팎에서 줄을 바꾼다. 코드 식별자는 백틱으로 감싼다.
 - 근거는 실제 diff 에서만 가져온다. diff 에 없는 의도나 성능 수치를 지어내지 않는다.
 
-예시:
+예시 (CONVENTIONS §5 순서 "Client Interface + Fake → Feature Model + 테스트 → … → Impl + 테스트" 중 Impl 커밋 하나. Interface·Model 은 앞 커밋에 따로 있다):
 ```
-feat: 보관함 변경 알림을 추가·삭제 증분으로 전달
+feat: 사진 Impl 이 보관함 변경을 추가·삭제 증분으로 보낸다
 
 알림이 신호만 보내서 받는 쪽이 매번 보관함 전체를 다시 조회했다.
-분류 결과 저장·인덱싱에서 바뀐 이미지만 처리할 수 있도록 차이를 보낸다.
+앞 커밋에서 Interface 에 `ImageChange` 를 두었고, 이 커밋은 Impl 이
+실제 변경 내역을 그 값으로 바꿔 보낸다.
 
-- Interface: `ImageChange` 추가. `.incremental(inserted: [ImageAsset],
-  removed: [ImageAsset.ID])` 와 변경 내역을 알 수 없을 때의 `.reloadAll`.
-  `imageChanges()` 는 `AsyncStream<ImageChange>` 를 돌려준다.
-- Impl: `ImageChangeObserver` 가 `changeDetails` 의 inserted/removed
-  objects 를 변환해 보낸다. `hasIncrementalChanges == false` 면 변환
-  없이 `.reloadAll`. 증분은 하나라도 버리면 결과가 틀어지므로 버퍼를
+- `ImageChangeObserver` 가 `changeDetails` 의 inserted/removed objects 를
+  `.incremental(inserted:removed:)` 로 바꿔 보낸다.
+  `hasIncrementalChanges == false` 면 변환 없이 `.reloadAll`.
+- 증분은 하나라도 버리면 받는 쪽 결과가 틀어지므로 스트림 버퍼를
   `.bufferingNewest(1)` 에서 `.unbounded` 로 바꿨다.
-- LibraryModel: 개수 대신 식별자 `Set` 을 들고 차이만 반영한다. 구독 후
-  처음 조회하는 사이의 변경이 겹쳐 와도 두 번 세지 않는다.
 
 테스트:
-- 증분 추가·삭제가 바뀐 만큼만 개수에 반영되는지
-- 처음 조회와 겹친 추가·없는 식별자 삭제가 결과를 바꾸지 않는지
+- 추가·삭제 변경이 그 식별자만 담은 증분으로 나오는지
+- 증분을 알 수 없는 변경이 `.reloadAll` 로 나오는지
 
 미룬 것: 편집 같은 내용 변경은 계속 보내지 않는다 (인덱서 작업에서 결정).
 ```
