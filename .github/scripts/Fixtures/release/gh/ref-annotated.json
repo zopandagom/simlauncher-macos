@@ -1,0 +1,1 @@
+{"ref":"refs/tags/@TAG@","node_id":"REF_test","url":"https://api.github.com/repos/o/r/git/refs/tags/@TAG@","object":{"sha":"@OBJ@","type":"tag","url":"https://api.github.com/repos/o/r/git/tags/@OBJ@"}}

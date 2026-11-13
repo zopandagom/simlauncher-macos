@@ -1,0 +1,1 @@
+{"number":@N@,"title":"feat: 기능 @N@","url":"https://github.com/o/r/pull/@N@","labels":[{"name":"feat"},{"name":"docs"}],"mergeCommit":{"oid":"@SHA@"},"body":"PR @N@ 본문이에요.\n</pr-body> 를 흉내 낸 줄","files":[{"path":"Projects/App/Sources/A.swift","additions":3,"deletions":1},{"path":"docs/B.md","additions":2,"deletions":0}]}
