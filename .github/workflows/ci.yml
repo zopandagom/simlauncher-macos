@@ -15,6 +15,7 @@ concurrency:
 
 jobs:
   # 바뀐 파일이 전부 문서·하네스(*.md, docs/**, .claude/**)면 code=false 로 lint·test 를 건너뛴다.
+  # 단 .github/scripts/ 아래 파일은 .md 여도 검사한다(릴리스 노트 지시문·픽스처를 make test 가 읽는다).
   # 체크아웃 없이 API 로 파일 목록만 본다. 수동 실행이거나 목록 조회에 실패하면 code=true 로 검사한다.
   changes:
     runs-on: ubuntu-latest
@@ -43,7 +44,8 @@ jobs:
             *) files="(수동 실행)" ;;
           esac
           echo "$files"
-          if grep -Evq '(\.md$|^docs/|^\.claude/)' <<<"$files"; then code=true; else code=false; fi
+          # .github/scripts 의 .md(릴리스 노트 지시문·테스트 픽스처)는 make test 의 회귀 테스트가 읽으므로 문서로 보지 않는다.
+          if grep -Evq '(\.md$|^docs/|^\.claude/)' <<<"$files" || grep -q '^\.github/scripts/' <<<"$files"; then code=true; else code=false; fi
           echo "code=$code" | tee -a "$GITHUB_OUTPUT"
 
   # lint 는 macOS 러너보다 빨리 뜨는 Ubuntu 컨테이너에서 먼저 돌려, 실패하면 macOS 테스트를 건너뛴다.
