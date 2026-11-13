@@ -19,8 +19,8 @@ CATALOG_FIXTURES := .github/scripts/Fixtures
 # make release 가 쓰는 공증 키체인 프로필 이름 (xcrun notarytool store-credentials 로 저장, docs/RELEASING.md)
 NOTARY_PROFILE ?= simlauncher-notary
 
-.PHONY: bootstrap generate project build test test-hooks lint format clean sample catalog-check catalog-test release \
-	layout-runner-check
+.PHONY: bootstrap generate project build test test-hooks release-scripts-test lint format clean sample catalog-check \
+	catalog-test release layout-runner-check
 
 ## 최초 1회: 도구 설치 + git 훅 연결
 bootstrap:
@@ -43,6 +43,7 @@ build: project
 test: project
 	rm -rf $(RESULT_BUNDLE)
 	$(MAKE) --no-print-directory test-hooks
+	$(MAKE) --no-print-directory release-scripts-test
 	set -o pipefail && $(MISE) xcodebuild test \
 		-workspace $(WORKSPACE) -scheme $(SCHEME) -destination '$(DESTINATION)' \
 		-resultBundlePath $(RESULT_BUNDLE) \
@@ -51,6 +52,11 @@ test: project
 ## git 훅 동작 테스트: 임시 레포에서 main 커밋·머지 커밋·push 차단과 기능 브랜치 통과 확인 (make test 가 포함)
 test-hooks:
 	./.githooks/test-hooks.sh
+
+## 릴리스 워크플로(.github/workflows/release.yml) 도우미 스크립트 회귀 테스트: 임시 레포와 가짜 gh 로 태그·버전·게시 판정과
+## 노트 재료·요약 검사·조립을 확인한다 (.github/scripts/Fixtures/release, 네트워크 없음). make test 와 release.yml 의 notes 잡이 포함
+release-scripts-test:
+	./.github/scripts/test-release-scripts.sh
 
 # SwiftFormat 은 숨김 폴더(.github)를 순회하지 않아 그 안의 Swift 가 든 폴더를 경로로 넘긴다. SwiftLint 는 순회한다.
 lint:
@@ -119,7 +125,8 @@ catalog-test: $(CATALOG_VALIDATOR)
 	done
 
 ## 배포 dmg: archive → Developer ID 내보내기 → (확인 뒤) 앱 공증·staple → dmg 서명·공증·staple → 검사. 준비·절차: docs/RELEASING.md
-## 공증 자격 증명은 키체인 프로필 이름만 넘긴다: NOTARY_PROFILE=<이름> make release
+## 로컬(예비 경로)은 공증 자격 증명으로 키체인 프로필 이름만 넘긴다: NOTARY_PROFILE=<이름> make release
+## CI 모드(release.yml)는 환경 변수로 임시 키체인·API 키를 받는다 (RELEASE_CI=1 등, docs/RELEASING.md 4절)
 release: project
 	NOTARY_PROFILE=$(NOTARY_PROFILE) WORKSPACE=$(WORKSPACE) ./scripts/release.sh
 
