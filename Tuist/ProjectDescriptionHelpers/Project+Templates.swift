@@ -7,13 +7,14 @@ public enum Env {
   public static let deploymentTargets: DeploymentTargets = .macOS("26.0")
   /// 앱 타깃(App·Example) Info.plist 에 공통으로 넣는 값.
   static let appInfoPlist: [String: Plist.Value] = [:]
-  /// Apple Developer Program 팀 ID(공개 값). 배포는 `make release` 가 Xcode 자동 서명(클라우드 관리 Developer ID 인증서)으로 내보낸다.
+  /// Apple Developer Program 팀 ID(공개 값). 배포 서명은 릴리스 워크플로(`release` 환경의 Developer ID .p12, manual export)가 하고, 예비 경로
+  /// `make release` 는 Xcode 자동 서명(클라우드 관리 Developer ID 인증서)으로 내보낸다 (docs/RELEASING.md).
   /// 개발 실행은 `CODE_SIGN_IDENTITY = "-"`(Tuist 기본)라 ad-hoc 으로 돌고, `make build`·`make test`·CI 는 서명하지 않는다.
   static let developmentTeam = "XHV4ZL5K8T"
-  /// 배포 버전. `make release` 가 dmg 이름(`SimLauncher-<버전>.dmg`)에 쓴다. 올릴 때 여기만 고친다 (docs/RELEASING.md).
-  static let marketingVersion = "1.1.0"
-  /// 빌드 번호. 배포할 때마다 1씩 올린다 (버전이 바뀌어도 되돌리지 않는다. 1.0.0 은 1, 1.1.0 은 2).
-  static let buildNumber = "2"
+  /// 배포 버전. 버전 태그와 같아야 하고(릴리스 워크플로가 검사), dmg 이름(`SimLauncher-<버전>.dmg`)에 쓰인다. 올릴 때 여기만 고친다 (docs/RELEASING.md).
+  static let marketingVersion = "1.2.0"
+  /// 빌드 번호. 배포할 때마다 1씩 올린다 (버전이 바뀌어도 되돌리지 않는다. 1.0.0 은 1, 1.1.0 은 2, 1.2.0 은 3).
+  static let buildNumber = "3"
   /// 앱 타깃(`SimLauncher`)에만 주는 설정. Example 앱·모듈·테스트에는 주지 않는다.
   static let appTargetSettings: SettingsDictionary = [
     // 공증 필수. entitlement 없이 simctl·xcodebuild·URLSession 등이 돈다 (실측, docs/RELEASING.md)
