@@ -54,7 +54,7 @@
 - **Android 앱을 확인하려면**: 저장 공간이 넉넉해야 해요. Android 도구는 약 2.5 GB 를 내려받고 설치하면 약 7 GB 가 되며(설치하는 동안에는 잠시 최대 약 9 GB), Android 기기는 한 대를 쓰기 시작하면 약 5 GB 를 차지해요. Android 만 쓴다면 Xcode 는 없어도 돼요.
 
 ## 설치하기
-1. [GitHub Releases 최신 페이지](https://github.com/zopandagom/simlauncher-macos/releases/latest)에서 `SimLauncher-<버전>.dmg`(예: `SimLauncher-1.1.0.dmg`)를 내려받으세요.
+1. [GitHub Releases 최신 페이지](https://github.com/zopandagom/simlauncher-macos/releases/latest)에서 `SimLauncher-<버전>.dmg`(예: `SimLauncher-1.2.0.dmg`)를 내려받으세요.
 2. 받은 dmg 를 열고 **SimLauncher** 아이콘을 **Applications**(응용 프로그램) 폴더로 끌어다 놓으세요.
 
    ![dmg 창](docs/media/install-dmg.png)
