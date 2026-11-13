@@ -84,20 +84,20 @@ public struct RecordingActivity: Hashable, Sendable {
     self.phases[id] = .recording(startedAt: date)
   }
 
-  /// 행의 "중지". 시작 중·녹화 중이면 `.stopping(reason: .user)` 으로 바꾸고 true (호출한 쪽이 녹화 Task 를 취소한다).
+  /// 행의 "중지". 시작 중·녹화 중이면 `.stopping`(`reason: .user`) 으로 바꾸고 true (호출한 쪽이 녹화 Task 를 취소한다).
   /// 단계가 없거나 이미 멈추는 중이면 false.
   mutating func requestStop(on id: VirtualDevice.ID) -> Bool {
     self.requestStop(on: id, reason: .user)
   }
 
-  /// 단계가 시작 중·녹화 중이고 `list` 에서 그 기기가 없거나 `.booted` 가 아니면 `.stopping(reason: .deviceStopped)` 으로
+  /// 단계가 시작 중·녹화 중이고 `list` 에서 그 기기가 없거나 `.booted` 가 아니면 `.stopping`(`reason: .deviceStopped`) 으로
   /// 바꾸고 그 id 들을 돌려준다 (simctl 은 기기가 꺼져도 끝나지 않는다, 측정).
   mutating func requestStops(notBootedIn list: DeviceList) -> [VirtualDevice.ID] {
     let ids = self.phases.keys.filter { list.device(id: $0)?.state != .booted }
     return ids.filter { self.requestStop(on: $0, reason: .deviceStopped) }
   }
 
-  /// 시작 중·녹화 중인 모든 기기를 `.stopping(reason: .appTermination)` 으로 바꾸고 그 id 들을 돌려준다 (앱 종료).
+  /// 시작 중·녹화 중인 모든 기기를 `.stopping`(`reason: .appTermination`) 으로 바꾸고 그 id 들을 돌려준다 (앱 종료).
   mutating func requestStopAll() -> [VirtualDevice.ID] {
     let ids = Array(self.phases.keys)
     return ids.filter { self.requestStop(on: $0, reason: .appTermination) }
