@@ -32,7 +32,7 @@
 - **모듈 구조**: Tuist 로 Feature 7개 · Client 12개(Interface / Impl / Testing) · Shared 로 나누고, 규칙 기반 단방향 MV 를 썼어요. 모듈 경계는 빌드와 lint 로 지켜요: Feature 끼리 의존하지 못하게 Tuist 템플릿이 막고, 부수효과(`Process`·네트워크·UserDefaults 등)는 Client Impl 에서만, Impl 은 App 에서만 import 하도록 SwiftLint 사용자 규칙으로 만들어 커밋 훅과 CI 에서 검사해요.
 - **안전한 동시성과 테스트**: Swift 6 strict concurrency. Feature 는 Fake Client 로, Client Impl·도메인 규칙(Core)은 단위 테스트로 검증해 테스트가 약 2,400개예요.
 - **외부 도구 다루기**: `simctl`·Android `emulator`·`adb` 를 `Process` 로 실행하고, 켜는 중·끄는 중·실패·취소 같은 상태를 화면에 그대로 보여요. Android SDK 는 Google 저장소에서 필요한 패키지만 받아 Android Studio 와 같은 형식으로 설치해, Studio 와 함께 써도 다시 받지 않아요.
-- **배포**: `make release` 한 번으로 Developer ID 서명 → Apple 공증 → staple → 검사까지 마친 dmg 를 만들고, GitHub Releases 로 배포해요 ([RELEASING.md](docs/RELEASING.md)).
+- **배포**: 버전 태그를 push 하면 GitHub Actions 가 Developer ID 서명 → Apple 공증 → staple → 검사까지 마친 dmg 를 만들고, 이전 버전 이후 머지된 PR 목록과 Claude 가 요약한 바뀐 점으로 노트를 써서 GitHub Releases 에 게시해요. 같은 절차를 로컬에서 `make release` 로도 돌릴 수 있어요 ([RELEASING.md](docs/RELEASING.md)).
 - **개발 흐름**: main 직접 커밋을 막는 git 훅, PR 마다 lint·테스트 CI 와 자동 코드 리뷰, 문서([아키텍처](docs/ARCHITECTURE.md)·[규칙](docs/CONVENTIONS.md)·[로드맵](docs/DEVELOPMENT_PLAN.md))를 코드와 같은 PR 에서 고치는 방식으로 개발했어요. [Claude Code](https://claude.com/claude-code) 와 함께 개발하며, 작업 규칙과 리뷰 흐름을 레포에 정의해 두었어요([CLAUDE.md](CLAUDE.md), `.claude/skills`).
 
 ### 앞으로 개선할 점
@@ -364,14 +364,15 @@ SimLauncher 는 공개 레포라서, 어느 회사든 자기 빌드 저장소에
 ```bash
 make bootstrap   # mise 로 tuist·swiftlint·swiftformat·xcbeautify 설치, git 훅(pre-commit: main 커밋 차단·String Catalog stale 표시 차단·lint, pre-merge-commit: main 머지 커밋 차단, pre-push: main push 차단) 연결
 make generate    # SimLauncher.xcworkspace 생성 후 Xcode 로 열기
-make test        # 전체 모듈 빌드 + 테스트 + git 훅 테스트
+make test        # 전체 모듈 빌드 + 테스트 + git 훅 테스트 + 릴리스 도우미 스크립트 테스트
 make test-hooks  # git 훅 동작 테스트만 (임시 레포에서 main 커밋·머지 커밋·push 차단, String Catalog stale 표시 커밋 차단과 기능 브랜치 통과 확인)
 make lint        # 포맷·아키텍처 규칙 검사 (make format 으로 자동 수정)
 make sample      # 샘플 iOS 앱을 시뮬레이터용으로 빌드해 build/SampleApp.zip 으로 묶기 (SAMPLE_BUILD_NUMBER=42 로 빌드 번호)
 make catalog-check CATALOG=catalog.json   # catalog.json 하나를 앱과 같은 규칙으로 검사
 make catalog-test  # 샘플 카탈로그 생성기·검증기 회귀 테스트
 make layout-runner-check  # iOS 레이아웃 러너 소스를 내보내 실제로 빌드해 보기 (러너 소스·Xcode 를 바꿀 때, make test·CI 밖)
-make release     # 서명·공증 dmg 만들기 (준비: docs/RELEASING.md)
+make release-scripts-test  # 릴리스 워크플로 도우미 스크립트(태그 검사·노트) 회귀 테스트
+make release     # 서명·공증 dmg 를 로컬에서 만들기 (예비 경로. 보통은 태그 push 로 워크플로가 게시, 준비: docs/RELEASING.md)
 ```
 
 ### 샘플 카탈로그 운영
