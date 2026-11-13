@@ -1,6 +1,6 @@
 # SimLauncher
 
-iPhone·iPad 가 없는 인원이 Mac 만으로 개발 중인 iOS 앱을 테스트할 수 있게, iOS 시뮬레이터를 띄우고 iOS 앱 빌드(로컬 .app 또는 URL)를 설치·실행해 주는 Mac 앱. 설치 후 실행하거나 기기 행 "앱 실행…"(이미 설치된 앱을 골라 실행)으로 실행한 iOS 앱의 출력(print·NSLog·Logger)과 Android 앱의 logcat(메인 프로세스)은 기기 행 "로그 보기" 창에서 실시간으로 보고 거를 수 있고, 자주 쓰는 필터를 이름 붙여 저장해 모든 기기의 로그 창에서 불러 쓸 수 있다 (앱 로그 보기 L-A·L-B·L-C). 켜진 iOS·Android 기기 행 "레이아웃 보기" 창에서는 화면의 레이아웃(스크린샷 위 뷰 테두리, 클릭한 뷰의 위치·크기)을 본다 (iOS 는 앱에 동봉한 XCUITest 러너를 처음 쓸 때 사용자 Mac 에서 빌드해 기기에 띄워 읽는다, LV-A·LV-B). Android 에뮬레이터 지원은 로드맵 7단계에서 진행 중이다 (지금은 사이드바의 Android 화면에서 Android SDK 도구 확인·설치와 Android 기기(AVD, Android Studio 로 만든 기기 포함) 목록·켜기·끄기·만들기(폴더블 포함)·삭제·초기화와 켜진 기기(여러 대를 골라 한 번에도)에 apk(로컬 파일·URL·카탈로그) 설치·실행(로그 받기)·링크 열기와 켜진 기기 화면의 스크린샷·녹화·레이아웃 보기까지). **비개발자도 Xcode 설치·라이선스 동의·첫 실행 준비(앱이 단계별로 안내) 외에는 터미널·Xcode 조작 없이, 앱 화면에서 시뮬레이터 실행과 iOS 앱 설치·실행을 끝낼 수 있다.**
+iPhone·iPad 가 없는 인원이 Mac 만으로 개발 중인 iOS 앱을 테스트할 수 있게, iOS 시뮬레이터를 띄우고 iOS 앱 빌드(로컬 .app 또는 URL)를 설치·실행해 주는 Mac 앱. 설치 후 실행하거나 기기 행 "앱 실행…"(이미 설치된 앱을 골라 실행)으로 실행한 iOS 앱의 출력(print·NSLog·Logger)과 Android 앱의 logcat(메인 프로세스)은 기기 행 "로그 보기" 창에서 실시간으로 보고 거를 수 있고, 자주 쓰는 필터를 이름 붙여 저장해 모든 기기의 로그 창에서 불러 쓸 수 있다 (앱 로그 보기 L-A·L-B·L-C). 켜진 iOS·Android 기기 행 "레이아웃 보기" 창에서는 화면의 레이아웃(스크린샷 위 뷰 테두리, 클릭한 뷰의 위치·크기)을 본다 (iOS 는 앱에 동봉한 XCUITest 러너를 처음 쓸 때 사용자 Mac 에서 빌드해 기기에 띄워 읽는다, LV-A·LV-B). Android 에뮬레이터 지원은 로드맵 7단계로 끝났다 (1.1.0. 사이드바의 Android 화면에서 Android SDK 도구 확인·설치와 Android 기기(AVD, Android Studio 로 만든 기기 포함) 목록·켜기·끄기·만들기(폴더블 포함)·삭제·초기화와 켜진 기기(여러 대를 골라 한 번에도)에 apk(로컬 파일·URL·카탈로그) 설치·실행(로그 받기)·링크 열기와 켜진 기기 화면의 스크린샷·녹화·레이아웃 보기까지). **비개발자도 Xcode 설치·라이선스 동의·첫 실행 준비(앱이 단계별로 안내) 외에는 터미널·Xcode 조작 없이, 앱 화면에서 시뮬레이터 실행과 iOS 앱 설치·실행을 끝낼 수 있다.**
 네트워크는 사용자가 등록한 빌드 카탈로그(`catalog.json`)와, 사용자가 고르거나 입력한 URL 에서 iOS 앱 빌드(.app 또는 .app 을 담은 zip)나 Android 앱 빌드(.apk)를 내려받을 때, 사용자가 설치를 고를 때 쓸 Xcode 의 기본 iOS 시뮬레이터 런타임을 Apple 서버에서 설치할 때, 사용자가 Android 도구 설치를 고를 때 Google 의 Android SDK 저장소(`dl.google.com/android/repository`)에서 목록·패키지를 받을 때만 쓴다. 다만 Android 기기를 켤 때(와 에뮬레이터 창의 지도 같은 기능을 쓸 때) Android 에뮬레이터가 스스로 Google 서버(`dl.google.com` 등)에 접속하는 것(업데이트 정보·설정 파일)은 끌 수 없어 그대로 두고(사용 통계·크래시 보고는 끈다), 에뮬레이터 안의 Android 는 실제 기기처럼 인터넷을 쓴다(테스트하는 앱과 Google 서비스. SimLauncher 가 보내는 데이터가 아니다). 공개 레포로, 어느 회사든 자기 빌드 저장소에 맞춰 쓸 수 있게 한다.
 
 ## 먼저 읽을 문서
@@ -14,13 +14,14 @@ iPhone·iPad 가 없는 인원이 Mac 만으로 개발 중인 iOS 앱을 테스�
 | `make bootstrap` | 최초 1회: mise 도구 설치, git 훅 연결 |
 | `make generate` | Tuist 로 워크스페이스 생성 후 Xcode 로 열기 (`.xcodeproj` 는 커밋하지 않는다). 열지 않으려면 `make project` |
 | `make lint` / `make format` | SwiftFormat + SwiftLint (아키텍처 규칙 포함) |
-| `make test` | 전체 모듈 빌드 + 테스트 (`SimLauncher-Workspace` 스킴, 대상은 `Makefile` 의 `DESTINATION`) + git 훅 테스트 |
+| `make test` | 전체 모듈 빌드 + 테스트 (`SimLauncher-Workspace` 스킴, 대상은 `Makefile` 의 `DESTINATION`) + git 훅 테스트 + 릴리스 도우미 스크립트 테스트 |
 | `make test-hooks` | git 훅 동작 테스트: 임시 레포에서 main 커밋·머지 커밋·push 차단, String Catalog stale 표시 커밋 차단과 기능 브랜치 통과 확인 |
 | `make sample` | 카탈로그 예시 워크플로가 올리는 샘플 iOS 앱을 시뮬레이터용으로 빌드해 `build/SampleApp.zip` 으로 묶기 (빌드 번호: `SAMPLE_BUILD_NUMBER=42 make sample`) |
 | `make catalog-check CATALOG=<파일>` | `catalog.json` 하나를 앱과 같은 규칙(Core `BuildCatalog`·5 MiB)으로 검사 |
 | `make catalog-test` | 샘플 카탈로그 생성기·검증기 회귀 테스트 (`.github/scripts/Fixtures`) |
 | `make layout-runner-check` | iOS 레이아웃 러너 소스(ScreenLayout Impl 의 `LayoutRunnerSource`)를 `build/layout-runner` 로 내보내 실제로 빌드해 본다. 러너 소스·Xcode 를 바꿀 때 실행 (`make test`·CI 밖: iOS 시뮬레이터 SDK 필요) |
-| `make release` | 배포 dmg 만들기: archive → Developer ID 내보내기 → 확인 뒤 앱·dmg 공증·staple → 검사 (`build/release/SimLauncher-<버전>.dmg`, 준비: docs/RELEASING.md). 공증 제출 전에 묻는다 |
+| `make release-scripts-test` | 릴리스 워크플로 도우미 스크립트(태그 검사·노트, `.github/scripts/release-*`) 회귀 테스트 |
+| `make release` | 예비 배포 경로(기본은 버전 태그 push 로 도는 `.github/workflows/release.yml`): archive → Developer ID 내보내기 → 확인 뒤 앱·dmg 공증·staple → 검사 (`build/release/SimLauncher-<버전>.dmg`, 준비: docs/RELEASING.md). 공증 제출 전에 묻는다 |
 
 ## 작업 흐름 (`/verify`·`/arch-review`·`/micro-commit` 은 서브에이전트로 실행되어 요약만 돌려주고, `/pr` 은 현재 대화에서 실행된다)
 | 순서 | 스킬 | 하는 일 |
@@ -41,7 +42,7 @@ Projects/
 Tuist/ProjectDescriptionHelpers/   모듈 이름(Module.swift)과 타깃 템플릿
 Examples/SampleApp/                카탈로그 예시 워크플로가 빌드하는 샘플 iOS 앱 (워크스페이스·make test 밖, 템플릿 밖 독립 매니페스트)
 Examples/SampleAndroidApp/         같은 워크플로가 빌드하는 샘플 Android 앱 (Gradle·래퍼 없음, 로컬 빌드 없음, 공개해 둔(비밀이 아닌) 샘플 전용 서명 개인 키·인증서)
-scripts/                           배포 스크립트 (make release → release.sh, docs/RELEASING.md)
+scripts/                           배포 스크립트 (release.sh: make release·릴리스 워크플로가 함께 씀, ci-keychain.sh: CI 임시 키체인, docs/RELEASING.md)
 ```
 의존 방향: `App → Feature → Client Interface`, `App → Client Impl → Client Interface`. 모두 Shared 를 쓸 수 있고, Shared 는 아무것도 의존하지 않는다.
 

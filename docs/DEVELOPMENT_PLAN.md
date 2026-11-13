@@ -4,7 +4,7 @@
 - 누구에게: iPhone·iPad 가 없어 개발 중인 iOS 앱을 테스트하지 못하는 인원 (비개발자 포함). 공개 레포로 열어, 어느 회사든 자기 인프라(빌드 저장소)에 맞춰 쓸 수 있게 한다
 - 무엇을: Mac 만 있으면 iOS 시뮬레이터를 띄우고 iOS 앱 빌드를 설치·실행해 테스트할 수 있게 한다
 - 참고: 카카오페이 [멀티버스](https://tech.kakaopay.com/post/multiverse/) (가상 기기 + 앱 센터 + 테스트 편의 기능)
-- 범위: iOS 시뮬레이터 먼저(0~6단계, 1.0.0). Android 에뮬레이터는 7단계에서 iOS 와 같은 기능(기기 목록·켜기·끄기·만들기·삭제·초기화, apk 설치(파일·URL·카탈로그)·실행·딥링크, 스크린샷·녹화, 여러 기기 설치)을 더해 1.1.0 으로 낸다 (진행 중)
+- 범위: iOS 시뮬레이터 먼저(0~6단계, 1.0.0). Android 에뮬레이터는 7단계에서 iOS 와 같은 기능(기기 목록·켜기·끄기·만들기·삭제·초기화, apk 설치(파일·URL·카탈로그)·실행·딥링크, 스크린샷·녹화, 여러 기기 설치)을 더해 1.1.0 으로 냈다 (2026-11-02 게시)
 - 화면 언어: 한국어 먼저. 문자열은 처음부터 String Catalog(`Localizable.xcstrings`)에 둬서 영어를 나중에 추가한다
 - 라이선스: MIT
 - 출시 목표: 1.0.0 — Developer ID 서명·공증 dmg 를 GitHub Releases 에 올린다 (로드맵 6단계). 2026-10-27 에 [1.0.0](https://github.com/zopandagom/simlauncher-macos/releases/tag/1.0.0) 을 게시했다
@@ -49,7 +49,7 @@
 | 7 | Android 에뮬레이터 (Android Studio·Java 없이 앱이 SDK 를 직접 설치, 사이드바로 iOS / Android 분리, iOS 와 같은 기능). 7-A 사이드바 + Android SDK 확인·설치(라이선스 동의, 진행률·취소) + SDK 위치 설정 (`AndroidSDK` Client, `AndroidSetup` Feature) / 7-B AVD 목록·켜기·끄기·만들기·삭제·초기화·함께 켜기 (`AndroidEmulator` Client, `AndroidDevices` Feature) / 7-C 로컬 apk 설치·실행·딥링크·드래그 앤 드롭 / 7-D URL 설치 + 카탈로그 schemaVersion 2 (앱마다 platform, 1·2 둘 다 읽는다) / 7-E 스크린샷·녹화·여러 기기 설치 / 7-E2 다양한 기기: Android Studio 로 만든 기기(폴더블 등)의 스크린샷·녹화 호환과 목록의 폴더블 표시, 만들기 시트의 Studio 안내, 내장 폴더블 화면 모양(앱이 접히는 폴더블을 만든다) / 7-F README 보강·1.1.0 릴리스 + `release.sh` 후속 | SDK 가 없는 Mac 에서 앱 화면만으로 Android 도구를 설치하고, Android 기기를 켜 apk 를 설치·실행하며, iOS 와 같은 테스트 편의 기능을 쓴다. 1.1.0 dmg 를 게시한다 |
 | 이후 | 업데이트 알림(새 버전 알리고 다운로드 페이지 열기), 비공개 저장소 인증, 업데이트 자동 교체(서명·팀 ID 검증 필수), 설치된 앱 관리(`uninstall` 등. 목록 `listapps` 는 iOS 행 "앱 실행…" 이 이미 쓰고, `uninstall` 은 레이아웃 러너 정리에만 쓴다), 테스트 조건 바꾸기(외관·언어·위치·푸시·권한), 앱 로그 보기 넓히기(L-A iOS·L-B Android logcat 의 로그 창·필터와 L-C 필터 저장은 끝. 로그를 개발자에게 전달하기 쉽게 하는 것은 아직 정하지 않았다), 화면 레이아웃 보기(디자이너용, iOS·Android: 실행 중인 앱의 뷰마다 테두리를 그리고, 뷰를 클릭하면 x·y·너비·높이 등을 보인다. iOS·Android 끝(LV-A·LV-B)), 영어 지원 | — |
 
-0~6단계는 끝났다 (1.0.0 게시, 2026-10-27). 7단계(Android 에뮬레이터)를 진행 중이고(7-A·7-B·7-C·7-D·7-E 머지, 7-E2 진행 중), 7-A~7-F 를 PR 하나씩 머지한 뒤 1.1.0 을 낸다. 그다음 작업은 "이후" 행에서 고른다.
+0~6단계는 끝났다 (1.0.0 게시, 2026-10-27). 7단계(Android 에뮬레이터)도 끝났다 (7-A~7-F 머지, [1.1.0](https://github.com/zopandagom/simlauncher-macos/releases/tag/1.1.0) 게시, 2026-11-02). 그다음 작업은 "이후" 행에서 고른다.
 
 `simctl` 하위 명령은 모두 `Simulator` Client Impl 이 `Command` Client 로 실행한다 (ARCHITECTURE §4). "단계 목표 확인" 열은 단계가 이룰 결과이고, 각 단계 작업을 시작할 때 명령으로 판정할 수용 확인(CONVENTIONS §6)과 사용자의 수동 확인(CONVENTIONS §5 "수동 확인" 행)으로 나눠 작업 범위에 적는다.
 
@@ -74,10 +74,11 @@
 |---|---|---|
 | Apple Developer Program 가입 | 배포 전 | ☑ |
 | 팀 ID 를 `Env.developmentTeam` 에 입력 (팀 ID 는 공개 정보라 커밋해도 된다) | 배포 전 | ☑ |
-| Developer ID 인증서: 앱은 Xcode 자동 서명(클라우드 관리 인증서), dmg 서명용 로컬 Developer ID Application 인증서 하나. `notarytool` 자격 증명은 키체인 프로필 `simlauncher-notary`. 커밋하지 않는다 ([RELEASING.md](RELEASING.md)). CI 서명은 하지 않는다(이후) | 배포 전 | ☑ |
+| Developer ID 인증서: 앱은 Xcode 자동 서명(클라우드 관리 인증서), dmg 서명용 로컬 Developer ID Application 인증서 하나. `notarytool` 자격 증명은 키체인 프로필 `simlauncher-notary`. 커밋하지 않는다 ([RELEASING.md](RELEASING.md)). CI(릴리스 워크플로)는 같은 Developer ID Application 인증서(.p12)와 App Store Connect API 키를 `release` 환경 시크릿으로 받아 서명·공증한다(2026-11-13). 인증서는 2027-02-01 에 만료되므로 그 전에 새로 만들어 키체인·시크릿을 바꾼다 | 배포 전 | ☑ |
 | `LICENSE`(MIT) | 공개 전 | ☑ |
 | GitHub 설정: 공개 전환, 외부 기여자 워크플로 승인, Secret scanning·push protection, main 룰셋(필수 체크 `ci-result`) | 공개 시 | ☑ |
-| 배포 경로: GitHub Releases 에 공증된 dmg (`make release`). Homebrew Cask 는 하지 않는다 | 6단계 | ☑ |
+| GitHub 릴리스 설정: 버전 태그 룰셋(만들기는 관리자만), `release` 환경(배포는 main·버전 태그만)과 그 환경 시크릿(Developer ID .p12·암호, App Store Connect API 키·키 ID·발급자 ID) ([RELEASING.md](RELEASING.md) 2.1) | 1.2.0 전 | ☐ |
+| 배포 경로: GitHub Releases 에 공증된 dmg. 버전 태그 push 로 릴리스 워크플로(`.github/workflows/release.yml`)가 게시한다(예비 경로 `make release`). Homebrew Cask 는 하지 않는다 | 6단계 | ☑ |
 
 ## 위험과 대응
 | 위험 | 대응 |
@@ -86,7 +87,7 @@
 | 기기용 빌드(.ipa)는 시뮬레이터에 설치되지 않음 | 시뮬레이터용(`-sdk iphonesimulator`) .app 만 받는다고 화면에 알리고, 맞지 않는 파일은 이유와 함께 거절. 테스트할 iOS 앱 CI 에서 시뮬레이터 빌드를 올리는 작업이 따로 필요해, 예시 GitHub Actions 와 카탈로그 규격을 제공한다 |
 | `xcrun simctl` 실행에는 App Sandbox 밖 동작이 필요해 Mac App Store 배포가 어려움 | Developer ID 서명·공증 배포 (ARCHITECTURE §4) |
 | Apple 실리콘 Mac 에서는 arm64 slice 가 없는 시뮬레이터 빌드가 설치되지 않음 (`simctl install` 이 거절, Xcode 27.1·iOS 27.0 에서 확인) | 설치 전에 실행 파일 아키텍처를 검사해 이유를 보여 준다 (2단계) |
-| 공개 레포라 외부 PR 이 워크플로를 돌리거나 Releases 의 빌드가 누구에게나 공개됨 | PR 트리거는 `pull_request` 만 쓰고 `pull_request_target` 은 쓰지 않는다(fork PR 은 시크릿 없음), 외부 기여자 워크플로는 승인 후 실행. Releases 에 올리는 iOS 앱 빌드는 샘플 앱만 (회사 앱 빌드는 각자 비공개 저장소에) |
+| 공개 레포라 외부 PR 이 워크플로를 돌리거나 Releases 의 빌드가 누구에게나 공개됨 | PR 트리거는 `pull_request` 만 쓰고 `pull_request_target` 은 쓰지 않는다(fork PR 은 시크릿 없음), 외부 기여자 워크플로는 승인 후 실행. Releases 에 올리는 iOS 앱 빌드는 샘플 앱만 (회사 앱 빌드는 각자 비공개 저장소에). 서명·공증 시크릿은 main·버전 태그만 배포할 수 있는 `release` 환경에만 두고, 버전 태그는 관리자만 만든다 |
 | 입력받은 URL·zip 이 신뢰할 수 없는 내용일 수 있음 | HTTPS 만 허용(리다이렉트 포함), 압축 해제 경로가 대상 폴더를 벗어나지 않는지 검사 (CONVENTIONS §4) |
 | Android SDK 가 크다 (받기 약 2.5 GB, 설치 후 약 7 GB, 설치 중 최대 약 9.1 GB) | 설치는 사용자가 누를 때만 하고, 동의 시트에 받을 크기와 설치 후 어림 크기(볼륨별)를 보인다. 받기 전에 두 볼륨의 여유를 어림으로 비교하고, 패키지마다 받은 zip 을 풀자마자 지우며, 저장 공간이 모자라면 필요한 양과 함께 알린다 |
 | Android Studio 와 SDK 폴더를 함께 쓴다 (licenses 를 쓰지 않아 Studio 가 동의를 다시 물을 수 있음, package.xml 이 없는 폴더는 Studio 가 설치되지 않은 것으로 보고 `emulator-2` 처럼 따로 다시 받음(실측. 시스템 이미지는 추론), 동시 설치) | 없는 구성 요소만 설치하고 이미 있는 폴더는 덮어쓰지 않는다(`RENAME_EXCL`). 새로 설치한 폴더에는 받은 저장소 XML 로 만든 package.xml 을 함께 둬(만들 수 없으면 없이 설치) Studio 가 설치됨으로 보고 같은 폴더를 업데이트한다(실측). 상태 판정은 실행 파일·이미지 파일만 본다. 동의는 앱 설정에만 기록하고 Studio 쪽 동의가 따로 필요하다고 안내한다 |

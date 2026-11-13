@@ -1,0 +1,2 @@
+- feat: 기능 10 ([#10](https://github.com/o/r/pull/10))
+- fix: 고침 11 ([#11](https://github.com/o/r/pull/11))

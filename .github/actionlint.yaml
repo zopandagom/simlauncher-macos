@@ -1,0 +1,6 @@
+# actionlint 설정 (mise exec actionlint@1.7.12 -- actionlint).
+# xcode-27 은 self-hosted 가 아니라 GitHub 호스팅 미리보기 레이블인데(release.yml 의 build 잡, Xcode 27.2),
+# actionlint 1.7.12 의 알려진 레이블 목록에 아직 없어 여기에 적는다. 러너 레이블을 바꾸면 이 파일도 같이 고친다.
+self-hosted-runner:
+  labels:
+    - xcode-27

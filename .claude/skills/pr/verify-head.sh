@@ -7,7 +7,9 @@
 #   - 샘플 앱(Examples/)과 .github/scripts 의 Swift(카탈로그 검증기): make lint
 #   - 샘플 앱과 그 빌드 도구(Examples/·Makefile·.mise.toml·Tuist.swift·Tuist/): make sample
 #   - 카탈로그 생성기·검증기·픽스처(.github/scripts)와 검증기가 컴파일하는 Core 소스, Makefile: make catalog-test
-#   - 같은 검사는 한 번만, 순서는 lint → test → sample → catalog-test
+#   - 릴리스 워크플로 도우미 스크립트·테스트·픽스처(.github/scripts/release-*·test-release-scripts.sh·Fixtures/release/), Makefile:
+#     make release-scripts-test (make test 가 이미 있으면 넣지 않는다. make test 가 포함한다)
+#   - 같은 검사는 한 번만, 순서는 lint → test → sample → catalog-test → release-scripts-test
 #   - .githooks/: make test-hooks
 #   - scripts/ 의 셸 스크립트: scripts/*.sh 를 파일마다 bash -n (bash -n a.sh b.sh 는 a.sh 만 검사하므로 하나씩)
 #   - .claude/settings.json: JSON 문법
@@ -28,11 +30,14 @@ files=$(git diff --name-only "$base"...HEAD)
 build_paths='^(Projects/|Tuist/|Workspace\.swift|Tuist\.swift|Makefile|\.mise\.toml|\.swiftlint\.yml|\.swiftformat)'
 sample_paths='^(Examples/|Makefile|\.mise\.toml|Tuist\.swift|Tuist/)'
 catalog_paths='^(\.github/scripts/(validate-catalog\.swift|sample-catalog\.sh|Fixtures/)|Projects/Shared/Core/Sources/|Makefile)'
+release_paths='^(\.github/scripts/(release-[a-z-]+\.(sh|md)|test-release-scripts\.sh|Fixtures/release/)|Makefile)'
 checks=()
 grep -Eq "$build_paths|^Examples/|^\.github/scripts/.*\.swift$" <<<"$files" && checks+=("make lint")
 grep -Eq "$build_paths" <<<"$files" && checks+=("make test")
 grep -Eq "$sample_paths" <<<"$files" && checks+=("make sample")
 grep -Eq "$catalog_paths" <<<"$files" && checks+=("make catalog-test")
+grep -Eq "$release_paths" <<<"$files" && ! grep -Eq "$build_paths" <<<"$files" &&
+  checks+=("make release-scripts-test")
 grep -q '^\.githooks/' <<<"$files" && checks+=("make test-hooks")
 # 스크립트를 지워 남은 파일이 없으면 글롭이 그대로 남으므로 건너뛴다.
 grep -Eq '^scripts/[^/]+\.sh$' <<<"$files" &&
