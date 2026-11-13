@@ -82,7 +82,7 @@ SimLauncher 배포본을 만드는 방법이다. 기본 경로는 **버전 태�
 6. **노트**: 워크플로가 아래 순서로 쓴다. README 와 같은 해요체다.
    - 바뀐 점: Claude 가 이번 PR 들의 본문·바뀐 파일 목록을 읽고 이전 버전 대비 바뀐 점을 요약한다(Claude Code CLI, 도구 없이). 요약이 실패하거나 거절되면 기본 문장 하나로 대신하고 게시는 막지 않는다.
    - 설치·업데이트하기: dmg 설치·대치 방법과 README `#설치하기` 링크.
-   - 이번 버전에 들어간 PR: 이전 릴리스 태그(게시된 Release 가 있는 가장 최근 버전 태그) 이후 main 에 머지된 PR 의 제목·번호.
+   - 이번 버전에 들어간 PR: 이전 릴리스 태그(게시된 Release 가 있고 이번 버전보다 낮은 버전 태그 중 가장 높은 것) 이후 main 에 머지된 PR 의 제목·번호.
    - 파일: dmg 의 SHA-256.
 
    README 설치 링크(`releases/latest`)는 Pre-release 가 아닌 latest Release 를 가리킨다. 워크플로는 이 버전이 게시된 버전 중 가장 높을 때만 latest 로 지정한다(예전 버전 줄의 수정 릴리스가 새 버전을 밀어내지 않게). 샘플 카탈로그 워크플로의 Release(`sample-catalog`·`sample-catalog-v2`·`sample-build-…`)는 Pre-release 라 겹치지 않는다. 게시 뒤 노트를 손보려면 `gh release edit <버전> --notes-file <파일>`.
