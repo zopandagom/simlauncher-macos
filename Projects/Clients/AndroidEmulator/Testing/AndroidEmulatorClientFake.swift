@@ -12,7 +12,7 @@ import Synchronization
 /// - `delete` 는 성공하면 그 기기를 빼고 설정한 결과(기본 `.deleted`)를 돌려준다. 목록에 없는 기기여도 성공한다.
 /// - `erase` 는 성공해도 목록을 바꾸지 않는다.
 /// - 앱 작업(`deviceTraits`·`install`·`launchWithLogcat`·`openURL`·`installedPackages`·`screenshot`·`recordScreen`·
-///   `layoutSnapshot`)은 설정한
+///   `layoutSnapshot`·테스트 조건(`+Conditions.swift`))은 설정한
 /// 결과만 돌려주고
 ///   목록·기기 상태를 보지 않는다. 기본은 `AndroidDeviceTraits.sample`·성공·빈 앱 목록. 기기별 설정(`…(_:for:)`)이 전체 설정보다 먼저다.
 /// - `screenshot`·`recordScreen` 은 파일을 만들거나 쓰지 않는다. `recordScreen` 은 기본으로 바로 시작 신호를 보내고 호출한 Task 가
@@ -37,10 +37,12 @@ public final class AndroidEmulatorClientFake: AndroidEmulatorClient {
     case screenshot(AndroidVirtualDevice.ID, URL)
     case recordScreen(AndroidVirtualDevice.ID, URL)
     case layoutSnapshot(AndroidVirtualDevice.ID)
+    case testCondition(ConditionCall)
   }
 
   enum SuspendableCall: Hashable {
-    case fetch, boot, shutdown, create, delete, erase, install, packageList, screenshot, recording, layout
+    case fetch, boot, shutdown, create, delete, erase, install, packageList, screenshot, recording, layout, conditions
+    case conditionReads
     case bootOf(AndroidVirtualDevice.ID)
     case installOf(AndroidVirtualDevice.ID)
   }
@@ -69,6 +71,7 @@ public final class AndroidEmulatorClientFake: AndroidEmulatorClient {
     var openURLError: AndroidEmulatorError?
     var installedPackages: Result<[AndroidPackageName], AndroidEmulatorError> = .success([])
     var layoutSnapshotResult: Result<LayoutSnapshot, AndroidEmulatorError> = .success(.androidLayoutSample)
+    var conditions = AndroidConditionState()
     var delay: Duration?
     var suspended: Set<SuspendableCall> = []
     var waiters: [SuspendableCall: [CheckedContinuation<Void, Never>]] = [:]
