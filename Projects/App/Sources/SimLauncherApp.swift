@@ -32,6 +32,9 @@ import WorkspaceImpl
 /// 기기 행·툴바의 "카탈로그에서…" 시트(`CatalogInstallModel`)가 고른 버전은 `installRequested` 로 기기 목록(`LauncherModel`)이 설치한다.
 /// iOS 기기 행의 "앱 실행…"·"링크 열기…" 시트(`LauncherAppSheetsModel`)도 확정한 앱·링크를 기기 목록에 넘기고(앱 실행 시트의 켜기·
 /// 다시 읽기도 기기 목록이 한다), 두 Model 의 시트끼리 서로 막는 것도 App 이 클로저로 잇는다 (Android 와 같다).
+/// iOS·Android 기기 행 "테스트 조건…" 시트(`TestConditionsModel`·`AndroidTestConditionsModel`)는 기기 목록에 열 기기를 묻고
+/// (`testConditionsTarget`), 기기 목록의 `appSheetPresented` 는 앱 실행·링크 열기 시트와 테스트 조건 시트를 OR 로 본다.
+/// 테스트 조건 명령은 짧게 끝나고 위치 재생은 기기 안에서 이어지므로 종료 요청 때 묻지 않는다.
 /// Android 기기 행의 "URL 에서…"·"카탈로그에서…" 시트(`AndroidDownloadInstallModel`)가 고른 주소·버전도 같은 방식으로 Android 기기
 /// 목록(`AndroidDevicesModel`)이 받아 설치한다. Android 기기 행의 "앱 실행…"·"링크 열기…" 시트(`AndroidAppSheetsModel`)도 확정한
 /// 앱·링크를 같은 방식으로 넘기고, 두 Model 의 시트끼리 서로 막는 것도 App 이 클로저로 잇는다 (Model 끼리 참조하지 않는다).
@@ -57,11 +60,13 @@ struct SimLauncherApp: App {
   @State private var launcherModel: LauncherModel
   @State private var catalogInstallModel: CatalogInstallModel
   @State private var launcherAppSheetsModel: LauncherAppSheetsModel
+  @State private var testConditionsModel: TestConditionsModel
   @State private var settingsModel: SettingsModel
   @State private var androidSetupModel: AndroidSetupModel
   @State private var androidDevicesModel: AndroidDevicesModel
   @State private var androidDownloadInstallModel: AndroidDownloadInstallModel
   @State private var androidAppSheetsModel: AndroidAppSheetsModel
+  @State private var androidTestConditionsModel: AndroidTestConditionsModel
   @State private var deviceLogModel: DeviceLogModel
   @State private var layoutInspectorModel: LayoutInspectorModel
 
@@ -117,6 +122,7 @@ struct SimLauncherApp: App {
     self._androidDevicesModel = State(initialValue: android.devices)
     self._androidDownloadInstallModel = State(initialValue: android.downloadInstall)
     self._androidAppSheetsModel = State(initialValue: android.appSheets)
+    self._androidTestConditionsModel = State(initialValue: android.conditions)
     let setup = SetupModel(devEnvironment: devEnvironment, simulator: simulator)
     self._setupModel = State(initialValue: setup)
     self._deviceLogModel = State(initialValue: DeviceLogModel(appLog: appLog, preferences: preferences))
@@ -130,6 +136,7 @@ struct SimLauncherApp: App {
     let launcher = launcherAssembly.model
     self._launcherModel = State(initialValue: launcher)
     self._launcherAppSheetsModel = State(initialValue: launcherAssembly.sheets)
+    self._testConditionsModel = State(initialValue: launcherAssembly.conditions)
     // 카탈로그는 시트를 열 때와 새로 고칠 때만 받는다 (앱 시작 때·기기 목록을 볼 때는 받지 않는다).
     self._catalogInstallModel = State(initialValue: CatalogInstallModel(
       preferences: preferences,
@@ -172,10 +179,54 @@ struct SimLauncherApp: App {
       .appending(path: "LayoutRunner", directoryHint: .isDirectory)
   }
 
-  /// iOS 기기 목록과 앱 실행·링크 열기 시트의 Model 을 조립한다 (`init` 안에서 쓰는 값 묶음).
+  var body: some Scene {
+    WindowGroup {
+      MainWindow(
+        setupModel: self.setupModel,
+        launcherModel: self.launcherModel,
+        catalogInstallModel: self.catalogInstallModel,
+        launcherAppSheetsModel: self.launcherAppSheetsModel,
+        testConditionsModel: self.testConditionsModel,
+        androidSetupModel: self.androidSetupModel,
+        androidDevicesModel: self.androidDevicesModel,
+        androidDownloadInstallModel: self.androidDownloadInstallModel,
+        androidAppSheetsModel: self.androidAppSheetsModel,
+        androidTestConditionsModel: self.androidTestConditionsModel
+      )
+    }
+    // 기기 행 "로그 보기" 가 여는 로그 창. 같은 기기(값)면 창 하나이고, 앱 시작 때 열리지 않는다(측정). 받은 로그는 메모리에만
+    // 있어 앱을 다시 켜면 없으므로 창을 되살리지 않는다. 창을 닫아도 받기는 계속된다 (DeviceLogView 의 onDisappear 는 구독만 끊는다).
+    WindowGroup(id: AppLogTarget.windowID, for: AppLogTarget.self) { $target in
+      if let target {
+        DeviceLogView(model: self.deviceLogModel, target: target)
+      }
+    }
+    .defaultSize(width: 900, height: 600)
+    .restorationBehavior(.disabled)
+    // iOS·Android 기기 행 "레이아웃 보기" 가 여는 레이아웃 창. 같은 기기(값)면 창 하나이고, 스냅샷은 메모리에만 있어 되살리지 않는다.
+    // 창을 닫으면 읽기를 취소하고 스냅샷을 버린다 (LayoutInspectorView 의 onDisappear).
+    WindowGroup(id: LayoutTarget.windowID, for: LayoutTarget.self) { $target in
+      if let target {
+        LayoutInspectorView(model: self.layoutInspectorModel, target: target)
+      }
+    }
+    .defaultSize(width: 1100, height: 760)
+    .restorationBehavior(.disabled)
+    // 창을 닫으면 진행 중인 등록 확인을 취소한다 (SettingsView 의 onDisappear).
+    Settings {
+      SettingsView(model: self.settingsModel)
+    }
+  }
+}
+
+// MARK: - 조립 (init 이 부르는 도우미)
+
+extension SimLauncherApp {
+  /// iOS 기기 목록과 앱 실행·링크 열기·테스트 조건 시트의 Model 을 조립한다 (`init` 안에서 쓰는 값 묶음).
   private struct LauncherAssembly {
     let model: LauncherModel
     let sheets: LauncherAppSheetsModel
+    let conditions: TestConditionsModel
   }
 
   private static func makeLauncher(
@@ -186,7 +237,8 @@ struct SimLauncherApp: App {
     screenLayout: ScreenLayoutClientImpl
   ) -> LauncherAssembly {
     // 스크린샷·녹화 저장 폴더는 "스크린샷"·"녹화" 를 누를 때 만든다 (Workspace Client 생성자는 파일을 건드리지 않는다).
-    // 앱 실행·링크 열기 시트가 떠 있으면 만들기·삭제·초기화·URL 설치 시트를 막는다. 시트 Model 은 뒤에 만들어 상자로 넘긴다.
+    // 앱 실행·링크 열기·테스트 조건 시트가 떠 있으면 만들기·삭제·초기화·URL 설치 시트를 막는다. 시트 Model 은 뒤에 만들어
+    // 상자로 넘긴다.
     let launcherSheetsBox = LauncherAppSheetsBox()
     let launcher = LauncherModel(
       simulator: simulator,
@@ -195,7 +247,7 @@ struct SimLauncherApp: App {
       workspace: WorkspaceClientImpl(),
       appLog: appLog,
       setupRequested: { setup.reopened() },
-      appSheetPresented: { launcherSheetsBox.model?.hasPresentedSheet ?? false },
+      appSheetPresented: { launcherSheetsBox.hasPresentedSheet },
       // "끄기" 전에 그 기기의 레이아웃 러너를 멈추고 지운다(꺼진 기기에서는 지울 수 없다). 목록에서 켜진 기기를 보면 남은 러너를
       // 백그라운드로 지운다 (목록 갱신은 기다리지 않는다).
       deviceHooks: LauncherDeviceHooks(
@@ -215,7 +267,16 @@ struct SimLauncherApp: App {
       openURLRequested: { request in await launcher.openURLRequested(request) }
     )
     launcherSheetsBox.model = launcherSheets
-    return LauncherAssembly(model: launcher, sheets: launcherSheets)
+    // 테스트 조건 시트. 열 수 있는 기기는 기기 목록에 묻고(켜진 기기, 다른 시트·확인 대화상자·켜기/끄기/삭제/초기화 중이면 열지
+    // 않는다), 명령이 기기 꺼짐·없어짐으로 실패하면 기기 목록을 다시 읽는다. `simctl ui`·`location` 은 시트를 열 때와 고를 때만 돈다.
+    let conditions = TestConditionsModel(
+      simulator: simulator,
+      target: { launcher.testConditionsTarget($0) },
+      refreshRequested: { await launcher.refreshButtonTapped() },
+      now: { Date() }
+    )
+    launcherSheetsBox.conditions = conditions
+    return LauncherAssembly(model: launcher, sheets: launcherSheets, conditions: conditions)
   }
 
   /// Android 칸의 Client 와 Model 을 조립한다 (`init` 안에서 쓰는 값 묶음).
@@ -225,6 +286,7 @@ struct SimLauncherApp: App {
     let devices: AndroidDevicesModel
     let downloadInstall: AndroidDownloadInstallModel
     let appSheets: AndroidAppSheetsModel
+    let conditions: AndroidTestConditionsModel
   }
 
   /// 설정 창의 내용은 앱 시작 때 한 번 만들어진다(측정). 생성자는 Client 를 저장만 하고, 목록 읽기는 창을 열 때,
@@ -304,7 +366,7 @@ struct SimLauncherApp: App {
     )
     // apk 검사(zipinfo·unzip)는 같은 Command Client 로 실행한다. 생성자는 파일·명령을 건드리지 않는다.
     // 받기는 Launcher 와 같은 Download 인스턴스다 (화면을 열 때 남은 받기 폴더를 지운다).
-    // 앱 실행·링크 열기 시트가 떠 있으면 만들기·삭제·초기화를 막는다. 시트 Model 은 뒤에 만들어 상자로 넘긴다.
+    // 앱 실행·링크 열기·테스트 조건 시트가 떠 있으면 만들기·삭제·초기화를 막는다. 시트 Model 은 뒤에 만들어 상자로 넘긴다.
     // 스크린샷·녹화 저장 폴더는 "스크린샷"·"녹화" 를 누를 때 만든다 (Workspace Client 생성자는 파일을 건드리지 않는다).
     let appSheetsBox = AndroidAppSheetsBox()
     let devices = AndroidDevicesModel(
@@ -314,7 +376,7 @@ struct SimLauncherApp: App {
       appLog: appLog,
       workspace: WorkspaceClientImpl(),
       setupRequested: { setup.reopened() },
-      appSheetPresented: { appSheetsBox.model?.hasPresentedSheet ?? false }
+      appSheetPresented: { appSheetsBox.hasPresentedSheet }
     )
     // 앱 실행·링크 열기 시트와 행 "로그 보기" 를 누를 수 있는 기기(앱 로그 세션 구독은 기기 목록 화면이 처음 보일 때 시작한다).
     // 열 수 있는 기기는 기기 목록에 묻고(만들기 시트·확인 대화상자·작업 중이면 열지 않는다), 확정한 앱·링크는 기기 목록이
@@ -327,6 +389,8 @@ struct SimLauncherApp: App {
       openURLRequested: { request in await devices.openURLRequested(request) }
     )
     appSheetsBox.model = appSheets
+    let conditions = Self.makeAndroidConditions(emulator: emulator, devices: devices)
+    appSheetsBox.conditions = conditions
     // URL·카탈로그 시트. 카탈로그는 시트를 열 때와 새로 고칠 때만 받고, 고른 주소·버전은 기기 목록이 받아 설치한다.
     let downloadInstall = AndroidDownloadInstallModel(
       preferences: preferences,
@@ -338,53 +402,37 @@ struct SimLauncherApp: App {
       setup: setup,
       devices: devices,
       downloadInstall: downloadInstall,
-      appSheets: appSheets
+      appSheets: appSheets,
+      conditions: conditions
     )
   }
 
-  var body: some Scene {
-    WindowGroup {
-      MainWindow(
-        setupModel: self.setupModel,
-        launcherModel: self.launcherModel,
-        catalogInstallModel: self.catalogInstallModel,
-        launcherAppSheetsModel: self.launcherAppSheetsModel,
-        androidSetupModel: self.androidSetupModel,
-        androidDevicesModel: self.androidDevicesModel,
-        androidDownloadInstallModel: self.androidDownloadInstallModel,
-        androidAppSheetsModel: self.androidAppSheetsModel
-      )
-    }
-    // 기기 행 "로그 보기" 가 여는 로그 창. 같은 기기(값)면 창 하나이고, 앱 시작 때 열리지 않는다(측정). 받은 로그는 메모리에만
-    // 있어 앱을 다시 켜면 없으므로 창을 되살리지 않는다. 창을 닫아도 받기는 계속된다 (DeviceLogView 의 onDisappear 는 구독만 끊는다).
-    WindowGroup(id: AppLogTarget.windowID, for: AppLogTarget.self) { $target in
-      if let target {
-        DeviceLogView(model: self.deviceLogModel, target: target)
-      }
-    }
-    .defaultSize(width: 900, height: 600)
-    .restorationBehavior(.disabled)
-    // iOS·Android 기기 행 "레이아웃 보기" 가 여는 레이아웃 창. 같은 기기(값)면 창 하나이고, 스냅샷은 메모리에만 있어 되살리지 않는다.
-    // 창을 닫으면 읽기를 취소하고 스냅샷을 버린다 (LayoutInspectorView 의 onDisappear).
-    WindowGroup(id: LayoutTarget.windowID, for: LayoutTarget.self) { $target in
-      if let target {
-        LayoutInspectorView(model: self.layoutInspectorModel, target: target)
-      }
-    }
-    .defaultSize(width: 1100, height: 760)
-    .restorationBehavior(.disabled)
-    // 창을 닫으면 진행 중인 등록 확인을 취소한다 (SettingsView 의 onDisappear).
-    Settings {
-      SettingsView(model: self.settingsModel)
-    }
+  /// Android 테스트 조건 시트. 열 수 있는 기기는 기기 목록에 묻고, 명령이 기기 꺼짐·없어짐으로 실패하면 기기 목록을 다시 읽는다.
+  /// adb 명령(`cmd uimode`·`cmd location`·`emu geo fix`)은 시트를 열 때와 고를 때만 돈다.
+  private static func makeAndroidConditions(
+    emulator: AndroidEmulatorClientImpl,
+    devices: AndroidDevicesModel
+  ) -> AndroidTestConditionsModel {
+    AndroidTestConditionsModel(
+      emulator: emulator,
+      target: { devices.testConditionsTarget($0) },
+      refreshRequested: { await devices.refreshButtonTapped() },
+      now: { Date() }
+    )
   }
 }
 
 /// iOS 기기 목록 Model 을 먼저 만들어야 하므로(시트 Model 의 `target` 이 그것을 쓴다), 기기 목록의 `appSheetPresented` 가 뒤에
-/// 만든 시트 Model 을 읽게 넘기는 상자. `AndroidAppSheetsBox` 와 같다.
+/// 만든 시트 Model(앱 실행·링크 열기, 테스트 조건)을 읽게 넘기는 상자. `AndroidAppSheetsBox` 와 같다.
 @MainActor
 private final class LauncherAppSheetsBox {
   weak var model: LauncherAppSheetsModel?
+  weak var conditions: TestConditionsModel?
+
+  /// 앱 실행·링크 열기 시트나 테스트 조건 시트가 떠 있다.
+  var hasPresentedSheet: Bool {
+    (self.model?.hasPresentedSheet ?? false) || (self.conditions?.hasPresentedSheet ?? false)
+  }
 }
 
 /// 기기 목록 Model 을 먼저 만들어야 하므로(시트 Model 의 `target` 이 그것을 쓴다), 기기 목록의 `appSheetPresented` 가 뒤에
@@ -392,4 +440,10 @@ private final class LauncherAppSheetsBox {
 @MainActor
 private final class AndroidAppSheetsBox {
   weak var model: AndroidAppSheetsModel?
+  weak var conditions: AndroidTestConditionsModel?
+
+  /// 앱 실행·링크 열기 시트나 테스트 조건 시트가 떠 있다.
+  var hasPresentedSheet: Bool {
+    (self.model?.hasPresentedSheet ?? false) || (self.conditions?.hasPresentedSheet ?? false)
+  }
 }
