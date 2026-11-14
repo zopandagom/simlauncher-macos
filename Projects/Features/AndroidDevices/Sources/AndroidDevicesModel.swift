@@ -74,7 +74,7 @@ public final class AndroidDevicesModel {
   @ObservationIgnored private var downloadTasks: [
     AndroidVirtualDevice.ID: Task<Result<DownloadedFile, DownloadError>, Never>
   ] = [:]
-  /// 앱 실행·링크 열기 시트(`AndroidAppSheetsModel`)가 떠 있는지. App 이 그 Model 의 `hasPresentedSheet` 로 잇는다.
+  /// 앱 실행·링크 열기·테스트 조건 시트가 떠 있는지. App 이 두 시트 Model 의 `hasPresentedSheet` 를 OR 로 잇는다.
   @ObservationIgnored private let appSheetPresented: @MainActor () -> Bool
   /// "Android 도구" 버튼(툴바, 빈 화면·안내 줄의 "Android 도구 열기", 목록 읽기 실패 화면)을 눌렀을 때 부른다.
   /// App 이 Android 도구 화면을 다시 연다 (화면 간 흐름은 App 이 잇는다).
@@ -118,8 +118,8 @@ public final class AndroidDevicesModel {
     self.sleep = sleep
   }
 
-  /// 시트(만들기·앱 실행·링크 열기)나 삭제·초기화 확인 대화상자가 떠 있다. 하나가 떠 있으면 다른 것을 열지 않는다.
-  /// 앱 실행·링크 열기 시트는 `AndroidAppSheetsModel` 에 있어 App 이 주입한 클로저로 본다 (클로저가 `private` 이라 이 파일에 둔다).
+  /// 시트(만들기·앱 실행·링크 열기·테스트 조건)나 삭제·초기화 확인 대화상자가 떠 있다. 하나가 떠 있으면 다른 것을 열지 않는다.
+  /// 앱 실행·링크 열기·테스트 조건 시트는 `AndroidAppSheetsModel`·`AndroidTestConditionsModel` 에 있어 App 이 주입한 클로저로 본다.
   public var hasPresentedSheet: Bool {
     self.creationDraft != nil || self.confirmation != nil || self.appSheetPresented()
   }

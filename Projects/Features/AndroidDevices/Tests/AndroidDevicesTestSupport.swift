@@ -29,7 +29,8 @@ extension AndroidDevicesTesting {
 
   /// 아직 화면이 보이기 전(`onAppear` 전)의 Model. apk 검사 Fake 는 샘플 apk 를 돌려주고, 테스트가 `package` 로 바꾼다.
   /// 받기 Fake 는 기본 진행·결과(`.fake(index:)`)이고, 테스트가 `download` 로 바꾼다.
-  /// 앱 실행·링크 열기 시트 Model(`sheets`)은 App 과 같이 클로저로 잇는다 (`appSheetPresented`·`target`·실행/열기 요청).
+  /// 앱 실행·링크 열기 시트 Model(`sheets`)과 테스트 조건 시트 Model(`conditions`)은 App 과 같이 클로저로 잇는다
+  /// (`appSheetPresented`·`target`·실행/열기 요청·다시 읽기).
   /// 스크린샷·녹화 저장은 `WorkspaceClientFake`(늘 예약·보이기에 성공, 테스트가 `workspace` 로 바꾼다), 시계는 `fixedNow` 다.
   /// 앱 실행은 `AppLogClientFake`(`appLog`) 로 가고, 실패는 테스트가 `launchErrors` 로 정한다 (기본은 성공).
   static func fixture(
@@ -57,7 +58,7 @@ extension AndroidDevicesTesting {
       appLog: appLog,
       workspace: workspace,
       setupRequested: { setupRequests.increment() },
-      appSheetPresented: { sheetsBox.model?.hasPresentedSheet ?? false },
+      appSheetPresented: { sheetsBox.hasPresentedSheet },
       sleep: { try await sleeper.sleep(for: $0) },
       now: { fixedNow }
     )
@@ -68,10 +69,13 @@ extension AndroidDevicesTesting {
       launchRequested: { request in await model.launchAppRequested(request) },
       openURLRequested: { request in await model.openURLRequested(request) }
     )
+    let conditions = Self.conditionsModel(fake, model: model)
     sheetsBox.model = sheets
+    sheetsBox.conditions = conditions
     return AndroidDevicesFixture(
       model: model,
       sheets: sheets,
+      conditions: conditions,
       fake: fake,
       package: package,
       download: download,
@@ -80,6 +84,19 @@ extension AndroidDevicesTesting {
       launchErrors: launchErrors,
       sleeper: sleeper,
       setupRequests: setupRequests
+    )
+  }
+
+  /// App 과 같이 기기 목록 Model 에 이은 테스트 조건 시트 Model (시계는 `fixedNow`).
+  static func conditionsModel(
+    _ fake: AndroidEmulatorClientFake,
+    model: AndroidDevicesModel
+  ) -> AndroidTestConditionsModel {
+    AndroidTestConditionsModel(
+      emulator: fake,
+      target: { model.testConditionsTarget($0) },
+      refreshRequested: { await model.refreshButtonTapped() },
+      now: { fixedNow }
     )
   }
 
@@ -142,6 +159,8 @@ struct AndroidDevicesFixture {
   let model: AndroidDevicesModel
   /// 앱 실행·링크 열기 시트 Model (App 처럼 `model` 과 이어져 있다).
   let sheets: AndroidAppSheetsModel
+  /// 테스트 조건 시트 Model (App 처럼 `model` 과 이어져 있다).
+  let conditions: AndroidTestConditionsModel
   let fake: AndroidEmulatorClientFake
   let package: AndroidPackageClientFake
   let download: DownloadClientFake
@@ -224,10 +243,15 @@ final class AndroidLaunchErrors: Sendable {
   }
 }
 
-/// 기기 목록 Model 의 `appSheetPresented` 가 뒤에 만든 시트 Model 을 읽게 넘기는 상자 (App 의 조립과 같다).
+/// 기기 목록 Model 의 `appSheetPresented` 가 뒤에 만든 시트 Model 들을 읽게 넘기는 상자 (App 의 조립과 같다).
 @MainActor
 final class AppSheetsBox {
   weak var model: AndroidAppSheetsModel?
+  weak var conditions: AndroidTestConditionsModel?
+
+  var hasPresentedSheet: Bool {
+    (self.model?.hasPresentedSheet ?? false) || (self.conditions?.hasPresentedSheet ?? false)
+  }
 }
 
 /// App 이 주입하는 클로저가 몇 번 불렸는지.

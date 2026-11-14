@@ -22,6 +22,18 @@ public extension AndroidDevicesModel {
     return device
   }
 
+  /// 테스트 조건 시트를 열 수 있는 기기: 목록에 있고, `AndroidTestConditionsAvailability.canOpen`(켜짐·켜기/끄기/삭제/초기화
+  /// 중이 아님)이고, 만들기·앱 실행·링크 열기·테스트 조건 시트와 확인 대화상자가 없다(`hasPresentedSheet`: App 이 두 시트 Model 을
+  /// OR 로 잇는다). 아니면 nil. App 이 `AndroidTestConditionsModel` 의 `target` 으로 잇는다.
+  func testConditionsTarget(_ id: AndroidVirtualDevice.ID) -> AndroidVirtualDevice? {
+    guard case let .loaded(list) = self.listState,
+          let device = list.device(id: id),
+          AndroidTestConditionsAvailability.canOpen(device: device, during: self.activity.task(on: id)),
+          !self.hasPresentedSheet
+    else { return nil }
+    return device
+  }
+
   /// 목록을 읽었지만 만들 수 있는 시스템 이미지가 없어 + 버튼을 쓸 수 없다. 기기가 있으면 목록 위 안내 줄로 이유와
   /// "Android 도구 열기" 버튼을 보인다 (목록이 비면 빈 화면 안내가 보인다). Android 도구를 쓸 수 없으면(`isSDKUnavailable`)
   /// 선택지가 비어 이 값도 true 지만, 화면은 그 안내를 먼저 보인다.
