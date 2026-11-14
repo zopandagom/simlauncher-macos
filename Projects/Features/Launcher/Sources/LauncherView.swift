@@ -12,6 +12,8 @@ public struct LauncherView: View {
   let catalogModel: CatalogInstallModel
   /// 행의 "앱 실행…"·"링크 열기…" 시트. 목록 읽기라는 자기 비동기 흐름이 있어 따로 둔 Model 이다 (App 이 소유한다).
   let appSheetsModel: LauncherAppSheetsModel
+  /// 행의 "테스트 조건…" 시트. 기기별 적용 중·보낸 위치 기록이라는 자기 상태가 있어 따로 둔 Model 이다 (App 이 소유한다).
+  let conditionsModel: TestConditionsModel
   /// 지금 띄운 알림. 닫히는 동안 Model 의 줄에서 빠져도 글자가 비지 않도록 View 가 들고 있는다.
   @State private var presentedNotice: LauncherNoticeItem?
   /// 알림을 띄웠는지. 다음 알림을 띄울 때 false → true 전이가 생기도록 Model 의 줄과 따로 둔다.
@@ -25,10 +27,16 @@ public struct LauncherView: View {
   /// 기기 행 "로그 보기" 가 로그 창(`AppLogTarget.windowID`)을 연다. 같은 기기면 SwiftUI 가 그 창을 앞으로 가져온다.
   @Environment(\.openWindow) private var openWindow
 
-  public init(model: LauncherModel, catalogModel: CatalogInstallModel, appSheetsModel: LauncherAppSheetsModel) {
+  public init(
+    model: LauncherModel,
+    catalogModel: CatalogInstallModel,
+    appSheetsModel: LauncherAppSheetsModel,
+    conditionsModel: TestConditionsModel
+  ) {
     self.model = model
     self.catalogModel = catalogModel
     self.appSheetsModel = appSheetsModel
+    self.conditionsModel = conditionsModel
   }
 
   public var body: some View {
@@ -117,35 +125,13 @@ public struct LauncherView: View {
       ) {
         DeviceCreationSheet(model: self.model)
       }
-      // 생성·링크·앱 실행·URL 설치·카탈로그 시트는 같은 체인에 둔다. 생성·URL 설치 시트와 앱 실행·링크 열기 시트(`appSheetsModel`)는
-      // 두 Model 이 App 이 이은 클로저(`appSheetPresented`·`target`)로 서로 막아 둘 이상 함께 열리지 않는다. 카탈로그 시트는
+      // 생성·링크·앱 실행·테스트 조건·URL 설치·카탈로그 시트는 같은 체인에 둔다. 생성·URL 설치 시트와 앱 실행·링크 열기 시트
+      // (`appSheetsModel`)·테스트 조건 시트(`conditionsModel`)는 Model 들이 App 이 이은 클로저(`appSheetPresented`·`target`)로
+      // 서로 막아 둘 이상 함께 열리지 않는다. 카탈로그 시트는
       // 다른 Model 이라 시트가 창을 막는 모달과 행 메뉴의 비활성에 기댄다 (앱 실행 시트도 켜기 전에 곧바로 열려 같다).
       // 툴바 "카탈로그에서…" 는 작업 중인 기기도 대상에 넣으므로, 그 기기는 설치를 시작할 때 LauncherModel 의 시작 판정이
       // 이유(다른 작업 중)와 함께 건너뛴다.
-      .sheet(
-        isPresented: Binding(
-          get: { self.appSheetsModel.openURLDraft != nil },
-          set: { isPresented in
-            if !isPresented {
-              self.appSheetsModel.openURLSheetDismissed()
-            }
-          }
-        )
-      ) {
-        OpenURLSheet(model: self.appSheetsModel)
-      }
-      .sheet(
-        isPresented: Binding(
-          get: { self.appSheetsModel.launchAppDraft != nil },
-          set: { isPresented in
-            if !isPresented {
-              self.appSheetsModel.launchAppSheetDismissed()
-            }
-          }
-        )
-      ) {
-        LaunchAppSheet(model: self.appSheetsModel)
-      }
+      .modifier(LauncherAppSheets(appSheetsModel: self.appSheetsModel, conditionsModel: self.conditionsModel))
       .sheet(
         isPresented: Binding(
           get: { self.model.installURLDraft != nil },
@@ -373,6 +359,8 @@ extension LauncherView {
       stopRecordingTapped: { self.model.recordingStopTapped(device.id) },
       canViewLayout: IOSLayoutAvailability.canOpen(device: device, during: task),
       layoutTapped: { self.openWindow(id: LayoutTarget.windowID, value: LayoutTarget.iOS(device.id)) },
+      canChangeTestConditions: TestConditionsAvailability.canOpen(device: device, during: task),
+      testConditionsTapped: { Task { await self.conditionsModel.testConditionsTapped(device.id) } },
       bootTapped: { Task { await self.model.bootButtonTapped(device.id) } },
       shutdownTapped: { Task { await self.model.shutdownButtonTapped(device.id) } },
       eraseTapped: { self.model.eraseButtonTapped(device.id) },
@@ -443,5 +431,52 @@ extension LauncherView {
     }
     return self.model.canInstallOnSelection
       ? LauncherText.installOnSelectionHelp(count: devices.count) : LauncherText.installOnSelectionUnavailable
+  }
+}
+
+/// 행의 앱 실행·링크 열기 시트(`appSheetsModel`)와 테스트 조건 시트(`conditionsModel`). 세 시트는 Model 들이 App 이 이은 클로저로
+/// 서로 막아 함께 열리지 않는다 (`LauncherView` 의 시트 체인 주석).
+private struct LauncherAppSheets: ViewModifier {
+  let appSheetsModel: LauncherAppSheetsModel
+  let conditionsModel: TestConditionsModel
+
+  func body(content: Content) -> some View {
+    content
+      .sheet(
+        isPresented: Binding(
+          get: { self.appSheetsModel.openURLDraft != nil },
+          set: { isPresented in
+            if !isPresented {
+              self.appSheetsModel.openURLSheetDismissed()
+            }
+          }
+        )
+      ) {
+        OpenURLSheet(model: self.appSheetsModel)
+      }
+      .sheet(
+        isPresented: Binding(
+          get: { self.appSheetsModel.launchAppDraft != nil },
+          set: { isPresented in
+            if !isPresented {
+              self.appSheetsModel.launchAppSheetDismissed()
+            }
+          }
+        )
+      ) {
+        LaunchAppSheet(model: self.appSheetsModel)
+      }
+      .sheet(
+        isPresented: Binding(
+          get: { self.conditionsModel.draft != nil },
+          set: { isPresented in
+            if !isPresented {
+              self.conditionsModel.sheetDismissed()
+            }
+          }
+        )
+      ) {
+        TestConditionsSheet(model: self.conditionsModel)
+      }
   }
 }

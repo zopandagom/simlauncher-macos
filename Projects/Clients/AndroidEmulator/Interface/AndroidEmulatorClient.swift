@@ -2,7 +2,7 @@ import Core
 import Foundation
 
 /// Android 기기(AVD) 목록·상태와 켜기·끄기·만들기·삭제·초기화, 켜진 기기에 apk 설치·앱 실행(logcat 받기)·링크 열기·스크린샷·녹화·
-/// 화면 레이아웃 읽기.
+/// 화면 레이아웃 읽기, 테스트 조건(외관 읽기·쓰기, 위치 한 점, 위치 서비스 켜짐 읽기).
 /// AVD 폴더는 `$HOME/.android/avd` (Android Studio 와 함께 쓴다. ANDROID_AVD_HOME 은 보지 않는다).
 /// SDK 위치는 App 이 주입한 provider 를 공개 메서드 한 번에 한 번 부른다. 명령은 CommandClient 로
 /// `<SDK>/emulator/emulator` 와 `<SDK>/platform-tools/adb` 만 실행한다. 네트워크 API 를 쓰지 않는다
@@ -118,6 +118,27 @@ public protocol AndroidEmulatorClient: Sendable {
   /// 같은 기기의 레이아웃 읽기는 앞 호출이 끝날 때까지 기다린다(한 번에 하나). 호출한 Task 가 취소되면 `.cancelled`.
   /// 좌표는 스크린샷 px, `unit` 은 `.dp`, `pixelsPerUnit` 은 밀도/160, `deviceName` 은 다시 읽은 기기의 표시 이름.
   func layoutSnapshot(on id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError) -> LayoutSnapshot
+
+  /// 테스트 조건 시트가 열 때 읽는 값: `-s <serial> shell cmd uimode night` 가 종료 코드 0 이고 `Night mode: <값>` 줄이 있으면 그 값
+  /// (`yes` → `.dark`, `no` → `.light`, 빈 값 → `.unknown`, 그 밖 → `.other`)과 `shell cmd location is-location-enabled` 의
+  /// `true`/`false`(그 밖·실패 → nil, 던지지 않는다). 사전 확인은 앱 작업과 같다. 그 밖(줄이 없거나 종료 코드가 0 이 아님)은 켜는 중·
+  /// 끊김 출력이면 `.deviceNotBooted`, 아니면 `.unknown` (던지지 않는다: `cmd uimode night` 가 없는 Android 버전이 있을 수 있다, 미실측).
+  /// 기기를 바꾸지 않는다.
+  func testConditions(on id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError) -> AndroidTestConditions
+
+  /// 외관을 바꾼다 (`shell cmd uimode night yes|no`). 켜는 중·끊김 출력은 `.deviceNotBooted`. 종료 코드 0 이고 쓰기 출력의
+  /// `Night mode:` 값이 요청과 같으면 `.applied`, 다르면 `.notApplied`. 그 줄이 없을 때 `Error` 로 시작하는 줄이 있거나 종료 코드가
+  /// 0 이 아니면 `.notApplied`, 그 밖은 한 번 다시 읽어 판정한다.
+  /// 실행 중 앱에 곧바로 반영되고 앱 프로세스는 그대로다 (Activity 재생성, 실측). 사전 확인은 앱 작업과 같다.
+  func setNightMode(_ appearance: DeviceAppearance, on id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError)
+    -> AndroidConditionOutcome
+
+  /// 기기 위치를 한 점으로 정한다 (`-s <serial> emu geo fix <경도> <위도>`: **경도 먼저**, 소수 6자리 `.` 소수점).
+  /// `emu` 는 실패해도 exit 0 이라 stdout 으로 판정한다: `KO:` 줄 → `.notApplied`, `OK` 줄 → `.applied`, 둘 다 없으면 `.notApplied`.
+  /// 0 이 아닌 종료 코드면 켜는 중·끊김 출력은 `.deviceNotBooted`, 그 밖 `.adbUnavailable`. 위치 서비스가 꺼져 있어도 `OK` 다(실측).
+  /// 사전 확인은 앱 작업과 같다.
+  func setLocation(_ coordinate: GeoCoordinate, on id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError)
+    -> AndroidConditionOutcome
 }
 
 /// `launchWithLogcat` 이 넘기는 알림.
@@ -191,6 +212,7 @@ public enum AndroidEmulatorError: Error, Hashable, Sendable {
   case emulatorExited(Int32?)
   case bootTimedOut
   /// adb 실행·서버 시작 실패, 또는 끌 기기를 adb 로 확인하지 못했다(adb 가 답하지 않거나, 이름에 답하는 기기에 `emu kill` 이 실패).
+  /// 테스트 조건의 `emu geo fix` 가 켜는 중·끊김 출력 없이 0 이 아닌 종료 코드로 끝났을 때도.
   case adbUnavailable
   case shutdownTimedOut
   case invalidDeviceName(DeviceNameProblem)
@@ -206,7 +228,7 @@ public enum AndroidEmulatorError: Error, Hashable, Sendable {
   case unsafeDeviceFolder(URL?)
   case cancelled
   /// 앱 작업: 기기가 켜져 있지 않다 (꺼짐·켜는 중, 또는 adb 가 offline·not found·`device is still booting`·`Can't find service`·
-  /// `Too early` 로 답함).
+  /// `Too early` 로 답함). 테스트 조건의 `shell cmd uimode`·`emu geo fix` 출력도 같은 판정.
   case deviceNotBooted
   case installFailed(AndroidInstallFailure)
   /// 설치가 10분 안에 끝나지 않았다.

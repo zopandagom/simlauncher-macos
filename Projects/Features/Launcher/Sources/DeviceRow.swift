@@ -8,7 +8,7 @@ import SwiftUI
 /// 이유("앱 실행…" 안내)를 툴팁으로),
 /// 스크린샷 버튼(켜진 기기만, 찍는 중이면 작은 진행 표시), 녹화 표시(켜진 기기만: "녹화" 버튼, 녹화 중이면 경과 시간과 "중지",
 /// 저장 중이면 작은 진행 표시), 레이아웃 보기 버튼(레이아웃 창. 켜진 기기, 스크린샷과 같은 작업 규칙이고 찍는 중·녹화 중에도 된다.
-/// 러너의 최소 iOS 보다 낮은 기기는 막고 이유를 툴팁으로),
+/// 러너의 최소 iOS 보다 낮은 기기는 막고 이유를 툴팁으로), 테스트 조건 버튼(시트. 켜진 기기, 레이아웃 보기와 같은 작업 규칙),
 /// 켜기·끄기 버튼(받는 중이면 진행 막대와 받기 취소 버튼, 녹화 중이면 끄기 비활성),
 /// 기기 작업 메뉴(… 버튼과 컨텍스트 메뉴: 초기화·삭제).
 /// 여러 기기가 함께 받는 중(받기 묶음)이면 대상 행 모두에 같은 진행이 보이고, 취소 툴팁이 함께 멈추는 기기 수를 알린다.
@@ -48,6 +48,9 @@ struct DeviceRow: View {
   let canViewLayout: Bool
   /// 이 기기의 레이아웃 창을 연다 (View 가 `openWindow` 로 연다).
   let layoutTapped: () -> Void
+  /// "테스트 조건…" 을 누를 수 있다 (`TestConditionsAvailability.canOpen`: 스크린샷과 같은 기기·작업 규칙).
+  let canChangeTestConditions: Bool
+  let testConditionsTapped: () -> Void
   let bootTapped: () -> Void
   let shutdownTapped: () -> Void
   let eraseTapped: () -> Void
@@ -103,6 +106,9 @@ struct DeviceRow: View {
       Button(LauncherText.layoutButton, action: self.layoutTapped)
         .disabled(!self.canViewLayout)
         .help(self.layoutBlockReason ?? LauncherText.layoutHelp)
+      Button(LauncherText.testConditionsButton, action: self.testConditionsTapped)
+        .disabled(!self.canChangeTestConditions)
+        .help(self.testConditionsBlockReason ?? LauncherText.testConditionsHelp)
       self.action
       Menu {
         self.menuItems
@@ -227,44 +233,6 @@ struct DeviceRow: View {
     !self.isBusy && self.device.appInstallAvailability == .allowed
   }
 
-  /// 앱 설치 메뉴 툴팁에 보일 막힌 이유. 진행 중이면 행의 진행 표시가 이유라 따로 보이지 않는다.
-  private var installBlockReason: String? {
-    guard case let .blocked(reason) = self.device.appInstallAvailability else { return nil }
-    return LauncherText.installBlockReason(reason)
-  }
-
-  /// 링크 열기 버튼 툴팁에 보일 막힌 이유. 진행 중이면 행의 진행 표시가 이유라 따로 보이지 않는다.
-  private var openURLBlockReason: String? {
-    guard case let .blocked(reason) = self.device.appInstallAvailability else { return nil }
-    return LauncherText.openURLBlockReason(reason)
-  }
-
-  /// 앱 실행 버튼 툴팁에 보일 막힌 이유. 진행 중이면 행의 진행 표시가 이유라 따로 보이지 않는다.
-  private var launchAppBlockReason: String? {
-    guard case let .blocked(reason) = self.device.appInstallAvailability else { return nil }
-    return LauncherText.launchAppBlockReason(reason)
-  }
-
-  /// 스크린샷 버튼 툴팁에 보일 막힌 이유. 진행 중이면 행의 진행 표시가 이유라 따로 보이지 않는다.
-  private var screenshotBlockReason: String? {
-    guard case let .blocked(reason) = self.device.screenshotAvailability else { return nil }
-    return LauncherText.screenshotBlockReason(reason)
-  }
-
-  /// "레이아웃 보기" 버튼 툴팁에 보일 막힌 이유. 기기 규칙은 스크린샷과 같고, 러너보다 낮은 iOS 도 막는다.
-  private var layoutBlockReason: String? {
-    if case let .blocked(reason) = self.device.screenshotAvailability {
-      return LauncherText.layoutBlockReason(reason)
-    }
-    return IOSLayoutAvailability.supportsRunner(self.device) ? nil : LauncherText.layoutUnsupportedOS
-  }
-
-  /// 녹화 버튼 툴팁에 보일 막힌 이유. 기기 규칙은 스크린샷과 같다.
-  private var recordBlockReason: String? {
-    guard case let .blocked(reason) = self.device.screenshotAvailability else { return nil }
-    return LauncherText.recordBlockReason(reason)
-  }
-
   /// 이 기기가 녹화 중이다 (저장 중 포함). 끄기·초기화·삭제를 막는다 (`RecordingActivity.blocks`).
   private var isRecording: Bool {
     self.recordingPhase != nil
@@ -303,6 +271,54 @@ struct DeviceRow: View {
     case .tablet: "ipad"
     case .watch, .tv, .vision, .other: "questionmark.square.dashed"
     }
+  }
+}
+
+// MARK: - 버튼 툴팁의 막힌 이유
+
+extension DeviceRow {
+  /// 앱 설치 메뉴 툴팁에 보일 막힌 이유. 진행 중이면 행의 진행 표시가 이유라 따로 보이지 않는다.
+  private var installBlockReason: String? {
+    guard case let .blocked(reason) = self.device.appInstallAvailability else { return nil }
+    return LauncherText.installBlockReason(reason)
+  }
+
+  /// 링크 열기 버튼 툴팁에 보일 막힌 이유. 진행 중이면 행의 진행 표시가 이유라 따로 보이지 않는다.
+  private var openURLBlockReason: String? {
+    guard case let .blocked(reason) = self.device.appInstallAvailability else { return nil }
+    return LauncherText.openURLBlockReason(reason)
+  }
+
+  /// 앱 실행 버튼 툴팁에 보일 막힌 이유. 진행 중이면 행의 진행 표시가 이유라 따로 보이지 않는다.
+  private var launchAppBlockReason: String? {
+    guard case let .blocked(reason) = self.device.appInstallAvailability else { return nil }
+    return LauncherText.launchAppBlockReason(reason)
+  }
+
+  /// 스크린샷 버튼 툴팁에 보일 막힌 이유. 진행 중이면 행의 진행 표시가 이유라 따로 보이지 않는다.
+  private var screenshotBlockReason: String? {
+    guard case let .blocked(reason) = self.device.screenshotAvailability else { return nil }
+    return LauncherText.screenshotBlockReason(reason)
+  }
+
+  /// "레이아웃 보기" 버튼 툴팁에 보일 막힌 이유. 기기 규칙은 스크린샷과 같고, 러너보다 낮은 iOS 도 막는다.
+  private var layoutBlockReason: String? {
+    if case let .blocked(reason) = self.device.screenshotAvailability {
+      return LauncherText.layoutBlockReason(reason)
+    }
+    return IOSLayoutAvailability.supportsRunner(self.device) ? nil : LauncherText.layoutUnsupportedOS
+  }
+
+  /// "테스트 조건…" 버튼 툴팁에 보일 막힌 이유 (꺼짐·켜는 중·쓸 수 없음). 진행 중이면 행의 진행 표시가 이유라 따로 보이지 않는다.
+  private var testConditionsBlockReason: String? {
+    guard case let .blocked(reason) = self.device.screenshotAvailability else { return nil }
+    return LauncherText.testConditionsBlockReason(reason)
+  }
+
+  /// 녹화 버튼 툴팁에 보일 막힌 이유. 기기 규칙은 스크린샷과 같다.
+  private var recordBlockReason: String? {
+    guard case let .blocked(reason) = self.device.screenshotAvailability else { return nil }
+    return LauncherText.recordBlockReason(reason)
   }
 }
 

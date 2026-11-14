@@ -14,7 +14,8 @@ import Synchronization
 /// launchWithConsole 은 처리기(`setConsoleHandler`)가 없으면 launch 의 에러를 던지거나, `.launched` 를 보내고 호출한 Task 가 취소될 때까지 기다린 뒤
 /// `.stopped`.
 /// installedApps 도 install 과 같은 순서로 기기 상태를 보고, 기기별로 설정한 앱 목록(기본 빈 목록)을 그대로 돌려준다.
-/// runningApplications·uninstall 도 같은 순서로 기기 상태를 본다 (`SimulatorClientFake+Layout.swift`).
+/// runningApplications·uninstall 과 테스트 조건(displaySettings·setDisplaySetting·simulateLocation)도 같은 순서로 기기 상태를 본다
+/// (`SimulatorClientFake+Layout.swift`·`+Conditions.swift`).
 /// 런타임 이미지 목록은 기기 목록과 따로 저장하고(기본값 `RuntimeImage.samples`), 어떤 호출도 그 목록을 바꾸지 않는다.
 public final class SimulatorClientFake: SimulatorClient {
   public enum Call: Hashable, Sendable {
@@ -35,11 +36,12 @@ public final class SimulatorClientFake: SimulatorClient {
     case recordVideo(VirtualDevice.ID, URL)
     case runningApplications(VirtualDevice.ID)
     case uninstall(AppBundleID, VirtualDevice.ID)
+    case testCondition(ConditionCall)
   }
 
   enum SuspendableCall: Hashable {
     case fetch, boot, create, delete, erase, install, installedApps, openURL, screenshot, recordVideo
-    case runningApplications, uninstall
+    case runningApplications, uninstall, conditions, conditionReads
     case bootOf(VirtualDevice.ID)
   }
 
@@ -66,6 +68,7 @@ public final class SimulatorClientFake: SimulatorClient {
     var runningApplications: [VirtualDevice.ID: [AppBundleID]] = [:]
     var runningApplicationsError: SimulatorError?
     var uninstallError: SimulatorError?
+    var conditions = SimulatorConditionState()
     var recordingStartError: SimulatorError?
     var recordingStopOutcome: Result<ScreenRecordingResult, SimulatorError>?
     var recordingSignalsStart = true

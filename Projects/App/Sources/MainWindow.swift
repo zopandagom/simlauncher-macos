@@ -14,10 +14,12 @@ struct MainWindow: View {
   let launcherModel: LauncherModel
   let catalogInstallModel: CatalogInstallModel
   let launcherAppSheetsModel: LauncherAppSheetsModel
+  let testConditionsModel: TestConditionsModel
   let androidSetupModel: AndroidSetupModel
   let androidDevicesModel: AndroidDevicesModel
   let androidDownloadInstallModel: AndroidDownloadInstallModel
   let androidAppSheetsModel: AndroidAppSheetsModel
+  let androidTestConditionsModel: AndroidTestConditionsModel
   @State private var platform: Platform = .iOS
 
   /// 사이드바 항목. 이름("iOS"·"Android")은 고유 이름이라 카탈로그를 거치지 않는다 (App 에는 String Catalog 가 없다).
@@ -62,7 +64,8 @@ struct MainWindow: View {
           LauncherView(
             model: self.launcherModel,
             catalogModel: self.catalogInstallModel,
-            appSheetsModel: self.launcherAppSheetsModel
+            appSheetsModel: self.launcherAppSheetsModel,
+            conditionsModel: self.testConditionsModel
           )
         } else {
           SetupView(model: self.setupModel)
@@ -74,7 +77,8 @@ struct MainWindow: View {
           AndroidDevicesView(
             model: self.androidDevicesModel,
             downloadModel: self.androidDownloadInstallModel,
-            appSheetsModel: self.androidAppSheetsModel
+            appSheetsModel: self.androidAppSheetsModel,
+            conditionsModel: self.androidTestConditionsModel
           )
         } else {
           AndroidSetupView(model: self.androidSetupModel)

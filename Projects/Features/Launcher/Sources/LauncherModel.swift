@@ -59,7 +59,7 @@ public final class LauncherModel {
   /// Setup 진입 버튼(툴바 "개발 환경", 빈 화면의 "iOS 설치"·"다른 iOS 버전 설치", 목록 위 안내 줄의 "다른 iOS 버전 설치",
   /// 목록 읽기 실패 화면의 "개발 환경 열기")을 눌렀을 때 부른다. App 이 Setup 화면을 다시 연다 (화면 간 흐름은 App 이 잇는다).
   @ObservationIgnored private let setupRequested: @MainActor () -> Void
-  /// 앱 실행·링크 열기 시트(`LauncherAppSheetsModel`)가 떠 있다. App 이 그 Model 의 `hasPresentedSheet` 로 잇는다.
+  /// 앱 실행·링크 열기·테스트 조건 시트가 떠 있다. App 이 두 시트 Model 의 `hasPresentedSheet` 를 OR 로 잇는다.
   @ObservationIgnored private let appSheetPresented: @MainActor () -> Bool
   /// 앱 설치 흐름(풀기 → 검사·판정 → 켜기 → 설치 → 실행). Client 만 갖고 Model 상태에는 `installHost` 창구로만 닿는다.
   @ObservationIgnored private let installFlow: AppInstallFlow
@@ -104,7 +104,7 @@ public final class LauncherModel {
     self.appSheetPresented = appSheetPresented
   }
 
-  /// 앱 실행·링크 열기 시트가 떠 있다 (읽기 API 가 private 클로저를 읽도록 여기 둔다).
+  /// 앱 실행·링크 열기·테스트 조건 시트가 떠 있다 (읽기 API 가 private 클로저를 읽도록 여기 둔다).
   var isAppSheetPresented: Bool { self.appSheetPresented() }
 
   /// 목록을 읽은 뒤(목록을 먼저 보인다) 남은 zip 풀기·받기 임시 폴더(앞선 실행이 남겼거나 지우지 못한 것)를 정리한다.

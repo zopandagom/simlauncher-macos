@@ -11,7 +11,9 @@ import Observation
 /// 넘기고, 대상 재확인·진행 기록·실행은 그쪽이 한다. 목록 읽기라는 자기 비동기 흐름이 있어 `AndroidDevicesModel` 과 나눴다
 /// (ARCHITECTURE §1). 나누기 전의 서로 막기는 그대로다: 시트를 열 기기는 App 이 `AndroidDevicesModel.appSheetTarget(_:for:)` 로
 /// 잇는 `target` 이 정하고(목록·기기·작업 시작 가능·만들기 시트와 확인 대화상자 없음), `AndroidDevicesModel` 은 App 이 이
-/// Model 의 `hasPresentedSheet` 로 잇는 클로저로 이 시트가 떠 있는지 본다.
+/// Model 과 테스트 조건 시트(`AndroidTestConditionsModel`)의 `hasPresentedSheet` 를 OR 로 잇는 클로저로 두 시트가 떠 있는지 본다
+/// (테스트 조건 시트를 열 기기 `testConditionsTarget` 도 그것을 봐 이 시트가 떠 있으면 열지 않는다. 반대 방향은 시트가 창을 막는
+/// 모달이라는 점에 기댄다).
 @MainActor
 @Observable
 public final class AndroidAppSheetsModel {

@@ -92,8 +92,11 @@ enum SimctlErrorClassifier {
     }
   }
 
-  /// `spawn … launchctl list`·uninstall 실패. listapps 와 같다 (꺼진 기기 SimError 405 → `.deviceNotBooted`, 실측.
-  /// domain 줄이 없으면 `error(exitCode:stderr:)`: "Invalid device" → `.deviceNotFound`).
+  /// `spawn … launchctl list`·uninstall·테스트 조건(`ui` 읽기·쓰기, `location set|start|run|clear`) 실패. listapps 와 같다
+  /// (꺼진 기기 SimError 405 → `.deviceNotBooted`, 실측. domain 줄이 없으면 `error(exitCode:stderr:)`: "Invalid device" →
+  /// `.deviceNotFound`, 그 밖(`ui` 의 "Unknown apperance"·location 의 "Invalid latitude,longitude pair"·usage 117) →
+  /// `.commandFailed`).
+  /// ui·location 의 stderr 에는 사용자 글자가 없다 (값은 고정 토큰, 좌표는 Core 를 거친 숫자).
   static func bootedDeviceCommandError(exitCode: Int32, stderr: String) -> SimulatorError {
     self.listAppsError(exitCode: exitCode, stderr: stderr)
   }

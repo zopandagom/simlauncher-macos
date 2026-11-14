@@ -11,8 +11,9 @@ import SimulatorInterface
 /// `LauncherModel.swift` 가 600 줄에 닿아 `LauncherModel` 과 나눴다 (ARCHITECTURE §1, Android 의 `AndroidAppSheetsModel` 과 같은
 /// 모양).
 /// 서로 막기: 시트를 열 기기는 App 이 `LauncherModel.appSheetTarget(_:for:)` 로 잇는 `target` 이 정하고(목록·기기·작업 시작
-/// 가능·다른 시트와 확인 대화상자 없음), `LauncherModel` 은 App 이 이 Model 의 `hasPresentedSheet` 로 잇는 클로저로 이 시트가
-/// 떠 있는지 본다.
+/// 가능·다른 시트와 확인 대화상자 없음), `LauncherModel` 은 App 이 이 Model 과 테스트 조건 시트(`TestConditionsModel`)의
+/// `hasPresentedSheet` 를 OR 로 잇는 클로저로 두 시트가 떠 있는지 본다 (테스트 조건 시트를 열 기기 `testConditionsTarget` 도
+/// 그 클로저를 봐 이 시트가 떠 있으면 열지 않는다. 반대 방향은 시트가 창을 막는 모달이라는 점에 기댄다).
 @MainActor
 @Observable
 public final class LauncherAppSheetsModel {

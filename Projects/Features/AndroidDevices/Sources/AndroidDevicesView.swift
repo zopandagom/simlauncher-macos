@@ -8,12 +8,15 @@ import UniformTypeIdentifiers
 /// 목록은 ⌘·⇧ 클릭으로 여러 기기를 고를 수 있고(선택은 Model 상태), 툴바의 "선택한 기기 켜기" 가 고른 기기를 함께 켜고,
 /// "선택한 기기에 앱 설치"(파일에서 고르기…·URL 에서…·카탈로그에서…)가 고른 기기 중 켜진 기기에 함께 설치한다.
 /// 행의 버튼·메뉴·드롭(스크린샷·녹화 포함)은 그 행 한 대에만 동작한다. 사라질 때(`onDisappear`) 자동 다시 읽기를 멈추게 알린다.
-/// URL·카탈로그 시트는 `downloadModel`, 앱 실행·링크 열기 시트는 `appSheetsModel`(둘 다 App 소유)의 초안으로 띄운다.
+/// URL·카탈로그 시트는 `downloadModel`, 앱 실행·링크 열기 시트는 `appSheetsModel`, 테스트 조건 시트는 `conditionsModel`
+/// (모두 App 소유)의 초안으로 띄운다.
 /// 행 "로그 보기" 는 `appSheetsModel.logDevices` 로 누를 수 있는지 정하고, 그 기기의 로그 창(`AppLogTarget.android`)을 연다.
 public struct AndroidDevicesView: View {
   let model: AndroidDevicesModel
   let downloadModel: AndroidDownloadInstallModel
   let appSheetsModel: AndroidAppSheetsModel
+  /// 행의 "테스트 조건…" 시트 (App 소유).
+  let conditionsModel: AndroidTestConditionsModel
   @Environment(\.openWindow) private var openWindow
   /// 지금 띄운 알림. 닫히는 동안 Model 의 줄에서 빠져도 글자가 비지 않도록 View 가 들고 있는다.
   @State private var presentedNotice: AndroidDevicesNoticeItem?
@@ -28,11 +31,13 @@ public struct AndroidDevicesView: View {
   public init(
     model: AndroidDevicesModel,
     downloadModel: AndroidDownloadInstallModel,
-    appSheetsModel: AndroidAppSheetsModel
+    appSheetsModel: AndroidAppSheetsModel,
+    conditionsModel: AndroidTestConditionsModel
   ) {
     self.model = model
     self.downloadModel = downloadModel
     self.appSheetsModel = appSheetsModel
+    self.conditionsModel = conditionsModel
   }
 
   public var body: some View {
@@ -119,31 +124,8 @@ public struct AndroidDevicesView: View {
       ) {
         AndroidDeviceCreationSheet(model: self.model)
       }
-      // 만들기·앱 실행·링크 시트는 같은 체인에 두고, 두 Model(App 이 잇는다)이 둘 이상 함께 열리지 않게 막는다.
-      .sheet(
-        isPresented: Binding(
-          get: { self.appSheetsModel.launchAppDraft != nil },
-          set: { isPresented in
-            if !isPresented {
-              self.appSheetsModel.launchAppSheetDismissed()
-            }
-          }
-        )
-      ) {
-        AndroidLaunchAppSheet(model: self.appSheetsModel)
-      }
-      .sheet(
-        isPresented: Binding(
-          get: { self.appSheetsModel.openURLDraft != nil },
-          set: { isPresented in
-            if !isPresented {
-              self.appSheetsModel.openURLSheetDismissed()
-            }
-          }
-        )
-      ) {
-        AndroidOpenURLSheet(model: self.appSheetsModel)
-      }
+      // 만들기·앱 실행·링크·테스트 조건 시트는 같은 체인에 두고, Model 들(App 이 잇는다)이 둘 이상 함께 열리지 않게 막는다.
+      .modifier(AndroidAppSheets(appSheetsModel: self.appSheetsModel, conditionsModel: self.conditionsModel))
       .modifier(AndroidDownloadSheets(model: self.downloadModel))
       .confirmationDialog(
         AndroidDevicesText.confirmationTitle(for: self.model.confirmation ?? self.presentedConfirmation),
@@ -367,9 +349,7 @@ extension AndroidDevicesView {
       launchAppTapped: {
         Task { await self.appSheetsModel.launchAppTapped(device.id) }
       },
-      openURLTapped: {
-        self.appSheetsModel.openURLTapped(device.id)
-      },
+      openURLTapped: { self.appSheetsModel.openURLTapped(device.id) },
       hasLog: self.appSheetsModel.logDevices.contains(device.id),
       logTapped: { self.openWindow(id: AppLogTarget.windowID, value: AppLogTarget.android(device.id)) },
       canTakeScreenshot: self.model.screenshots.canStart(on: device, during: task),
@@ -382,11 +362,11 @@ extension AndroidDevicesView {
       recordTapped: {
         Task { await self.model.recordTapped(device.id) }
       },
-      stopRecordingTapped: {
-        self.model.recordingStopTapped(device.id)
-      },
+      stopRecordingTapped: { self.model.recordingStopTapped(device.id) },
       canViewLayout: AndroidLayoutAvailability.canOpen(device: device, during: task),
-      layoutTapped: { self.openWindow(id: LayoutTarget.windowID, value: LayoutTarget.android(device.id)) }
+      layoutTapped: { self.openWindow(id: LayoutTarget.windowID, value: LayoutTarget.android(device.id)) },
+      canChangeTestConditions: AndroidTestConditionsAvailability.canOpen(device: device, during: task),
+      testConditionsTapped: { Task { await self.conditionsModel.testConditionsTapped(device.id) } }
     )
   }
 
@@ -485,6 +465,53 @@ private struct AndroidDownloadSheets: ViewModifier {
         )
       ) {
         AndroidCatalogInstallSheet(model: self.model)
+      }
+  }
+}
+
+/// 행의 앱 실행·링크 열기 시트(`appSheetsModel`)와 테스트 조건 시트(`conditionsModel`). Model 들이 App 이 이은 클로저로 서로 막아
+/// 만들기 시트와 함께 둘 이상 열리지 않는다.
+private struct AndroidAppSheets: ViewModifier {
+  let appSheetsModel: AndroidAppSheetsModel
+  let conditionsModel: AndroidTestConditionsModel
+
+  func body(content: Content) -> some View {
+    content
+      .sheet(
+        isPresented: Binding(
+          get: { self.appSheetsModel.launchAppDraft != nil },
+          set: { isPresented in
+            if !isPresented {
+              self.appSheetsModel.launchAppSheetDismissed()
+            }
+          }
+        )
+      ) {
+        AndroidLaunchAppSheet(model: self.appSheetsModel)
+      }
+      .sheet(
+        isPresented: Binding(
+          get: { self.appSheetsModel.openURLDraft != nil },
+          set: { isPresented in
+            if !isPresented {
+              self.appSheetsModel.openURLSheetDismissed()
+            }
+          }
+        )
+      ) {
+        AndroidOpenURLSheet(model: self.appSheetsModel)
+      }
+      .sheet(
+        isPresented: Binding(
+          get: { self.conditionsModel.draft != nil },
+          set: { isPresented in
+            if !isPresented {
+              self.conditionsModel.sheetDismissed()
+            }
+          }
+        )
+      ) {
+        AndroidTestConditionsSheet(model: self.conditionsModel)
       }
   }
 }
