@@ -30,27 +30,36 @@ import WorkspaceTesting
 /// 파일이 생기지 않고 Finder 도 열리지 않는다.
 /// 목록은 ⌘·⇧ 클릭으로 여러 기기를 고를 수 있고, 툴바 "선택한 기기에 앱 설치"(파일·URL·카탈로그)와 "선택한 기기 켜기" 가
 /// 고른 기기에 같은 Fake 로 동작한다 (받기·풀기·검사는 한 번, 기기별 켜기·설치·실행은 동시).
+/// "테스트 조건…" 시트는 `TestConditionsModel` 이 같은 `SimulatorClientFake`(화면 설정을 기기별로 기억하고 고르면 바꾼다,
+/// 위치는 늘 받아들인다)로 돈다. 읽기 실패·지원 안 함·적용 안 됨·기기 꺼짐은 "테스트 조건" 미리보기에서 본다.
 /// Example 에는 Settings 씬이 없다(설정 창은 App 에서 확인한다).
 @main
 struct LauncherFeatureExampleApp: App {
   @State private var model: LauncherModel
   @State private var catalogModel: CatalogInstallModel
   @State private var appSheetsModel: LauncherAppSheetsModel
+  @State private var conditionsModel: TestConditionsModel
 
   init() {
-    let (launcher, appSheets) = Self.makeModels()
-    self._model = State(initialValue: launcher)
-    self._appSheetsModel = State(initialValue: appSheets)
-    self._catalogModel = State(initialValue: makeCatalogModel(.exampleCatalogs, installingWith: launcher))
+    let models = Self.makeModels()
+    self._model = State(initialValue: models.launcher)
+    self._appSheetsModel = State(initialValue: models.appSheets)
+    self._conditionsModel = State(initialValue: models.conditions)
+    self._catalogModel = State(initialValue: makeCatalogModel(.exampleCatalogs, installingWith: models.launcher))
   }
 
   var body: some Scene {
     WindowGroup {
-      LauncherView(model: self.model, catalogModel: self.catalogModel, appSheetsModel: self.appSheetsModel)
+      LauncherView(
+        model: self.model,
+        catalogModel: self.catalogModel,
+        appSheetsModel: self.appSheetsModel,
+        conditionsModel: self.conditionsModel
+      )
     }
   }
 
-  private static func makeModels() -> (LauncherModel, LauncherAppSheetsModel) {
+  private static func makeModels() -> ExampleModels {
     let fake = SimulatorClientFake(inventory: .sample)
     fake.setDelay(.seconds(1))
     ExampleInstalledApps.install(on: fake)
@@ -66,11 +75,13 @@ struct LauncherFeatureExampleApp: App {
       download: download,
       workspace: WorkspaceClientFake(),
       appLog: AppLogClientFake(),
-      appSheetPresented: { box.model?.hasPresentedSheet ?? false }
+      appSheetPresented: { box.hasPresentedSheet }
     )
     let appSheets = makeAppSheetsModel(simulator: fake, launcher: launcher)
+    let conditions = makeConditionsModel(simulator: fake, launcher: launcher)
     box.model = appSheets
-    return (launcher, appSheets)
+    box.conditions = conditions
+    return ExampleModels(launcher: launcher, appSheets: appSheets, conditions: conditions)
   }
 }
 
@@ -85,12 +96,6 @@ private func makeAppSheetsModel(simulator: SimulatorClientFake, launcher: Launch
     launchRequested: { request in await launcher.launchAppRequested(request) },
     openURLRequested: { request in await launcher.openURLRequested(request) }
   )
-}
-
-/// 기기 목록 Model 이 뒤에 만든 시트 Model 을 읽게 넘기는 상자 (App 의 `LauncherAppSheetsBox` 와 같다).
-@MainActor
-private final class ExampleAppSheetsBox {
-  weak var model: LauncherAppSheetsModel?
 }
 
 /// 카탈로그에서 설치 시트의 Model. 저장된 목록은 `setting`, 카탈로그 받기는 따로 만든 `DownloadClientFake`(1초 지연,
@@ -119,7 +124,7 @@ private func makeCatalogModel(
 /// 스크린샷·녹화 저장은 `workspace` 로 바꾼다 (기본: 늘 예약·보이기에 성공하는 Fake). 실행(로그 받기와 함께)은 `appLog` 로 바꾼다
 /// (기본: 늘 성공).
 @MainActor
-private func previewLauncher(
+func previewLauncher(
   _ inventory: DeviceInventory = .sample,
   configure: (SimulatorClientFake) -> Void = { _ in },
   appBundle configureAppBundle: (AppBundleClientFake) -> Void = { _ in },
@@ -147,12 +152,19 @@ private func previewLauncher(
     download: download,
     workspace: workspace,
     appLog: appLog,
-    appSheetPresented: { box.model?.hasPresentedSheet ?? false }
+    appSheetPresented: { box.hasPresentedSheet }
   )
   let catalogModel = makeCatalogModel(catalogs, installingWith: launcher, catalogDownload: configureCatalogDownload)
   let appSheets = makeAppSheetsModel(simulator: fake, launcher: launcher)
+  let conditions = makeConditionsModel(simulator: fake, launcher: launcher)
   box.model = appSheets
-  return LauncherView(model: launcher, catalogModel: catalogModel, appSheetsModel: appSheets)
+  box.conditions = conditions
+  return LauncherView(
+    model: launcher,
+    catalogModel: catalogModel,
+    appSheetsModel: appSheets,
+    conditionsModel: conditions
+  )
 }
 
 #Preview("목록") {
