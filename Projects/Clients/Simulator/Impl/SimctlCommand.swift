@@ -1,3 +1,4 @@
+import Core
 import Foundation
 
 /// 실행할 명령과 인자·환경 (순수).
@@ -120,6 +121,55 @@ enum SimctlCommand {
   static func createdUDID(fromStdout data: Data) -> String? {
     guard let text = String(bytes: data, encoding: .utf8) else { return nil }
     return Self.validatedUDID(text.trimmingCharacters(in: .whitespacesAndNewlines))
+  }
+
+  // MARK: - 테스트 조건 (`udid` 는 모두 `validatedUDID(_:)` 를 거친 값)
+
+  /// `simctl ui <기기> <항목>` 읽기. stdout 한 줄 + `\n`, 꺼진 기기는 exit 0 `unknown` (실측).
+  static func uiRead(udid: String, option: SimctlUIOption) -> [String] {
+    ["simctl", "ui", udid, option.rawValue]
+  }
+
+  /// `simctl ui <기기> <항목> <값>` 쓰기. 값은 `SimctlUIParser.write(_:)` 가 정한 고정 토큰만 넘긴다
+  /// (`content_size`·`increase_contrast` 는 잘못된 값에도 exit 0 이라서, 실측). 기기 뒤 인자는 옵션으로 읽히지 않는다.
+  static func uiWrite(udid: String, option: SimctlUIOption, value: String) -> [String] {
+    ["simctl", "ui", udid, option.rawValue, value]
+  }
+
+  /// `location set <위도>,<경도>`. `--` 를 붙이지 않는다: set 은 `--` 를 좌표로 읽어 exit 1 이고, 음수 위도로 시작해도 반영된다 (실측).
+  static func locationSet(udid: String, coordinate: GeoCoordinate) -> [String] {
+    ["simctl", "location", udid, "set", self.pair(coordinate)]
+  }
+
+  /// `location start --speed=<m/s> -- <위도>,<경도>…`. `--` 가 필요하다: 음수 위도로 시작하는 경유지가 옵션으로 읽혀 exit 117 (실측).
+  /// `--interval`·`--distance` 는 넘기지 않는다 (기본 1초 간격).
+  static func locationStart(udid: String, route: LocationRoute) -> [String] {
+    ["simctl", "location", udid, "start", "--speed=" + GeoCoordinate.decimalString(route.speed.metersPerSecond), "--"]
+      + route.waypoints.map(self.pair)
+  }
+
+  /// `location run <시나리오>`. 이름은 공백이 든 한 인자 (고정 값, 대소문자 구분).
+  static func locationRun(udid: String, scenario: String) -> [String] {
+    ["simctl", "location", udid, "run", scenario]
+  }
+
+  /// `location clear`: 진행 중인 경로·시나리오도 멈춘다 (실측).
+  static func locationClear(udid: String) -> [String] {
+    ["simctl", "location", udid, "clear"]
+  }
+
+  /// `run` 이 시나리오를 찾지 못했다: 종료 코드 1 이고, 앞 공백을 뺀 줄 머리가 "Could not find scenario " 인 줄이 있다
+  /// (실측 Xcode 27.2: "Could not find scenario 'Nope'"). 꺼진 기기도 같은 출력이라 Impl 은 실행 전에 켜짐을 확인한다.
+  static func scenarioNotFound(exitCode: Int32, output: String) -> Bool {
+    guard exitCode == 1 else { return false }
+    return output.split(whereSeparator: \.isNewline).contains { line in
+      line.drop(while: \.isWhitespace).hasPrefix("Could not find scenario ")
+    }
+  }
+
+  /// "<위도>,<경도>" (소수 6자리, `.` 소수점, 로캘 무관).
+  private static func pair(_ coordinate: GeoCoordinate) -> String {
+    GeoCoordinate.decimalString(coordinate.latitude) + "," + GeoCoordinate.decimalString(coordinate.longitude)
   }
 
   static func printDeveloperDirectory() -> [String] {
