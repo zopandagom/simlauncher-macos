@@ -3,7 +3,8 @@ public enum SimulatorError: Error, Hashable, Sendable {
   /// xcrun·simctl 을 쓸 수 없다: provider 가 쓸 Xcode 가 없다고 답함(명령을 실행하지 않음), Xcode 없음,
   /// Command Line Tools 만 있음, DEVELOPER_DIR 경로 없음, xcode-select 실패.
   case developerToolsUnavailable
-  /// UDID 형식이 아니거나, simctl 이 "Invalid device" 로 답했거나, 삭제·초기화 사전 확인에서 목록에 없다.
+  /// UDID 형식이 아니거나, simctl 이 "Invalid device" 로 답했거나(ui·location 포함), 삭제·초기화·스크린샷·녹화·위치 시나리오의
+  /// 사전 확인이나 화면 설정 읽기의 꺼짐 확인에서 목록에 없다.
   case deviceNotFound
   /// 기기가 꺼져 있지 않아 지우거나 초기화하지 않았다 (사전 확인. erase 의 "in current state: Booted" 는 분류하지 않는다).
   case deviceNotShutdown
@@ -22,7 +23,8 @@ public enum SimulatorError: Error, Hashable, Sendable {
   case creationResultUnknown
   /// 기기가 켜져 있지 않아 앱 목록 읽기·설치·실행, 링크 열기, 화면 찍기·녹화를 하지 못했다: listapps·install·launch·openurl 의
   /// SimError 405 "Unable to lookup in current state", screenshot 의 실행 전 확인과 NSPOSIXErrorDomain 60 "Timeout waiting for
-  /// screen surfaces", recordVideo 의 실행 전 확인.
+  /// screen surfaces", recordVideo 의 실행 전 확인. 테스트 조건: ui·location 의 SimError 405, 화면 설정 읽기가 셋 다 `unknown`
+  /// 일 때의 목록 확인(꺼진 기기는 exit 0 `unknown`), location run 의 실행 전 확인.
   case deviceNotBooted
   /// 설치할 .app 이 그 경로에 없다: 파일 URL 이 아니어서 실행하지 않았거나 NSPOSIXErrorDomain 2 (install).
   case appNotFound

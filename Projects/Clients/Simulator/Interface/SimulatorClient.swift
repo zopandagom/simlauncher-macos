@@ -2,7 +2,8 @@ import Core
 import Foundation
 
 /// iOS 시뮬레이터 기기·런타임·기기 종류와 런타임 디스크 이미지 목록을 읽고, 켜고 끄고, 만들고 지우고 초기화하고, 설치된 앱·실행 중인 앱 목록을 읽고,
-/// 앱을 설치·실행(콘솔을 붙인 실행 포함)·지우고 링크를 열고 화면을 찍고 녹화하는 Client.
+/// 앱을 설치·실행(콘솔을 붙인 실행 포함)·지우고 링크를 열고 화면을 찍고 녹화하고, 테스트 조건(외관·글씨 크기·고대비 읽기·쓰기,
+/// 위치 한 점·경로·시나리오·지우기)을 바꾸는 Client.
 /// Impl 은 `xcrun simctl` 과 같은 개발자 디렉터리를 쓴다. 쓸 Xcode 가 없으면(App 이 넘긴 provider 가 nil 을 돌려줌)
 /// 어떤 명령도 실행하지 않고 `.developerToolsUnavailable` 를 던진다.
 public protocol SimulatorClient: Sendable {
@@ -119,6 +120,34 @@ public protocol SimulatorClient: Sendable {
     to file: URL,
     onStarted: @escaping @Sendable () async -> Void
   ) async throws(SimulatorError) -> ScreenRecordingResult
+
+  /// 켜진 기기의 화면 설정 세 가지 (`simctl ui <기기> appearance`·`content_size`·`increase_contrast` 읽기를 차례로, provider 한 번).
+  /// 각 줄은 앞뒤 공백을 빼고 대소문자를 무시해 해석한다: 알려진 값 → `.value`, `unsupported` → `.unsupported`, 그 밖 → `.unknown`.
+  /// 꺼진 기기는 셋 다 exit 0 `unknown` 이라(실측) 셋이 모두 `.unknown` 이면 같은 디렉터리로 목록을 읽어 없으면 `.deviceNotFound`,
+  /// 켜져 있지 않으면 `.deviceNotBooted` (켜져 있으면 셋 다 `.unknown` 그대로). 읽기가 0 이 아닌 종료 코드면
+  /// SimError 405 → `.deviceNotBooted`, "Invalid device" → `.deviceNotFound`. UDID 형식이 아니면 실행하지 않고 `.deviceNotFound`.
+  /// 기기를 바꾸지 않는다.
+  func displaySettings(on id: VirtualDevice.ID) async throws(SimulatorError) -> IOSDisplaySettings
+
+  /// 화면 설정 하나를 쓰고(`simctl ui <기기> appearance light|dark`·`content_size <토큰>`·`increase_contrast enabled|disabled`)
+  /// 같은 디렉터리로 세 값을 다시 읽어 그 항목이 요청 값이면 `.applied`, 아니면 `.notApplied(읽은 값)`.
+  /// simctl 은 잘못된 값에 exit 0 `Invalid argument` 를 찍기도 해서(실측) 종료 코드가 아니라 다시 읽은 값으로 판정한다.
+  /// 쓰기가 0 이 아닌 종료 코드면 다시 읽지 않고 `displaySettings(on:)` 과 같이 분류해 던진다 (꺼진 기기 SimError 405).
+  /// 실행 중 앱에 곧바로 반영되고 앱은 그대로이며, 기기를 껐다 켜도 남는다 (실측).
+  func setDisplaySetting(_ setting: IOSDisplaySetting, on id: VirtualDevice.ID) async throws(SimulatorError)
+    -> IOSDisplaySettingOutcome
+
+  /// 기기 위치를 시뮬레이션한다 (`simctl location <기기> set|start|run|clear`). 좌표는 소수 6자리 `.` 소수점(로캘 무관).
+  /// - point: `set <위도>,<경도>` (`--` 없음: set 은 `--` 를 좌표로 읽는다, 실측).
+  /// - route: `start --speed=<m/s> -- <위도>,<경도>…` (`--` 필수: 음수 위도로 시작하는 경유지가 옵션으로 읽힌다, 실측).
+  /// - scenario: 실행 전에 같은 디렉터리로 목록을 읽어 없으면 `.deviceNotFound`, 켜져 있지 않으면 `.deviceNotBooted`
+  ///   (꺼진 기기에서 `run` 은 405 가 아니라 `Could not find scenario` 로 끝난다, 실측). `Could not find scenario` →
+  /// `.scenarioUnavailable`.
+  /// - clear: 진행 중인 경로·시나리오도 멈춘다.
+  /// 0 이 아닌 종료 코드는 SimError 405 → `.deviceNotBooted`, "Invalid device" → `.deviceNotFound`, 그 밖 `.commandFailed`.
+  /// 경로·시나리오는 simctl 이 끝난 뒤에도 기기 안에서 이어진다. 위치가 실제로 바뀌었는지는 읽을 방법이 없어 확인하지 않는다.
+  func simulateLocation(_ simulation: IOSLocationSimulation, on id: VirtualDevice.ID) async throws(SimulatorError)
+    -> IOSLocationOutcome
 }
 
 /// 화면 녹화의 끝.
