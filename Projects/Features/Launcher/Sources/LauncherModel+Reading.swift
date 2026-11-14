@@ -5,14 +5,15 @@ import Core
 // Client 를 잇는 앱 설치·기기 명령·화면 캡처 흐름은 Model 이 소유한
 // `AppInstallFlow.swift`·`DeviceCommandFlow.swift`·`ScreenCaptureFlow.swift` 에 둔다).
 public extension LauncherModel {
-  /// + 버튼을 누를 수 있는지: 목록을 읽었고, 선택지가 있고, 만드는 중이 아니고, 생성·URL 설치·앱 실행·링크 열기 시트가 닫혀 있다.
+  /// + 버튼을 누를 수 있는지: 목록을 읽었고, 선택지가 있고, 만드는 중이 아니고, 생성·URL 설치·앱 실행·링크 열기·테스트 조건 시트가
+  /// 닫혀 있다.
   var canCreateDevice: Bool {
     guard case .loaded = self.listState else { return false }
     let isSheetClosed = self.createDraft == nil && !self.isAppSheetPresented && self.installURLDraft == nil
     return !self.creationOptions.isEmpty && !self.isCreating && isSheetClosed
   }
 
-  /// 생성·URL 설치·앱 실행·링크 열기 시트나 삭제·초기화 확인 대화상자가 열려 있다.
+  /// 생성·URL 설치·앱 실행·링크 열기·테스트 조건 시트나 삭제·초기화 확인 대화상자가 열려 있다.
   var isSheetOrDialogOpen: Bool {
     self.createDraft != nil || self.isAppSheetPresented || self.installURLDraft != nil || self
       .pendingConfirmation != nil
@@ -27,6 +28,21 @@ public extension LauncherModel {
           self.createDraft == nil,
           self.installURLDraft == nil,
           self.pendingConfirmation == nil
+    else { return nil }
+    return device
+  }
+
+  /// 테스트 조건 시트를 열 수 있는 기기 (없으면 nil): 목록을 읽었고, 기기가 있고, `TestConditionsAvailability.canOpen`(켜짐·
+  /// 켜기/끄기/삭제/초기화 중이 아님)이고, 생성·URL 설치 시트와 확인 대화상자, 앱 실행·링크 열기·테스트 조건 시트가 없다
+  /// (`isAppSheetPresented` 는 App 이 두 시트 Model 을 OR 로 잇는다). App 이 `TestConditionsModel` 의 `target` 으로 잇는다.
+  func testConditionsTarget(_ id: VirtualDevice.ID) -> VirtualDevice? {
+    guard case let .loaded(list) = self.listState,
+          let device = list.device(id: id),
+          TestConditionsAvailability.canOpen(device: device, during: self.activity.task(on: id)),
+          self.createDraft == nil,
+          self.installURLDraft == nil,
+          self.pendingConfirmation == nil,
+          !self.isAppSheetPresented
     else { return nil }
     return device
   }
