@@ -18,7 +18,7 @@ SimLauncher 배포본을 만드는 방법이다. 기본 경로는 **버전 태�
 레포 관리자가 한 번 한다. 아래 `<소유자>/<레포>` 는 이 레포(`zopandagom/simlauncher-macos`)나 포크다.
 
 1. **Developer ID Application 인증서 내보내기(.p12)**: 2.2 의 2번에서 만든 dmg 서명용 로컬 인증서를 키체인 접근에서 개인 키와 함께 골라 `.p12` 로 내보낸다(내보낼 때 암호를 정한다). 파일은 레포 밖에 두고, 시크릿 등록 뒤에는 지우거나 안전한 곳에 백업한다. CI 는 이 인증서 하나로 앱(manual export, 프로비저닝 프로필 없음)과 dmg 를 모두 서명한다. 지금 인증서는 **2027-02-01** 에 만료되므로 그 전에 새 인증서를 만들어 로컬 키체인과 시크릿을 함께 바꾼다.
-2. **App Store Connect API 키(공증용)**: App Store Connect → 사용자 및 액세스 → 통합 → App Store Connect API → 팀 키에서 키를 만든다(역할은 Developer 로 시작하고, 공증이 권한 문제로 거절되면 높인다. 최소 역할은 아직 확인하지 않았다). `.p8` 파일은 한 번만 받을 수 있다. 같은 화면의 **키 ID** 와 **발급자 ID** 를 적어 둔다.
+2. **App Store Connect API 키(공증용)**: App Store Connect → 사용자 및 액세스 → 통합 → App Store Connect API → 팀 키에서 키를 만든다(역할은 Developer 면 된다. 이 역할로 앱·dmg 공증이 통과했다: 2026-11-13 시험 실행 run 43410396086, 1.2.0 게시 run 43416123062). `.p8` 파일은 한 번만 받을 수 있다. 같은 화면의 **키 ID** 와 **발급자 ID** 를 적어 둔다.
 3. **`release` 환경**: 시크릿을 쓸 수 있는 ref 를 main 브랜치와 버전 태그로 제한한다. 승인자는 두지 않는다(태그 push 로 끝까지 게시).
    ```sh
    gh api -X PUT repos/<소유자>/<레포>/environments/release --input - <<'JSON'
@@ -27,7 +27,7 @@ SimLauncher 배포본을 만드는 방법이다. 기본 경로는 **버전 태�
    gh api -X POST repos/<소유자>/<레포>/environments/release/deployment-branch-policies -f name=main -f type=branch
    gh api -X POST repos/<소유자>/<레포>/environments/release/deployment-branch-policies -f name='*.*.*' -f type=tag
    ```
-4. **환경 시크릿 5개**: 값은 파일·표준 입력·프롬프트로만 넣는다(명령줄에 값을 쓰지 않는다).
+4. **환경 시크릿 5개**: 값은 파일·표준 입력·프롬프트로만 넣는다(명령줄에 값을 쓰지 않는다). 프롬프트로 넣는 값은 **Terminal 앱에서** 직접 입력한다. 대화형 입력을 그대로 넘기지 않는 환경(예: Claude Code 의 `!` 로 실행한 `gh secret set`)에서는 값이 틀리게 저장될 수 있다. 실제로 그렇게 등록한 .p12 암호가 틀려 시험 실행이 임시 키체인 단계에서 두 번 실패했다(4절 "릴리스 워크플로가 실패하면" 표).
    ```sh
    base64 -i <Developer ID .p12> | gh secret set DEVELOPER_ID_P12_BASE64 --env release
    gh secret set DEVELOPER_ID_P12_PASSWORD --env release          # 프롬프트에 .p12 암호
@@ -104,7 +104,7 @@ SimLauncher 배포본을 만드는 방법이다. 기본 경로는 **버전 태�
 6. 3.1 의 8·9번으로 게시본을 확인한다.
 
 ## 4. 단계와 실패 시 할 일
-진행 중에는 `==> [n/12] <단계>` 가, 실패하면 `실패 [n/12] <단계>: <이유>` 와 다음 할 일이 보인다. 실패해도 산출물·로그는 지우지 않는다(다음 실행이 처음에 `build/release` 를 지운다). 배포 이름 dmg 는 12단계를 통과해야만 생긴다. 산출물에 영향이 없는 정리(임시 파일 지우기)·검사용 마운트 분리·SHA-256 계산이 실패하면 `경고:` 줄과 할 일만 보이고 계속한다.
+진행 중에는 `==> [n/12] <단계>` 가, 실패하면 `실패 [n/12] <단계>: <이유>` 와 다음 할 일이 보인다. 실패해도 산출물·로그는 지우지 않는다(다음 실행이 처음에 `build/release` 를 지운다). 배포 이름 dmg 는 12단계를 통과해야만 생긴다. 산출물에 영향이 없는 정리(임시 파일 지우기)·검사용 마운트 분리·SHA-256 계산이 실패하면 `경고:` 줄과 할 일만 보이고 계속한다. 러너(macOS 27·Xcode 27.2)에서는 `hdiutil create -volname …`·`hdiutil attach -nobrowse -readonly -mountpoint …`·`hdiutil detach …` 가 deprecated 라는 `hdiutil: WARNING:` 줄이 나오지만 동작은 정상이라 무시한다(1.2.0 게시 run 43416123062. `diskutil image`·`diskutil eject` 로 바꾸는 것은 후속, DEVELOPMENT_PLAN "위험과 대응").
 
 **CI 모드**: 릴리스 워크플로(`.github/workflows/release.yml` 의 build 잡)는 같은 `make release` 를 환경 변수로 CI 모드로 돌린다. 단계 번호·종료 코드는 같고, 다른 점은 아래 표의 "CI 모드:" 부분이다. 로컬 `make release` 는 이 변수들을 주지 않으므로 지금처럼 동작한다.
 
@@ -145,6 +145,7 @@ SimLauncher 배포본을 만드는 방법이다. 기본 경로는 **버전 태�
 |---|---|---|
 | check 실패: 경량 태그·버전 불일치·빌드 번호가 이전 릴리스보다 크지 않음·main 에 머지되지 않은 커밋·이미 게시된 Release | 태그를 잘못 붙였거나 버전 PR 이 빠졌다 | 태그를 지우고(`git push origin :refs/tags/<버전>`, `git tag -d <버전>`) 원인을 고친 뒤 3.1 순서대로 주석 태그를 다시 push 한다. 이미 게시된 버전이면 새 버전으로 올린다 |
 | build·publish 실패로 게시하지 못한 태그 | archive·서명·공증·게시 중 실패 | 일시적 실패(네트워크·Apple 지연)면 run 의 **Re-run failed jobs**. 고칠 것이 있으면 태그를 지우고 고친 뒤 다시 push 한다. 게시되지 않은 태그를 그대로 두면 다음 릴리스 노트는 그 태그를 "이전 릴리스" 로 보지 않고 건너뛴다(게시된 Release 가 있는 태그만 이전 태그로 쓴다) |
+| build 의 `임시 키체인` 단계 실패: `Mac verify error: invalid password?` | `DEVELOPER_ID_P12_PASSWORD` 가 .p12 암호와 다르다(프롬프트 입력이 잘못 들어간 경우 포함, 2.1 의 4번) | 공증 전에 멈췄으므로 게시물은 없다. Terminal 앱에서 `gh secret set DEVELOPER_ID_P12_PASSWORD --env release` 로 다시 등록한 뒤 **Re-run failed jobs** |
 | build 가 Queued 로 오래 머문다(최대 24시간) | `xcode-27` 러너 레이블(미리보기)의 대기열이 막혔거나 레이블이 바뀌었다 | actions/runner-images 의 공지와 레이블을 확인한다. 급하면 run 을 취소하고 3.2 의 로컬 `make release` 로 게시한다(예비 경로) |
 | run 이 취소됨 | 같은 동시 실행 그룹(`release`)에서 대기 중인 run 은 하나만 남아, 태그를 연달아 push 하면 가운데 run 이 취소될 수 있다 | 앞 run 이 끝난 뒤 취소된 run 을 **Re-run all jobs** |
 | notes 잡 실패(도우미 테스트 `make release-scripts-test`·노트 재료 `release-notes.sh prepare`: 이전 릴리스 태그 없음·PR 조회 실패·머지 커밋 불일치, 요약 검사 단계 자체의 오류) | gh API 일시 오류, 머지 방식이 바뀌어 머지 커밋에서 PR 을 찾지 못함 | publish 가 돌지 않아 게시되지 않는다. 로그로 원인을 확인하고 일시적이면 **Re-run failed jobs**, 고칠 것이 있으면 고친 뒤 태그를 지우고 다시 push 한다 |
