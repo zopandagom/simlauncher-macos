@@ -33,7 +33,8 @@ enum ADBConditionCommands {
   // MARK: - 출력 해석
 
   /// 읽기: 종료 코드 0 이고 `Night mode:` 줄이 있으면 그 값(`yes` → `.dark`, `no` → `.light`, 그 밖 → `.other`, 빈 값 → `.unknown`).
-  /// 줄이 없으면 켜는 중·끊김 출력은 `.deviceNotBooted`, 그 밖은 `.unknown` (`cmd uimode night` 가 없는 Android 버전일 수 있다, 미실측).
+  /// 그 밖(줄이 없거나 종료 코드가 0 이 아님)은 켜는 중·끊김 출력이면 `.deviceNotBooted`, 아니면 `.unknown`
+  /// (`cmd uimode night` 가 없는 Android 버전일 수 있다, 미실측).
   static func parseNightModeRead(_ result: CommandResult) -> Result<AndroidNightModeReading, AndroidEmulatorError> {
     if result.exitCode == 0, let reading = self.nightModeLine(result) {
       return .success(reading)

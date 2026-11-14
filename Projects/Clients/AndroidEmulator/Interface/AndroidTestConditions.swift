@@ -8,7 +8,7 @@ public enum AndroidNightModeReading: Hashable, Sendable {
   case dark
   /// `auto`·`custom_schedule`·`custom_bedtime` 등 그 밖의 값 (폴더블 기기의 처음 값이 `custom_bedtime` 이었다, 실측).
   case other
-  /// `Night mode:` 줄이 없거나 읽기가 실패했다 (`cmd uimode night` 가 없는 Android 버전 등).
+  /// `Night mode:` 줄이 없거나 값이 비었거나 읽기가 실패했다(종료 코드가 0 이 아님 포함. `cmd uimode night` 가 없는 Android 버전 등).
   case unknown
 }
 
