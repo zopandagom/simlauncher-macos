@@ -125,8 +125,9 @@ public protocol AndroidEmulatorClient: Sendable {
   /// `.unknown` (던지지 않는다: `cmd uimode night` 가 없는 Android 버전이 있을 수 있다, 미실측). 기기를 바꾸지 않는다.
   func testConditions(on id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError) -> AndroidTestConditions
 
-  /// 외관을 바꾼다 (`shell cmd uimode night yes|no`). 쓰기 출력의 `Night mode:` 값이 요청과 같으면 `.applied`, 다르거나 `Error: …`
-  /// 면 `.notApplied`. 출력에 `Night mode:` 줄이 없으면 한 번 다시 읽어 판정한다. 켜는 중·끊김 출력은 `.deviceNotBooted`.
+  /// 외관을 바꾼다 (`shell cmd uimode night yes|no`). 켜는 중·끊김 출력은 `.deviceNotBooted`. 종료 코드 0 이고 쓰기 출력의
+  /// `Night mode:` 값이 요청과 같으면 `.applied`, 다르면 `.notApplied`. 그 줄이 없을 때 `Error` 로 시작하는 줄이 있거나 종료 코드가
+  /// 0 이 아니면 `.notApplied`, 그 밖은 한 번 다시 읽어 판정한다.
   /// 실행 중 앱에 곧바로 반영되고 앱 프로세스는 그대로다 (Activity 재생성, 실측). 사전 확인은 앱 작업과 같다.
   func setNightMode(_ appearance: DeviceAppearance, on id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError)
     -> AndroidConditionOutcome
