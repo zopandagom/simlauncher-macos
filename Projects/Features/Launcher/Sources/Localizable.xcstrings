@@ -631,6 +631,16 @@
         }
       }
     },
+    "사용할 수 없는 기기에서는 테스트 조건을 바꿀 수 없습니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "사용할 수 없는 기기에서는 테스트 조건을 바꿀 수 없습니다"
+          }
+        }
+      }
+    },
     "서울" : {
       "localizations" : {
         "ko" : {
@@ -3741,22 +3751,22 @@
         }
       }
     },
-    "켜진 기기에서만 바꿀 수 있습니다." : {
-      "localizations" : {
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "켜진 기기에서만 바꿀 수 있습니다."
-          }
-        }
-      }
-    },
     "켜진 기기에서만 스크린샷을 찍을 수 있습니다. 기기를 켠 뒤 다시 시도하세요" : {
       "localizations" : {
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "켜진 기기에서만 스크린샷을 찍을 수 있습니다. 기기를 켠 뒤 다시 시도하세요"
+          }
+        }
+      }
+    },
+    "켜진 기기에서만 테스트 조건을 바꿀 수 있습니다. 기기를 켠 뒤 다시 시도하세요" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "켜진 기기에서만 테스트 조건을 바꿀 수 있습니다. 기기를 켠 뒤 다시 시도하세요"
           }
         }
       }

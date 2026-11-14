@@ -16,9 +16,14 @@ extension LauncherText {
     String(localized: "외관·글씨 크기·위치 같은 테스트 조건을 바꿉니다.", bundle: .module)
   }
 
-  /// (공통) 꺼짐·켜는 중·쓸 수 없는 기기의 버튼 툴팁.
-  static var testConditionsBootedOnlyHelp: String {
-    String(localized: "켜진 기기에서만 바꿀 수 있습니다.", bundle: .module)
+  /// (공통) "테스트 조건…" 버튼이 막힌 이유 (툴팁). 기기 규칙은 스크린샷과 같다 (켜는 중은 `.notBooted`).
+  static func testConditionsBlockReason(_ reason: ScreenshotBlockReason) -> String {
+    switch reason {
+    case .notBooted:
+      String(localized: "켜진 기기에서만 테스트 조건을 바꿀 수 있습니다. 기기를 켠 뒤 다시 시도하세요", bundle: .module)
+    case .unavailable:
+      String(localized: "사용할 수 없는 기기에서는 테스트 조건을 바꿀 수 없습니다", bundle: .module)
+    }
   }
 
   // MARK: - 시트

@@ -311,8 +311,8 @@ extension DeviceRow {
 
   /// "테스트 조건…" 버튼 툴팁에 보일 막힌 이유 (꺼짐·켜는 중·쓸 수 없음). 진행 중이면 행의 진행 표시가 이유라 따로 보이지 않는다.
   private var testConditionsBlockReason: String? {
-    guard case .blocked = self.device.screenshotAvailability else { return nil }
-    return LauncherText.testConditionsBootedOnlyHelp
+    guard case let .blocked(reason) = self.device.screenshotAvailability else { return nil }
+    return LauncherText.testConditionsBlockReason(reason)
   }
 
   /// 녹화 버튼 툴팁에 보일 막힌 이유. 기기 규칙은 스크린샷과 같다.

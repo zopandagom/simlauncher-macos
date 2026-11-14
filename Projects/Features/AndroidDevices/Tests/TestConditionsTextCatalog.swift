@@ -15,7 +15,8 @@ enum TestConditionsTextCatalog {
   static func sharedChecks(_ table: [String: String]) -> [Check] {
     var pairs: [(String, String)] = [
       ("테스트 조건…", AndroidDevicesText.testConditionsButton),
-      ("켜진 기기에서만 바꿀 수 있습니다.", AndroidDevicesText.testConditionsBootedOnlyHelp),
+      ("켜진 기기에서만 테스트 조건을 바꿀 수 있습니다. 기기를 켠 뒤 다시 시도하세요", AndroidDevicesText.testConditionsBlockReason(.notBooted)),
+      ("사용할 수 없는 기기에서는 테스트 조건을 바꿀 수 없습니다", AndroidDevicesText.testConditionsBlockReason(.unavailable)),
       ("바꾼 조건은 기기에 바로 적용되고, 시트를 닫거나 SimLauncher 를 꺼도 기기에 남습니다.", AndroidDevicesText.testConditionsSheetNote),
       ("화면", AndroidDevicesText.displaySection),
       ("외관", AndroidDevicesText.appearanceLabel),
@@ -106,9 +107,9 @@ struct AndroidTestConditionsTextTests {
     #expect(AndroidDevicesText.testConditionsFailure(.cancelled) == AndroidDevicesText.message(for: .adbUnavailable))
   }
 
-  @Test("공유 문구 32개와 Android 문구 6개")
+  @Test("공유 문구 33개와 Android 문구 6개")
   func checkCounts() {
-    #expect(Set(TestConditionsTextCatalog.sharedChecks([:]).map(\.key)).count == 32)
+    #expect(Set(TestConditionsTextCatalog.sharedChecks([:]).map(\.key)).count == 33)
     #expect(Set(TestConditionsTextCatalog.androidChecks([:]).map(\.key)).count == 6)
   }
 }

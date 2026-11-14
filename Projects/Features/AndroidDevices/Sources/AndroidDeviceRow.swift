@@ -110,7 +110,7 @@ struct AndroidDeviceRow: View {
       Button(AndroidDevicesText.testConditionsButton, action: self.testConditionsTapped)
         .disabled(!self.canChangeTestConditions)
         .help(
-          self.captureBlockReason { _ in AndroidDevicesText.testConditionsBootedOnlyHelp }
+          self.captureBlockReason(AndroidDevicesText.testConditionsBlockReason)
             ?? AndroidDevicesText.testConditionsHelp
         )
       self.action

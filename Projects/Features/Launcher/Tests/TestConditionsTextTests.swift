@@ -16,7 +16,7 @@ enum TestConditionsTextCatalog {
   }
 
   static func checks(_ table: [String: String]) -> [Check] {
-    self.plainChecks(table) + self.choiceChecks(table) + self.formatChecks(table)
+    self.plainChecks(table) + self.locationPlainChecks(table) + self.choiceChecks(table) + self.formatChecks(table)
   }
 
   /// 보간 없는 키.
@@ -24,7 +24,8 @@ enum TestConditionsTextCatalog {
     let pairs: [(String, String)] = [
       ("테스트 조건…", LauncherText.testConditionsButton),
       ("외관·글씨 크기·위치 같은 테스트 조건을 바꿉니다.", LauncherText.testConditionsHelp),
-      ("켜진 기기에서만 바꿀 수 있습니다.", LauncherText.testConditionsBootedOnlyHelp),
+      ("켜진 기기에서만 테스트 조건을 바꿀 수 있습니다. 기기를 켠 뒤 다시 시도하세요", LauncherText.testConditionsBlockReason(.notBooted)),
+      ("사용할 수 없는 기기에서는 테스트 조건을 바꿀 수 없습니다", LauncherText.testConditionsBlockReason(.unavailable)),
       ("바꾼 조건은 기기에 바로 적용되고, 시트를 닫거나 SimLauncher 를 꺼도 기기에 남습니다.", LauncherText.testConditionsSheetNote),
       ("화면", LauncherText.displaySection),
       ("외관", LauncherText.appearanceLabel),
@@ -38,6 +39,13 @@ enum TestConditionsTextCatalog {
       ("이 iOS 버전은 이 설정을 지원하지 않습니다.", LauncherText.settingUnsupported),
       ("지금 값을 알 수 없습니다.", LauncherText.settingUnknown),
       ("적용하는 중…", LauncherText.applyingCondition),
+    ]
+    return pairs.map { CatalogTextCatalog.check(table, $0.0, $0.1) }
+  }
+
+  /// 보간 없는 키 중 위치 관련.
+  private static func locationPlainChecks(_ table: [String: String]) -> [Check] {
+    let pairs: [(String, String)] = [
       ("위치", LauncherText.locationSection),
       ("위도, 경도", LauncherText.coordinateField),
       ("예: 37.5665, 126.9780", LauncherText.coordinatePlaceholder),
@@ -145,20 +153,20 @@ enum TestConditionsTextCatalog {
       #expect(check.actual == check.expected, "\(check.key)")
     }
     let keys = Set(checks.map(\.key))
-    #expect(keys.count == 76)
+    #expect(keys.count == 77)
     return keys
   }
 }
 
 /// 테스트 조건 문구 함수가 각 케이스에 돌려주는 값.
 struct TestConditionsTextTests {
-  @Test("테스트 조건 문구 76개가 String Catalog 에서 한국어 값으로 컴파일되고, 코드 결과가 표의 값과 같다")
+  @Test("테스트 조건 문구 77개가 String Catalog 에서 한국어 값으로 컴파일되고, 코드 결과가 표의 값과 같다")
   func textsAreInCompiledKoreanTable() throws {
     let url = try #require(
       Bundle.module.url(forResource: "Localizable", withExtension: "strings", subdirectory: nil, localization: "ko")
     )
     let table = try #require(NSDictionary(contentsOf: url) as? [String: String])
-    #expect(TestConditionsTextCatalog.checkedKeys(in: table).count == 76)
+    #expect(TestConditionsTextCatalog.checkedKeys(in: table).count == 77)
   }
 
   @Test("적용 실패 본문: 꺼짐·없어짐은 시트 문구, 그 밖은 기존 시뮬레이터 오류 문구")
