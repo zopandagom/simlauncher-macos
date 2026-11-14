@@ -31,6 +31,7 @@ struct AndroidDevicesResourcesTests {
     let downloadChecks = DownloadTextCatalog.sharedChecks(table) + DownloadTextCatalog.androidChecks(table)
       + CaptureTextCatalog.sharedChecks(table) + CaptureTextCatalog.androidChecks(table)
       + BatchTextCatalog.sharedChecks(table) + BatchTextCatalog.androidChecks(table)
+      + TestConditionsTextCatalog.sharedChecks(table) + TestConditionsTextCatalog.androidChecks(table)
     for check in downloadChecks {
       #expect(table[check.key] == check.key, "\(check.key)")
       #expect(check.actual == check.expected, "\(check.key)")

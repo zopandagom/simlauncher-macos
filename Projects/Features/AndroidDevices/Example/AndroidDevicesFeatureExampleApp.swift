@@ -23,7 +23,8 @@ import WorkspaceTesting
 /// 앱 실행(설치 후 실행·"앱 실행…")은 로그 받기 대신 `AppLogClientFake`(1초 지연, 장면에 따라 실패)로 돌고, 실행한 기기는 행
 /// "로그 보기" 가 눌린다 (이 데모에는 로그 창이 없어 눌러도 창이 열리지 않는다).
 /// 파일·명령·네트워크를 쓰지 않으므로 아무것도 켜거나 만들거나 설치하지 않는다 (Fake 의 목록만 바뀐다).
-/// 앱 설치(파일·URL·카탈로그)·실행·링크 열기·스크린샷·녹화는 켜진 기기("Pixel Tablet")에서 해 본다.
+/// 앱 설치(파일·URL·카탈로그)·실행·링크 열기·스크린샷·녹화·테스트 조건은 켜진 기기("Pixel Tablet")에서 해 본다.
+/// 테스트 조건은 Fake(외관을 기기별로 기억하고 고르면 바꾼다, 위치는 늘 받아들인다)로 돌고, 실패·적용 안 됨은 "테스트 조건" 장면에서 본다.
 /// 왼쪽 목록에서 상태를 고른다. "Android 도구" 버튼은 App 이 도구 화면을 여는 대신 아래 줄에 누른 횟수를 보인다.
 @main
 struct AndroidDevicesFeatureExampleApp: App {
@@ -47,7 +48,8 @@ struct AndroidDevicesFeatureExampleApp: App {
             AndroidDevicesView(
               model: models.devices,
               downloadModel: models.downloadInstall,
-              appSheetsModel: models.appSheets
+              appSheetsModel: models.appSheets,
+              conditionsModel: models.conditions
             )
             .id(self.scenario)
           }
@@ -77,12 +79,18 @@ struct DemoModels {
   let devices: AndroidDevicesModel
   let downloadInstall: AndroidDownloadInstallModel
   let appSheets: AndroidAppSheetsModel
+  let conditions: AndroidTestConditionsModel
 }
 
-/// 기기 목록 Model 의 `appSheetPresented` 가 뒤에 만든 시트 Model 을 읽게 넘기는 상자 (App 과 같다).
+/// 기기 목록 Model 의 `appSheetPresented` 가 뒤에 만든 시트 Model 들을 읽게 넘기는 상자 (App 과 같다).
 @MainActor
 final class DemoAppSheetsBox {
   weak var model: AndroidAppSheetsModel?
+  weak var conditions: AndroidTestConditionsModel?
+
+  var hasPresentedSheet: Bool {
+    (self.model?.hasPresentedSheet ?? false) || (self.conditions?.hasPresentedSheet ?? false)
+  }
 }
 
 /// "Android 도구" 버튼을 누른 횟수 (App 이 도구 화면을 여는 자리).
@@ -138,6 +146,10 @@ enum DemoScenario: String, CaseIterable, Hashable {
   case multiDevice = "여러 기기: 켜진 기기 둘 (선택한 기기에 앱 설치)"
   case multiDeviceSlowDownload = "여러 기기: 함께 받는 중 유지 (취소)"
   case multiDeviceFailure = "여러 기기 결과: 한 기기만 설치 실패"
+  case conditionsReadFailure = "테스트 조건: 지금 값을 읽지 못함"
+  case conditionsOther = "테스트 조건: 자동·예약 모드, 위치 서비스 꺼짐"
+  case conditionsNotApplied = "테스트 조건: 적용 안 됨 (외관·위치)"
+  case conditionsDeviceOff = "테스트 조건: 기기 꺼짐 (바꾸면 실패)"
 
   private static let allDevices = AndroidDeviceInventory(
     devices: [
@@ -153,56 +165,6 @@ enum DemoScenario: String, CaseIterable, Hashable {
     ],
     creationOptions: .sample
   )
-
-  @MainActor
-  func makeModel(setupRequested: @escaping @MainActor () -> Void) -> DemoModels {
-    let fake = AndroidEmulatorClientFake(inventory: self.inventory)
-    fake.setDelay(.seconds(1))
-    fake.setInstalledPackages(.success(Self.samplePackages))
-    let package = AndroidPackageClientFake()
-    package.setDelay(.seconds(1))
-    let download = DownloadClientFake()
-    download.setDelay(.milliseconds(300))
-    download.setDownloadScript(progress: Self.downloadProgress, result: nil)
-    self.configure(fake)
-    DemoMultiDevices.configure(fake, for: self)
-    self.configure(package)
-    self.configure(download)
-    let workspace = WorkspaceClientFake()
-    self.configure(workspace)
-    let appSheetsBox = DemoAppSheetsBox()
-    let launchError = self.launchError
-    let appLog = AppLogClientFake(androidLaunchHandler: { _, _ throws(AppLogLaunchError) in
-      try? await Task.sleep(for: .seconds(1))
-      if let launchError {
-        throw launchError
-      }
-    })
-    let devices = AndroidDevicesModel(
-      emulator: fake,
-      package: package,
-      download: download,
-      appLog: appLog,
-      workspace: workspace,
-      setupRequested: setupRequested,
-      appSheetPresented: { appSheetsBox.model?.hasPresentedSheet ?? false }
-    )
-    let appSheets = AndroidAppSheetsModel(
-      emulator: fake,
-      appLog: appLog,
-      target: { id, task in devices.appSheetTarget(id, for: task) },
-      launchRequested: { request in await devices.launchAppRequested(request) },
-      openURLRequested: { request in await devices.openURLRequested(request) }
-    )
-    appSheetsBox.model = appSheets
-    let preferences = PreferencesClientFake(urls: self.catalogURLs, isLocked: self == .catalogLocked)
-    let downloadInstall = AndroidDownloadInstallModel(
-      preferences: preferences,
-      download: download,
-      installRequested: { request in await devices.downloadInstallRequested(request) }
-    )
-    return DemoModels(devices: devices, downloadInstall: downloadInstall, appSheets: appSheets)
-  }
 
   /// 0 → 전체 1 MiB 까지 여덟 번 (행의 진행 막대가 보이도록).
   private static let downloadProgress = (0 ... 8).map {
@@ -281,6 +243,8 @@ enum DemoScenario: String, CaseIterable, Hashable {
       break
     case .avdFolderUnavailable:
       fake.setFetchError(.avdFolderUnavailable)
+    case .conditionsReadFailure, .conditionsOther, .conditionsNotApplied, .conditionsDeviceOff:
+      DemoTestConditions.configure(fake, for: self)
     default:
       self.configureAppOperations(fake)
     }
@@ -357,6 +321,63 @@ enum DemoScenario: String, CaseIterable, Hashable {
     default:
       break
     }
+  }
+}
+
+// MARK: - 장면의 Model
+
+extension DemoScenario {
+  /// 이 장면의 Fake 를 설정하고 App 처럼 Model 셋을 잇는다.
+  @MainActor
+  func makeModel(setupRequested: @escaping @MainActor () -> Void) -> DemoModels {
+    let fake = AndroidEmulatorClientFake(inventory: self.inventory)
+    fake.setDelay(.seconds(1))
+    fake.setInstalledPackages(.success(Self.samplePackages))
+    let package = AndroidPackageClientFake()
+    package.setDelay(.seconds(1))
+    let download = DownloadClientFake()
+    download.setDelay(.milliseconds(300))
+    download.setDownloadScript(progress: Self.downloadProgress, result: nil)
+    self.configure(fake)
+    DemoMultiDevices.configure(fake, for: self)
+    self.configure(package)
+    self.configure(download)
+    let workspace = WorkspaceClientFake()
+    self.configure(workspace)
+    let appSheetsBox = DemoAppSheetsBox()
+    let launchError = self.launchError
+    let appLog = AppLogClientFake(androidLaunchHandler: { _, _ throws(AppLogLaunchError) in
+      try? await Task.sleep(for: .seconds(1))
+      if let launchError {
+        throw launchError
+      }
+    })
+    let devices = AndroidDevicesModel(
+      emulator: fake,
+      package: package,
+      download: download,
+      appLog: appLog,
+      workspace: workspace,
+      setupRequested: setupRequested,
+      appSheetPresented: { appSheetsBox.hasPresentedSheet }
+    )
+    let appSheets = AndroidAppSheetsModel(
+      emulator: fake,
+      appLog: appLog,
+      target: { id, task in devices.appSheetTarget(id, for: task) },
+      launchRequested: { request in await devices.launchAppRequested(request) },
+      openURLRequested: { request in await devices.openURLRequested(request) }
+    )
+    appSheetsBox.model = appSheets
+    let conditions = DemoTestConditions.model(emulator: fake, devices: devices)
+    appSheetsBox.conditions = conditions
+    let preferences = PreferencesClientFake(urls: self.catalogURLs, isLocked: self == .catalogLocked)
+    let downloadInstall = AndroidDownloadInstallModel(
+      preferences: preferences,
+      download: download,
+      installRequested: { request in await devices.downloadInstallRequested(request) }
+    )
+    return DemoModels(devices: devices, downloadInstall: downloadInstall, appSheets: appSheets, conditions: conditions)
   }
 }
 
@@ -467,7 +488,8 @@ private func demoPreview(_ scenario: DemoScenario) -> some View {
   return AndroidDevicesView(
     model: models.devices,
     downloadModel: models.downloadInstall,
-    appSheetsModel: models.appSheets
+    appSheetsModel: models.appSheets,
+    conditionsModel: models.conditions
   )
   .frame(width: 720, height: 480)
 }
