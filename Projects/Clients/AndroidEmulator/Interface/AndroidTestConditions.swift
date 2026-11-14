@@ -28,6 +28,7 @@ public struct AndroidTestConditions: Hashable, Sendable {
 /// 테스트 조건 쓰기 결과. 명령 자체의 실패(꺼짐·없는 기기·adb 없음)는 `AndroidEmulatorError` 로 던진다.
 public enum AndroidConditionOutcome: Hashable, Sendable {
   case applied
-  /// 명령은 돌았지만 바뀌지 않았다 (uimode 가 다른 값·`Error:` 로 답함, `emu geo fix` 가 `KO:` 또는 `OK` 없이 답함).
+  /// 명령은 돌았지만 바뀌지 않았다 (uimode 가 다른 값으로 답함·`Error` 로 시작하는 줄·0 이 아닌 종료 코드,
+  /// `emu geo fix` 가 `KO:` 줄로 답하거나 `OK` 줄이 없음).
   case notApplied
 }

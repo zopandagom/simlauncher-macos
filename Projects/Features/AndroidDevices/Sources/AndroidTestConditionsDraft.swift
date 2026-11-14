@@ -13,7 +13,8 @@ public enum AndroidTestConditionItem: Hashable, Sendable {
 public enum AndroidTestConditionsMessage: Hashable, Sendable {
   /// 명령이 실패했다 (꺼짐·없어짐·adb 문제 등).
   case failed(AndroidTestConditionItem, AndroidEmulatorError)
-  /// 명령은 돌았지만 바뀌지 않았다 (uimode 가 다른 값으로 답함, `emu geo fix` 가 `KO:` 로 답함).
+  /// 명령은 돌았지만 바뀌지 않았다 (uimode 가 다른 값으로 답함·`Error` 로 시작하는 줄·0 이 아닌 종료 코드,
+  /// `emu geo fix` 가 `KO:` 줄로 답하거나 `OK` 줄이 없음).
   case notApplied(AndroidTestConditionItem)
 }
 
