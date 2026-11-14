@@ -119,10 +119,11 @@ public protocol AndroidEmulatorClient: Sendable {
   /// 좌표는 스크린샷 px, `unit` 은 `.dp`, `pixelsPerUnit` 은 밀도/160, `deviceName` 은 다시 읽은 기기의 표시 이름.
   func layoutSnapshot(on id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError) -> LayoutSnapshot
 
-  /// 테스트 조건 시트가 열 때 읽는 값: `-s <serial> shell cmd uimode night` 의 `Night mode: <값>` 줄(`yes` → `.dark`, `no` → `.light`,
-  /// 그 밖 → `.other`)과 `shell cmd location is-location-enabled` 의 `true`/`false`(그 밖·실패 → nil, 던지지 않는다).
-  /// 사전 확인은 앱 작업과 같다. `Night mode:` 줄이 없으면(종료 코드와 관계없이) 켜는 중·끊김 출력은 `.deviceNotBooted`, 그 밖은
-  /// `.unknown` (던지지 않는다: `cmd uimode night` 가 없는 Android 버전이 있을 수 있다, 미실측). 기기를 바꾸지 않는다.
+  /// 테스트 조건 시트가 열 때 읽는 값: `-s <serial> shell cmd uimode night` 가 종료 코드 0 이고 `Night mode: <값>` 줄이 있으면 그 값
+  /// (`yes` → `.dark`, `no` → `.light`, 빈 값 → `.unknown`, 그 밖 → `.other`)과 `shell cmd location is-location-enabled` 의
+  /// `true`/`false`(그 밖·실패 → nil, 던지지 않는다). 사전 확인은 앱 작업과 같다. 그 밖(줄이 없거나 종료 코드가 0 이 아님)은 켜는 중·
+  /// 끊김 출력이면 `.deviceNotBooted`, 아니면 `.unknown` (던지지 않는다: `cmd uimode night` 가 없는 Android 버전이 있을 수 있다, 미실측).
+  /// 기기를 바꾸지 않는다.
   func testConditions(on id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError) -> AndroidTestConditions
 
   /// 외관을 바꾼다 (`shell cmd uimode night yes|no`). 켜는 중·끊김 출력은 `.deviceNotBooted`. 종료 코드 0 이고 쓰기 출력의

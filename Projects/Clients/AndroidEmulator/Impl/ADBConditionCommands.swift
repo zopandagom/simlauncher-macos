@@ -42,7 +42,7 @@ enum ADBConditionCommands {
   }
 
   /// 쓰기: `Night mode:` 줄이 있으면(종료 코드 0) 그 값이 요청과 같을 때 `.applied`, 다르면 `.notApplied`.
-  /// 켜는 중·끊김 출력은 `.deviceNotBooted`. `Error:` 로 시작하는 줄이나 0 이 아닌 종료 코드는 `.notApplied` (`Error: mode must be …`
+  /// 켜는 중·끊김 출력은 `.deviceNotBooted`. `Error` 로 시작하는 줄이나 0 이 아닌 종료 코드는 `.notApplied` (`Error: mode must be …`
   /// exit 255, 실측). 그 밖(줄 없음)은 nil: 호출한 쪽이 한 번 다시 읽어 판정한다.
   static func parseNightModeWrite(
     _ result: CommandResult,
