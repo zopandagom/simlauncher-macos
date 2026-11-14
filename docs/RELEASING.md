@@ -104,7 +104,7 @@ SimLauncher 배포본을 만드는 방법이다. 기본 경로는 **버전 태�
 6. 3.1 의 8·9번으로 게시본을 확인한다.
 
 ## 4. 단계와 실패 시 할 일
-진행 중에는 `==> [n/12] <단계>` 가, 실패하면 `실패 [n/12] <단계>: <이유>` 와 다음 할 일이 보인다. 실패해도 산출물·로그는 지우지 않는다(다음 실행이 처음에 `build/release` 를 지운다). 배포 이름 dmg 는 12단계를 통과해야만 생긴다. 산출물에 영향이 없는 정리(임시 파일 지우기)·검사용 마운트 분리·SHA-256 계산이 실패하면 `경고:` 줄과 할 일만 보이고 계속한다.
+진행 중에는 `==> [n/12] <단계>` 가, 실패하면 `실패 [n/12] <단계>: <이유>` 와 다음 할 일이 보인다. 실패해도 산출물·로그는 지우지 않는다(다음 실행이 처음에 `build/release` 를 지운다). 배포 이름 dmg 는 12단계를 통과해야만 생긴다. 산출물에 영향이 없는 정리(임시 파일 지우기)·검사용 마운트 분리·SHA-256 계산이 실패하면 `경고:` 줄과 할 일만 보이고 계속한다. 러너(macOS 27·Xcode 27.2)에서는 `hdiutil create -volname …`·`hdiutil attach -nobrowse -readonly -mountpoint …`·`hdiutil detach …` 가 deprecated 라는 `hdiutil: WARNING:` 줄이 나오지만 동작은 정상이라 무시한다(1.2.0 게시 run 43416123062. `diskutil image`·`diskutil eject` 로 바꾸는 것은 후속, DEVELOPMENT_PLAN "위험과 대응").
 
 **CI 모드**: 릴리스 워크플로(`.github/workflows/release.yml` 의 build 잡)는 같은 `make release` 를 환경 변수로 CI 모드로 돌린다. 단계 번호·종료 코드는 같고, 다른 점은 아래 표의 "CI 모드:" 부분이다. 로컬 `make release` 는 이 변수들을 주지 않으므로 지금처럼 동작한다.
 

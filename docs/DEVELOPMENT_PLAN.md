@@ -87,6 +87,7 @@
 | 기기용 빌드(.ipa)는 시뮬레이터에 설치되지 않음 | 시뮬레이터용(`-sdk iphonesimulator`) .app 만 받는다고 화면에 알리고, 맞지 않는 파일은 이유와 함께 거절. 테스트할 iOS 앱 CI 에서 시뮬레이터 빌드를 올리는 작업이 따로 필요해, 예시 GitHub Actions 와 카탈로그 규격을 제공한다 |
 | `xcrun simctl` 실행에는 App Sandbox 밖 동작이 필요해 Mac App Store 배포가 어려움 | Developer ID 서명·공증 배포 (ARCHITECTURE §4) |
 | Apple 실리콘 Mac 에서는 arm64 slice 가 없는 시뮬레이터 빌드가 설치되지 않음 (`simctl install` 이 거절, Xcode 27.1·iOS 27.0 에서 확인) | 설치 전에 실행 파일 아키텍처를 검사해 이유를 보여 준다 (2단계) |
+| macOS 27 의 `hdiutil` 이 `create -volname`·`attach -nobrowse -readonly -mountpoint`·`detach` 를 deprecated 로 경고한다 (1.2.0 릴리스 러너 macOS 27·Xcode 27.2 에서 관찰, 동작은 정상). 없어지면 `release.sh` 의 8단계(create)와 12단계(attach)가 실패하고, detach 는 실패해도 경고만 남기지만 0단계는 이전 실행이 남긴 마운트를 분리하지 못해 정리에 실패한다 | 지금은 경고를 무시한다 (RELEASING 4절). `diskutil image create`·`diskutil image attach`·`diskutil eject` 로 바꾸는 fix 를 후속으로 두고, 바꿀 때는 로컬 예비 경로(macOS 26, `diskutil image` 있음 확인)와 CI 둘 다에서 dmg 를 만들어 RELEASING 5절 검사로 비교한다 |
 | 공개 레포라 외부 PR 이 워크플로를 돌리거나 Releases 의 빌드가 누구에게나 공개됨 | PR 트리거는 `pull_request` 만 쓰고 `pull_request_target` 은 쓰지 않는다(fork PR 은 시크릿 없음), 외부 기여자 워크플로는 승인 후 실행. Releases 에 올리는 iOS 앱 빌드는 샘플 앱만 (회사 앱 빌드는 각자 비공개 저장소에). 서명·공증 시크릿은 main·버전 태그만 배포할 수 있는 `release` 환경에만 두고, 버전 태그는 관리자만 만든다 |
 | 입력받은 URL·zip 이 신뢰할 수 없는 내용일 수 있음 | HTTPS 만 허용(리다이렉트 포함), 압축 해제 경로가 대상 폴더를 벗어나지 않는지 검사 (CONVENTIONS §4) |
 | Android SDK 가 크다 (받기 약 2.5 GB, 설치 후 약 7 GB, 설치 중 최대 약 9.1 GB) | 설치는 사용자가 누를 때만 하고, 동의 시트에 받을 크기와 설치 후 어림 크기(볼륨별)를 보인다. 받기 전에 두 볼륨의 여유를 어림으로 비교하고, 패키지마다 받은 zip 을 풀자마자 지우며, 저장 공간이 모자라면 필요한 양과 함께 알린다 |
