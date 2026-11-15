@@ -36,6 +36,8 @@ public struct AndroidEmulatorClientImpl: AndroidEmulatorClient {
     var pidWaitTimeout: Duration = .seconds(30)
     /// 레이아웃 덤프(`uiautomator dump`) 하나의 한도 (실측: 성공 약 2초, 화면이 계속 바뀌면 약 11초 뒤 스스로 실패). 넘으면 `.layoutTimedOut`.
     var layoutDumpTimeout: Duration = .seconds(30)
+    /// `adb uninstall` 하나의 한도 (실측 0~1초. 실행 중 앱도 1초). 넘으면 `.appCommandFailed`.
+    var appRemovalTimeout: Duration = .seconds(60)
 
     static let standard = Timing(
       pollInterval: .seconds(1),

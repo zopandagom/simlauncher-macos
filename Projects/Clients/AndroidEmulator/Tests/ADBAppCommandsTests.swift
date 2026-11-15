@@ -352,3 +352,44 @@ extension ADBAppCommandsTests {
     }
   }
 }
+
+extension ADBAppCommandsTests {
+  // MARK: - uninstall (출력은 설계 실측 원문, API 37)
+
+  @Test("uninstall 인자: 호스트 adb 의 uninstall, 패키지는 인용하지 않는다")
+  func uninstallArguments() {
+    #expect(ADBAppCommands.uninstallArguments(serial: Self.serial, package: Self.package) == [
+      "-s", "emulator-5554", "uninstall", "com.android.camera2",
+    ])
+  }
+
+  @Test("uninstall: 종료 코드 0 과 Success 줄이면 removed")
+  func uninstallRemoved() throws {
+    #expect(try ADBAppCommands.parseUninstall(Self.result(0, stdout: "Success\n")).get() == .removed)
+    #expect(try ADBAppCommands.parseUninstall(Self.result(0, stdout: "  Success\r\n")).get() == .removed)
+  }
+
+  @Test(
+    "uninstall: DELETE_FAILED·0 인데 Success 없음·Success 인데 0 아님은 checkInstalled (출력만으로 모른다)",
+    arguments: [
+      CommandResult(exitCode: 1, stdout: Data("Failure [DELETE_FAILED_INTERNAL_ERROR]\n".utf8), stderr: Data()),
+      CommandResult(exitCode: 0, stdout: Data(), stderr: Data()), // 합성: 0 인데 Success 없음
+      CommandResult(exitCode: 1, stdout: Data("Success\n".utf8), stderr: Data()), // 합성: Success 인데 0 아님
+    ]
+  )
+  func uninstallCheckInstalled(result: CommandResult) throws {
+    #expect(try ADBAppCommands.parseUninstall(result).get() == .checkInstalled)
+  }
+
+  @Test("uninstall: 켜는 중(exit 20 Can't find service)·꺼진 직후(adb: device offline)는 deviceNotBooted")
+  func uninstallNotBooted() {
+    for result in [
+      Self.result(20, stderr: "cmd: Can't find service: package\n"),
+      Self.result(1, stderr: "adb: device offline\n"),
+    ] {
+      #expect(throws: AndroidEmulatorError.deviceNotBooted) {
+        try ADBAppCommands.parseUninstall(result).get()
+      }
+    }
+  }
+}

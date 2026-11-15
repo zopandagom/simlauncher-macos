@@ -33,7 +33,7 @@ struct AndroidEmulatorClientImplAppTests {
     }
   }
 
-  /// 다섯 메서드(실행은 `launchWithLogcat`)를 차례로 불러 던진 에러를 모은다.
+  /// 여섯 메서드(실행은 `launchWithLogcat`)를 차례로 불러 던진 에러를 모은다.
   static func allErrors(_ client: AndroidEmulatorClientImpl, _ id: AndroidVirtualDevice.ID) async throws
     -> [AndroidEmulatorError?]
   {
@@ -44,6 +44,7 @@ struct AndroidEmulatorClientImplAppTests {
       thrownError { _ = try await client.launchWithLogcat(Self.package, on: id) { _ in } },
       thrownError { try await client.openURL(link, on: id) },
       thrownError { _ = try await client.installedPackages(on: id) },
+      thrownError { try await client.uninstall(Self.package, on: id) },
     ]
   }
 
@@ -60,7 +61,7 @@ struct AndroidEmulatorClientImplAppTests {
 
     for name in ["Pixel", "Booting", "Starting"] {
       let errors = try await Self.allErrors(harness.client, AndroidVirtualDevice.ID(name))
-      #expect(errors == Array(repeating: .deviceNotBooted, count: 5), "\(name)")
+      #expect(errors == Array(repeating: .deviceNotBooted, count: 6), "\(name)")
     }
     #expect(Self.appCalls(harness).isEmpty)
   }
@@ -72,7 +73,7 @@ struct AndroidEmulatorClientImplAppTests {
     harness.adb.setDevicesFail(true)
 
     let errors = try await Self.allErrors(harness.client, Self.pixel)
-    #expect(errors == Array(repeating: .adbUnavailable, count: 5))
+    #expect(errors == Array(repeating: .adbUnavailable, count: 6))
     #expect(Self.appCalls(harness).isEmpty)
   }
 
@@ -84,14 +85,14 @@ struct AndroidEmulatorClientImplAppTests {
     harness.adb.set("emulator-5554", FakeADB.Emulator(name: "My Phone"))
 
     let unavailable = try await Self.allErrors(harness.client, AndroidVirtualDevice.ID("My Phone"))
-    #expect(unavailable == Array(repeating: .deviceUnavailable(.unsupportedName), count: 5))
+    #expect(unavailable == Array(repeating: .deviceUnavailable(.unsupportedName), count: 6))
     let missing = try await Self.allErrors(harness.client, Self.pixel)
-    #expect(missing == Array(repeating: .deviceNotFound, count: 5))
+    #expect(missing == Array(repeating: .deviceNotFound, count: 6))
     #expect(Self.appCalls(harness).isEmpty)
 
     let noSDK = try Harness(installSDK: false)
     defer { noSDK.cleanUp() }
-    #expect(try await Self.allErrors(noSDK.client, Self.pixel) == Array(repeating: .sdkUnavailable, count: 5))
+    #expect(try await Self.allErrors(noSDK.client, Self.pixel) == Array(repeating: .sdkUnavailable, count: 6))
   }
 
   // MARK: - 값 읽기
@@ -216,5 +217,77 @@ extension AndroidEmulatorClientImplAppTests {
     let names = try await harness.client.installedPackages(on: Self.pixel)
     #expect(names.map(\.rawValue) == ["com.b.app", "org.videolan.vlc"])
     #expect(Self.appCalls(harness) == [["-s", "emulator-5554", "shell", "pm", "list", "packages", "-3"]])
+  }
+}
+
+extension AndroidEmulatorClientImplAppTests {
+  // MARK: - 앱 지우기 (출력은 설계 실측 원문, API 37)
+
+  @Test("uninstall: 호스트 adb uninstall 을 60초 한도로 한 번. Success 면 pm path 없이 성공")
+  func uninstall() async throws {
+    let harness = try Self.booted()
+    defer { harness.cleanUp() }
+    harness.adb.onApp { _ in Self.result(0, stdout: "Success\n") }
+
+    try await harness.client.uninstall(Self.package, on: Self.pixel)
+
+    #expect(Self.appCalls(harness) == [["-s", "emulator-5554", "uninstall", "org.videolan.vlc"]])
+    let invocation = try #require(harness.command.invocations.last)
+    #expect(invocation.environment == ["HOME": FileFacts.path(harness.home), "ADB_MDNS": "0"])
+    #expect(invocation.timeout == .seconds(60))
+    #expect(AndroidEmulatorClientImpl.Timing.standard.appRemovalTimeout == .seconds(60))
+  }
+
+  @Test("uninstall: DELETE_FAILED 뒤 pm path 가 1(없음)이면 성공, 0(있음)이면 appCommandFailed, 끊김이면 deviceNotBooted")
+  func uninstallChecksPath() async throws {
+    let harness = try Self.booted()
+    defer { harness.cleanUp() }
+    let client = harness.client
+    let pathCall = ["-s", "emulator-5554", "shell", "pm", "path", "org.videolan.vlc"]
+    let cases: [(path: CommandResult, expected: AndroidEmulatorError?)] = [
+      (Self.result(1), nil),
+      (Self.result(0, stdout: "package:/data/app/~~x/org.videolan.vlc-1/base.apk\n"), .appCommandFailed),
+      (Self.result(1, stderr: "adb: device offline\n"), .deviceNotBooted),
+    ]
+    for (path, expected) in cases {
+      harness.adb.onApp { arguments in
+        arguments == pathCall ? path : Self.result(1, stdout: "Failure [DELETE_FAILED_INTERNAL_ERROR]\n")
+      }
+      let before = Self.appCalls(harness).count
+      #expect(await thrownError { try await client.uninstall(Self.package, on: Self.pixel) } == expected)
+      #expect(Array(Self.appCalls(harness).dropFirst(before)) == [
+        ["-s", "emulator-5554", "uninstall", "org.videolan.vlc"], pathCall,
+      ])
+    }
+  }
+
+  @Test("uninstall: 켜는 중·꺼진 직후 출력은 pm path 없이 deviceNotBooted")
+  func uninstallNotBooted() async throws {
+    let harness = try Self.booted()
+    defer { harness.cleanUp() }
+    let client = harness.client
+    let outputs = [
+      Self.result(20, stderr: "cmd: Can't find service: package\n"),
+      Self.result(1, stderr: "adb: device offline\n"),
+    ]
+    for output in outputs {
+      harness.adb.onApp { _ in output }
+      #expect(await thrownError { try await client.uninstall(Self.package, on: Self.pixel) } == .deviceNotBooted)
+    }
+    #expect(Self.appCalls(harness).allSatisfy { $0.contains("uninstall") })
+  }
+
+  @Test("uninstall: 시간 초과는 appCommandFailed, 취소는 cancelled, 시작 실패는 adbUnavailable")
+  func uninstallStopped() async throws {
+    let harness = try Self.booted()
+    defer { harness.cleanUp() }
+    let client = harness.client
+    let cases: [(CommandError, AndroidEmulatorError)] = [
+      (.timedOut, .appCommandFailed), (.cancelled, .cancelled), (.launchFailed, .adbUnavailable),
+    ]
+    for (thrown, expected) in cases {
+      harness.adb.onApp { _ throws(CommandError) in throw thrown }
+      #expect(await thrownError { try await client.uninstall(Self.package, on: Self.pixel) } == expected)
+    }
   }
 }

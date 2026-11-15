@@ -3,7 +3,7 @@ import CommandInterface
 import Core
 import Foundation
 
-/// 켜진 기기의 앱 작업(값 읽기·설치·실행 화면 찾기·`am start`·링크 열기·앱 목록) adb 인자와 출력 해석.
+/// 켜진 기기의 앱 작업(값 읽기·설치·실행 화면 찾기·`am start`·링크 열기·앱 목록·앱 지우기) adb 인자와 출력 해석.
 /// 로그 받기와 함께 하는 실행의 나머지 단계(force-stop·시각·pid·logcat)는 `ADBLogcatCommands`.
 /// `shell` 뒤 사용자 값·기기에서 읽은 값(링크·component)은 `ADBShell.quote` 를 거친다. 패키지 이름은 `AndroidPackageName` 이라
 /// 셸 특수 문자가 없어 인용하지 않는다. install 의 apk 경로는 호스트 argv 라 인용하지 않는다 (`/` 로 시작해 옵션으로 읽히지 않는다).
@@ -14,6 +14,12 @@ enum ADBAppCommands {
     case component(String)
     case none
     case ambiguous
+  }
+
+  /// `uninstall` 출력 판정. `checkInstalled` 는 출력만으로 지웠는지 알 수 없어 `pm path` 로 설치 여부를 봐야 한다는 뜻이다.
+  enum UninstallOutput: Equatable {
+    case removed
+    case checkInstalled
   }
 
   // MARK: - 인자
@@ -65,6 +71,11 @@ enum ADBAppCommands {
 
   static func listPackagesArguments(serial: String) -> [String] {
     ["-s", serial, "shell", "pm", "list", "packages", "-3"]
+  }
+
+  /// 호스트 adb 의 `uninstall` (기기의 `pm uninstall` 과 출력이 같다, 실측).
+  static func uninstallArguments(serial: String, package: AndroidPackageName) -> [String] {
+    ["-s", serial, "uninstall", package.rawValue]
   }
 
   // MARK: - 출력 해석
@@ -195,6 +206,20 @@ enum ADBAppCommands {
       return AndroidPackageName(String(line.dropFirst("package:".count)))
     }
     return .success(Set(names).sorted())
+  }
+
+  /// 판정 순서: stdout·stderr 가 켜는 중·끊김(`notBooted`)이면 `.deviceNotBooted` → 종료 코드 0 이고 stdout 에 `Success` 줄이면
+  /// `.removed` → 그 밖 모두(종료 코드 0 인데 `Success` 가 없는 경우 포함) `.checkInstalled`. 실측: 지움 exit 0 `Success`, 없는 앱·
+  /// 시스템 앱 exit 1 `Failure [DELETE_FAILED_INTERNAL_ERROR]`, 켜는 중 exit 20 stderr `cmd: Can't find service: package`,
+  /// 꺼진 직후 exit 1 stderr `adb: device offline`.
+  static func parseUninstall(_ result: CommandResult) -> Result<UninstallOutput, AndroidEmulatorError> {
+    if self.notBooted(self.lines(self.text(result))) {
+      return .failure(.deviceNotBooted)
+    }
+    if result.exitCode == 0, self.lines(result.stdout).contains("Success") {
+      return .success(.removed)
+    }
+    return .success(.checkInstalled)
   }
 
   // MARK: - 도우미
