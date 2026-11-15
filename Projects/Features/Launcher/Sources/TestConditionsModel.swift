@@ -156,7 +156,8 @@ public final class TestConditionsModel {
   // MARK: - 내부
 
   /// 화면 설정을 읽어 반영한다. 돌아왔을 때 시트가 닫혔거나 다시 열렸으면 버린다. 읽는 동안 그 기기의 쓰기가 끝났으면 쓰기 전 값일 수
-  /// 있어 한 번 더 읽는다 (그래도 바뀌면 그 결과를 쓴다: 그 뒤 쓰기는 자기 결과로 표시를 고친다).
+  /// 있어 한 번 더 읽는다. 읽는 동안에는 화면 설정을 바꿀 수 없고(`.loaded` 가 아님) 쓰기 결과도 읽은 값(`.loaded`)이 있을 때만
+  /// 반영되어(`settingApplied`·`settingsRead`) 읽는 동안 `.loaded` 가 되지 않으므로, 겹치는 쓰기는 읽기 전에 시작한 하나뿐이라 한 번이면 된다.
   private func readDisplay(on id: VirtualDevice.ID, session: Int) async {
     var retried = false
     while true {
