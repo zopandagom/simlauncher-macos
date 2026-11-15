@@ -3,9 +3,11 @@ name: Release
 # 배포 워크플로 (docs/RELEASING.md). 버전 주석 태그(예: 1.2.0)를 push 하면 main 에 머지된 그 커밋을 Developer ID 로 서명·공증한
 # dmg 를 만들어 GitHub Release 로 게시한다. 노트는 PR 목록 + Claude 요약(실패하면 PR 목록만).
 #   check  : 태그·버전·빌드 번호·이미 게시 여부 판정 (.github/scripts/release-check.sh)
-#   build  : xcode-27 러너에서 release 환경 시크릿으로 임시 키체인을 만들고 make release (CI 모드, scripts/release.sh)
+#   build  : xcode-27 러너에서 release 환경 시크릿으로 임시 키체인을 만들고 make release (CI 모드, scripts/release.sh).
+#            dmg 와 업데이트 알림용 버전 파일(SimLauncher-version.json)을 검사해 아티팩트로 넘긴다
 #   notes  : 노트 재료(PR 목록·PR 본문) → Claude Code CLI 요약(도구·레포 파일·GitHub 토큰 없음) → 요약 검사 (build 와 병렬)
-#   publish: dmg 해시·태그 재확인 → Release 게시 → 게시본 확인
+#   publish: dmg 해시·버전 파일·태그 재확인 → Release 게시(dmg·버전 파일 첨부) → 게시본 확인(버전 파일은 고정 주소
+#            releases/latest/download/SimLauncher-version.json 으로도 받아 본다)
 # workflow_dispatch 는 시험 실행이다: main 에서만, 공증까지 하고 게시하지 않는다(노트는 아티팩트·요약 화면으로).
 # 셸(run:)에 ${{ }} 를 직접 넣지 않는다. 값은 모두 단계 env 로 받는다.
 on:
@@ -153,6 +155,9 @@ jobs:
             exit 1
           fi
           echo "sha256=$sha" >> "$GITHUB_OUTPUT"
+          # 앱의 업데이트 알림이 받는 버전 파일(scripts/release.sh 12단계가 만든다). 내용이 이 버전과 같아야 한다.
+          vf=build/release/SimLauncher-version.json
+          .github/scripts/release-check.sh version-file-check "$VERSION" "$vf"
           {
             echo "### 배포 dmg"
             echo "| 항목 | 값 |"
@@ -161,12 +166,15 @@ jobs:
             echo "| 버전 | $VERSION ($BUILD) |"
             echo "| 커밋 | \`$COMMIT\` |"
             echo "| SHA-256 | \`$sha\` |"
+            echo "| 버전 파일 | \`$(cat "$vf")\` |"
           } >> "$GITHUB_STEP_SUMMARY"
-      # Re-run all jobs 때 같은 이름과 겹치지 않게 overwrite.
+      # Re-run all jobs 때 같은 이름과 겹치지 않게 overwrite. 두 파일의 공통 상위가 build/release 라 아티팩트 맨 위에 놓인다.
       - uses: actions/upload-artifact@v7
         with:
           name: SimLauncher-dmg
-          path: build/release/SimLauncher-${{ needs.check.outputs.version }}.dmg
+          path: |
+            build/release/SimLauncher-${{ needs.check.outputs.version }}.dmg
+            build/release/SimLauncher-version.json
           retention-days: 3
           overwrite: true
           if-no-files-found: error
@@ -294,6 +302,7 @@ jobs:
             echo "::error::받은 dmg 의 SHA-256($actual)이 build 잡의 값($SHA256)과 다릅니다"
             exit 1
           fi
+          .github/scripts/release-check.sh version-file-check "$VERSION" build/dmg/SimLauncher-version.json
       - name: 노트 조립
         run: .github/scripts/release-notes.sh assemble build/release-notes "$VERSION" "$SHA256" "$REPO" > build/release-notes.md
       - if: needs.check.outputs.mode == 'trial'
@@ -332,8 +341,9 @@ jobs:
             echo "::error::latest 판정이 true·false 가 아닙니다: $latest"
             exit 1
           fi
-          gh release create "$TAG" "build/dmg/SimLauncher-$TAG.dmg" --repo "$REPO" --verify-tag --latest="$latest" \
-            --title "SimLauncher $TAG" --notes-file build/release-notes.md
+          # 자산이 있으면 gh 는 초안으로 만들어 올린 뒤 게시하므로, latest 가 바뀔 때 버전 파일이 이미 있다.
+          gh release create "$TAG" "build/dmg/SimLauncher-$TAG.dmg" build/dmg/SimLauncher-version.json \
+            --repo "$REPO" --verify-tag --latest="$latest" --title "SimLauncher $TAG" --notes-file build/release-notes.md
           echo "latest=$latest" >> "$GITHUB_ENV"
       # 게시본 확인. 다르면 실패한다(게시는 남는다 → 사람이 확인, RELEASING 4절).
       - name: 게시 확인
@@ -346,6 +356,9 @@ jobs:
           state=$(jq -r '[.draft, .prerelease] | map(tostring) | join(" ")' "$release")
           digest=$(jq -r --arg name "SimLauncher-$TAG.dmg" \
             '[.assets[] | select(.name == $name) | .digest // "" | ltrimstr("sha256:")] | first // ""' "$release")
+          vf_digest=$(jq -r '[.assets[] | select(.name == "SimLauncher-version.json") | .digest // "" | ltrimstr("sha256:")] | first // ""' "$release")
+          vf_local=build/dmg/SimLauncher-version.json
+          vf_sha=$(sha256sum "$vf_local" | awk '{print $1}')
           url=$(jq -r '.html_url' "$release")
           failed=0
           if [[ $state != "false false" ]]; then
@@ -356,6 +369,10 @@ jobs:
             echo "::error::게시된 dmg 의 SHA-256($digest)이 build 잡의 값($SHA256)과 다릅니다"
             failed=1
           fi
+          if [[ $vf_digest != "$vf_sha" ]]; then
+            echo "::error::게시된 SimLauncher-version.json 의 SHA-256(${vf_digest:-없음})이 올린 파일의 값($vf_sha)과 다릅니다"
+            failed=1
+          fi
           if [[ $latest == true ]]; then
             latest_tag=$(gh api "repos/$REPO/releases/latest" --jq .tag_name)
             if [[ $latest_tag != "$TAG" ]]; then
@@ -363,5 +380,46 @@ jobs:
               failed=1
             fi
           fi
-          echo "### 게시: [SimLauncher $TAG]($url) (latest=$latest)" >> "$GITHUB_STEP_SUMMARY"
+          # 앱이 받는 고정 주소로 버전 파일을 받아 본다(인증 없이, 앱과 같게). 올린 직후 1분쯤 404 일 수 있어
+          # 20초 간격으로 다시 받되, 잡 제한(10분) 안에 끝나게 이 단계 시작부터 5분에서 끊는다.
+          if [[ $latest != true ]]; then
+            vf_result="건너뜀 (latest 가 아님: 앱은 latest Release 의 파일만 받는다)"
+          else
+            private=$(gh api "repos/$REPO" --jq .private) || private=""
+            if [[ $private == true ]]; then
+              echo "::warning::비공개 저장소라 버전 파일 고정 주소를 확인하지 않습니다. 앱의 업데이트 확인은 인증 없이 받으므로 비공개 저장소에서는 동작하지 않습니다"
+              vf_result="건너뜀 (비공개 저장소)"
+            elif [[ $private != false ]]; then
+              echo "::error::저장소 공개 여부를 읽지 못해 버전 파일 고정 주소를 확인하지 못했습니다"
+              vf_result="실패 (공개 여부를 읽지 못함)"
+              failed=1
+            else
+              vf_url="https://github.com/$REPO/releases/latest/download/SimLauncher-version.json"
+              fetched=$(mktemp)
+              deadline=$((SECONDS + 300))
+              attempts=0
+              vf_result=""
+              while :; do
+                remaining=$((deadline - SECONDS))
+                max_time=$((remaining < 30 ? remaining : 30))
+                ((max_time > 0)) || break
+                attempts=$((attempts + 1))
+                if curl -fsSL --max-time "$max_time" -o "$fetched" "$vf_url" && cmp -s "$fetched" "$vf_local"; then
+                  vf_result="통과 ($attempts번째에 같은 내용)"
+                  break
+                fi
+                ((deadline - SECONDS > 20)) || break
+                sleep 20
+              done
+              if [[ -z $vf_result ]]; then
+                echo "::error::$vf_url 에서 5분 동안 올린 버전 파일과 같은 내용을 받지 못했습니다(시도 $attempts번). 게시는 남았습니다 (docs/RELEASING.md 4절)"
+                vf_result="실패 (5분 동안 다름·받지 못함)"
+                failed=1
+              fi
+            fi
+          fi
+          {
+            echo "### 게시: [SimLauncher $TAG]($url) (latest=$latest)"
+            echo "버전 파일 확인: $vf_result"
+          } >> "$GITHUB_STEP_SUMMARY"
           exit "$failed"

@@ -6,9 +6,12 @@
 #   release-check.sh trial <ref> <커밋 sha>        workflow_dispatch 시험 실행의 판정(main 에서만)
 #   release-check.sh version <커밋>                그 커밋의 marketingVersion·buildNumber 를 읽는다
 #   release-check.sh plan <태그>                   표준입력 = 릴리스 목록 JSON({tag_name, draft, prerelease} 들). stdout = --latest 값(true|false)
+#   release-check.sh version-file <버전> <파일>    업데이트 알림용 버전 파일 {"version":"<버전>"}+줄바꿈 을 만든다(scripts/release.sh 12단계)
+#   release-check.sh version-file-check <버전> <파일>  버전 파일이 있고 내용이 {"version":"<버전>"} 인지 본다(release.yml build·publish)
+# 버전 파일 이름(SimLauncher-version.json)은 부르는 쪽이 정하고 앱의 Core ReleaseRepository.versionFileName 과 같다.
 # push·ref·trial·version 은 결과를 $GITHUB_OUTPUT 파일에 key=value 로 쓴다(그 변수가 비어 있으면 종료 2).
 #   push·trial: mode(publish|trial)·tag(trial 은 빈 값)·commit·version·build, ref: commit, version: version·build
-# plan 은 $GITHUB_OUTPUT 을 쓰지 않는다. 진단은 stderr(::error::·::warning::), 실패는 종료 1, 사용법 오류는 종료 2.
+# plan·version-file·version-file-check 는 $GITHUB_OUTPUT 을 쓰지 않는다. 진단은 stderr(::error::·::warning::), 실패는 종료 1, 사용법 오류는 종료 2.
 # bash 3.2 호환(로컬 make test 가 /bin/bash 3.2 로 돌린다). 회귀 테스트: make release-scripts-test
 set -euo pipefail
 
@@ -23,7 +26,7 @@ die() {
   exit 1
 }
 usage() {
-  echo "사용: release-check.sh push|ref <owner/repo> <태그> | trial <ref> <sha> | version <커밋> | plan <태그>" >&2
+  echo "사용: release-check.sh push|ref <owner/repo> <태그> | trial <ref> <sha> | version <커밋> | plan <태그> | version-file|version-file-check <버전> <파일>" >&2
   exit 2
 }
 need_output() {
@@ -173,6 +176,31 @@ cmd_plan() {
   if [[ $highest == "$tag" ]]; then echo true; else echo false; fi
 }
 
+# 앱의 업데이트 알림이 latest Release 에서 받는 버전 파일. 내용은 jq -c 출력 그대로(= {"version":"1.2.0"} + 줄바꿈).
+# 실패하면 파일을 만들지 않는다(버전 형식이 틀리면 쓰기 전에 멈추고, 쓰기 실패는 셸이 파일을 열지 못한 것이다).
+cmd_version_file() {
+  [[ $# == 2 ]] || usage
+  local version=$1 file=$2
+  check_tag "$version"
+  jq -cn --arg version "$version" '{version: $version}' >"$file" \
+    || die "버전 파일을 쓰지 못했습니다: $file"
+  echo "버전 파일 $file: $(cat "$file")" >&2
+}
+
+# 버전 파일이 있고 JSON 이며 정확히 {"version":"<버전>"} 인지(키가 더 있거나 값이 다르면 실패). 잡 사이 전달·게시 전 확인용.
+cmd_version_file_check() {
+  [[ $# == 2 ]] || usage
+  local version=$1 file=$2 same
+  check_tag "$version"
+  [[ -f $file ]] || die "버전 파일이 없습니다: $file"
+  same=$(jq -e --arg version "$version" '. == {version: $version}' "$file" 2>/dev/null) || true
+  case $same in
+    true) echo "버전 파일 $file: $(cat "$file")" >&2 ;;
+    false) die "버전 파일 $file 의 내용이 {\"version\":\"$version\"} 가 아닙니다: $(head -c 200 "$file")" ;;
+    *) die "버전 파일 $file 을 JSON 으로 읽지 못했습니다: $(head -c 200 "$file")" ;;
+  esac
+}
+
 [[ $# -ge 1 ]] || usage
 command=$1
 shift
@@ -182,5 +210,7 @@ case $command in
   trial) cmd_trial "$@" ;;
   version) cmd_version "$@" ;;
   plan) cmd_plan "$@" ;;
+  version-file) cmd_version_file "$@" ;;
+  version-file-check) cmd_version_file_check "$@" ;;
   *) usage ;;
 esac
