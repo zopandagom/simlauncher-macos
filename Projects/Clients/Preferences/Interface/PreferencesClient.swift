@@ -3,7 +3,8 @@ import Foundation
 
 /// 사용자 설정 (UserDefaults 표준 도메인 = 앱 번들 ID): 빌드 카탈로그 주소 목록(`CatalogURLs`), Android SDK 위치(`AndroidSDKPath`),
 /// 동의한 Android SDK 라이선스 원문의 지문(`AcceptedAndroidLicenses`), 저장한 로그 필터(`LogFilters`), 새 버전 자동 확인(`AutomaticUpdateCheck`),
-/// 앱이 쓰는 업데이트 기록(건너뛴 버전 `SkippedUpdateVersion`, 마지막 확인 시각 `LastUpdateCheck`, 배너 숨김 `DismissedUpdateBanner`).
+/// 앱이 쓰는 업데이트 기록(건너뛴 버전 `SkippedUpdateVersion`, 마지막 확인 시각 `LastUpdateCheck`, 배너 숨김 `DismissedUpdateBanner`,
+/// 받은 최신 버전 `LatestKnownUpdateVersion`).
 /// 설정 저장은 이 Client 의 Impl 에서만 한다 (lint `preferences_only_in_preferences_impl`). 관리자가 `defaults write`·MDM 으로 미리 넣은 값도
 /// 같은 도메인·키라 그대로 읽는다.
 /// 관리자가 강제한 키(구성 프로필 등, `objectIsForced`)는 잠김이고 쓰지 않는다. 모든 메서드는 동기이고 빠르다
@@ -73,4 +74,11 @@ public protocol PreferencesClient: Sendable {
 
   /// 잠겼으면 `.locked` 이고 쓰지 않는다.
   func setUpdateBannerDismissal(_ dismissal: UpdateBannerDismissal) throws(PreferencesError)
+
+  /// 서버가 답한 마지막 최신 버전 (키 `LatestKnownUpdateVersion`, `AppVersion.description` 문자열). 문자열이 아니면 nil.
+  /// 해석은 부르는 쪽이 한다.
+  func latestKnownUpdateVersion() -> String?
+
+  /// nil 이면 키를 지운다. 잠겼으면 쓰지도 지우지도 않는다 (던지지 않는다: 부르는 쪽은 이 실행의 값을 메모리에 들고 있다).
+  func setLatestKnownUpdateVersion(_ version: String?)
 }

@@ -265,4 +265,35 @@ extension PreferencesClientFakeTests {
     #expect(fake.skippedUpdateVersion() == "1.3.0")
     #expect(fake.lastUpdateCheck() == Self.updateDate)
   }
+
+  @Test("받은 최신 버전: 기본 nil, 쓰기·지우기를 기록하고, 잠기면 조용히 무시한다")
+  func serverLatestVersion() {
+    let fake = PreferencesClientFake()
+    #expect(fake.latestKnownUpdateVersion() == nil)
+
+    fake.setLatestKnownUpdateVersion("1.3.0")
+    #expect(fake.storedLatestKnownUpdateVersion == "1.3.0")
+    fake.setLatestKnownUpdateVersion(nil)
+    #expect(fake.storedLatestKnownUpdateVersion == nil)
+
+    fake.setStoredLatestKnownUpdateVersion("1.2.0", isLocked: true)
+    fake.setLatestKnownUpdateVersion("1.4.0")
+    #expect(fake.storedLatestKnownUpdateVersion == "1.2.0")
+    #expect(fake.calls == [
+      .latestKnownUpdateVersion,
+      .setLatestKnownUpdateVersion("1.3.0"),
+      .setLatestKnownUpdateVersion(nil),
+      .setLatestKnownUpdateVersion("1.4.0"),
+    ])
+  }
+
+  @Test("setStoredLatestKnownUpdateVersion 과 storedLatestKnownUpdateVersion 은 기록하지 않는다")
+  func serverLatestStoredDoesNotRecord() {
+    let fake = PreferencesClientFake()
+    fake.setStoredLatestKnownUpdateVersion("1.3.0", isLocked: false)
+    _ = fake.storedLatestKnownUpdateVersion
+
+    #expect(fake.calls.isEmpty)
+    #expect(fake.latestKnownUpdateVersion() == "1.3.0")
+  }
 }

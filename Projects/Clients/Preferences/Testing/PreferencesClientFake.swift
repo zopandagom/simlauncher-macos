@@ -12,8 +12,9 @@ import Synchronization
 /// 저장한 로그 필터는 저장 배열처럼 항목 목록(nil = 읽지 못한 항목)으로 두고 Impl 과 같은 Core 규칙(`SavedLogFilterList`)으로 판정한다:
 /// 잠김이면 `.locked`, 같은 이름을 덮어쓰지 않으면 `.duplicate`, 상한이면 `.limitReached`, nil 항목은 같은 자리에 그대로 남긴다.
 /// 바깥 변경은 `setStoredLogFilters(_:isLocked:)` 로 만든다.
-/// 업데이트 알림의 네 값(자동 확인·건너뛴 버전·마지막 확인 시각·배너 숨김)과 잠금도 메모리에 두고 Impl 과 같이 판정한다:
-/// 잠기면 set 이 `.locked` 이고 쓰지 않으며, `setLastUpdateCheck(_:)` 는 잠기면 조용히 무시한다. 기본값은 자동 켬·잠김 없음,
+/// 업데이트 알림의 다섯 값(자동 확인·건너뛴 버전·마지막 확인 시각·배너 숨김·받은 최신 버전)과 잠금도 메모리에 두고 Impl 과 같이
+/// 판정한다: 잠기면 set 이 `.locked` 이고 쓰지 않으며, `setLastUpdateCheck(_:)`·`setLatestKnownUpdateVersion(_:)` 는 잠기면
+/// 조용히 무시한다. 기본값은 자동 켬·잠김 없음,
 /// 나머지 nil·잠김 없음. 바깥 변경은 `setStoredAutomaticUpdateCheck(_:isLocked:)` 등 `setStored…` 로 만든다.
 public final class PreferencesClientFake: PreferencesClient {
   public enum Call: Hashable, Sendable {
@@ -37,6 +38,8 @@ public final class PreferencesClientFake: PreferencesClient {
     case setLastUpdateCheck(Date)
     case updateBannerDismissal
     case setUpdateBannerDismissal(UpdateBannerDismissal)
+    case latestKnownUpdateVersion
+    case setLatestKnownUpdateVersion(String?)
   }
 
   private struct State {
@@ -54,6 +57,8 @@ public final class PreferencesClientFake: PreferencesClient {
     var lastUpdateCheckLocked = false
     var updateBannerDismissal: UpdateBannerDismissal?
     var updateBannerDismissalLocked = false
+    var latestKnownUpdateVersion: String?
+    var latestKnownUpdateVersionLocked = false
   }
 
   private let state: Mutex<State>
@@ -273,6 +278,11 @@ public extension PreferencesClientFake {
     self.state.withLock { $0.updateBannerDismissal }
   }
 
+  /// 지금 저장된 받은 최신 버전 (기록하지 않는다).
+  var storedLatestKnownUpdateVersion: String? {
+    self.state.withLock { $0.latestKnownUpdateVersion }
+  }
+
   /// 바깥 변경(`defaults write`·MDM)을 흉내 낸다. 기록하지 않는다.
   func setStoredAutomaticUpdateCheck(_ isEnabled: Bool, isLocked: Bool) {
     self.state.withLock { state in
@@ -301,6 +311,14 @@ public extension PreferencesClientFake {
     self.state.withLock { state in
       state.updateBannerDismissal = dismissal
       state.updateBannerDismissalLocked = isLocked
+    }
+  }
+
+  /// 바깥 변경을 흉내 낸다. 기록하지 않는다.
+  func setStoredLatestKnownUpdateVersion(_ version: String?, isLocked: Bool) {
+    self.state.withLock { state in
+      state.latestKnownUpdateVersion = version
+      state.latestKnownUpdateVersionLocked = isLocked
     }
   }
 
@@ -370,6 +388,24 @@ public extension PreferencesClientFake {
         throw .locked
       }
       current.updateBannerDismissal = dismissal
+    }
+  }
+
+  func latestKnownUpdateVersion() -> String? {
+    self.state.withLock { state in
+      state.calls.append(.latestKnownUpdateVersion)
+      return state.latestKnownUpdateVersion
+    }
+  }
+
+  /// nil 이면 지운다. 잠겼으면 조용히 무시한다 (기록은 남긴다).
+  func setLatestKnownUpdateVersion(_ version: String?) {
+    self.state.withLock { state in
+      state.calls.append(.setLatestKnownUpdateVersion(version))
+      guard !state.latestKnownUpdateVersionLocked else {
+        return
+      }
+      state.latestKnownUpdateVersion = version
     }
   }
 }
