@@ -65,6 +65,10 @@ final class InMemoryPreferenceStore: PreferenceStore {
     var updateBannerDismissal: UpdateBannerDismissal?
     var isUpdateBannerDismissalForced = false
     var updateBannerDismissalSetCount = 0
+    var latestKnownUpdateVersion: String?
+    var isLatestKnownUpdateVersionForced = false
+    /// nil 쓰기(지우기)도 센다.
+    var latestKnownUpdateVersionSetCount = 0
   }
 
   private let state: Mutex<State>
@@ -249,6 +253,19 @@ extension InMemoryPreferenceStore {
     self.state.withLock { $0.updateBannerDismissalSetCount }
   }
 
+  /// nil 쓰기(지우기)도 센다.
+  var latestKnownUpdateVersionSetCount: Int {
+    self.state.withLock { $0.latestKnownUpdateVersionSetCount }
+  }
+
+  /// 바깥 변경을 흉내 낸다. 쓰기 횟수에 넣지 않는다.
+  func replaceLatestKnownUpdateVersion(_ version: String?, isForced: Bool) {
+    self.state.withLock { state in
+      state.latestKnownUpdateVersion = version
+      state.isLatestKnownUpdateVersionForced = isForced
+    }
+  }
+
   /// 바깥 변경을 흉내 낸다. 쓰기 횟수에 넣지 않는다.
   func replaceAutomaticUpdateCheck(_ value: StoredPlistValue?, isForced: Bool) {
     self.state.withLock { state in
@@ -338,6 +355,21 @@ extension InMemoryPreferenceStore {
     self.state.withLock { state in
       state.updateBannerDismissal = dismissal
       state.updateBannerDismissalSetCount += 1
+    }
+  }
+
+  func latestKnownUpdateVersion() -> String? {
+    self.state.withLock { $0.latestKnownUpdateVersion }
+  }
+
+  func isLatestKnownUpdateVersionForced() -> Bool {
+    self.state.withLock { $0.isLatestKnownUpdateVersionForced }
+  }
+
+  func setLatestKnownUpdateVersion(_ version: String?) {
+    self.state.withLock { state in
+      state.latestKnownUpdateVersion = version
+      state.latestKnownUpdateVersionSetCount += 1
     }
   }
 }

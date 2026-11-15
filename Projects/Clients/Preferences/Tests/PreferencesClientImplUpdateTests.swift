@@ -4,8 +4,8 @@ import PreferencesInterface
 import Testing
 @testable import PreferencesImpl
 
-/// 업데이트 알림 키 `AutomaticUpdateCheck`·`SkippedUpdateVersion`·`LastUpdateCheck`·`DismissedUpdateBanner`
-/// 읽기·쓰기 (InMemory 저장소).
+/// 업데이트 알림 키 `AutomaticUpdateCheck`·`SkippedUpdateVersion`·`LastUpdateCheck`·`DismissedUpdateBanner`·
+/// `LatestKnownUpdateVersion` 읽기·쓰기 (InMemory 저장소).
 struct PreferencesClientImplUpdateTests {
   static let date = Date(timeIntervalSince1970: 1_800_000_000)
 
@@ -138,5 +138,41 @@ struct PreferencesClientImplUpdateTests {
     #expect(throws: PreferencesError.locked) { try client.setUpdateBannerDismissal(Self.dismissal()) }
     #expect(store.updateBannerDismissalSetCount == 0)
     #expect(try client.updateBannerDismissal() == Self.dismissal("1.2.0"))
+  }
+
+  // MARK: - 받은 최신 버전
+
+  @Test("서버가 답한 최신 버전: 키 없음 nil, 쓰기·읽기")
+  func storesServerLatest() {
+    let store = InMemoryPreferenceStore()
+    let client = PreferencesClientImpl(store: store)
+    #expect(client.latestKnownUpdateVersion() == nil)
+
+    client.setLatestKnownUpdateVersion("1.3.0")
+    #expect(client.latestKnownUpdateVersion() == "1.3.0")
+    #expect(store.latestKnownUpdateVersionSetCount == 1)
+  }
+
+  @Test("받은 최신 버전에 nil 쓰기는 키를 지운다")
+  func clearsServerLatest() {
+    let store = InMemoryPreferenceStore()
+    store.replaceLatestKnownUpdateVersion("1.3.0", isForced: false)
+    let client = PreferencesClientImpl(store: store)
+
+    client.setLatestKnownUpdateVersion(nil)
+    #expect(client.latestKnownUpdateVersion() == nil)
+    #expect(store.latestKnownUpdateVersionSetCount == 1)
+  }
+
+  @Test("받은 최신 버전이 강제면 던지지 않고 쓰지도 지우지도 않는다")
+  func lockedServerLatest() {
+    let store = InMemoryPreferenceStore()
+    store.replaceLatestKnownUpdateVersion("1.3.0", isForced: true)
+    let client = PreferencesClientImpl(store: store)
+
+    client.setLatestKnownUpdateVersion("1.4.0")
+    client.setLatestKnownUpdateVersion(nil)
+    #expect(client.latestKnownUpdateVersion() == "1.3.0")
+    #expect(store.latestKnownUpdateVersionSetCount == 0)
   }
 }

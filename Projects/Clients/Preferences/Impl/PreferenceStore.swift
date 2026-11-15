@@ -19,6 +19,8 @@ enum PreferenceKey {
   static let lastUpdateCheck = "LastUpdateCheck"
   /// 배너 숨김 (사전 `{ version, dismissedAt }`, 형식은 `UpdatePreferenceValue`). 앱이 기록한다.
   static let dismissedUpdateBanner = "DismissedUpdateBanner"
+  /// 서버가 답한 마지막 최신 버전 (문자열, `AppVersion.description`). 앱이 기록한다.
+  static let latestKnownUpdateVersion = "LatestKnownUpdateVersion"
 }
 
 /// 설정 저장소. Impl 의 판정(잠금·중복·삭제·상한)을 실제 UserDefaults 없이 테스트하려고 둔다.
@@ -73,6 +75,12 @@ protocol PreferenceStore: Sendable {
   func isUpdateBannerDismissalForced() -> Bool
   /// `UpdatePreferenceValue.plist(for:)` 형식으로 쓴다.
   func setUpdateBannerDismissal(_ dismissal: UpdateBannerDismissal)
+
+  /// `LatestKnownUpdateVersion` 이 문자열이면 그 값.
+  func latestKnownUpdateVersion() -> String?
+  func isLatestKnownUpdateVersionForced() -> Bool
+  /// nil 이면 키를 지운다.
+  func setLatestKnownUpdateVersion(_ version: String?)
 }
 
 /// UserDefaults 저장소. `UserDefaults` 는 Sendable 이 아니어서 들고 있지 않고, 호출마다 도메인으로 얻는다.
@@ -192,6 +200,22 @@ struct UserDefaultsPreferenceStore: PreferenceStore {
 
   func setUpdateBannerDismissal(_ dismissal: UpdateBannerDismissal) {
     self.defaults.set(UpdatePreferenceValue.plist(for: dismissal), forKey: PreferenceKey.dismissedUpdateBanner)
+  }
+
+  func latestKnownUpdateVersion() -> String? {
+    UpdatePreferenceValue.string(from: self.defaults.object(forKey: PreferenceKey.latestKnownUpdateVersion))
+  }
+
+  func isLatestKnownUpdateVersionForced() -> Bool {
+    self.defaults.objectIsForced(forKey: PreferenceKey.latestKnownUpdateVersion)
+  }
+
+  func setLatestKnownUpdateVersion(_ version: String?) {
+    if let version {
+      self.defaults.set(version, forKey: PreferenceKey.latestKnownUpdateVersion)
+    } else {
+      self.defaults.removeObject(forKey: PreferenceKey.latestKnownUpdateVersion)
+    }
   }
 
   private var defaults: UserDefaults {
