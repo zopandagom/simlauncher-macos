@@ -11,13 +11,16 @@ import UpdateCheckInterface
 /// 이 조건을 보지 않는다. 요청은 동시에 하나이고, 진행 중이면 새로 보내지 않고 그 결과를 함께 쓴다. 판정과 시작 사이에 await 가
 /// 없어 실행 직후 실행·활성화가 겹쳐도 요청은 하나다. Model 은 요청을 취소하지 않는다 (창을 닫아도 끝까지 가고 결과는 배너·기록에).
 /// 서버가 답한 결과(성공·거절·404·그 밖 HTTP·응답 이상)만 시각을 기록한다. 서버에 닿지 못한 실패는 기록하지 않아 1시간 뒤 다시 한다.
-/// 배너는 이 실행의 마지막 성공 결과의 새 버전(`knownLatest`)에서 건너뛴 버전과 숨김(× 로 그 버전을 24시간) 중인 버전을 뺀다.
-/// 건너뛰기·숨김을 저장하지 못하면(관리자 강제) 이 실행 동안만 메모리로 지킨다. 배포 저장소가 없는 빌드(`isAvailable` 거짓)면
-/// 요청·기록·배너가 모두 없다.
+/// 배너는 이 실행의 마지막 성공 결과의 최신 버전(`sessionLatest`), 이 실행에 결과가 없으면 저장값 `LatestKnownUpdateVersion`
+/// (자동 확인이 켜져 있을 때만)이 지금 버전보다 높을 때 보이고, 건너뛴 버전과 숨김(× 로 그 버전을 24시간) 중인 버전을 뺀다.
+/// 성공 응답의 최신 버전은 저장한다(숫자 버전이 아니면 지우고, 실패는 그대로). 그래서 다시 켜도 요청 없이 배너가 남는다.
+/// 건너뛰기·숨김·받은 최신 버전을 저장하지 못하면(관리자 강제) 이 실행 동안만 메모리로 지킨다. 배포 저장소가 없는 빌드
+/// (`isAvailable` 거짓)면 요청·기록·배너가 모두 없다.
 @MainActor
 @Observable
 public final class UpdateModel {
-  /// 배너에 보일 새 버전. 건너뛴 버전·숨김 중인 버전은 넣지 않는다. 메모리에만 (다시 켜면 다음 확인 결과 전까지 없다).
+  /// 배너에 보일 새 버전. 건너뛴 버전·숨김 중인 버전은 넣지 않는다. 이 실행에 성공 결과가 없으면 저장값
+  /// `LatestKnownUpdateVersion`(자동 확인이 켜져 있을 때만)으로 정해, 다시 켜도 요청 없이 남는다.
   public private(set) var availableUpdate: AppVersion?
   /// 업데이트 확인 창의 상태. nil 이면 창이 보이지 않거나 곧 확인을 시작한다.
   public private(set) var manualCheck: UpdateCheckPhase?
@@ -41,12 +44,19 @@ public final class UpdateModel {
   @ObservationIgnored private var inFlight: Task<Void, Never>?
   /// 이 실행에서 마지막으로 새 요청을 시작한 시각 (자동·수동 모두. 자동 확인의 재시도 간격).
   @ObservationIgnored private var lastRequestStartedAt: Date?
-  /// 이 실행에서 마지막으로 받은 성공 결과의 새 버전 (건너뛰기·숨김과 무관). 성공 결과가 새 버전이 아니면 nil, 실패면 그대로.
-  @ObservationIgnored private var knownLatest: AppVersion?
+  /// 이 실행에서 마지막으로 받은 성공 결과의 최신 버전 (지금보다 높든 낮든, 건너뛰기·숨김과 무관).
+  /// `.notReceived` 면 이 실행에 성공 결과가 아직 없어 저장값을 쓴다. 실패면 그대로.
+  @ObservationIgnored private var sessionLatest: SessionLatest = .notReceived
   /// 저장하지 못했을 때(키 잠김) 이 실행 동안 쓰는 건너뛰기.
   @ObservationIgnored private var sessionSkipped: AppVersion?
   /// 저장하지 못했을 때(키 잠김) 이 실행 동안 쓰는 숨김.
   @ObservationIgnored private var sessionDismissal: UpdateBannerDismissal?
+
+  /// 이 실행에서 받은 최신 버전. `received(nil)` 은 숫자 버전이 아닌 답이다.
+  private enum SessionLatest: Equatable {
+    case notReceived
+    case received(AppVersion?)
+  }
 
   public init(
     updateCheck: any UpdateCheckClient,
@@ -156,6 +166,11 @@ public final class UpdateModel {
     if Self.shouldRecord(outcome) {
       self.preferences.setLastUpdateCheck(self.now())
     }
+    // 성공이면 받은 최신 버전을 이 실행과 저장값에 둔다 (숫자 버전이 아니면 지운다). 실패면 둘 다 그대로.
+    if case let .success(latest) = outcome {
+      self.sessionLatest = .received(latest)
+      self.preferences.setLatestKnownUpdateVersion(latest?.description)
+    }
     let report = self.report(for: outcome)
     switch self.manualCheck {
     case .checking:
@@ -183,7 +198,7 @@ public final class UpdateModel {
     }
   }
 
-  /// 결과를 창에 보일 값으로 바꾸고, 성공이면 `knownLatest` 를 바꾼다 (실패면 그대로 둔다).
+  /// 결과를 창에 보일 값으로 바꾼다 (판정만 한다).
   private func report(for outcome: Result<AppVersion?, UpdateCheckError>) -> UpdateCheckReport {
     let latest: AppVersion?
     switch outcome {
@@ -200,32 +215,44 @@ public final class UpdateModel {
     switch UpdateAvailability.judge(current: self.currentVersion, latest: latest, skipped: skipped) {
     case let .newer(version, skipped):
       // judge 는 current 가 있을 때만 .newer 를 낸다.
-      guard let current = self.currentVersion else {
-        self.knownLatest = nil
-        return .currentUnknown
-      }
-      self.knownLatest = version
+      guard let current = self.currentVersion else { return .currentUnknown }
       return .newer(version, current: current, skipped: skipped)
     case .upToDate:
-      self.knownLatest = nil
       guard let current = self.currentVersion else { return .currentUnknown }
       return .upToDate(current: current)
     case .currentUnknown:
-      self.knownLatest = nil
       return .currentUnknown
     case .latestUnrecognized:
-      self.knownLatest = nil
       return .latestUnrecognized
     }
   }
 
-  /// 이 실행의 마지막 성공 결과로 배너를 정한다 (요청하지 않는다). 건너뛰기가 숨김보다 먼저다.
+  /// 이 실행의 마지막 성공 결과, 없으면 저장값으로 배너를 정한다 (요청하지 않는다). 지금 버전보다 높을 때만이고,
+  /// 건너뛰기가 숨김보다 먼저다. 배포 저장소가 없거나 지금 버전을 모르면 아무것도 읽지 않고 배너가 없다.
   private func refreshBanner() {
-    guard let version = self.knownLatest else {
+    guard self.isAvailable,
+          let current = self.currentVersion,
+          let latest = self.bannerCandidate(),
+          latest > current,
+          !self.isSkipped(latest),
+          !self.isDismissed(latest)
+    else {
       self.availableUpdate = nil
       return
     }
-    self.availableUpdate = self.isSkipped(version) || self.isDismissed(version) ? nil : version
+    self.availableUpdate = latest
+  }
+
+  /// 배너 판정에 쓸 최신 버전. 이 실행의 결과가 늘 먼저이고(저장하지 못했어도 맞다), 결과가 없으면 자동 확인이 켜져 있을 때만
+  /// 저장값을 쓴다 (끄면 저장값을 새로 고치는 확인이 없어 옛 값이 계속 나오므로).
+  private func bannerCandidate() -> AppVersion? {
+    switch self.sessionLatest {
+    case let .received(latest):
+      return latest
+    case .notReceived:
+      guard self.preferences.automaticUpdateCheck().isEnabled else { return nil }
+      return self.preferences.latestKnownUpdateVersion().flatMap(AppVersion.init)
+    }
   }
 
   private func isSkipped(_ version: AppVersion) -> Bool {

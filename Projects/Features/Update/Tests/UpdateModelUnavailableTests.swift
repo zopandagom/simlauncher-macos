@@ -32,4 +32,28 @@ struct UpdateModelUnavailableTests: UpdateModelTesting {
     #expect(model.availableUpdate == nil)
     #expect(Self.writeCount(preferences) == 0)
   }
+
+  @Test("저장소가 없으면 저장된 최신 버전 9.9.9 가 있어도 배너가 없고, 그 키를 읽지도 쓰지도 않는다")
+  func storedLatestIgnored() async {
+    let updateCheck = UpdateCheckClientFake(releasePageURL: nil)
+    let preferences = PreferencesClientFake()
+    preferences.setStoredLatestKnownUpdateVersion("9.9.9", isLocked: false)
+    let clock = TestClock()
+    let model = Self.makeModel(updateCheck: updateCheck, preferences: preferences, clock: clock)
+
+    await model.appLaunched()
+    #expect(model.availableUpdate == nil)
+    await model.appBecameActive()
+    await model.checkForUpdatesRequested()
+    model.skipVersionTapped(v130)
+    model.bannerDismissed()
+    model.checkWindowClosed()
+    clock.advance(by: 2 * .day)
+    await model.appBecameActive()
+
+    #expect(model.availableUpdate == nil)
+    #expect(!preferences.calls.contains(.latestKnownUpdateVersion))
+    #expect(Self.recordedLatest(preferences).isEmpty)
+    #expect(preferences.storedLatestKnownUpdateVersion == "9.9.9")
+  }
 }

@@ -40,11 +40,23 @@ extension UpdateModelTesting {
     }
   }
 
-  /// Preferences 쓰기 호출 수 (자동 확인 설정·건너뛰기·기록·숨김).
+  /// `setLatestKnownUpdateVersion` 으로 넘긴 값들 (nil = 지우기).
+  static func recordedLatest(_ preferences: PreferencesClientFake) -> [String?] {
+    preferences.calls.compactMap { call -> String?? in
+      if case let .setLatestKnownUpdateVersion(version) = call {
+        .some(version)
+      } else {
+        nil
+      }
+    }
+  }
+
+  /// Preferences 쓰기 호출 수 (자동 확인 설정·건너뛰기·기록·숨김·받은 최신 버전).
   static func writeCount(_ preferences: PreferencesClientFake) -> Int {
     preferences.calls.filter {
       switch $0 {
-      case .setAutomaticUpdateCheck, .setSkippedUpdateVersion, .setLastUpdateCheck, .setUpdateBannerDismissal:
+      case .setAutomaticUpdateCheck, .setSkippedUpdateVersion, .setLastUpdateCheck, .setUpdateBannerDismissal,
+           .setLatestKnownUpdateVersion:
         true
       default:
         false
@@ -109,6 +121,7 @@ enum AutomaticEvent: CaseIterable, Sendable, CustomTestStringConvertible {
   }
 }
 
+let v110 = AppVersion("1.1.0")!
 let v120 = AppVersion("1.2.0")!
 let v130 = AppVersion("1.3.0")!
 let v140 = AppVersion("1.4.0")!
