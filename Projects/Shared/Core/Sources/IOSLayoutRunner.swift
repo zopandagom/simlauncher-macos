@@ -1,5 +1,5 @@
 /// SimLauncher 가 iOS 레이아웃을 읽으려고 시뮬레이터에 설치하는 XCUITest 러너 앱의 정체.
-/// ScreenLayout Impl(설치·지우기·앞 앱 후보에서 빼기), Simulator Impl("앱 실행…" 목록·실행 중 앱 목록에서 빼기),
+/// ScreenLayout Impl(설치·지우기·앞 앱 후보에서 빼기), Simulator Impl(설치된 앱 목록("앱 실행…"·테스트 조건 앱 고르기)·실행 중 앱 목록에서 빼기),
 /// Launcher(`minimumOSVersion` 보다 낮은 기기의 "레이아웃 보기" 막기)가 함께 쓴다.
 /// 쓰는 쪽이 `AppBundleID(IOSLayoutRunner.appBundleID)` 를 guard 한다 (강제 언래핑하지 않는다).
 public enum IOSLayoutRunner {
