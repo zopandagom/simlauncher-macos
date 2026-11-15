@@ -1,7 +1,7 @@
 import Core
 import Foundation
 
-/// Android 기기(AVD) 목록·상태와 켜기·끄기·만들기·삭제·초기화, 켜진 기기에 apk 설치·앱 실행(logcat 받기)·링크 열기·스크린샷·녹화·
+/// Android 기기(AVD) 목록·상태와 켜기·끄기·만들기·삭제·초기화, 켜진 기기에 apk 설치·앱 실행(logcat 받기)·앱 지우기·링크 열기·스크린샷·녹화·
 /// 화면 레이아웃 읽기, 테스트 조건(외관 읽기·쓰기, 위치 한 점, 위치 서비스 켜짐 읽기, 앱 하나의 런타임 권한 읽기·쓰기).
 /// AVD 폴더는 `$HOME/.android/avd` (Android Studio 와 함께 쓴다. ANDROID_AVD_HOME 은 보지 않는다).
 /// SDK 위치는 App 이 주입한 provider 를 공개 메서드 한 번에 한 번 부른다. 명령은 CommandClient 로
@@ -86,6 +86,13 @@ public protocol AndroidEmulatorClient: Sendable {
 
   /// 사용자가 설치한 앱(`pm list packages -3`)의 패키지 이름, 이름순. 형식에 맞지 않는 줄은 건너뛴다.
   func installedPackages(on id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError) -> [AndroidPackageName]
+
+  /// 사용자 앱을 지운다 (`-s <serial> uninstall <패키지>`, 60초 제한. 넘으면 `.appCommandFailed`). 사전 확인은 앱 작업과 같다.
+  /// 출력(stdout·stderr)이 켜는 중·끊김이면 `.deviceNotBooted`, 종료 코드 0 이고 앞뒤 공백을 뺀 `Success` 줄이 있으면 성공.
+  /// 그 밖(실측: 없는 앱과 시스템 앱 모두 exit 1 `Failure [DELETE_FAILED_INTERNAL_ERROR]`)은 `pm path` 로 설치 여부를 본다:
+  /// 없으면 성공(iOS 처럼 없는 앱도 성공), 있으면 `.appCommandFailed`, `pm path` 의 켜는 중·끊김은 `.deviceNotBooted`.
+  /// 실행 중인 앱은 끝내고 지운다(실측).
+  func uninstall(_ package: AndroidPackageName, on id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError)
 
   /// 켜진 기기 화면을 PNG 로 `file`(Workspace 가 예약한 빈 파일)에 쓴다 (`adb -s <serial> exec-out 'screencap -p 2>/dev/null'`,
   /// 30초 제한). 화면이 여럿인 기기(폴더블)는 지금 보이는 화면을 찍는다(실측). 사전 확인은 앱 작업과 같다. 종료 코드 ≠ 0·출력이 PNG 가 아님·시간 초과는 `.captureFailed`,
@@ -265,7 +272,7 @@ public enum AndroidEmulatorError: Error, Hashable, Sendable {
   case launchFailed(AndroidLaunchFailure)
   /// 링크를 받을 앱이 없다 (`unable to resolve Intent`).
   case urlNotHandled
-  /// am·pm·dumpsys 가 그 밖의 이유로 실패했다 (종료 코드 ≠ 0, 해석할 수 없는 출력).
+  /// am·pm·dumpsys·uninstall 이 그 밖의 이유로 실패했다 (종료 코드 ≠ 0, 해석할 수 없는 출력, 지운 뒤에도 앱이 남음, uninstall 60초 초과).
   case appCommandFailed
   /// 스크린샷: 기기 화면을 읽지 못했다 (종료 코드 ≠ 0, PNG 아님, 시간 초과).
   case captureFailed
