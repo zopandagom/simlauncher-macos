@@ -2,7 +2,7 @@ import Core
 import Foundation
 
 /// Android 기기(AVD) 목록·상태와 켜기·끄기·만들기·삭제·초기화, 켜진 기기에 apk 설치·앱 실행(logcat 받기)·링크 열기·스크린샷·녹화·
-/// 화면 레이아웃 읽기, 테스트 조건(외관 읽기·쓰기, 위치 한 점, 위치 서비스 켜짐 읽기).
+/// 화면 레이아웃 읽기, 테스트 조건(외관 읽기·쓰기, 위치 한 점, 위치 서비스 켜짐 읽기, 앱 하나의 런타임 권한 읽기·쓰기).
 /// AVD 폴더는 `$HOME/.android/avd` (Android Studio 와 함께 쓴다. ANDROID_AVD_HOME 은 보지 않는다).
 /// SDK 위치는 App 이 주입한 provider 를 공개 메서드 한 번에 한 번 부른다. 명령은 CommandClient 로
 /// `<SDK>/emulator/emulator` 와 `<SDK>/platform-tools/adb` 만 실행한다. 네트워크 API 를 쓰지 않는다
@@ -139,6 +139,34 @@ public protocol AndroidEmulatorClient: Sendable {
   /// 사전 확인은 앱 작업과 같다.
   func setLocation(_ coordinate: GeoCoordinate, on id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError)
     -> AndroidConditionOutcome
+
+  /// 켜진 기기의 앱 하나가 요청한 런타임 권한과 지금 상태 (`-s <serial> shell dumpsys package <패키지>`). 사전 확인은 앱 작업과 같다.
+  /// user 0 의 `runtime permissions:` 블록을 읽는다(공유 uid 앱은 `Shared users:` 절에 있다, 실측). 종료 코드 ≠ 0 이면 켜는 중·끊김
+  /// 출력은 `.deviceNotBooted`, 그 밖 `.appCommandFailed`. exit 0 이고 stdout 에 앞뒤 공백을 뺀 줄이
+  /// `Unable to find package: <그 패키지>` 와 같으면 `.appNotInstalled`. exit 0 인데 패키지 블록이 없으면 켜는 중 출력(공통 문구,
+  /// 또는 stdout·stderr 의 `Can't find service: ` 로 시작하는 줄. 서비스 이름은 보지 않는다. 실측: 서비스가 아직 없을 때 stderr 에
+  /// `Can't find service: package`)은 `.deviceNotBooted`, 그 밖(부팅 중 잠깐 나오는 `Permission Denial: …` 포함, 실측)은 잘린
+  /// 출력으로 `.appCommandFailed`. user 0 의 `runtime permissions:` 머리 줄이 없어도 `.appCommandFailed`. 형식 밖 권한 이름의 줄은
+  /// 건너뛴다.
+  /// 기기를 바꾸지 않는다.
+  func runtimePermissions(of package: AndroidPackageName, on id: AndroidVirtualDevice.ID)
+    async throws(AndroidEmulatorError) -> AndroidAppPermissions
+
+  /// 런타임 권한 하나를 바꾼다. 허용: `shell pm grant <패키지> '<권한>'`. 거부: `shell pm revoke <패키지> '<권한>'` 뒤
+  /// `shell pm clear-permission-flags <패키지> '<권한>' user-set user-fixed` (revoke 만으로는 사용자가 고른 "다시 묻지 않음"이 남아
+  /// 앱이 다시 물을 수 없다, 실측). 그 뒤 `runtimePermissions` 와 같이 다시 읽어 그 권한이 요청 값이면 `.applied`, 아니면
+  /// `.notApplied` (선언하지 않은 권한은 출력 없이 exit 0, 바꿀 수 없는·없는 권한은 exit 255 예외, 실측). grant·revoke 의
+  /// `Failure [package not found]`·`Error: package not found` 줄과 다시 읽기의 앱 없음은 `.appNotInstalled`. grant·revoke 의 그 밖 실패
+  /// 출력은 끊김이면 `.deviceNotBooted`,
+  /// 아니면 `.appCommandFailed`. 플래그 지우기의 실패 출력은 끊김이면 `.deviceNotBooted` 를 던지고 그 밖은 무시한다(adb 를 실행하지
+  /// 못함·시간 초과는 다른 명령처럼 던진다). 허용된 권한을 거부하면 실행 중인 앱이 종료된다(실측). 사전 확인은 앱 작업과 같다.
+  /// 기기 전체 초기화 명령은 쓰지 않는다.
+  func setRuntimePermission(
+    _ permission: AndroidRuntimePermission,
+    granted: Bool,
+    of package: AndroidPackageName,
+    on id: AndroidVirtualDevice.ID
+  ) async throws(AndroidEmulatorError) -> AndroidPermissionOutcome
 }
 
 /// `launchWithLogcat` 이 넘기는 알림.
@@ -228,7 +256,8 @@ public enum AndroidEmulatorError: Error, Hashable, Sendable {
   case unsafeDeviceFolder(URL?)
   case cancelled
   /// 앱 작업: 기기가 켜져 있지 않다 (꺼짐·켜는 중, 또는 adb 가 offline·not found·`device is still booting`·`Can't find service`·
-  /// `Too early` 로 답함). 테스트 조건의 `shell cmd uimode`·`emu geo fix` 출력도 같은 판정.
+  /// `Too early` 로 답함). 테스트 조건의 `shell cmd uimode`·`emu geo fix`·`pm grant`·`pm revoke`·`pm clear-permission-flags`·
+  /// `dumpsys package` 출력도 같은 판정.
   case deviceNotBooted
   case installFailed(AndroidInstallFailure)
   /// 설치가 10분 안에 끝나지 않았다.
@@ -236,7 +265,7 @@ public enum AndroidEmulatorError: Error, Hashable, Sendable {
   case launchFailed(AndroidLaunchFailure)
   /// 링크를 받을 앱이 없다 (`unable to resolve Intent`).
   case urlNotHandled
-  /// am·pm 이 그 밖의 이유로 실패했다 (종료 코드 ≠ 0, 해석할 수 없는 출력).
+  /// am·pm·dumpsys 가 그 밖의 이유로 실패했다 (종료 코드 ≠ 0, 해석할 수 없는 출력).
   case appCommandFailed
   /// 스크린샷: 기기 화면을 읽지 못했다 (종료 코드 ≠ 0, PNG 아님, 시간 초과).
   case captureFailed
