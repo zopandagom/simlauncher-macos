@@ -1,8 +1,11 @@
 import Core
+import Foundation
 
 /// 사용자 설정 (UserDefaults 표준 도메인 = 앱 번들 ID): 빌드 카탈로그 주소 목록(`CatalogURLs`), Android SDK 위치(`AndroidSDKPath`),
-/// 동의한 Android SDK 라이선스 원문의 지문(`AcceptedAndroidLicenses`), 저장한 로그 필터(`LogFilters`). 설정 저장은 이 Client 의 Impl 에서만 한다
-/// (lint `preferences_only_in_preferences_impl`). 관리자가 `defaults write`·MDM 으로 미리 넣은 값도 같은 도메인·키라 그대로 읽는다.
+/// 동의한 Android SDK 라이선스 원문의 지문(`AcceptedAndroidLicenses`), 저장한 로그 필터(`LogFilters`), 새 버전 자동 확인(`AutomaticUpdateCheck`),
+/// 앱이 쓰는 업데이트 기록(건너뛴 버전 `SkippedUpdateVersion`, 마지막 확인 시각 `LastUpdateCheck`, 배너 숨김 `DismissedUpdateBanner`).
+/// 설정 저장은 이 Client 의 Impl 에서만 한다 (lint `preferences_only_in_preferences_impl`). 관리자가 `defaults write`·MDM 으로 미리 넣은 값도
+/// 같은 도메인·키라 그대로 읽는다.
 /// 관리자가 강제한 키(구성 프로필 등, `objectIsForced`)는 잠김이고 쓰지 않는다. 모든 메서드는 동기이고 빠르다
 /// (UserDefaults 는 프로세스 안 캐시라 async 로 두면 Model 의 await 지점만 는다).
 public protocol PreferencesClient: Sendable {
@@ -44,4 +47,30 @@ public protocol PreferencesClient: Sendable {
   /// 최신 값을 다시 읽어 잠겼으면 `.locked`, 아니면 같은 이름(대소문자 무시)의 읽은 항목을 모두 지운다
   /// (없으면 쓰지 않는다). 읽을 수 없는 항목은 그대로 둔다. 지운 뒤 목록을 돌려준다.
   func removeLogFilter(named name: String) throws(PreferencesError) -> SavedLogFilterSetting
+
+  /// 새 버전 자동 확인 (키 `AutomaticUpdateCheck`)과 잠금 여부. 키 없음 → 켬. Bool(숫자 0·1 포함) → 그 값,
+  /// 문자열이면 대소문자 무시 `yes`·`true`·`1` → 켬, `no`·`false`·`0` → 끔, 그 밖의 값 → 끔 (강제 값도 같다).
+  func automaticUpdateCheck() -> AutomaticUpdateCheckSetting
+
+  /// 잠겼으면 `.locked` 이고 쓰지 않는다. 끄기·켜기 모두 Bool 로 쓴다 (키를 지우지 않는다: 지우면 /Library/Preferences 값이 다시 보인다).
+  func setAutomaticUpdateCheck(_ isEnabled: Bool) throws(PreferencesError)
+
+  /// 건너뛴 버전 (키 `SkippedUpdateVersion`, `AppVersion.description` 문자열). 문자열이 아니면 nil. 해석은 부르는 쪽이 한다.
+  func skippedUpdateVersion() -> String?
+
+  /// 잠겼으면 `.locked` 이고 쓰지 않는다.
+  func setSkippedUpdateVersion(_ version: String) throws(PreferencesError)
+
+  /// 서버가 답한 마지막 업데이트 확인의 시각 (키 `LastUpdateCheck`, 날짜). 날짜가 아니면 nil.
+  func lastUpdateCheck() -> Date?
+
+  /// 잠겼으면 쓰지 않는다 (던지지 않는다: 기록 실패는 자동 확인이 재시도 간격으로 한 번 더 할 뿐이다).
+  func setLastUpdateCheck(_ date: Date)
+
+  /// 배너 숨김 (키 `DismissedUpdateBanner`, 사전 `{ version: 문자열, dismissedAt: 날짜 }`). 키가 빠졌거나 타입이 다르거나
+  /// 버전을 해석할 수 없으면 nil (숨김 없음).
+  func updateBannerDismissal() -> UpdateBannerDismissal?
+
+  /// 잠겼으면 `.locked` 이고 쓰지 않는다.
+  func setUpdateBannerDismissal(_ dismissal: UpdateBannerDismissal) throws(PreferencesError)
 }

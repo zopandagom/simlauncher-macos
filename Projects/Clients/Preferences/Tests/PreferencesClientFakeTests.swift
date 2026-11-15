@@ -1,4 +1,5 @@
 import Core
+import Foundation
 import PreferencesInterface
 import PreferencesTesting
 import Testing
@@ -182,5 +183,86 @@ struct PreferencesClientFakeLogFilterTests {
     #expect(SavedLogFilterList.visible(samples) == samples)
     #expect(SavedLogFilter.sampleHTTP.isCaseSensitive)
     #expect(SavedLogFilter.sampleInvalidRegex.conditions.first?.kind == .regex)
+  }
+}
+
+// MARK: - 업데이트 알림
+
+extension PreferencesClientFakeTests {
+  static let updateDate = Date(timeIntervalSince1970: 1_800_000_000)
+
+  static func dismissal(_ raw: String) throws -> UpdateBannerDismissal {
+    try UpdateBannerDismissal(version: #require(AppVersion(raw)), dismissedAt: self.updateDate)
+  }
+
+  @Test("업데이트 값 기본: 자동 켬·잠김 없음, 나머지 nil")
+  func updateDefaults() {
+    let fake = PreferencesClientFake()
+    #expect(fake.automaticUpdateCheck() == .enabledDefault)
+    #expect(fake.skippedUpdateVersion() == nil)
+    #expect(fake.lastUpdateCheck() == nil)
+    #expect(fake.updateBannerDismissal() == nil)
+    #expect(fake.calls == [.automaticUpdateCheck, .skippedUpdateVersion, .lastUpdateCheck, .updateBannerDismissal])
+  }
+
+  @Test("업데이트 값 쓰기·읽기와 호출 기록")
+  func updateWrites() throws {
+    let fake = PreferencesClientFake()
+    let dismissal = try Self.dismissal("1.3.0")
+
+    try fake.setAutomaticUpdateCheck(false)
+    try fake.setSkippedUpdateVersion("1.3.0")
+    fake.setLastUpdateCheck(Self.updateDate)
+    try fake.setUpdateBannerDismissal(dismissal)
+
+    #expect(fake.storedAutomaticUpdateCheck == AutomaticUpdateCheckSetting(isEnabled: false, isLocked: false))
+    #expect(fake.storedSkippedUpdateVersion == "1.3.0")
+    #expect(fake.storedLastUpdateCheck == Self.updateDate)
+    #expect(fake.storedUpdateBannerDismissal == dismissal)
+    #expect(fake.calls == [
+      .setAutomaticUpdateCheck(false),
+      .setSkippedUpdateVersion("1.3.0"),
+      .setLastUpdateCheck(Self.updateDate),
+      .setUpdateBannerDismissal(dismissal),
+    ])
+  }
+
+  @Test("잠기면 set 이 locked 이고 쓰지 않으며, setLastUpdateCheck 는 조용히 무시한다")
+  func updateLocked() throws {
+    let fake = PreferencesClientFake()
+    let old = try Self.dismissal("1.2.0")
+    fake.setStoredAutomaticUpdateCheck(false, isLocked: true)
+    fake.setStoredSkippedUpdateVersion("1.2.0", isLocked: true)
+    fake.setStoredLastUpdateCheck(nil, isLocked: true)
+    fake.setStoredUpdateBannerDismissal(old, isLocked: true)
+
+    #expect(fake.automaticUpdateCheck() == AutomaticUpdateCheckSetting(isEnabled: false, isLocked: true))
+    #expect(throws: PreferencesError.locked) { try fake.setAutomaticUpdateCheck(true) }
+    #expect(throws: PreferencesError.locked) { try fake.setSkippedUpdateVersion("1.3.0") }
+    fake.setLastUpdateCheck(Self.updateDate)
+    #expect(throws: PreferencesError.locked) { try fake.setUpdateBannerDismissal(Self.dismissal("1.3.0")) }
+
+    #expect(fake.storedAutomaticUpdateCheck == AutomaticUpdateCheckSetting(isEnabled: false, isLocked: true))
+    #expect(fake.storedSkippedUpdateVersion == "1.2.0")
+    #expect(fake.storedLastUpdateCheck == nil)
+    #expect(fake.storedUpdateBannerDismissal == old)
+    #expect(fake.calls.contains(.setLastUpdateCheck(Self.updateDate)))
+  }
+
+  @Test("setStored… 와 stored… 는 기록하지 않는다")
+  func updateStoredDoesNotRecord() throws {
+    let fake = PreferencesClientFake()
+    fake.setStoredAutomaticUpdateCheck(true, isLocked: false)
+    fake.setStoredSkippedUpdateVersion("1.3.0", isLocked: false)
+    fake.setStoredLastUpdateCheck(Self.updateDate, isLocked: false)
+    try fake.setStoredUpdateBannerDismissal(Self.dismissal("1.3.0"), isLocked: false)
+    _ = fake.storedAutomaticUpdateCheck
+    _ = fake.storedSkippedUpdateVersion
+    _ = fake.storedLastUpdateCheck
+    _ = fake.storedUpdateBannerDismissal
+
+    #expect(fake.calls.isEmpty)
+    #expect(fake.skippedUpdateVersion() == "1.3.0")
+    #expect(fake.lastUpdateCheck() == Self.updateDate)
   }
 }

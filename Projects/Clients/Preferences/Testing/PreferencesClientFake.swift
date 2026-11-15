@@ -1,4 +1,5 @@
 import Core
+import Foundation
 import PreferencesInterface
 import Synchronization
 
@@ -11,6 +12,9 @@ import Synchronization
 /// 저장한 로그 필터는 저장 배열처럼 항목 목록(nil = 읽지 못한 항목)으로 두고 Impl 과 같은 Core 규칙(`SavedLogFilterList`)으로 판정한다:
 /// 잠김이면 `.locked`, 같은 이름을 덮어쓰지 않으면 `.duplicate`, 상한이면 `.limitReached`, nil 항목은 같은 자리에 그대로 남긴다.
 /// 바깥 변경은 `setStoredLogFilters(_:isLocked:)` 로 만든다.
+/// 업데이트 알림의 네 값(자동 확인·건너뛴 버전·마지막 확인 시각·배너 숨김)과 잠금도 메모리에 두고 Impl 과 같이 판정한다:
+/// 잠기면 set 이 `.locked` 이고 쓰지 않으며, `setLastUpdateCheck(_:)` 는 잠기면 조용히 무시한다. 기본값은 자동 켬·잠김 없음,
+/// 나머지 nil·잠김 없음. 바깥 변경은 `setStoredAutomaticUpdateCheck(_:isLocked:)` 등 `setStored…` 로 만든다.
 public final class PreferencesClientFake: PreferencesClient {
   public enum Call: Hashable, Sendable {
     case catalogURLs
@@ -25,6 +29,14 @@ public final class PreferencesClientFake: PreferencesClient {
     /// 저장한 필터의 이름 (자른 값).
     case saveLogFilter(String, replacingSameName: Bool)
     case removeLogFilter(String)
+    case automaticUpdateCheck
+    case setAutomaticUpdateCheck(Bool)
+    case skippedUpdateVersion
+    case setSkippedUpdateVersion(String)
+    case lastUpdateCheck
+    case setLastUpdateCheck(Date)
+    case updateBannerDismissal
+    case setUpdateBannerDismissal(UpdateBannerDismissal)
   }
 
   private struct State {
@@ -35,6 +47,13 @@ public final class PreferencesClientFake: PreferencesClient {
     var androidLicensesLocked = false
     var logFilters: [SavedLogFilter?] = []
     var logFiltersLocked = false
+    var automaticUpdateCheck: AutomaticUpdateCheckSetting = .enabledDefault
+    var skippedUpdateVersion: String?
+    var skippedUpdateVersionLocked = false
+    var lastUpdateCheck: Date?
+    var lastUpdateCheckLocked = false
+    var updateBannerDismissal: UpdateBannerDismissal?
+    var updateBannerDismissalLocked = false
   }
 
   private let state: Mutex<State>
@@ -227,6 +246,130 @@ public final class PreferencesClientFake: PreferencesClient {
         current.logFilters = change.applied(to: current.logFilters) { $0 }
       }
       return SavedLogFilterSetting(filters: SavedLogFilterList.visible(current.logFilters), isLocked: false)
+    }
+  }
+}
+
+// MARK: - 업데이트 알림
+
+public extension PreferencesClientFake {
+  /// 지금 저장된 자동 확인 설정 (기록하지 않는다).
+  var storedAutomaticUpdateCheck: AutomaticUpdateCheckSetting {
+    self.state.withLock { $0.automaticUpdateCheck }
+  }
+
+  /// 지금 저장된 건너뛴 버전 (기록하지 않는다).
+  var storedSkippedUpdateVersion: String? {
+    self.state.withLock { $0.skippedUpdateVersion }
+  }
+
+  /// 지금 저장된 마지막 확인 시각 (기록하지 않는다).
+  var storedLastUpdateCheck: Date? {
+    self.state.withLock { $0.lastUpdateCheck }
+  }
+
+  /// 지금 저장된 배너 숨김 (기록하지 않는다).
+  var storedUpdateBannerDismissal: UpdateBannerDismissal? {
+    self.state.withLock { $0.updateBannerDismissal }
+  }
+
+  /// 바깥 변경(`defaults write`·MDM)을 흉내 낸다. 기록하지 않는다.
+  func setStoredAutomaticUpdateCheck(_ isEnabled: Bool, isLocked: Bool) {
+    self.state.withLock { state in
+      state.automaticUpdateCheck = AutomaticUpdateCheckSetting(isEnabled: isEnabled, isLocked: isLocked)
+    }
+  }
+
+  /// 바깥 변경을 흉내 낸다. 기록하지 않는다.
+  func setStoredSkippedUpdateVersion(_ version: String?, isLocked: Bool) {
+    self.state.withLock { state in
+      state.skippedUpdateVersion = version
+      state.skippedUpdateVersionLocked = isLocked
+    }
+  }
+
+  /// 바깥 변경을 흉내 낸다. 기록하지 않는다.
+  func setStoredLastUpdateCheck(_ date: Date?, isLocked: Bool) {
+    self.state.withLock { state in
+      state.lastUpdateCheck = date
+      state.lastUpdateCheckLocked = isLocked
+    }
+  }
+
+  /// 바깥 변경을 흉내 낸다. 기록하지 않는다.
+  func setStoredUpdateBannerDismissal(_ dismissal: UpdateBannerDismissal?, isLocked: Bool) {
+    self.state.withLock { state in
+      state.updateBannerDismissal = dismissal
+      state.updateBannerDismissalLocked = isLocked
+    }
+  }
+
+  func automaticUpdateCheck() -> AutomaticUpdateCheckSetting {
+    self.state.withLock { state in
+      state.calls.append(.automaticUpdateCheck)
+      return state.automaticUpdateCheck
+    }
+  }
+
+  func setAutomaticUpdateCheck(_ isEnabled: Bool) throws(PreferencesError) {
+    try self.state.withLock { (current: inout State) throws(PreferencesError) in
+      current.calls.append(.setAutomaticUpdateCheck(isEnabled))
+      guard !current.automaticUpdateCheck.isLocked else {
+        throw .locked
+      }
+      current.automaticUpdateCheck = AutomaticUpdateCheckSetting(isEnabled: isEnabled, isLocked: false)
+    }
+  }
+
+  func skippedUpdateVersion() -> String? {
+    self.state.withLock { state in
+      state.calls.append(.skippedUpdateVersion)
+      return state.skippedUpdateVersion
+    }
+  }
+
+  func setSkippedUpdateVersion(_ version: String) throws(PreferencesError) {
+    try self.state.withLock { (current: inout State) throws(PreferencesError) in
+      current.calls.append(.setSkippedUpdateVersion(version))
+      guard !current.skippedUpdateVersionLocked else {
+        throw .locked
+      }
+      current.skippedUpdateVersion = version
+    }
+  }
+
+  func lastUpdateCheck() -> Date? {
+    self.state.withLock { state in
+      state.calls.append(.lastUpdateCheck)
+      return state.lastUpdateCheck
+    }
+  }
+
+  /// 잠겼으면 조용히 무시한다 (기록은 남긴다).
+  func setLastUpdateCheck(_ date: Date) {
+    self.state.withLock { state in
+      state.calls.append(.setLastUpdateCheck(date))
+      guard !state.lastUpdateCheckLocked else {
+        return
+      }
+      state.lastUpdateCheck = date
+    }
+  }
+
+  func updateBannerDismissal() -> UpdateBannerDismissal? {
+    self.state.withLock { state in
+      state.calls.append(.updateBannerDismissal)
+      return state.updateBannerDismissal
+    }
+  }
+
+  func setUpdateBannerDismissal(_ dismissal: UpdateBannerDismissal) throws(PreferencesError) {
+    try self.state.withLock { (current: inout State) throws(PreferencesError) in
+      current.calls.append(.setUpdateBannerDismissal(dismissal))
+      guard !current.updateBannerDismissalLocked else {
+        throw .locked
+      }
+      current.updateBannerDismissal = dismissal
     }
   }
 }
