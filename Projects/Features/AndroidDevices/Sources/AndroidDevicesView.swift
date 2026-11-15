@@ -8,8 +8,8 @@ import UniformTypeIdentifiers
 /// 목록은 ⌘·⇧ 클릭으로 여러 기기를 고를 수 있고(선택은 Model 상태), 툴바의 "선택한 기기 켜기" 가 고른 기기를 함께 켜고,
 /// "선택한 기기에 앱 설치"(파일에서 고르기…·URL 에서…·카탈로그에서…)가 고른 기기 중 켜진 기기에 함께 설치한다.
 /// 행의 버튼·메뉴·드롭(스크린샷·녹화 포함)은 그 행 한 대에만 동작한다. 사라질 때(`onDisappear`) 자동 다시 읽기를 멈추게 알린다.
-/// URL·카탈로그 시트는 `downloadModel`, 앱 실행·링크 열기 시트는 `appSheetsModel`, 테스트 조건 시트는 `conditionsModel`
-/// (모두 App 소유)의 초안으로 띄운다.
+/// URL·카탈로그 시트는 `downloadModel`, 앱 실행·링크 열기 시트는 `appSheetsModel`, 테스트 조건 시트는 `conditionsModel`,
+/// 설치된 앱 시트는 `installedAppsModel` (모두 App 소유)의 초안으로 띄운다.
 /// 행 "로그 보기" 는 `appSheetsModel.logDevices` 로 누를 수 있는지 정하고, 그 기기의 로그 창(`AppLogTarget.android`)을 연다.
 public struct AndroidDevicesView: View {
   let model: AndroidDevicesModel
@@ -17,6 +17,8 @@ public struct AndroidDevicesView: View {
   let appSheetsModel: AndroidAppSheetsModel
   /// 행의 "테스트 조건…" 시트 (App 소유).
   let conditionsModel: AndroidTestConditionsModel
+  /// 행의 "설치된 앱…" 시트 (App 소유).
+  let installedAppsModel: AndroidInstalledAppsModel
   @Environment(\.openWindow) private var openWindow
   /// 지금 띄운 알림. 닫히는 동안 Model 의 줄에서 빠져도 글자가 비지 않도록 View 가 들고 있는다.
   @State private var presentedNotice: AndroidDevicesNoticeItem?
@@ -32,12 +34,14 @@ public struct AndroidDevicesView: View {
     model: AndroidDevicesModel,
     downloadModel: AndroidDownloadInstallModel,
     appSheetsModel: AndroidAppSheetsModel,
-    conditionsModel: AndroidTestConditionsModel
+    conditionsModel: AndroidTestConditionsModel,
+    installedAppsModel: AndroidInstalledAppsModel
   ) {
     self.model = model
     self.downloadModel = downloadModel
     self.appSheetsModel = appSheetsModel
     self.conditionsModel = conditionsModel
+    self.installedAppsModel = installedAppsModel
   }
 
   public var body: some View {
@@ -124,8 +128,12 @@ public struct AndroidDevicesView: View {
       ) {
         AndroidDeviceCreationSheet(model: self.model)
       }
-      // 만들기·앱 실행·링크·테스트 조건 시트는 같은 체인에 두고, Model 들(App 이 잇는다)이 둘 이상 함께 열리지 않게 막는다.
-      .modifier(AndroidAppSheets(appSheetsModel: self.appSheetsModel, conditionsModel: self.conditionsModel))
+      // 만들기·앱 실행·링크·테스트 조건·설치된 앱 시트는 같은 체인에 두고, Model 들(App 이 잇는다)이 둘 이상 함께 열리지 않게 막는다.
+      .modifier(AndroidAppSheets(
+        appSheetsModel: self.appSheetsModel,
+        conditionsModel: self.conditionsModel,
+        installedAppsModel: self.installedAppsModel
+      ))
       .modifier(AndroidDownloadSheets(model: self.downloadModel))
       .confirmationDialog(
         AndroidDevicesText.confirmationTitle(for: self.model.confirmation ?? self.presentedConfirmation),
@@ -350,6 +358,8 @@ extension AndroidDevicesView {
         Task { await self.appSheetsModel.launchAppTapped(device.id) }
       },
       openURLTapped: { self.appSheetsModel.openURLTapped(device.id) },
+      canOpenInstalledApps: AndroidInstalledAppsAvailability.canOpen(device: device, during: task),
+      installedAppsTapped: { Task { await self.installedAppsModel.installedAppsTapped(device.id) } },
       hasLog: self.appSheetsModel.logDevices.contains(device.id),
       logTapped: { self.openWindow(id: AppLogTarget.windowID, value: AppLogTarget.android(device.id)) },
       canTakeScreenshot: self.model.screenshots.canStart(on: device, during: task),
@@ -469,11 +479,12 @@ private struct AndroidDownloadSheets: ViewModifier {
   }
 }
 
-/// 행의 앱 실행·링크 열기 시트(`appSheetsModel`)와 테스트 조건 시트(`conditionsModel`). Model 들이 App 이 이은 클로저로 서로 막아
-/// 만들기 시트와 함께 둘 이상 열리지 않는다.
+/// 행의 앱 실행·링크 열기 시트(`appSheetsModel`)와 테스트 조건 시트(`conditionsModel`), 설치된 앱 시트(`installedAppsModel`).
+/// Model 들이 App 이 이은 클로저로 서로 막아 만들기 시트와 함께 둘 이상 열리지 않는다.
 private struct AndroidAppSheets: ViewModifier {
   let appSheetsModel: AndroidAppSheetsModel
   let conditionsModel: AndroidTestConditionsModel
+  let installedAppsModel: AndroidInstalledAppsModel
 
   func body(content: Content) -> some View {
     content
@@ -512,6 +523,18 @@ private struct AndroidAppSheets: ViewModifier {
         )
       ) {
         AndroidTestConditionsSheet(model: self.conditionsModel)
+      }
+      .sheet(
+        isPresented: Binding(
+          get: { self.installedAppsModel.draft != nil },
+          set: { isPresented in
+            if !isPresented {
+              self.installedAppsModel.sheetDismissed()
+            }
+          }
+        )
+      ) {
+        AndroidInstalledAppsSheet(model: self.installedAppsModel)
       }
   }
 }

@@ -26,6 +26,8 @@ import WorkspaceTesting
 /// 앱 설치(파일·URL·카탈로그)·실행·링크 열기·스크린샷·녹화·테스트 조건은 켜진 기기("Pixel Tablet")에서 해 본다.
 /// 테스트 조건은 Fake(외관을 기기별로 기억하고 고르면 바꾼다, 위치는 늘 받아들인다, 켜진 기기의 샘플 앱 권한을 기억하고 토글하면 바꾼다)로
 /// 돌고, 실패·적용 안 됨과 앱 구역의 목록 실패·권한 읽기 실패·앱 없음은 "테스트 조건" 장면에서 본다.
+/// "설치된 앱…" 시트는 같은 Fake 로 목록을 읽고 확인 뒤 지운다 (Fake 는 지워도 목록을 바꾸지 않아, 다시 읽은 목록에 앱이 다시
+/// 보인다). 지우는 중 유지·지우기 실패는 "설치된 앱" 장면에서 본다.
 /// 왼쪽 목록에서 상태를 고른다. "Android 도구" 버튼은 App 이 도구 화면을 여는 대신 아래 줄에 누른 횟수를 보인다.
 @main
 struct AndroidDevicesFeatureExampleApp: App {
@@ -50,7 +52,8 @@ struct AndroidDevicesFeatureExampleApp: App {
               model: models.devices,
               downloadModel: models.downloadInstall,
               appSheetsModel: models.appSheets,
-              conditionsModel: models.conditions
+              conditionsModel: models.conditions,
+              installedAppsModel: models.installedApps
             )
             .id(self.scenario)
           }
@@ -81,6 +84,7 @@ struct DemoModels {
   let downloadInstall: AndroidDownloadInstallModel
   let appSheets: AndroidAppSheetsModel
   let conditions: AndroidTestConditionsModel
+  let installedApps: AndroidInstalledAppsModel
 }
 
 /// 기기 목록 Model 의 `appSheetPresented` 가 뒤에 만든 시트 Model 들을 읽게 넘기는 상자 (App 과 같다).
@@ -88,9 +92,11 @@ struct DemoModels {
 final class DemoAppSheetsBox {
   weak var model: AndroidAppSheetsModel?
   weak var conditions: AndroidTestConditionsModel?
+  weak var installedApps: AndroidInstalledAppsModel?
 
   var hasPresentedSheet: Bool {
     (self.model?.hasPresentedSheet ?? false) || (self.conditions?.hasPresentedSheet ?? false)
+      || (self.installedApps?.hasPresentedSheet ?? false)
   }
 }
 
@@ -155,6 +161,9 @@ enum DemoScenario: String, CaseIterable, Hashable {
   case conditionsPermissionsFailure = "테스트 조건: 권한 읽기 실패"
   case conditionsPermissionNotApplied = "테스트 조건: 권한 적용 안 됨"
   case conditionsAppMissing = "테스트 조건: 고른 앱이 기기에 없음"
+  case installedAppsSlowRemove = "설치된 앱: 지우는 중 유지 (닫을 수 없음)"
+  case installedAppsRemoveFailure = "설치된 앱: 지우기 실패 (adb)"
+  case installedAppsDeviceOff = "설치된 앱: 지우기가 기기 꺼짐으로 실패"
 
   private static let allDevices = AndroidDeviceInventory(
     devices: [
@@ -252,6 +261,8 @@ enum DemoScenario: String, CaseIterable, Hashable {
          .conditionsPackagesFailure, .conditionsPermissionsFailure, .conditionsPermissionNotApplied,
          .conditionsAppMissing:
       DemoTestConditions.configure(fake, for: self)
+    case .installedAppsSlowRemove, .installedAppsRemoveFailure, .installedAppsDeviceOff:
+      DemoInstalledApps.configure(fake, for: self)
     default:
       self.configureAppOperations(fake)
     }
@@ -353,13 +364,7 @@ extension DemoScenario {
     let workspace = WorkspaceClientFake()
     self.configure(workspace)
     let appSheetsBox = DemoAppSheetsBox()
-    let launchError = self.launchError
-    let appLog = AppLogClientFake(androidLaunchHandler: { _, _ throws(AppLogLaunchError) in
-      try? await Task.sleep(for: .seconds(1))
-      if let launchError {
-        throw launchError
-      }
-    })
+    let appLog = self.makeAppLog()
     let devices = AndroidDevicesModel(
       emulator: fake,
       package: package,
@@ -379,13 +384,31 @@ extension DemoScenario {
     appSheetsBox.model = appSheets
     let conditions = DemoTestConditions.model(emulator: fake, devices: devices)
     appSheetsBox.conditions = conditions
+    let installedApps = DemoInstalledApps.model(emulator: fake, devices: devices, box: appSheetsBox)
     let preferences = PreferencesClientFake(urls: self.catalogURLs, isLocked: self == .catalogLocked)
     let downloadInstall = AndroidDownloadInstallModel(
       preferences: preferences,
       download: download,
       installRequested: { request in await devices.downloadInstallRequested(request) }
     )
-    return DemoModels(devices: devices, downloadInstall: downloadInstall, appSheets: appSheets, conditions: conditions)
+    return DemoModels(
+      devices: devices,
+      downloadInstall: downloadInstall,
+      appSheets: appSheets,
+      conditions: conditions,
+      installedApps: installedApps
+    )
+  }
+
+  /// 앱 실행(로그 받기와 함께)을 1초 뒤 끝내고, 장면에 따라 실패하는 앱 로그 Fake.
+  private func makeAppLog() -> AppLogClientFake {
+    let launchError = self.launchError
+    return AppLogClientFake(androidLaunchHandler: { _, _ throws(AppLogLaunchError) in
+      try? await Task.sleep(for: .seconds(1))
+      if let launchError {
+        throw launchError
+      }
+    })
   }
 }
 
@@ -497,7 +520,8 @@ private func demoPreview(_ scenario: DemoScenario) -> some View {
     model: models.devices,
     downloadModel: models.downloadInstall,
     appSheetsModel: models.appSheets,
-    conditionsModel: models.conditions
+    conditionsModel: models.conditions,
+    installedAppsModel: models.installedApps
   )
   .frame(width: 720, height: 480)
 }
