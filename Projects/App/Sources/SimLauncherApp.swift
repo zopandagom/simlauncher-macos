@@ -257,7 +257,8 @@ extension SimLauncherApp {
       )
     )
     // 앱 실행·링크 열기 시트. 열 수 있는 기기는 기기 목록에 묻고(만들기·URL 설치 시트·확인 대화상자·작업 중이면 열지 않는다),
-    // 앱 실행 시트의 켜기·다시 읽기와 확정한 앱·링크의 실행은 기기 목록이 한다. 목록 읽기(`simctl listapps`)는 시트를 열 때만 한다.
+    // 앱 실행 시트의 켜기·다시 읽기와 확정한 앱·링크의 실행은 기기 목록이 한다. 이 시트의 목록 읽기(`simctl listapps`)는
+    // 시트를 열 때만 한다 (테스트 조건 시트의 앱 고르기는 그 시트가 따로 읽는다).
     let launcherSheets = LauncherAppSheetsModel(
       simulator: simulator,
       target: { id, task in launcher.appSheetTarget(id, for: task) },
@@ -268,7 +269,8 @@ extension SimLauncherApp {
     )
     launcherSheetsBox.model = launcherSheets
     // 테스트 조건 시트. 열 수 있는 기기는 기기 목록에 묻고(켜진 기기, 다른 시트·확인 대화상자·켜기/끄기/삭제/초기화 중이면 열지
-    // 않는다), 명령이 기기 꺼짐·없어짐으로 실패하면 기기 목록을 다시 읽는다. `simctl ui`·`location` 은 시트를 열 때와 고를 때만 돈다.
+    // 않는다), 명령이 기기 꺼짐·없어짐으로 실패하면 기기 목록을 다시 읽는다. `simctl ui`·`listapps` 는 시트를 열 때와 다시 읽을 때,
+    // `simctl ui`·`location`·`privacy`·`push` 는 고를 때만 돈다.
     let conditions = TestConditionsModel(
       simulator: simulator,
       target: { launcher.testConditionsTarget($0) },
@@ -408,7 +410,8 @@ extension SimLauncherApp {
   }
 
   /// Android 테스트 조건 시트. 열 수 있는 기기는 기기 목록에 묻고, 명령이 기기 꺼짐·없어짐으로 실패하면 기기 목록을 다시 읽는다.
-  /// adb 명령(`cmd uimode`·`cmd location`·`emu geo fix`)은 시트를 열 때와 고를 때만 돈다.
+  /// adb 명령(읽기 `cmd uimode`·`cmd location`·`pm list packages`·`dumpsys package`, 쓰기 `cmd uimode`·`emu geo fix`·
+  /// `pm grant`·`pm revoke`·`pm clear-permission-flags`)은 시트를 열 때·다시 읽을 때·앱을 고를 때와 바꿀 때만 돈다.
   private static func makeAndroidConditions(
     emulator: AndroidEmulatorClientImpl,
     devices: AndroidDevicesModel
