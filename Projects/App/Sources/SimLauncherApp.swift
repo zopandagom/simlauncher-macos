@@ -19,6 +19,8 @@ import SettingsFeature
 import SetupFeature
 import SimulatorImpl
 import SwiftUI
+import UpdateCheckImpl
+import UpdateFeature
 import WorkspaceImpl
 
 /// 조립 지점. Client Impl 을 만들어 Feature Model 에 주입하는 곳은 여기뿐이다.
@@ -55,6 +57,12 @@ import WorkspaceImpl
 /// Android 기기(에뮬레이터)는 녹화 밖에는 종료 요청 때 보지 않는다 (켜진 에뮬레이터는 앱이 끝나도 남는다.
 /// apk 받기·설치·실행·링크 열기도 묻지 않는다. 남은 받기 폴더는 다음에 iOS 기기 목록·Android 기기 목록·Android 도구 화면 중 하나가
 /// 열릴 때 지운다).
+/// 업데이트 알림: App 이 소유한 `UpdateModel` 하나를 메인 창 배너(`MainWindow` 의 detail 위), 메뉴 "SimLauncher > 업데이트 확인…"
+/// (`UpdateCommands`), 업데이트 확인 창(`Window` 씬, 복원 끔, 시작 때 열지 않음, `.commandsRemoved()` 로 Window 메뉴 항목 없음)이
+/// 함께 쓴다. 자동 확인은 `AppDelegate` 가 실행(`applicationDidFinishLaunching`)·활성화(`applicationDidBecomeActive`) 때 부른다
+/// (메인 창을 닫아도 돈다). 네트워크는 빌드 설정의 배포 저장소(Info.plist `SimLauncherReleaseRepository`)로 앱이 만든
+/// 최신 릴리스 버전 파일 주소 하나를 받기 Client 로 받을 때만 쓰고, 다운로드 페이지는 앱이 만든 고정 주소를 브라우저로 연다. 저장소가 없거나
+/// 형식이 틀린 빌드(포크)는 메뉴 항목·설정 "업데이트" 절·자동 확인·배너가 없다. 종료 요청 때 확인은 묻지도 기다리지도 않는다.
 @main
 struct SimLauncherApp: App {
   @NSApplicationDelegateAdaptor private var appDelegate: AppDelegate
@@ -73,6 +81,7 @@ struct SimLauncherApp: App {
   @State private var androidInstalledAppsModel: AndroidInstalledAppsModel
   @State private var deviceLogModel: DeviceLogModel
   @State private var layoutInspectorModel: LayoutInspectorModel
+  @State private var updateModel: UpdateModel
 
   /// 명령 실행 Client 하나를 개발 환경·시뮬레이터·앱 번들 Client 가 함께 쓰고,
   /// 개발 환경 Client 하나를 Setup 과 시뮬레이터의 개발자 디렉터리가 함께 쓰며,
@@ -81,10 +90,12 @@ struct SimLauncherApp: App {
   /// 앱 로그 Client 하나를 Launcher·Android 기기 목록(로그 받기와 함께 실행·행의 "로그 보기")과 로그 창, 종료 처리(`AppDelegate`)가
   /// 함께 쓴다.
   /// 받기 Client 는 하나만 만들어 Launcher 의 URL·카탈로그 설치, 카탈로그에서 설치 시트의 카탈로그 받기,
-  /// 설정 창의 카탈로그 등록 확인, Android 기기 목록의 URL·카탈로그 설치와 그 시트의 카탈로그 받기가 함께 쓴다
+  /// 설정 창의 카탈로그 등록 확인, Android 기기 목록의 URL·카탈로그 설치와 그 시트의 카탈로그 받기,
+  /// 업데이트 확인 Client(받기 Client 를 조합해 최신 릴리스의 버전 파일을 받는다)가 함께 쓴다
   /// (지금 받는 폴더 목록을 그 안에서 함께 써, 한쪽의 남은 폴더 정리가 다른 쪽이 받는 중인 폴더를 지우지 않는다).
-  /// 설정 Client 도 하나만 만들어 설정 창(카탈로그 등록·삭제, Android SDK 위치)과 카탈로그에서 설치 시트(읽기만),
-  /// Android 도구 화면(라이선스 동의 기록), Android SDK Client 의 위치 provider 가 함께 쓴다
+  /// 설정 Client 도 하나만 만들어 설정 창(카탈로그 등록·삭제, Android SDK 위치, 새 버전 자동 확인 토글)과 카탈로그에서 설치 시트(읽기만),
+  /// Android 도구 화면(라이선스 동의 기록), Android SDK Client 의 위치 provider, 업데이트 Model(자동 확인 설정 읽기, 건너뛴 버전·
+  /// 마지막 확인 시각·배너 숨김 기록)이 함께 쓴다
   /// (같은 프로세스의 쓰기를 Impl 안의 `Mutex` 로 묶는다). 앱 번들 Client 하나를 Launcher 와 Android SDK Client 의 호스트
   /// 아키텍처(Rosetta 로 돌아도 arm64)에 함께 쓴다. Android SDK Client 도 받기 Client 를 Launcher 와 함께 쓴다.
   /// Android 기기 Client 는 명령 실행 Client·SDK 위치 provider·호스트 아키텍처를 Android SDK Client 와 함께 쓴다. Android 기기 Client
@@ -114,12 +125,8 @@ struct SimLauncherApp: App {
     let appLog = AppLogClientImpl(simulator: simulator, androidEmulator: androidClients.emulator)
     // 레이아웃 창의 Client 도 같은 Android 기기 Client 와 시뮬레이터·개발 환경·명령 실행 Client 를 조합한다 (생성자는 명령을
     // 실행하지 않고 폴더도 만들지 않는다. 읽기는 창이 열릴 때와 "새로 고침" 때만). 기기 목록이 기기 수명을 알려야 해서 Launcher 보다 먼저 만든다.
-    let screenLayout = ScreenLayoutClientImpl(
-      androidEmulator: androidClients.emulator,
-      simulator: simulator,
-      devEnvironment: devEnvironment,
-      command: command,
-      runnerDirectory: Self.layoutRunnerDirectory()
+    let screenLayout = Self.makeScreenLayout(
+      androidEmulator: androidClients.emulator, simulator: simulator, devEnvironment: devEnvironment, command: command
     )
     self._layoutInspectorModel = State(initialValue: LayoutInspectorModel(screenLayout: screenLayout))
     let android = Self.makeAndroid(shared, clients: androidClients, appLog: appLog)
@@ -145,20 +152,42 @@ struct SimLauncherApp: App {
     self._testConditionsModel = State(initialValue: launcherAssembly.conditions)
     self._installedAppsModel = State(initialValue: launcherAssembly.installedApps)
     // 카탈로그는 시트를 열 때와 새로 고칠 때만 받는다 (앱 시작 때·기기 목록을 볼 때는 받지 않는다).
-    self._catalogInstallModel = State(initialValue: CatalogInstallModel(
+    let catalog = Self.makeCatalogInstall(preferences, download, launcherAssembly.model)
+    self._catalogInstallModel = State(initialValue: catalog)
+    // 업데이트 확인 Client 는 같은 받기 Client 를 조합한다 (생성자는 네트워크를 쓰지 않는다. 확인은 실행·활성화·메뉴 때만).
+    let update = Self.makeUpdate(download: download, preferences: preferences)
+    self._updateModel = State(initialValue: update)
+    let settings = Self.makeSettings(preferences, download, android, home, update.isAvailable)
+    self._settingsModel = State(initialValue: settings)
+    self.appDelegate.updateModel = update
+    self.wireAppDelegate(setup: setup, appLog: appLog, launcher: launcher, android: android, screenLayout: screenLayout)
+  }
+
+  private static func makeCatalogInstall(
+    _ preferences: PreferencesClientImpl,
+    _ download: DownloadClientImpl,
+    _ launcher: LauncherModel
+  ) -> CatalogInstallModel {
+    CatalogInstallModel(
       preferences: preferences,
       download: download,
       installRequested: { request in await launcher.catalogInstallRequested(request) }
-    ))
-    self._settingsModel = State(initialValue: Self.makeSettings(preferences, download, android, home))
-    // 종료 요청 때 AppDelegate 가 Setup 에 설치 상태를 묻는다: 준비·내려받기 중이면 확인을 받아 멈추게 하고,
-    // 설치 단계·멈추는 중이면 끝나기를 기다린다 (어댑터는 init 에서 넣은 값을 종료 요청 때 그대로 본다, 측정).
-    // 두 기기 목록(iOS·Android)에는 녹화 중인지 묻는다: 어느 쪽이든 녹화 중이면 확인을 한 번 받아 모든 녹화를 멈추고 저장한 뒤
-    // 종료한다.
-    // Android 도구 화면에는 설치 상태를 묻는다: 받기·확인·풀기 중이면 확인을 받아 멈추게 하고, 마무리 단계면 끝나기를 기다린다.
-    // 앱 로그 받기는 묻지 않고, 종료가 정해지면 모두 멈춘다 (SIGINT 를 보내고 기다리지 않는다. iOS 앱은 꺼지고 Android 앱은 남는다).
-    // iOS 레이아웃 러너는 묻지 않고 멈춘 뒤 끝낸다 (5초 상한).
-    self.wireAppDelegate(setup: setup, appLog: appLog, launcher: launcher, android: android, screenLayout: screenLayout)
+    )
+  }
+
+  private static func makeScreenLayout(
+    androidEmulator: AndroidEmulatorClientImpl,
+    simulator: SimulatorClientImpl,
+    devEnvironment: DevEnvironmentClientImpl,
+    command: CommandClientImpl
+  ) -> ScreenLayoutClientImpl {
+    ScreenLayoutClientImpl(
+      androidEmulator: androidEmulator,
+      simulator: simulator,
+      devEnvironment: devEnvironment,
+      command: command,
+      runnerDirectory: self.layoutRunnerDirectory()
+    )
   }
 
   private func wireAppDelegate(
@@ -174,6 +203,21 @@ struct SimLauncherApp: App {
     self.appDelegate.androidSetupModel = android.setup
     self.appDelegate.androidDevicesModel = android.devices
     self.appDelegate.screenLayout = screenLayout
+  }
+
+  /// 업데이트 Model. 배포 저장소는 빌드 설정이 넣은 Info.plist `SimLauncherReleaseRepository` 이고, 없거나 형식이 틀리면 nil 이라
+  /// 업데이트 기능이 없다(요청 없이 `.notConfigured`). 지금 버전은 `CFBundleShortVersionString` 이고 읽지 못하면 비교 불가로 보인다.
+  private static func makeUpdate(download: DownloadClientImpl, preferences: PreferencesClientImpl) -> UpdateModel {
+    let repository = (Bundle.main.object(forInfoDictionaryKey: "SimLauncherReleaseRepository") as? String)
+      .flatMap(ReleaseRepository.init)
+    let currentVersion = (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String)
+      .flatMap(AppVersion.init)
+    return UpdateModel(
+      updateCheck: UpdateCheckClientImpl(repository: repository, download: download),
+      preferences: preferences,
+      currentVersion: currentVersion,
+      now: { Date() }
+    )
   }
 
   /// iOS 레이아웃 러너의 빌드 캐시·세션 폴더 뿌리: `~/Library/Caches/<번들 ID>/LayoutRunner` (다시 만들 수 있는 산출물).
@@ -200,8 +244,13 @@ struct SimLauncherApp: App {
         androidDownloadInstallModel: self.androidDownloadInstallModel,
         androidAppSheetsModel: self.androidAppSheetsModel,
         androidTestConditionsModel: self.androidTestConditionsModel,
-        androidInstalledAppsModel: self.androidInstalledAppsModel
+        androidInstalledAppsModel: self.androidInstalledAppsModel,
+        updateModel: self.updateModel
       )
+    }
+    // "SimLauncher" 메뉴의 "업데이트 확인…" (앱 정보 항목 뒤, 배포 저장소가 없는 빌드에는 없다). 업데이트 확인 창을 여는 곳은 이것뿐이다.
+    .commands {
+      UpdateCommands(model: self.updateModel)
     }
     // 기기 행 "로그 보기" 가 여는 로그 창. 같은 기기(값)면 창 하나이고, 앱 시작 때 열리지 않는다(측정). 받은 로그는 메모리에만
     // 있어 앱을 다시 켜면 없으므로 창을 되살리지 않는다. 창을 닫아도 받기는 계속된다 (DeviceLogView 의 onDisappear 는 구독만 끊는다).
@@ -225,6 +274,16 @@ struct SimLauncherApp: App {
     Settings {
       SettingsView(model: self.settingsModel)
     }
+    // 메뉴 "업데이트 확인…" 이 여는 업데이트 확인 창(단일 창). 메인 WindowGroup 뒤에 두어 앱을 켤 때·Dock 아이콘을 누를 때 열리는
+    // 창이 메인 창이 되게 한다. 결과는 Model 메모리에만 있어 되살리지 않고, 시작 때 열지 않는다. Window 씬이 Window 메뉴에
+    // 저절로 만드는 창 제목 항목은 뺀다 (입구는 메뉴 항목 하나). 창을 닫아도 진행 중인 확인은 끝까지 간다.
+    Window(UpdateCheckView.windowTitle, id: UpdateCheckView.windowID) {
+      UpdateCheckView(model: self.updateModel)
+    }
+    .windowResizability(.contentSize)
+    .restorationBehavior(.disabled)
+    .defaultLaunchBehavior(.suppressed)
+    .commandsRemoved()
   }
 }
 
@@ -318,17 +377,20 @@ extension SimLauncherApp {
 
   /// 설정 창의 내용은 앱 시작 때 한 번 만들어진다(측정). 생성자는 Client 를 저장만 하고, 목록 읽기는 창을 열 때,
   /// 카탈로그 받기는 "등록" 을 누를 때만 한다. SDK 위치를 바꾸면 Android 도구 화면에 알린다.
+  /// "업데이트" 절(새 버전 자동 확인 토글)은 배포 저장소가 있는 빌드에만 보인다.
   private static func makeSettings(
     _ preferences: PreferencesClientImpl,
     _ download: DownloadClientImpl,
     _ android: AndroidAssembly,
-    _ home: URL
+    _ home: URL,
+    _ isUpdateCheckAvailable: Bool
   ) -> SettingsModel {
     SettingsModel(
       preferences: preferences,
       download: download,
       androidSDK: android.sdk,
       home: home,
+      isUpdateCheckAvailable: isUpdateCheckAvailable,
       androidSDKLocationChanged: {
         Task { await android.setup.sdkLocationChanged() }
         Task { await android.devices.sdkLocationChanged() }
