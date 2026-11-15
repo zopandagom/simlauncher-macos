@@ -1,6 +1,56 @@
 {
   "sourceLanguage" : "ko",
   "strings" : {
+    "%@ (%@)" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (%@)"
+          }
+        }
+      }
+    },
+    "%@ 권한 바꾸기" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 권한 바꾸기"
+          }
+        }
+      }
+    },
+    "%@ 앱에 알림을 보냈습니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 앱에 알림을 보냈습니다."
+          }
+        }
+      }
+    },
+    "%@ 앱의 %@ 권한을 바꿨습니다: %@" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 앱의 %@ 권한을 바꿨습니다: %@"
+          }
+        }
+      }
+    },
+    "%@ 앱이 알림 권한을 받지 않았거나 기기에 없어 알림을 보일 수 없습니다. 앱에서 알림을 허용한 뒤 다시 보내세요. 앱을 지웠다면 앱 목록 다시 읽기를 누르세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 앱이 알림 권한을 받지 않았거나 기기에 없어 알림을 보일 수 없습니다. 앱에서 알림을 허용한 뒤 다시 보내세요. 앱을 지웠다면 앱 목록 다시 읽기를 누르세요."
+          }
+        }
+      }
+    },
     "%@, %@" : {
       "localizations" : {
         "ko" : {
@@ -31,6 +81,16 @@
         }
       }
     },
+    "%lld / %lld 바이트" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld / %lld 바이트"
+          }
+        }
+      }
+    },
     ".app 이나 zip 이 아닌 항목은 설치할 수 없습니다. 시뮬레이터용으로 빌드한 .app 이나 그 .app 을 압축한 zip 을 골라 주세요." : {
       "localizations" : {
         "ko" : {
@@ -57,6 +117,116 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : ".ipa 파일은 설치할 수 없습니다. 시뮬레이터용으로 빌드한 .app 파일을 받아 주세요."
+          }
+        }
+      }
+    },
+    "aps 가 비어 있습니다. alert 같은 값을 넣으세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "aps 가 비어 있습니다. alert 같은 값을 넣으세요."
+          }
+        }
+      }
+    },
+    "aps 값은 { } 객체여야 합니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "aps 값은 { } 객체여야 합니다."
+          }
+        }
+      }
+    },
+    "aps 의 alert 값은 글자나 { } 객체여야 합니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "aps 의 alert 값은 글자나 { } 객체여야 합니다."
+          }
+        }
+      }
+    },
+    "iOS 는 권한의 지금 상태를 알려 주지 않아, SimLauncher 가 켜져 있는 동안 바꾼 값만 보입니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS 는 권한의 지금 상태를 알려 주지 않아, SimLauncher 가 켜져 있는 동안 바꾼 값만 보입니다."
+          }
+        }
+      }
+    },
+    "JSON" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JSON"
+          }
+        }
+      }
+    },
+    "JSON 에 aps 키가 있어야 합니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JSON 에 aps 키가 있어야 합니다."
+          }
+        }
+      }
+    },
+    "JSON 을 넣으세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JSON 을 넣으세요."
+          }
+        }
+      }
+    },
+    "JSON 의 맨 바깥은 { } 객체여야 합니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JSON 의 맨 바깥은 { } 객체여야 합니다."
+          }
+        }
+      }
+    },
+    "JSON 형식이 아닙니다. 괄호·따옴표·쉼표를 확인하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JSON 형식이 아닙니다. 괄호·따옴표·쉼표를 확인하세요."
+          }
+        }
+      }
+    },
+    "SimLauncher 가 바꾼 값: %@" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SimLauncher 가 바꾼 값: %@"
+          }
+        }
+      }
+    },
+    "SimLauncher 가 보낸 알림입니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SimLauncher 가 보낸 알림입니다."
           }
         }
       }
@@ -381,6 +551,16 @@
         }
       }
     },
+    "거부" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "거부"
+          }
+        }
+      }
+    },
     "걷기" : {
       "localizations" : {
         "ko" : {
@@ -471,6 +651,16 @@
         }
       }
     },
+    "권한" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "권한"
+          }
+        }
+      }
+    },
     "글씨 크기" : {
       "localizations" : {
         "ko" : {
@@ -487,6 +677,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "기기가 꺼져 있습니다. 기기를 켠 뒤 다시 시도하세요."
+          }
+        }
+      }
+    },
+    "기기가 알림 내용을 거절했습니다. JSON 의 aps 값을 확인하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기기가 알림 내용을 거절했습니다. JSON 의 aps 값을 확인하세요."
           }
         }
       }
@@ -537,6 +737,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "뉴욕"
+          }
+        }
+      }
+    },
+    "다시 묻기 (초기화)" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다시 묻기 (초기화)"
           }
         }
       }
@@ -601,6 +811,26 @@
         }
       }
     },
+    "동작 및 피트니스" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "동작 및 피트니스"
+          }
+        }
+      }
+    },
+    "따옴표가 “ ” 로 바뀌었습니다. 곧은 따옴표(\")로 바꾸세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "따옴표가 “ ” 로 바뀌었습니다. 곧은 따옴표(\")로 바꾸세요."
+          }
+        }
+      }
+    },
     "라이트" : {
       "localizations" : {
         "ko" : {
@@ -621,6 +851,46 @@
         }
       }
     },
+    "마이크" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "마이크"
+          }
+        }
+      }
+    },
+    "미디어 및 Apple Music" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "미디어 및 Apple Music"
+          }
+        }
+      }
+    },
+    "미리 알림" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "미리 알림"
+          }
+        }
+      }
+    },
+    "바꾸기" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "바꾸기"
+          }
+        }
+      }
+    },
     "바꾼 조건은 기기에 바로 적용되고, 시트를 닫거나 SimLauncher 를 꺼도 기기에 남습니다." : {
       "localizations" : {
         "ko" : {
@@ -631,12 +901,62 @@
         }
       }
     },
+    "보내기" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "보내기"
+          }
+        }
+      }
+    },
+    "본문" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "본문"
+          }
+        }
+      }
+    },
+    "본문을 넣으세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "본문을 넣으세요."
+          }
+        }
+      }
+    },
     "사용할 수 없는 기기에서는 테스트 조건을 바꿀 수 없습니다" : {
       "localizations" : {
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "사용할 수 없는 기기에서는 테스트 조건을 바꿀 수 없습니다"
+          }
+        }
+      }
+    },
+    "사진" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "사진"
+          }
+        }
+      }
+    },
+    "사진 추가" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "사진 추가"
           }
         }
       }
@@ -751,6 +1071,16 @@
         }
       }
     },
+    "시트를 연 뒤 설치한 앱은 앱 목록 다시 읽기로 보입니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "시트를 연 뒤 설치한 앱은 앱 목록 다시 읽기로 보입니다."
+          }
+        }
+      }
+    },
     "아주 작게" : {
       "localizations" : {
         "ko" : {
@@ -781,6 +1111,86 @@
         }
       }
     },
+    "알림 권한은 바꿀 수 없습니다. 앱에서 알림을 허용하세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "알림 권한은 바꿀 수 없습니다. 앱에서 알림을 허용하세요."
+          }
+        }
+      }
+    },
+    "알림 내용이 %lld 바이트입니다. %lld 바이트 이하로 줄이세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "알림 내용이 %lld 바이트입니다. %lld 바이트 이하로 줄이세요."
+          }
+        }
+      }
+    },
+    "앱 목록 다시 읽기" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "앱 목록 다시 읽기"
+          }
+        }
+      }
+    },
+    "앱 목록을 읽는 중…" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "앱 목록을 읽는 중…"
+          }
+        }
+      }
+    },
+    "앱 목록을 읽지 못했습니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "앱 목록을 읽지 못했습니다."
+          }
+        }
+      }
+    },
+    "앱을 고르세요" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "앱을 고르세요"
+          }
+        }
+      }
+    },
+    "앱이 알림 권한을 받아야 알림이 보입니다. 권한이 없으면 iOS 버전에 따라 '보냈습니다' 로 나와도 화면에 보이지 않을 수 있습니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "앱이 알림 권한을 받아야 알림이 보입니다. 권한이 없으면 iOS 버전에 따라 '보냈습니다' 로 나와도 화면에 보이지 않을 수 있습니다."
+          }
+        }
+      }
+    },
+    "연락처" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "연락처"
+          }
+        }
+      }
+    },
     "예: 37.5665, 126.9780" : {
       "localizations" : {
         "ko" : {
@@ -801,12 +1211,12 @@
         }
       }
     },
-    "외관·글씨 크기·위치 같은 테스트 조건을 바꿉니다." : {
+    "외관·글씨 크기·위치·권한·알림 같은 테스트 조건을 바꿉니다." : {
       "localizations" : {
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "외관·글씨 크기·위치 같은 테스트 조건을 바꿉니다."
+            "value" : "외관·글씨 크기·위치·권한·알림 같은 테스트 조건을 바꿉니다."
           }
         }
       }
@@ -841,12 +1251,52 @@
         }
       }
     },
+    "위에서 앱을 고르세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "위에서 앱을 고르세요."
+          }
+        }
+      }
+    },
     "위치" : {
       "localizations" : {
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "위치"
+          }
+        }
+      }
+    },
+    "위치 (사용하는 동안)" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "위치 (사용하는 동안)"
+          }
+        }
+      }
+    },
+    "위치 (항상)" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "위치 (항상)"
+          }
+        }
+      }
+    },
+    "위치 밖의 권한을 바꾸면 실행 중인 앱이 종료됩니다(값이 같아도). SimLauncher 로 실행해 로그를 받던 앱이면 로그도 끝납니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "위치 밖의 권한을 바꾸면 실행 중인 앱이 종료됩니다(값이 같아도). SimLauncher 로 실행해 로그를 받던 앱이면 로그도 끝납니다."
           }
         }
       }
@@ -957,6 +1407,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@의 platform 이 ios 나 android 가 아닙니다 (소문자로 씁니다)."
+          }
+        }
+      }
+    },
+    "이 iOS 는 화면에 보일 내용(alert)이 없는 알림을 받지 않습니다. 제목이나 본문을 넣으세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 iOS 는 화면에 보일 내용(alert)이 없는 알림을 받지 않습니다. 제목이나 본문을 넣으세요."
           }
         }
       }
@@ -3131,6 +3591,16 @@
         }
       }
     },
+    "이 기기에 설치한 앱이 없습니다. 앱을 설치한 뒤 앱 목록 다시 읽기를 누르세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 기기에 설치한 앱이 없습니다. 앱을 설치한 뒤 앱 목록 다시 읽기를 누르세요."
+          }
+        }
+      }
+    },
     "이 기기에 직접 설치한 앱이 없습니다. 앱 설치로 먼저 설치하세요." : {
       "localizations" : {
         "ko" : {
@@ -3351,6 +3821,16 @@
         }
       }
     },
+    "입력 방식" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "입력 방식"
+          }
+        }
+      }
+    },
     "자동차" : {
       "localizations" : {
         "ko" : {
@@ -3427,6 +3907,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "적용하는 중…"
+          }
+        }
+      }
+    },
+    "제목 (선택)" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "제목 (선택)"
+          }
+        }
+      }
+    },
+    "제목·본문" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "제목·본문"
           }
         }
       }
@@ -3611,6 +4111,16 @@
         }
       }
     },
+    "카메라" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "카메라"
+          }
+        }
+      }
+    },
     "카탈로그 최상위" : {
       "localizations" : {
         "ko" : {
@@ -3697,6 +4207,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "카탈로그의 schemaVersion %lld 은 없는 규격입니다 (지원: 1~%lld)."
+          }
+        }
+      }
+    },
+    "캘린더" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "캘린더"
           }
         }
       }
@@ -3811,6 +4331,16 @@
         }
       }
     },
+    "테스트 알림" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "테스트 알림"
+          }
+        }
+      }
+    },
     "테스트 조건…" : {
       "localizations" : {
         "ko" : {
@@ -3871,6 +4401,16 @@
         }
       }
     },
+    "푸시 알림" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "푸시 알림"
+          }
+        }
+      }
+    },
     "한 번에 앱 하나만 설치할 수 있습니다. .app 이나 zip 하나만 끌어다 놓으세요." : {
       "localizations" : {
         "ko" : {
@@ -3887,6 +4427,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "한 줄에 한 지점씩 위도, 경도를 넣으세요 (2~100개)."
+          }
+        }
+      }
+    },
+    "허용" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "허용"
           }
         }
       }

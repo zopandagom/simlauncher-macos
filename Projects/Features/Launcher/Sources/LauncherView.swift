@@ -12,7 +12,8 @@ public struct LauncherView: View {
   let catalogModel: CatalogInstallModel
   /// 행의 "앱 실행…"·"링크 열기…" 시트. 목록 읽기라는 자기 비동기 흐름이 있어 따로 둔 Model 이다 (App 이 소유한다).
   let appSheetsModel: LauncherAppSheetsModel
-  /// 행의 "테스트 조건…" 시트. 기기별 적용 중·보낸 위치 기록이라는 자기 상태가 있어 따로 둔 Model 이다 (App 이 소유한다).
+  /// 행의 "테스트 조건…" 시트. 기기별 적용 중·보낸 위치 기록·바꾼 권한 기록과 앱 목록 읽기라는 자기 상태가 있어 따로 둔 Model 이다
+  /// (App 이 소유한다).
   let conditionsModel: TestConditionsModel
   /// 지금 띄운 알림. 닫히는 동안 Model 의 줄에서 빠져도 글자가 비지 않도록 View 가 들고 있는다.
   @State private var presentedNotice: LauncherNoticeItem?

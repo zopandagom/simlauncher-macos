@@ -72,3 +72,38 @@ final class ExampleAppSheetsBox {
 #Preview("테스트 조건: 시나리오 없음 (시나리오 실행)") {
   previewLauncher { $0.setScenarioUnavailable(true) }
 }
+
+// MARK: - 앱 단위 구역 미리보기
+
+// 앱 구역에서 앱을 고른 뒤 권한·푸시 알림을 해 본다.
+
+#Preview("테스트 조건 앱: 앱 목록을 읽지 못함 (다시 읽기)") {
+  previewLauncher { $0.setInstalledAppsError(.commandFailed) }
+}
+
+#Preview("테스트 조건 앱: 설치한 앱 없음") {
+  previewLauncher { ExampleInstalledApps.install(on: $0, apps: []) }
+}
+
+#Preview("테스트 조건 앱: 앱 하나 (자동으로 고름)") {
+  previewLauncher { ExampleInstalledApps.install(on: $0, apps: [ExampleInstalledApps.all[0]]) }
+}
+
+#Preview("테스트 조건 앱: 권한·푸시가 기기 꺼짐으로 실패") {
+  previewLauncher { fake in
+    fake.setPrivacyError(.deviceNotBooted)
+    fake.setPushError(.deviceNotBooted)
+  }
+}
+
+#Preview("테스트 조건 앱: 푸시 알림 권한 없음 (iOS 27)") {
+  previewLauncher { $0.setPushOutcome(.notAuthorized) }
+}
+
+#Preview("테스트 조건 앱: 푸시 보일 내용 없음 (iOS 27)") {
+  previewLauncher { $0.setPushOutcome(.noVisibleContent) }
+}
+
+#Preview("테스트 조건 앱: 푸시 내용 거절") {
+  previewLauncher { $0.setPushOutcome(.payloadRejected) }
+}
