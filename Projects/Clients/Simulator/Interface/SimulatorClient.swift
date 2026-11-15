@@ -3,7 +3,7 @@ import Foundation
 
 /// iOS 시뮬레이터 기기·런타임·기기 종류와 런타임 디스크 이미지 목록을 읽고, 켜고 끄고, 만들고 지우고 초기화하고, 설치된 앱·실행 중인 앱 목록을 읽고,
 /// 앱을 설치·실행(콘솔을 붙인 실행 포함)·지우고 링크를 열고 화면을 찍고 녹화하고, 테스트 조건(외관·글씨 크기·고대비 읽기·쓰기,
-/// 위치 한 점·경로·시나리오·지우기)을 바꾸는 Client.
+/// 위치 한 점·경로·시나리오·지우기, 앱 하나의 개인정보 접근 바꾸기·푸시 보내기)을 바꾸는 Client.
 /// Impl 은 `xcrun simctl` 과 같은 개발자 디렉터리를 쓴다. 쓸 Xcode 가 없으면(App 이 넘긴 provider 가 nil 을 돌려줌)
 /// 어떤 명령도 실행하지 않고 `.developerToolsUnavailable` 를 던진다.
 public protocol SimulatorClient: Sendable {
@@ -148,6 +148,32 @@ public protocol SimulatorClient: Sendable {
   /// 경로·시나리오는 simctl 이 끝난 뒤에도 기기 안에서 이어진다. 위치가 실제로 바뀌었는지는 읽을 방법이 없어 확인하지 않는다.
   func simulateLocation(_ simulation: IOSLocationSimulation, on id: VirtualDevice.ID) async throws(SimulatorError)
     -> IOSLocationOutcome
+
+  /// 켜진 기기에서 앱 하나의 개인정보 접근을 바꾼다 (`simctl privacy <기기> grant|revoke|reset <서비스> <번들 ID>`, 성공은 출력 없이 exit 0).
+  /// 설치되지 않은 번들도 출력 없이 exit 0 이라(실측) 반영됐는지는 판정하지 않는다. `service.terminatesRunningApp` 이면 실행 중인 앱이
+  /// 종료된다. 0 이 아닌 종료 코드는 SimError 405 → `.deviceNotBooted`, "Invalid device" → `.deviceNotFound`, `xcrun: error:` →
+  /// `.developerToolsUnavailable`, 그 밖(`Operation not permitted` exit 1, 사용법 exit 117 등) → `.commandFailed`.
+  /// UDID 형식이 아니면 실행하지 않고 `.deviceNotFound`.
+  func setPrivacy(
+    _ action: IOSPrivacyAction,
+    _ service: IOSPrivacyService,
+    for app: AppBundleID,
+    on id: VirtualDevice.ID
+  ) async throws(SimulatorError)
+
+  /// 켜진 기기의 앱 하나에 푸시를 보낸다 (`simctl push <기기> <번들 ID> -`, payload 바이트는 stdin 으로 넘긴다). 번들 인자가 payload 의
+  /// `Simulator Target Bundle` 키보다 우선한다 (실측). 판정: stderr 의 `(domain=…, code=…)` 줄을 먼저 본다(exit 0 이어도) —
+  /// UNErrorDomain 2003 → `.notAuthorized`, 2002·1401 → `.noVisibleContent`, NSPOSIXErrorDomain 22·14·28 →
+  /// `.payloadRejected`,
+  /// SimError 405 → `.deviceNotBooted` 를 던짐, 그 밖(NSCocoaErrorDomain 3840 포함: 검사를 거친 payload 가 비어 도착한 경우) →
+  /// `.commandFailed` 를 던짐. domain 줄이 없으면 exit 0 이고 stdout 에 `Notification sent to '` 로 시작하는 줄이 있을 때 `.sent`,
+  /// exit 0 인데 그 줄이 없으면 `.commandFailed`, 0 이 아니면 `Invalid device:` 로 시작하는 줄 → `.deviceNotFound`·`xcrun: error:` →
+  /// `.developerToolsUnavailable`·그 밖 `.commandFailed`. UDID 형식이 아니면 실행하지 않고 `.deviceNotFound`.
+  func sendPush(
+    _ payload: PushPayload,
+    to app: AppBundleID,
+    on id: VirtualDevice.ID
+  ) async throws(SimulatorError) -> IOSPushOutcome
 }
 
 /// 화면 녹화의 끝.

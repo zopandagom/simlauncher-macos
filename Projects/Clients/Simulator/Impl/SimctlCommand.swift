@@ -1,5 +1,6 @@
 import Core
 import Foundation
+import SimulatorInterface
 
 /// 실행할 명령과 인자·환경 (순수).
 enum SimctlCommand {
@@ -165,6 +166,23 @@ enum SimctlCommand {
     return output.split(whereSeparator: \.isNewline).contains { line in
       line.drop(while: \.isWhitespace).hasPrefix("Could not find scenario ")
     }
+  }
+
+  /// `privacy <기기> grant|revoke|reset <서비스> <번들 ID>`. 동작·서비스는 고정 토큰, `bundleID` 는 `AppBundleID` 형식 검사를 거친 값
+  /// (`-` 로 시작하지 않아 옵션으로 읽히지 않는다). `--` 는 붙이지 않는다 (붙여 보지 않았다. launch 와 같은 규칙).
+  static func privacy(
+    udid: String,
+    action: IOSPrivacyAction,
+    service: IOSPrivacyService,
+    bundleID: String
+  ) -> [String] {
+    ["simctl", "privacy", udid, action.rawValue, service.rawValue, bundleID]
+  }
+
+  /// `push <기기> <번들 ID> -`: payload 는 stdin 으로 넘긴다 (파일을 만들지 않는다). 번들 인자가 payload 의 `Simulator Target Bundle`
+  /// 키보다 우선한다 (실측). `bundleID` 규칙은 `privacy` 와 같다.
+  static func push(udid: String, bundleID: String) -> [String] {
+    ["simctl", "push", udid, bundleID, "-"]
   }
 
   /// "<위도>,<경도>" (소수 6자리, `.` 소수점, 로캘 무관).

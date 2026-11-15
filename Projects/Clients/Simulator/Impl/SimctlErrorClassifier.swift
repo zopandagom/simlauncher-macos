@@ -92,13 +92,44 @@ enum SimctlErrorClassifier {
     }
   }
 
-  /// `spawn … launchctl list`·uninstall·테스트 조건(`ui` 읽기·쓰기, `location set|start|run|clear`) 실패. listapps 와 같다
+  /// `spawn … launchctl list`·uninstall·테스트 조건(`ui` 읽기·쓰기, `location set|start|run|clear`, `privacy`) 실패. listapps 와 같다
   /// (꺼진 기기 SimError 405 → `.deviceNotBooted`, 실측. domain 줄이 없으면 `error(exitCode:stderr:)`: "Invalid device" →
   /// `.deviceNotFound`, 그 밖(`ui` 의 "Unknown apperance"·location 의 "Invalid latitude,longitude pair"·usage 117) →
-  /// `.commandFailed`).
-  /// ui·location 의 stderr 에는 사용자 글자가 없다 (값은 고정 토큰, 좌표는 Core 를 거친 숫자).
+  /// `.commandFailed`. privacy 의 NSPOSIXErrorDomain 1 "Operation not permitted" 는 domain 줄이 있어 `.commandFailed`).
+  /// ui·location·privacy 의 stderr 에는 사용자 글자가 없다 (값은 고정 토큰, 좌표는 Core 를 거친 숫자, 번들 ID 는 형식 검사를 거친 값).
+  /// push 는 따로 판정한다 (`pushOutcome`).
   static func bootedDeviceCommandError(exitCode: Int32, stderr: String) -> SimulatorError {
     self.listAppsError(exitCode: exitCode, stderr: stderr)
+  }
+
+  /// push 결과 (TC-B 실측, Xcode 27.2·iOS 26.5·27.0). stderr 의 domain 줄을 먼저 본다 (exit 0 이어도: 빈 입력·깨진 JSON 은
+  /// NSCocoaErrorDomain 3840 인데 exit 0 이다):
+  /// - UNErrorDomain 2003 (exit 211, 알림 권한 없음·미설치) → `.notAuthorized`
+  /// - UNErrorDomain 2002 (exit 210)·1401 (exit 121) (보일 내용 없음) → `.noVisibleContent`
+  /// - NSPOSIXErrorDomain 22·14·28 (payload 형식·크기) → `.payloadRejected`
+  /// - SimError 405 (꺼진 기기) → `.deviceNotBooted`
+  /// - 그 밖 domain (3840 포함: Core 검사를 거친 payload 가 비어 도착한 경우라 payload 문구가 틀리다) → `.commandFailed`
+  /// domain 줄이 없으면 exit 0 이고 stdout 에 `Notification sent to '` 로 시작하는 줄이 있으면 `.sent`, exit 0 인데 그 줄이 없으면
+  /// `.commandFailed` (보냈는지 모르는 것을 성공으로 보지 않는다), 0 이 아니면 줄 머리만 본다: 앞 공백 뒤 `xcrun: error:` →
+  /// `.developerToolsUnavailable`, `Invalid device:` 로 시작하는 줄 → `.deviceNotFound`, 그 밖 `.commandFailed`
+  /// (`lineHeadError`).
+  /// stdout·stderr 에 payload 글자는 나오지 않고(실측) 번들 ID 는 형식 검사를 거친 값이다.
+  static func pushOutcome(exitCode: Int32, stdout: String, stderr: String) -> Result<IOSPushOutcome, SimulatorError> {
+    if let (domain, code) = domainAndCode(stderr) {
+      switch (domain, code) {
+      case ("UNErrorDomain", 2003): return .success(.notAuthorized)
+      case ("UNErrorDomain", 2002), ("UNErrorDomain", 1401): return .success(.noVisibleContent)
+      case ("NSPOSIXErrorDomain", 22), ("NSPOSIXErrorDomain", 14), ("NSPOSIXErrorDomain", 28):
+        return .success(.payloadRejected)
+      case ("com.apple.CoreSimulator.SimError", 405): return .failure(.deviceNotBooted)
+      default: return .failure(.commandFailed)
+      }
+    }
+    guard exitCode == 0 else {
+      return .failure(self.lineHeadError(stderr))
+    }
+    let sent = stdout.split(whereSeparator: \.isNewline).contains { $0.hasPrefix("Notification sent to '") }
+    return sent ? .success(.sent) : .failure(.commandFailed)
   }
 
   /// launch 실패. 같은 방식.
@@ -169,7 +200,7 @@ enum SimctlErrorClassifier {
     }
   }
 
-  /// domain 줄이 없는 screenshot·recordVideo 실패. `error(exitCode:stderr:)` 는 "Invalid device" 를 줄 어디서든 찾아
+  /// domain 줄이 없는 screenshot·recordVideo·push 실패. `error(exitCode:stderr:)` 는 "Invalid device" 를 줄 어디서든 찾아
   /// 경로의 글자에 걸리므로 쓰지 않고, 앞 공백 뒤 `xcrun: error:` 와 `Invalid device:` 로 시작하는 줄만 본다.
   private static func lineHeadError(_ stderr: String) -> SimulatorError {
     if stderr.drop(while: \.isWhitespace).hasPrefix("xcrun: error:") {
