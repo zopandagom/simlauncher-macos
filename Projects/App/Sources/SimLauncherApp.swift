@@ -95,7 +95,7 @@ struct SimLauncherApp: App {
   /// (지금 받는 폴더 목록을 그 안에서 함께 써, 한쪽의 남은 폴더 정리가 다른 쪽이 받는 중인 폴더를 지우지 않는다).
   /// 설정 Client 도 하나만 만들어 설정 창(카탈로그 등록·삭제, Android SDK 위치, 새 버전 자동 확인 토글)과 카탈로그에서 설치 시트(읽기만),
   /// Android 도구 화면(라이선스 동의 기록), Android SDK Client 의 위치 provider, 업데이트 Model(자동 확인 설정 읽기, 건너뛴 버전·
-  /// 마지막 확인 시각·배너 숨김 기록)이 함께 쓴다
+  /// 마지막 확인 시각·배너 숨김·받은 최신 버전 기록)이 함께 쓴다
   /// (같은 프로세스의 쓰기를 Impl 안의 `Mutex` 로 묶는다). 앱 번들 Client 하나를 Launcher 와 Android SDK Client 의 호스트
   /// 아키텍처(Rosetta 로 돌아도 arm64)에 함께 쓴다. Android SDK Client 도 받기 Client 를 Launcher 와 함께 쓴다.
   /// Android 기기 Client 는 명령 실행 Client·SDK 위치 provider·호스트 아키텍처를 Android SDK Client 와 함께 쓴다. Android 기기 Client
