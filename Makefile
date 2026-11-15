@@ -54,7 +54,8 @@ test-hooks:
 	./.githooks/test-hooks.sh
 
 ## 릴리스 워크플로(.github/workflows/release.yml) 도우미 스크립트 회귀 테스트: 임시 레포와 가짜 gh 로 태그·버전·게시 판정과
-## 노트 재료·요약 검사·조립을 확인한다 (.github/scripts/Fixtures/release, 네트워크 없음). make test 와 release.yml 의 notes 잡이 포함
+## 노트 재료·요약 검사·조립, 업데이트 알림용 버전 파일(SimLauncher-version.json) 생성·검사를 확인한다
+## (.github/scripts/Fixtures/release, 네트워크 없음). make test 와 release.yml 의 notes 잡이 포함
 release-scripts-test:
 	./.github/scripts/test-release-scripts.sh
 
@@ -124,7 +125,8 @@ catalog-test: $(CATALOG_VALIDATOR)
 		echo "거절 확인 $$file: $$output"; \
 	done
 
-## 배포 dmg: archive → Developer ID 내보내기 → (확인 뒤) 앱 공증·staple → dmg 서명·공증·staple → 검사. 준비·절차: docs/RELEASING.md
+## 배포 dmg: archive → Developer ID 내보내기 → (확인 뒤) 앱 공증·staple → dmg 서명·공증·staple → 검사 → 업데이트 알림용
+## 버전 파일(build/release/SimLauncher-version.json). 준비·절차: docs/RELEASING.md
 ## 로컬(예비 경로)은 공증 자격 증명으로 키체인 프로필 이름만 넘긴다: NOTARY_PROFILE=<이름> make release
 ## CI 모드(release.yml)는 환경 변수로 임시 키체인·API 키를 받는다 (RELEASE_CI=1 등, docs/RELEASING.md 4절)
 release: project
