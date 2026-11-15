@@ -13,7 +13,7 @@ extension AndroidDevicesText {
   }
 
   static var testConditionsHelp: String {
-    String(localized: "외관·위치 같은 테스트 조건을 바꿉니다.", bundle: .module)
+    String(localized: "외관·위치·권한 같은 테스트 조건을 바꿉니다.", bundle: .module)
   }
 
   /// (공통) "테스트 조건…" 버튼이 막힌 이유 (툴팁). 기기 규칙은 스크린샷과 같다 (켜는 중은 `.notBooted`).
@@ -181,6 +181,10 @@ extension AndroidDevicesText {
       String(localized: "외관이 바뀌지 않았습니다. 이 기기의 Android 버전이 지원하지 않을 수 있습니다.", bundle: .module)
     case .notApplied(.location):
       String(localized: "에뮬레이터가 위치를 받지 않았습니다.", bundle: .module)
+    case let .notApplied(.permission(permission)), let .permissionNotApplied(permission, _):
+      self.permissionNotApplied(permission)
+    case let .appNotInstalled(package):
+      self.appNotInstalled(package)
     }
   }
 
