@@ -6,7 +6,7 @@ import SimulatorInterface
 import Testing
 @testable import SimulatorImpl
 
-/// runningApplications·uninstall 의 인자·환경·해석·분류. 목록을 다시 읽지 않는다.
+/// runningApplications·uninstall 의 인자·환경·해석·분류·(uninstall) 시간 제한. 목록을 다시 읽지 않는다.
 struct SimulatorClientImplLayoutTests {
   struct Failure: Sendable {
     let exitCode: Int32
@@ -69,7 +69,7 @@ struct SimulatorClientImplLayoutTests {
     }
   }
 
-  @Test("앱 지우기: 대문자 UDID·번들 ID 를 -- 없이 한 번 실행하고 DEVELOPER_DIR 를 전한다")
+  @Test("앱 지우기: 대문자 UDID·번들 ID 를 -- 없이 120초 제한으로 한 번 실행하고 DEVELOPER_DIR 를 전한다")
   func uninstallArguments() async throws {
     let command = CommandClientFake { _ in .success() }
     let counter = ProviderCounter(returning: Self.developer)
@@ -82,7 +82,39 @@ struct SimulatorClientImplLayoutTests {
     #expect(invocation.executable == SimctlCommand.xcrun)
     #expect(invocation.arguments == ["simctl", "uninstall", Self.udid, IOSLayoutRunner.appBundleID])
     #expect(invocation.environment["DEVELOPER_DIR"] == "/X/Xcode.app/Contents/Developer/")
+    #expect(invocation.isCancellable)
+    #expect(invocation.timeout == .seconds(120))
     #expect(counter.calls == 1)
+  }
+
+  @Test("앱 지우기: 시스템 앱의 IXErrorDomain 22 \"Uninstall prohibited\" 는 commandFailed (실측 원문, iOS 26.5·27.0)")
+  func uninstallSystemApp() async throws {
+    let stderr = "An error was encountered processing the command (domain=IXErrorDomain, code=22):\n"
+      + "Simulator device failed to uninstall com.apple.mobilesafari.\n"
+      + "Uninstall prohibited.\n"
+      + "Underlying error (domain=IXErrorDomain, code=22):\n"
+      + "\tApp with identity [com.apple.mobilesafari/Invalid/[system-defined]] cannot be uninstalled\n"
+      + "\tUninstall prohibited.\n"
+    let command = CommandClientFake { _ in .failure(22, stderr) }
+    let bundleID = try #require(AppBundleID("com.apple.mobilesafari"))
+
+    await #expect(throws: SimulatorError.commandFailed) {
+      try await Self.client(command).uninstall(bundleID, on: VirtualDevice.ID(Self.udid))
+    }
+  }
+
+  @Test("앱 지우기: 시간 초과·취소로 멈추면 commandFailed", arguments: [CommandError.timedOut, .cancelled])
+  func uninstallStopped(error: CommandError) async throws {
+    let command = CommandClientFake(
+      handler: { _ in .success() },
+      cancellableHandler: { _, _ throws(CommandError) in throw error }
+    )
+    let bundleID = try #require(AppBundleID("com.example.app"))
+
+    await #expect(throws: SimulatorError.commandFailed) {
+      try await Self.client(command).uninstall(bundleID, on: VirtualDevice.ID(Self.udid))
+    }
+    #expect(command.invocations.count == 1)
   }
 
   @Test(
