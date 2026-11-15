@@ -95,7 +95,8 @@ enum SimctlErrorClassifier {
   /// `spawn … launchctl list`·uninstall·테스트 조건(`ui` 읽기·쓰기, `location set|start|run|clear`, `privacy`) 실패. listapps 와 같다
   /// (꺼진 기기 SimError 405 → `.deviceNotBooted`, 실측. domain 줄이 없으면 `error(exitCode:stderr:)`: "Invalid device" →
   /// `.deviceNotFound`, 그 밖(`ui` 의 "Unknown apperance"·location 의 "Invalid latitude,longitude pair"·usage 117) →
-  /// `.commandFailed`. privacy 의 NSPOSIXErrorDomain 1 "Operation not permitted" 는 domain 줄이 있어 `.commandFailed`).
+  /// `.commandFailed`. privacy 의 NSPOSIXErrorDomain 1 "Operation not permitted"·uninstall 의 시스템 앱 IXErrorDomain 22
+  /// "Uninstall prohibited" 는 domain 줄이 있어 `.commandFailed`).
   /// ui·location·privacy 의 stderr 에는 사용자 글자가 없다 (값은 고정 토큰, 좌표는 Core 를 거친 숫자, 번들 ID 는 형식 검사를 거친 값).
   /// push 는 따로 판정한다 (`pushOutcome`).
   static func bootedDeviceCommandError(exitCode: Int32, stderr: String) -> SimulatorError {

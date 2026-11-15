@@ -48,6 +48,30 @@ public extension AndroidEmulatorClientImpl {
     return try ADBAppCommands.parsePackages(result).get()
   }
 
+  /// 시간 한도는 `appRemovalTimeout` (넘으면 `.appCommandFailed`). 출력만으로 지웠는지 모르면 `pm path` 로 본다: 없음 → 성공,
+  /// 있음 → `.appCommandFailed`.
+  @concurrent
+  func uninstall(_ package: AndroidPackageName, on id: AndroidVirtualDevice.ID) async throws(AndroidEmulatorError) {
+    let tools = try await SDKTools.resolve(self.sdkRoot())
+    let serial = try await self.bootedSerial(id, tools: tools)
+    let result = try await self.runApp(
+      ADBAppCommands.uninstallArguments(serial: serial, package: package),
+      tools: tools,
+      timeout: self.timing.appRemovalTimeout,
+      timedOut: .appCommandFailed
+    )
+    guard try ADBAppCommands.parseUninstall(result).get() == .checkInstalled else {
+      return
+    }
+    let path = try await self.runApp(
+      ADBAppCommands.packagePathArguments(serial: serial, package: package),
+      tools: tools
+    )
+    if try ADBAppCommands.parsePackagePath(path).get() {
+      throw .appCommandFailed
+    }
+  }
+
   /// launcher 화면 찾기 (`launchWithLogcat` 의 앞 단계): resolve → 기기가 하나로 고르지 못하면(launcher 가 둘 이상) `query-activities` 의
   /// 첫 화면. 화면이 없으면(질의 사이에 지워진 경우 포함) `pm path` 로 설치 여부를 가려 `.launchFailed(.notInstalled)`·
   /// `.launchFailed(.noLauncherActivity)`.

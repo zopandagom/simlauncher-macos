@@ -3,7 +3,7 @@ import SwiftUI
 
 /// 앱 실행 시트: 그 기기의 사용자 설치 앱 목록에서 하나를 골라 로그를 받으며 실행한다. 기기를 켜는 중·목록을 불러오는 중·빈 목록·
 /// 실패(켜기·목록 읽기를 가르는 제목, 이유와 "다시 시도")를 보인다. 선택과 버튼은 모두 Model 의 이벤트 메서드로 넘긴다.
-/// 앱이 정한 이름·버전·번들 ID 는 번역하지 않는 값이라 `Text(verbatim:)` 로 보인다.
+/// 목록 한 줄은 "설치된 앱…" 시트와 함께 쓰는 `InstalledAppRow` 다.
 struct LaunchAppSheet: View {
   let model: LauncherAppSheetsModel
   /// 마지막으로 그린 초안. 닫히는 동안 Model 의 `launchAppDraft` 는 이미 nil 이라, 글자가 비지 않도록 View 가 들고 있는다.
@@ -97,30 +97,10 @@ struct LaunchAppSheet: View {
         get: { draft.selection },
         set: { self.model.launchAppSelectionChanged($0) }
       )) { app in
-        self.appRow(app)
+        InstalledAppRow(app: app)
       }
       .frame(minHeight: 160)
       .accessibilityLabel(LauncherText.installedAppPicker)
-    }
-  }
-
-  /// 표시 이름이 같은 앱이 있을 수 있어 번들 ID 를 함께 보인다 (있으면 버전도).
-  private func appRow(_ app: InstalledApp) -> some View {
-    VStack(alignment: .leading, spacing: 2) {
-      Text(verbatim: app.displayName)
-        .lineLimit(1)
-        .truncationMode(.middle)
-      HStack(spacing: 8) {
-        Text(verbatim: app.bundleID.rawValue)
-          .lineLimit(1)
-          .truncationMode(.middle)
-        if let version = LauncherText.appVersionLabel(version: app.version, build: app.build) {
-          Text(verbatim: version)
-            .lineLimit(1)
-        }
-      }
-      .font(.caption)
-      .foregroundStyle(.secondary)
     }
   }
 }

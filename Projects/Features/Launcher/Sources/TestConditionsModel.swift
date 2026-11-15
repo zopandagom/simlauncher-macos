@@ -10,8 +10,8 @@ import SimulatorInterface
 /// 결과는 기기별 `applying`·`sentLocations`·`privacyHistory` 에 반영된다. 기기 목록 상태를 함께 쓰지 않는 자기 비동기
 /// 흐름이고 `LauncherModel.swift` 가 600 줄에 닿아 따로 둔다 (App 소유).
 /// 서로 막기: 시트를 열 기기는 App 이 `LauncherModel.testConditionsTarget(_:)` 로 잇는 `target` 이 정하고(목록·기기·켜짐·
-/// 다른 시트와 확인 대화상자 없음), `LauncherModel` 은 App 이 이 Model 의 `hasPresentedSheet` 를 앱 실행·링크 열기 시트와
-/// OR 로 잇는 클로저로 이 시트가 떠 있는지 본다.
+/// 다른 시트와 확인 대화상자 없음), `LauncherModel` 은 App 이 이 Model 의 `hasPresentedSheet` 를 앱 실행·링크 열기·설치된 앱
+/// 시트와 OR 로 잇는 클로저로 이 시트가 떠 있는지 본다.
 @MainActor
 @Observable
 public final class TestConditionsModel {

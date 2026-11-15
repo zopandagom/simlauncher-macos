@@ -29,8 +29,8 @@ extension AndroidDevicesTesting {
 
   /// 아직 화면이 보이기 전(`onAppear` 전)의 Model. apk 검사 Fake 는 샘플 apk 를 돌려주고, 테스트가 `package` 로 바꾼다.
   /// 받기 Fake 는 기본 진행·결과(`.fake(index:)`)이고, 테스트가 `download` 로 바꾼다.
-  /// 앱 실행·링크 열기 시트 Model(`sheets`)과 테스트 조건 시트 Model(`conditions`)은 App 과 같이 클로저로 잇는다
-  /// (`appSheetPresented`·`target`·실행/열기 요청·다시 읽기).
+  /// 앱 실행·링크 열기 시트 Model(`sheets`)과 테스트 조건 시트 Model(`conditions`), 설치된 앱 시트 Model(`installedApps`)은 App 과
+  /// 같이 클로저로 잇는다 (`appSheetPresented`·`target`·실행/열기 요청·다시 읽기).
   /// 스크린샷·녹화 저장은 `WorkspaceClientFake`(늘 예약·보이기에 성공, 테스트가 `workspace` 로 바꾼다), 시계는 `fixedNow` 다.
   /// 앱 실행은 `AppLogClientFake`(`appLog`) 로 가고, 실패는 테스트가 `launchErrors` 로 정한다 (기본은 성공).
   static func fixture(
@@ -70,12 +70,14 @@ extension AndroidDevicesTesting {
       openURLRequested: { request in await model.openURLRequested(request) }
     )
     let conditions = Self.conditionsModel(fake, model: model)
+    let installedApps = Self.installedAppsModel(fake, model: model, box: sheetsBox)
     sheetsBox.model = sheets
     sheetsBox.conditions = conditions
     return AndroidDevicesFixture(
       model: model,
       sheets: sheets,
       conditions: conditions,
+      installedApps: installedApps,
       fake: fake,
       package: package,
       download: download,
@@ -98,6 +100,21 @@ extension AndroidDevicesTesting {
       refreshRequested: { await model.refreshButtonTapped() },
       now: { fixedNow }
     )
+  }
+
+  /// App 과 같이 기기 목록 Model 에 이은 설치된 앱 시트 Model. 기기 목록이 읽는 상자에도 넣는다.
+  static func installedAppsModel(
+    _ fake: AndroidEmulatorClientFake,
+    model: AndroidDevicesModel,
+    box: AppSheetsBox
+  ) -> AndroidInstalledAppsModel {
+    let installedApps = AndroidInstalledAppsModel(
+      emulator: fake,
+      target: { model.installedAppsTarget($0) },
+      refreshRequested: { await model.refreshButtonTapped() }
+    )
+    box.installedApps = installedApps
+    return installedApps
   }
 
   static func count(_ call: AndroidEmulatorClientFake.Call, in fake: AndroidEmulatorClientFake) -> Int {
@@ -161,6 +178,8 @@ struct AndroidDevicesFixture {
   let sheets: AndroidAppSheetsModel
   /// 테스트 조건 시트 Model (App 처럼 `model` 과 이어져 있다).
   let conditions: AndroidTestConditionsModel
+  /// 설치된 앱 시트 Model (App 처럼 `model` 과 이어져 있다).
+  let installedApps: AndroidInstalledAppsModel
   let fake: AndroidEmulatorClientFake
   let package: AndroidPackageClientFake
   let download: DownloadClientFake
@@ -248,9 +267,11 @@ final class AndroidLaunchErrors: Sendable {
 final class AppSheetsBox {
   weak var model: AndroidAppSheetsModel?
   weak var conditions: AndroidTestConditionsModel?
+  weak var installedApps: AndroidInstalledAppsModel?
 
   var hasPresentedSheet: Bool {
     (self.model?.hasPresentedSheet ?? false) || (self.conditions?.hasPresentedSheet ?? false)
+      || (self.installedApps?.hasPresentedSheet ?? false)
   }
 }
 

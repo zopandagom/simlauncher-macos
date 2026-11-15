@@ -59,10 +59,14 @@ public protocol SimulatorClient: Sendable {
   /// 출력이 UTF-8 이 아니면 `.unexpectedOutput`. 기기를 바꾸지 않는다.
   func runningApplications(on id: VirtualDevice.ID) async throws(SimulatorError) -> [AppBundleID]
 
-  /// 켜진 기기에서 앱을 지운다 (`simctl uninstall <기기> <번들 ID>`). 설치돼 있지 않아도 성공(실측 exit 0). 실행 중이면 끝내고 지운다.
+  /// 켜진 기기에서 앱을 지운다 (`simctl uninstall <기기> <번들 ID>`). 레이아웃 러너 정리와 설치된 앱 시트의 삭제가 쓴다.
+  /// 설치돼 있지 않아도 성공(실측 exit 0). 실행 중이면 끝내고 지운다(실측 iOS 26.5·27.0, 콘솔을 붙여 실행한 앱도).
   /// 사전 목록 확인은 하지 않는다 (꺼진 기기는 SimError 405 → `.deviceNotBooted`, 실측 "Unable to lookup in current state: Shutdown",
-  /// 없는 기기 "Invalid device" → `.deviceNotFound`). UDID 형식이 아니면 실행하지 않고 `.deviceNotFound`.
-  /// 막 켠(부팅 중) 기기에서는 부팅이 끝날 때까지 돌아오지 않는다 (실측 약 38초).
+  /// 없는 기기 "Invalid device" → `.deviceNotFound`). UDID 형식이 아니면 실행하지 않고 `.deviceNotFound`. 그 밖의 실패(시스템 앱의
+  /// IXErrorDomain code=22 "Uninstall prohibited" 포함)는 `.commandFailed`.
+  /// 막 켠(부팅 중) 기기에서는 부팅이 끝날 때까지 돌아오지 않는다 (실측 38~49초: 2026-11-10 측정 약 38초, iOS 26.5·27.0 측정
+  /// 46~49초). 120초가 지나거나 부른 Task 가 취소되면 simctl 을 SIGINT → (10초) SIGTERM → (5초) SIGKILL 로 멈춘 뒤 `.commandFailed` (그래서 최대
+  /// 약 135초. 레이아웃 러너 정리도 이 제한을 받는다).
   func uninstall(_ bundleID: AppBundleID, on id: VirtualDevice.ID) async throws(SimulatorError)
 
   /// 설치된 앱을 실행한다 (`simctl launch`). 이미 실행 중이면 다시 띄운다(새 pid).

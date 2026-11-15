@@ -4,7 +4,8 @@ import Foundation
 import SwiftUI
 
 /// 기기 한 줄: 종류 아이콘, 이름, 상태, 앱 설치 메뉴(파일에서 고르기… / URL 에서… / 카탈로그에서…)와 드롭, 앱 실행 버튼(설치한 앱을 고르는 시트),
-/// 링크 열기 버튼(시트), 로그 보기 버튼(늘 보이고, 이 기기에 앱 로그 세션이 있으면 기기 상태·작업과 관계없이 누를 수 있다. 없으면 비활성으로 두고
+/// 설치된 앱 버튼(목록을 보고 지우는 시트. 켜진 기기이고 그 기기에 진행 작업이 없을 때), 링크 열기 버튼(시트),
+/// 로그 보기 버튼(늘 보이고, 이 기기에 앱 로그 세션이 있으면 기기 상태·작업과 관계없이 누를 수 있다. 없으면 비활성으로 두고
 /// 이유("앱 실행…" 안내)를 툴팁으로),
 /// 스크린샷 버튼(켜진 기기만, 찍는 중이면 작은 진행 표시), 녹화 표시(켜진 기기만: "녹화" 버튼, 녹화 중이면 경과 시간과 "중지",
 /// 저장 중이면 작은 진행 표시), 레이아웃 보기 버튼(레이아웃 창. 켜진 기기, 스크린샷과 같은 작업 규칙이고 찍는 중·녹화 중에도 된다.
@@ -28,6 +29,9 @@ struct DeviceRow: View {
   let cancelDownloadTapped: () -> Void
   let appDropped: ([URL]) -> Void
   let launchAppTapped: () -> Void
+  /// "설치된 앱…" 을 누를 수 있다 (`InstalledAppsAvailability.canOpen`: 켜진 기기, 진행 작업 없음).
+  let canOpenInstalledApps: Bool
+  let installedAppsTapped: () -> Void
   let openURLTapped: () -> Void
   /// 이 기기에 앱 로그 세션(받는 중·끝남)이 있다 (`LauncherModel.logDevices`). 있으면 "로그 보기" 를 누를 수 있다.
   let hasLog: Bool
@@ -89,6 +93,7 @@ struct DeviceRow: View {
       Button(LauncherText.launchAppButton, action: self.launchAppTapped)
         .disabled(!self.canInstall)
         .help(self.launchAppBlockReason ?? LauncherText.launchAppHelp)
+      self.installedAppsButton
       Button(LauncherText.openURLButton, action: self.openURLTapped)
         .disabled(!self.canInstall)
         .help(self.openURLBlockReason ?? LauncherText.openURLHelp)
@@ -307,6 +312,18 @@ extension DeviceRow {
       return LauncherText.layoutBlockReason(reason)
     }
     return IOSLayoutAvailability.supportsRunner(self.device) ? nil : LauncherText.layoutUnsupportedOS
+  }
+
+  /// "설치된 앱…" 버튼. 툴팁은 막힌 이유(꺼짐·켜는 중·쓸 수 없음)이고, 진행 중이면 행의 진행 표시가 이유라 따로 보이지 않는다.
+  private var installedAppsButton: some View {
+    let reason: String? = if case let .blocked(reason) = self.device.screenshotAvailability {
+      LauncherText.installedAppsBlockReason(reason)
+    } else {
+      nil
+    }
+    return Button(LauncherText.installedAppsButton, action: self.installedAppsTapped)
+      .disabled(!self.canOpenInstalledApps)
+      .help(reason ?? LauncherText.installedAppsHelp)
   }
 
   /// "테스트 조건…" 버튼 툴팁에 보일 막힌 이유 (꺼짐·켜는 중·쓸 수 없음). 진행 중이면 행의 진행 표시가 이유라 따로 보이지 않는다.

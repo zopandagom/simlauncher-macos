@@ -21,12 +21,62 @@
         }
       }
     },
+    "%@ 설치된 앱" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 설치된 앱"
+          }
+        }
+      }
+    },
     "%@ 앱에 알림을 보냈습니다." : {
       "localizations" : {
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ 앱에 알림을 보냈습니다."
+          }
+        }
+      }
+    },
+    "%@ 앱을 지우는 중…" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 앱을 지우는 중…"
+          }
+        }
+      }
+    },
+    "%@ 앱을 지우지 못했습니다. %@" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 앱을 지우지 못했습니다. %@"
+          }
+        }
+      }
+    },
+    "%@ 앱을 지울까요?" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 앱을 지울까요?"
+          }
+        }
+      }
+    },
+    "%@ 앱을 지웠습니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 앱을 지웠습니다."
           }
         }
       }
@@ -901,6 +951,16 @@
         }
       }
     },
+    "번들 ID: %@\n“%@” (%@) 기기에서 앱과 앱 데이터를 지웁니다. 실행 중이면 종료됩니다. 되돌릴 수 없습니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "번들 ID: %@\n“%@” (%@) 기기에서 앱과 앱 데이터를 지웁니다. 실행 중이면 종료됩니다. 되돌릴 수 없습니다."
+          }
+        }
+      }
+    },
     "보내기" : {
       "localizations" : {
         "ko" : {
@@ -927,6 +987,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "본문을 넣으세요."
+          }
+        }
+      }
+    },
+    "사용할 수 없는 기기에서는 설치된 앱을 볼 수 없습니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "사용할 수 없는 기기에서는 설치된 앱을 볼 수 없습니다"
           }
         }
       }
@@ -967,6 +1037,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "서울"
+          }
+        }
+      }
+    },
+    "설치된 앱…" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "설치된 앱…"
           }
         }
       }
@@ -3591,6 +3671,16 @@
         }
       }
     },
+    "이 기기에 설치한 앱을 보고 지웁니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 기기에 설치한 앱을 보고 지웁니다."
+          }
+        }
+      }
+    },
     "이 기기에 설치한 앱이 없습니다. 앱을 설치한 뒤 앱 목록 다시 읽기를 누르세요." : {
       "localizations" : {
         "ko" : {
@@ -4061,6 +4151,16 @@
         }
       }
     },
+    "직접 설치한 앱만 보입니다. 지운 앱은 다시 설치해야 합니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "직접 설치한 앱만 보입니다. 지운 앱은 다시 설치해야 합니다."
+          }
+        }
+      }
+    },
     "진행 중인 경로·시나리오를 멈추고 시뮬레이션한 위치를 지웁니다." : {
       "localizations" : {
         "ko" : {
@@ -4267,6 +4367,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "켜진 기기에서만 레이아웃을 볼 수 있습니다. 기기를 켠 뒤 다시 시도하세요"
+          }
+        }
+      }
+    },
+    "켜진 기기에서만 설치된 앱을 볼 수 있습니다. 기기를 켠 뒤 다시 시도하세요" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "켜진 기기에서만 설치된 앱을 볼 수 있습니다. 기기를 켠 뒤 다시 시도하세요"
           }
         }
       }

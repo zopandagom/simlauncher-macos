@@ -4,7 +4,8 @@ import SwiftUI
 
 /// 기기 한 줄: 모양 아이콘, 표시 이름, "API · 상태" 글자(쓸 수 없으면 이유 줄), 앱 설치 메뉴(파일에서 고르기…·URL 에서…·
 /// 카탈로그에서…)와 드롭,
-/// "앱 실행…"·"링크 열기…" 버튼(시트), "로그 보기" 버튼(늘 보이고, 앱 로그 세션이 없으면 비활성 + 안내 툴팁. 기기 상태·작업과
+/// "앱 실행…"·"링크 열기…" 버튼(시트), "설치된 앱…" 버튼(목록을 보고 지우는 시트. 켜진 기기이고 그 기기에 진행 작업이
+/// 없을 때), "로그 보기" 버튼(늘 보이고, 앱 로그 세션이 없으면 비활성 + 안내 툴팁. 기기 상태·작업과
 /// 관계없이 세션이 있으면 눌린다), "스크린샷"·"녹화" 버튼(찍는 중·녹화 단계 표시), "레이아웃 보기" 버튼(레이아웃 창. 켜진 기기,
 /// 스크린샷과 같은 작업 규칙이고 찍는 중·녹화 중에도 된다), "테스트 조건…" 버튼(시트. 레이아웃 보기와 같은 규칙),
 /// 켜기·끄기 버튼(앱 작업 중이면 진행 표시),
@@ -35,6 +36,9 @@ struct AndroidDeviceRow: View {
   let appDropped: ([URL]) -> Void
   let launchAppTapped: () -> Void
   let openURLTapped: () -> Void
+  /// "설치된 앱…" 을 누를 수 있다 (`AndroidInstalledAppsAvailability.canOpen`: 켜진 기기, 진행 작업 없음).
+  let canOpenInstalledApps: Bool
+  let installedAppsTapped: () -> Void
   /// 이 기기에 앱 로그 세션(받는 중·끝남)이 있다 (`AndroidAppSheetsModel.logDevices`). 있으면 "로그 보기" 를 누를 수 있다.
   let hasLog: Bool
   /// 이 기기의 로그 창을 연다 (View 가 `openWindow` 로 연다).
@@ -90,6 +94,7 @@ struct AndroidDeviceRow: View {
       Button(AndroidDevicesText.launchAppButton, action: self.launchAppTapped)
         .disabled(!self.canAct)
         .help(self.appActionBlockReason ?? AndroidDevicesText.launchAppHelp)
+      self.installedAppsButton
       Button(AndroidDevicesText.openURLButton, action: self.openURLTapped)
         .disabled(!self.canAct)
         .help(self.appActionBlockReason ?? AndroidDevicesText.openURLHelp)
@@ -243,22 +248,6 @@ struct AndroidDeviceRow: View {
     !self.isBusy && self.device.appActionAvailability == .allowed
   }
 
-  /// 앱 설치·실행·링크 열기 도움말에 보일 막힌 이유. 진행 중이면 행의 진행 표시가 이유라 따로 보이지 않는다.
-  private var appActionBlockReason: String? {
-    guard case let .blocked(reason) = self.device.appActionAvailability else { return nil }
-    return AndroidDevicesText.appActionBlockReason(reason)
-  }
-
-  /// 스크린샷·녹화 버튼 툴팁에 보일 막힌 이유 (기기 규칙은 앱 작업과 같다). 진행 중이면 행의 진행 표시가 이유라 따로 보이지 않는다.
-  private func captureBlockReason(_ text: (AndroidAppActionBlockReason) -> String) -> String? {
-    guard case let .blocked(reason) = self.device.appActionAvailability else { return nil }
-    return text(reason)
-  }
-
-  private var recordBlockReason: String? {
-    self.captureBlockReason(AndroidDevicesText.recordBlockReason)
-  }
-
   /// 이 기기가 녹화 중이다 (저장 중 포함). 끄기·초기화·삭제를 막는다 (`AndroidRecordingActivity.blocks`).
   private var isRecording: Bool {
     self.recordingPhase != nil
@@ -304,5 +293,36 @@ struct AndroidDeviceRow: View {
     case .foldable: "rectangle.split.2x1"
     case .none: "questionmark.square.dashed"
     }
+  }
+}
+
+// MARK: - 버튼 툴팁의 막힌 이유
+
+// 타입 본문 길이(lint `type_body_length`)에 들지 않게 같은 파일의 extension 에 둔다 (같은 파일이라 `private` 에 닿는다).
+extension AndroidDeviceRow {
+  /// 앱 설치·실행·링크 열기 도움말에 보일 막힌 이유. 진행 중이면 행의 진행 표시가 이유라 따로 보이지 않는다.
+  private var appActionBlockReason: String? {
+    guard case let .blocked(reason) = self.device.appActionAvailability else { return nil }
+    return AndroidDevicesText.appActionBlockReason(reason)
+  }
+
+  /// 스크린샷·녹화·레이아웃 보기·테스트 조건·설치된 앱 버튼 툴팁에 보일 막힌 이유 (기기 규칙은 앱 작업과 같다). 진행 중이면 행의
+  /// 진행 표시가 이유라 따로 보이지 않는다.
+  private func captureBlockReason(_ text: (AndroidAppActionBlockReason) -> String) -> String? {
+    guard case let .blocked(reason) = self.device.appActionAvailability else { return nil }
+    return text(reason)
+  }
+
+  private var recordBlockReason: String? {
+    self.captureBlockReason(AndroidDevicesText.recordBlockReason)
+  }
+
+  /// "설치된 앱…" 버튼. 툴팁은 막힌 이유(꺼짐·켜는 중·쓸 수 없음)이고, 진행 중이면 행의 진행 표시가 이유라 따로 보이지 않는다.
+  private var installedAppsButton: some View {
+    Button(AndroidDevicesText.installedAppsButton, action: self.installedAppsTapped)
+      .disabled(!self.canOpenInstalledApps)
+      .help(
+        self.captureBlockReason(AndroidDevicesText.installedAppsBlockReason) ?? AndroidDevicesText.installedAppsHelp
+      )
   }
 }

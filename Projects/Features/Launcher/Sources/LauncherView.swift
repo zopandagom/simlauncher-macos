@@ -15,6 +15,8 @@ public struct LauncherView: View {
   /// 행의 "테스트 조건…" 시트. 기기별 적용 중·보낸 위치 기록·바꾼 권한 기록과 앱 목록 읽기라는 자기 상태가 있어 따로 둔 Model 이다
   /// (App 이 소유한다).
   let conditionsModel: TestConditionsModel
+  /// 행의 "설치된 앱…" 시트. 앱 목록 읽기·삭제라는 자기 비동기 흐름이 있어 따로 둔 Model 이다 (App 이 소유한다).
+  let installedAppsModel: InstalledAppsModel
   /// 지금 띄운 알림. 닫히는 동안 Model 의 줄에서 빠져도 글자가 비지 않도록 View 가 들고 있는다.
   @State private var presentedNotice: LauncherNoticeItem?
   /// 알림을 띄웠는지. 다음 알림을 띄울 때 false → true 전이가 생기도록 Model 의 줄과 따로 둔다.
@@ -32,12 +34,14 @@ public struct LauncherView: View {
     model: LauncherModel,
     catalogModel: CatalogInstallModel,
     appSheetsModel: LauncherAppSheetsModel,
-    conditionsModel: TestConditionsModel
+    conditionsModel: TestConditionsModel,
+    installedAppsModel: InstalledAppsModel
   ) {
     self.model = model
     self.catalogModel = catalogModel
     self.appSheetsModel = appSheetsModel
     self.conditionsModel = conditionsModel
+    self.installedAppsModel = installedAppsModel
   }
 
   public var body: some View {
@@ -126,13 +130,17 @@ public struct LauncherView: View {
       ) {
         DeviceCreationSheet(model: self.model)
       }
-      // 생성·링크·앱 실행·테스트 조건·URL 설치·카탈로그 시트는 같은 체인에 둔다. 생성·URL 설치 시트와 앱 실행·링크 열기 시트
-      // (`appSheetsModel`)·테스트 조건 시트(`conditionsModel`)는 Model 들이 App 이 이은 클로저(`appSheetPresented`·`target`)로
-      // 서로 막아 둘 이상 함께 열리지 않는다. 카탈로그 시트는
+      // 생성·링크·앱 실행·테스트 조건·설치된 앱·URL 설치·카탈로그 시트는 같은 체인에 둔다. 생성·URL 설치 시트와 앱 실행·링크 열기
+      // 시트(`appSheetsModel`)·테스트 조건 시트(`conditionsModel`)·설치된 앱 시트(`installedAppsModel`)는 Model 들이 App 이 이은
+      // 클로저(`appSheetPresented`·`target`)로 서로 막아 둘 이상 함께 열리지 않는다. 카탈로그 시트는
       // 다른 Model 이라 시트가 창을 막는 모달과 행 메뉴의 비활성에 기댄다 (앱 실행 시트도 켜기 전에 곧바로 열려 같다).
       // 툴바 "카탈로그에서…" 는 작업 중인 기기도 대상에 넣으므로, 그 기기는 설치를 시작할 때 LauncherModel 의 시작 판정이
       // 이유(다른 작업 중)와 함께 건너뛴다.
-      .modifier(LauncherAppSheets(appSheetsModel: self.appSheetsModel, conditionsModel: self.conditionsModel))
+      .modifier(LauncherAppSheets(
+        appSheetsModel: self.appSheetsModel,
+        conditionsModel: self.conditionsModel,
+        installedAppsModel: self.installedAppsModel
+      ))
       .sheet(
         isPresented: Binding(
           get: { self.model.installURLDraft != nil },
@@ -348,6 +356,8 @@ extension LauncherView {
       cancelDownloadTapped: { self.model.downloadCancelTapped(device.id) },
       appDropped: { urls in Task { await self.model.appDropped(urls, on: device.id) } },
       launchAppTapped: { Task { await self.appSheetsModel.launchAppTapped(device.id) } },
+      canOpenInstalledApps: InstalledAppsAvailability.canOpen(device: device, during: task),
+      installedAppsTapped: { Task { await self.installedAppsModel.installedAppsTapped(device.id) } },
       openURLTapped: { self.appSheetsModel.openURLTapped(device.id) },
       hasLog: self.model.logDevices.contains(device.id),
       logTapped: { self.openWindow(id: AppLogTarget.windowID, value: AppLogTarget.iOS(device.id)) },
@@ -435,11 +445,12 @@ extension LauncherView {
   }
 }
 
-/// 행의 앱 실행·링크 열기 시트(`appSheetsModel`)와 테스트 조건 시트(`conditionsModel`). 세 시트는 Model 들이 App 이 이은 클로저로
-/// 서로 막아 함께 열리지 않는다 (`LauncherView` 의 시트 체인 주석).
+/// 행의 앱 실행·링크 열기 시트(`appSheetsModel`)와 테스트 조건 시트(`conditionsModel`), 설치된 앱 시트(`installedAppsModel`).
+/// 네 시트는 Model 들이 App 이 이은 클로저로 서로 막아 함께 열리지 않는다 (`LauncherView` 의 시트 체인 주석).
 private struct LauncherAppSheets: ViewModifier {
   let appSheetsModel: LauncherAppSheetsModel
   let conditionsModel: TestConditionsModel
+  let installedAppsModel: InstalledAppsModel
 
   func body(content: Content) -> some View {
     content
@@ -478,6 +489,18 @@ private struct LauncherAppSheets: ViewModifier {
         )
       ) {
         TestConditionsSheet(model: self.conditionsModel)
+      }
+      .sheet(
+        isPresented: Binding(
+          get: { self.installedAppsModel.draft != nil },
+          set: { isPresented in
+            if !isPresented {
+              self.installedAppsModel.sheetDismissed()
+            }
+          }
+        )
+      ) {
+        InstalledAppsSheet(model: self.installedAppsModel)
       }
   }
 }

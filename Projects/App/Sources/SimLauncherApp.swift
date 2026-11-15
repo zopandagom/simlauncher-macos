@@ -32,9 +32,11 @@ import WorkspaceImpl
 /// 기기 행·툴바의 "카탈로그에서…" 시트(`CatalogInstallModel`)가 고른 버전은 `installRequested` 로 기기 목록(`LauncherModel`)이 설치한다.
 /// iOS 기기 행의 "앱 실행…"·"링크 열기…" 시트(`LauncherAppSheetsModel`)도 확정한 앱·링크를 기기 목록에 넘기고(앱 실행 시트의 켜기·
 /// 다시 읽기도 기기 목록이 한다), 두 Model 의 시트끼리 서로 막는 것도 App 이 클로저로 잇는다 (Android 와 같다).
-/// iOS·Android 기기 행 "테스트 조건…" 시트(`TestConditionsModel`·`AndroidTestConditionsModel`)는 기기 목록에 열 기기를 묻고
-/// (`testConditionsTarget`), 기기 목록의 `appSheetPresented` 는 앱 실행·링크 열기 시트와 테스트 조건 시트를 OR 로 본다.
-/// 테스트 조건 명령은 짧게 끝나고 위치 재생은 기기 안에서 이어지므로 종료 요청 때 묻지 않는다.
+/// iOS·Android 기기 행 "테스트 조건…" 시트(`TestConditionsModel`·`AndroidTestConditionsModel`)와 "설치된 앱…" 시트
+/// (`InstalledAppsModel`·`AndroidInstalledAppsModel`)는 기기 목록에 열 기기를 묻고(`testConditionsTarget`·`installedAppsTarget`),
+/// 기기 목록의 `appSheetPresented` 는 앱 실행·링크 열기·테스트 조건·설치된 앱 시트를 OR 로 본다.
+/// 테스트 조건 명령은 짧게 끝나고 위치 재생은 기기 안에서 이어지므로 종료 요청 때 묻지 않는다. 설치된 앱 삭제도 시간 제한이 있는
+/// 짧은 명령이라 종료 요청 때 기다리지 않는다.
 /// Android 기기 행의 "URL 에서…"·"카탈로그에서…" 시트(`AndroidDownloadInstallModel`)가 고른 주소·버전도 같은 방식으로 Android 기기
 /// 목록(`AndroidDevicesModel`)이 받아 설치한다. Android 기기 행의 "앱 실행…"·"링크 열기…" 시트(`AndroidAppSheetsModel`)도 확정한
 /// 앱·링크를 같은 방식으로 넘기고, 두 Model 의 시트끼리 서로 막는 것도 App 이 클로저로 잇는다 (Model 끼리 참조하지 않는다).
@@ -61,19 +63,21 @@ struct SimLauncherApp: App {
   @State private var catalogInstallModel: CatalogInstallModel
   @State private var launcherAppSheetsModel: LauncherAppSheetsModel
   @State private var testConditionsModel: TestConditionsModel
+  @State private var installedAppsModel: InstalledAppsModel
   @State private var settingsModel: SettingsModel
   @State private var androidSetupModel: AndroidSetupModel
   @State private var androidDevicesModel: AndroidDevicesModel
   @State private var androidDownloadInstallModel: AndroidDownloadInstallModel
   @State private var androidAppSheetsModel: AndroidAppSheetsModel
   @State private var androidTestConditionsModel: AndroidTestConditionsModel
+  @State private var androidInstalledAppsModel: AndroidInstalledAppsModel
   @State private var deviceLogModel: DeviceLogModel
   @State private var layoutInspectorModel: LayoutInspectorModel
 
   /// 명령 실행 Client 하나를 개발 환경·시뮬레이터·앱 번들 Client 가 함께 쓰고,
   /// 개발 환경 Client 하나를 Setup 과 시뮬레이터의 개발자 디렉터리가 함께 쓰며,
-  /// 시뮬레이터 Client 하나를 Setup(Xcode 가 준비된 뒤 런타임 목록 읽기)과 Launcher(기기 목록·앱 실행 시트의 설치된 앱 목록),
-  /// 앱 로그 Client 가 함께 쓴다.
+  /// 시뮬레이터 Client 하나를 Setup(Xcode 가 준비된 뒤 런타임 목록 읽기)과 Launcher(기기 목록·앱 실행·테스트 조건·설치된 앱 시트의
+  /// 설치된 앱 목록과 설치된 앱 삭제), 앱 로그 Client·레이아웃 Client 가 함께 쓴다.
   /// 앱 로그 Client 하나를 Launcher·Android 기기 목록(로그 받기와 함께 실행·행의 "로그 보기")과 로그 창, 종료 처리(`AppDelegate`)가
   /// 함께 쓴다.
   /// 받기 Client 는 하나만 만들어 Launcher 의 URL·카탈로그 설치, 카탈로그에서 설치 시트의 카탈로그 받기,
@@ -84,7 +88,8 @@ struct SimLauncherApp: App {
   /// (같은 프로세스의 쓰기를 Impl 안의 `Mutex` 로 묶는다). 앱 번들 Client 하나를 Launcher 와 Android SDK Client 의 호스트
   /// 아키텍처(Rosetta 로 돌아도 arm64)에 함께 쓴다. Android SDK Client 도 받기 Client 를 Launcher 와 함께 쓴다.
   /// Android 기기 Client 는 명령 실행 Client·SDK 위치 provider·호스트 아키텍처를 Android SDK Client 와 함께 쓴다. Android 기기 Client
-  /// 하나를 Android 기기 목록·앱 실행 시트와 앱 로그 Client·레이아웃 Client(레이아웃 창)가 함께 쓴다 (Impl 은 이 앱이 띄운 에뮬레이터 표를 가져 하나만 만든다).
+  /// 하나를 Android 기기 목록·앱 실행·테스트 조건·설치된 앱 시트와 앱 로그 Client·레이아웃 Client(레이아웃 창)가 함께 쓴다
+  /// (Impl 은 이 앱이 띄운 에뮬레이터 표를 가져 하나만 만든다).
   /// 레이아웃 Client 는 iOS 쪽에 시뮬레이터·개발 환경·명령 실행 Client 도 함께 쓰고(러너 빌드는 DevEnvironment 가 고른 Xcode),
   /// 러너 빌드 캐시는 `~/Library/Caches/<번들 ID>/LayoutRunner` 에 둔다. 레이아웃 Client 하나를 레이아웃 창·기기 목록의 기기 수명 알림·
   /// 종료 처리(`AppDelegate`)가 함께 쓴다 (Impl 이 기기별 러너 표를 가져 하나만 만든다).
@@ -123,6 +128,7 @@ struct SimLauncherApp: App {
     self._androidDownloadInstallModel = State(initialValue: android.downloadInstall)
     self._androidAppSheetsModel = State(initialValue: android.appSheets)
     self._androidTestConditionsModel = State(initialValue: android.conditions)
+    self._androidInstalledAppsModel = State(initialValue: android.installedApps)
     let setup = SetupModel(devEnvironment: devEnvironment, simulator: simulator)
     self._setupModel = State(initialValue: setup)
     self._deviceLogModel = State(initialValue: DeviceLogModel(appLog: appLog, preferences: preferences))
@@ -137,6 +143,7 @@ struct SimLauncherApp: App {
     self._launcherModel = State(initialValue: launcher)
     self._launcherAppSheetsModel = State(initialValue: launcherAssembly.sheets)
     self._testConditionsModel = State(initialValue: launcherAssembly.conditions)
+    self._installedAppsModel = State(initialValue: launcherAssembly.installedApps)
     // 카탈로그는 시트를 열 때와 새로 고칠 때만 받는다 (앱 시작 때·기기 목록을 볼 때는 받지 않는다).
     self._catalogInstallModel = State(initialValue: CatalogInstallModel(
       preferences: preferences,
@@ -187,11 +194,13 @@ struct SimLauncherApp: App {
         catalogInstallModel: self.catalogInstallModel,
         launcherAppSheetsModel: self.launcherAppSheetsModel,
         testConditionsModel: self.testConditionsModel,
+        installedAppsModel: self.installedAppsModel,
         androidSetupModel: self.androidSetupModel,
         androidDevicesModel: self.androidDevicesModel,
         androidDownloadInstallModel: self.androidDownloadInstallModel,
         androidAppSheetsModel: self.androidAppSheetsModel,
-        androidTestConditionsModel: self.androidTestConditionsModel
+        androidTestConditionsModel: self.androidTestConditionsModel,
+        androidInstalledAppsModel: self.androidInstalledAppsModel
       )
     }
     // 기기 행 "로그 보기" 가 여는 로그 창. 같은 기기(값)면 창 하나이고, 앱 시작 때 열리지 않는다(측정). 받은 로그는 메모리에만
@@ -222,11 +231,12 @@ struct SimLauncherApp: App {
 // MARK: - 조립 (init 이 부르는 도우미)
 
 extension SimLauncherApp {
-  /// iOS 기기 목록과 앱 실행·링크 열기·테스트 조건 시트의 Model 을 조립한다 (`init` 안에서 쓰는 값 묶음).
+  /// iOS 기기 목록과 앱 실행·링크 열기·테스트 조건·설치된 앱 시트의 Model 을 조립한다 (`init` 안에서 쓰는 값 묶음).
   private struct LauncherAssembly {
     let model: LauncherModel
     let sheets: LauncherAppSheetsModel
     let conditions: TestConditionsModel
+    let installedApps: InstalledAppsModel
   }
 
   private static func makeLauncher(
@@ -237,8 +247,8 @@ extension SimLauncherApp {
     screenLayout: ScreenLayoutClientImpl
   ) -> LauncherAssembly {
     // 스크린샷·녹화 저장 폴더는 "스크린샷"·"녹화" 를 누를 때 만든다 (Workspace Client 생성자는 파일을 건드리지 않는다).
-    // 앱 실행·링크 열기·테스트 조건 시트가 떠 있으면 만들기·삭제·초기화·URL 설치 시트를 막는다. 시트 Model 은 뒤에 만들어
-    // 상자로 넘긴다.
+    // 앱 실행·링크 열기·테스트 조건·설치된 앱 시트가 떠 있으면 만들기·삭제·초기화·URL 설치 시트를 막는다. 시트 Model 은 뒤에
+    // 만들어 상자로 넘긴다.
     let launcherSheetsBox = LauncherAppSheetsBox()
     let launcher = LauncherModel(
       simulator: simulator,
@@ -278,7 +288,21 @@ extension SimLauncherApp {
       now: { Date() }
     )
     launcherSheetsBox.conditions = conditions
-    return LauncherAssembly(model: launcher, sheets: launcherSheets, conditions: conditions)
+    // 설치된 앱 시트. 열 수 있는 기기는 기기 목록에 묻고(켜진 기기, 진행 작업·다른 시트·확인 대화상자가 있으면 열지 않는다), 명령이
+    // 기기 꺼짐·없어짐으로 실패하면 기기 목록을 다시 읽는다. `simctl listapps` 는 시트를 열 때·다시 읽을 때·지운 뒤, `uninstall` 은
+    // 확인한 삭제 때만 돈다.
+    let installedApps = InstalledAppsModel(
+      simulator: simulator,
+      target: { launcher.installedAppsTarget($0) },
+      refreshRequested: { await launcher.refreshButtonTapped() }
+    )
+    launcherSheetsBox.installedApps = installedApps
+    return LauncherAssembly(
+      model: launcher,
+      sheets: launcherSheets,
+      conditions: conditions,
+      installedApps: installedApps
+    )
   }
 
   /// Android 칸의 Client 와 Model 을 조립한다 (`init` 안에서 쓰는 값 묶음).
@@ -289,6 +313,7 @@ extension SimLauncherApp {
     let downloadInstall: AndroidDownloadInstallModel
     let appSheets: AndroidAppSheetsModel
     let conditions: AndroidTestConditionsModel
+    let installedApps: AndroidInstalledAppsModel
   }
 
   /// 설정 창의 내용은 앱 시작 때 한 번 만들어진다(측정). 생성자는 Client 를 저장만 하고, 목록 읽기는 창을 열 때,
@@ -368,7 +393,7 @@ extension SimLauncherApp {
     )
     // apk 검사(zipinfo·unzip)는 같은 Command Client 로 실행한다. 생성자는 파일·명령을 건드리지 않는다.
     // 받기는 Launcher 와 같은 Download 인스턴스다 (화면을 열 때 남은 받기 폴더를 지운다).
-    // 앱 실행·링크 열기·테스트 조건 시트가 떠 있으면 만들기·삭제·초기화를 막는다. 시트 Model 은 뒤에 만들어 상자로 넘긴다.
+    // 앱 실행·링크 열기·테스트 조건·설치된 앱 시트가 떠 있으면 만들기·삭제·초기화를 막는다. 시트 Model 은 뒤에 만들어 상자로 넘긴다.
     // 스크린샷·녹화 저장 폴더는 "스크린샷"·"녹화" 를 누를 때 만든다 (Workspace Client 생성자는 파일을 건드리지 않는다).
     let appSheetsBox = AndroidAppSheetsBox()
     let devices = AndroidDevicesModel(
@@ -391,8 +416,8 @@ extension SimLauncherApp {
       openURLRequested: { request in await devices.openURLRequested(request) }
     )
     appSheetsBox.model = appSheets
-    let conditions = Self.makeAndroidConditions(emulator: emulator, devices: devices)
-    appSheetsBox.conditions = conditions
+    let conditions = Self.makeAndroidConditions(emulator: emulator, devices: devices, box: appSheetsBox)
+    let installedApps = Self.makeAndroidInstalledApps(emulator: emulator, devices: devices, box: appSheetsBox)
     // URL·카탈로그 시트. 카탈로그는 시트를 열 때와 새로 고칠 때만 받고, 고른 주소·버전은 기기 목록이 받아 설치한다.
     let downloadInstall = AndroidDownloadInstallModel(
       preferences: preferences,
@@ -405,36 +430,60 @@ extension SimLauncherApp {
       devices: devices,
       downloadInstall: downloadInstall,
       appSheets: appSheets,
-      conditions: conditions
+      conditions: conditions,
+      installedApps: installedApps
     )
   }
 
   /// Android 테스트 조건 시트. 열 수 있는 기기는 기기 목록에 묻고, 명령이 기기 꺼짐·없어짐으로 실패하면 기기 목록을 다시 읽는다.
   /// adb 명령(읽기 `cmd uimode`·`cmd location`·`pm list packages`·`dumpsys package`, 쓰기 `cmd uimode`·`emu geo fix`·
   /// `pm grant`·`pm revoke`·`pm clear-permission-flags`)은 시트를 열 때·다시 읽을 때·앱을 고를 때와 바꿀 때만 돈다.
+  /// 기기 목록이 읽는 상자(`box`)에도 넣는다.
   private static func makeAndroidConditions(
     emulator: AndroidEmulatorClientImpl,
-    devices: AndroidDevicesModel
+    devices: AndroidDevicesModel,
+    box: AndroidAppSheetsBox
   ) -> AndroidTestConditionsModel {
-    AndroidTestConditionsModel(
+    let conditions = AndroidTestConditionsModel(
       emulator: emulator,
       target: { devices.testConditionsTarget($0) },
       refreshRequested: { await devices.refreshButtonTapped() },
       now: { Date() }
     )
+    box.conditions = conditions
+    return conditions
+  }
+
+  /// Android 설치된 앱 시트. 열 수 있는 기기는 기기 목록에 묻고(켜진 기기, 진행 작업·다른 시트·확인 대화상자가 있으면 열지 않는다),
+  /// 명령이 기기 꺼짐·없어짐으로 실패하면 기기 목록을 다시 읽는다. adb 명령(`pm list packages -3`, `uninstall`·없는 앱 판정
+  /// `pm path`)은 시트를 열 때·다시 읽을 때·확인한 삭제 때만 돈다. 기기 목록이 읽는 상자(`box`)에도 넣는다.
+  private static func makeAndroidInstalledApps(
+    emulator: AndroidEmulatorClientImpl,
+    devices: AndroidDevicesModel,
+    box: AndroidAppSheetsBox
+  ) -> AndroidInstalledAppsModel {
+    let installedApps = AndroidInstalledAppsModel(
+      emulator: emulator,
+      target: { devices.installedAppsTarget($0) },
+      refreshRequested: { await devices.refreshButtonTapped() }
+    )
+    box.installedApps = installedApps
+    return installedApps
   }
 }
 
 /// iOS 기기 목록 Model 을 먼저 만들어야 하므로(시트 Model 의 `target` 이 그것을 쓴다), 기기 목록의 `appSheetPresented` 가 뒤에
-/// 만든 시트 Model(앱 실행·링크 열기, 테스트 조건)을 읽게 넘기는 상자. `AndroidAppSheetsBox` 와 같다.
+/// 만든 시트 Model(앱 실행·링크 열기, 테스트 조건, 설치된 앱)을 읽게 넘기는 상자. `AndroidAppSheetsBox` 와 같다.
 @MainActor
 private final class LauncherAppSheetsBox {
   weak var model: LauncherAppSheetsModel?
   weak var conditions: TestConditionsModel?
+  weak var installedApps: InstalledAppsModel?
 
-  /// 앱 실행·링크 열기 시트나 테스트 조건 시트가 떠 있다.
+  /// 앱 실행·링크 열기 시트나 테스트 조건 시트, 설치된 앱 시트가 떠 있다.
   var hasPresentedSheet: Bool {
     (self.model?.hasPresentedSheet ?? false) || (self.conditions?.hasPresentedSheet ?? false)
+      || (self.installedApps?.hasPresentedSheet ?? false)
   }
 }
 
@@ -444,9 +493,11 @@ private final class LauncherAppSheetsBox {
 private final class AndroidAppSheetsBox {
   weak var model: AndroidAppSheetsModel?
   weak var conditions: AndroidTestConditionsModel?
+  weak var installedApps: AndroidInstalledAppsModel?
 
-  /// 앱 실행·링크 열기 시트나 테스트 조건 시트가 떠 있다.
+  /// 앱 실행·링크 열기 시트나 테스트 조건 시트, 설치된 앱 시트가 떠 있다.
   var hasPresentedSheet: Bool {
     (self.model?.hasPresentedSheet ?? false) || (self.conditions?.hasPresentedSheet ?? false)
+      || (self.installedApps?.hasPresentedSheet ?? false)
   }
 }
