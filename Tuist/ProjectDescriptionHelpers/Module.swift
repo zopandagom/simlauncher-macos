@@ -43,7 +43,8 @@ public extension Client {
   /// 사용자 설정(UserDefaults 표준 도메인 = 앱 번들 ID): 빌드 카탈로그 주소 목록 읽기·추가·삭제(`CatalogURLs`),
   /// Android SDK 위치 읽기·바꾸기(`AndroidSDKPath`), 동의한 Android SDK 라이선스 원문의 지문 읽기·더하기(`AcceptedAndroidLicenses`),
   /// 저장한 로그 필터 읽기·저장·삭제(`LogFilters`), 새 버전 자동 확인 켜기·끄기(`AutomaticUpdateCheck`, 없으면 켬)와
-  /// 앱이 쓰는 업데이트 기록(건너뛴 버전 `SkippedUpdateVersion`, 마지막 확인 시각 `LastUpdateCheck`, 배너 숨김 `DismissedUpdateBanner`).
+  /// 앱이 쓰는 업데이트 기록(건너뛴 버전 `SkippedUpdateVersion`, 마지막 확인 시각 `LastUpdateCheck`, 배너 숨김 `DismissedUpdateBanner`,
+  /// 받은 최신 버전 `LatestKnownUpdateVersion`).
   /// 관리자가 구성 프로필로 강제한 키(`objectIsForced`)는 잠김이라 쓰지 않는다.
   static let preferences = Client("Preferences")
   /// 사용자 폴더와 Finder: 스크린샷·녹화 저장 폴더(사진·동영상 폴더의 `SimLauncher`) 준비와 파일 이름 예약(덮어쓰지 않음)·
