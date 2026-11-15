@@ -31,14 +31,17 @@ extension SettingsModelTesting {
   }
 
   /// 창을 열기 전(`onAppear` 전) Model. 홈은 `testHome`, SDK 위치 바뀜 알림은 `locationChanges` 가 센다.
+  /// 업데이트 기능은 기본으로 있다 (배포 저장소가 있는 빌드).
   static func makeModel(
     preferences: PreferencesClientFake = PreferencesClientFake(),
     download: any DownloadClient = Self.catalogFake(),
     androidSDK: AndroidSDKClientFake = AndroidSDKClientFake(),
-    locationChanges: LocationChangeCounter = LocationChangeCounter()
+    locationChanges: LocationChangeCounter = LocationChangeCounter(),
+    isUpdateCheckAvailable: Bool = true
   ) -> SettingsModel {
     SettingsModel(
       preferences: preferences, download: download, androidSDK: androidSDK, home: testHome,
+      isUpdateCheckAvailable: isUpdateCheckAvailable,
       androidSDKLocationChanged: { locationChanges.count += 1 }
     )
   }

@@ -13,7 +13,7 @@ struct SettingsModelTests: SettingsModelTesting {
 
   // MARK: - 창 열기
 
-  @Test("만들 때는 아무것도 읽지 않고, 창을 열면 목록과 잠금을 읽는다")
+  @Test("만들 때는 아무것도 읽지 않고, 창을 열면 목록과 잠금(SDK 위치·자동 확인 설정 포함)을 읽는다")
   func onAppearReads() {
     let preferences = PreferencesClientFake(urls: [Self.first], isLocked: true)
     let model = Self.makeModel(preferences: preferences, download: DownloadClientFake())
@@ -22,7 +22,7 @@ struct SettingsModelTests: SettingsModelTesting {
 
     model.onAppear()
 
-    #expect(preferences.calls == [.catalogURLs, .androidSDKPath])
+    #expect(preferences.calls == [.catalogURLs, .androidSDKPath, .automaticUpdateCheck])
     #expect(model.setting == CatalogURLSetting(urls: [Self.first], isLocked: true))
   }
 

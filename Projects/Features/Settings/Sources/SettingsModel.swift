@@ -12,6 +12,8 @@ import PreferencesInterface
 /// 저장 값이 실제로 바뀌면 App 이 주입한 `androidSDKLocationChanged` 를 부르고(Android 화면이 다시 확인하게. 같은 앱의 다른 창이라
 /// 앱 활성화 알림이 오지 않는다), 이전 위치의 남은 스테이징을 지운다(`removeLeftovers(in:)`. 새 위치는 도구 화면을 열 때 지운다).
 /// 관리자가 강제한 위치면 바꾸지 않는다.
+/// 업데이트: 새 버전 자동 확인 토글(`AutomaticUpdateCheck`)을 읽고 쓴다. 배포 저장소가 있는 빌드(`isUpdateCheckAvailable`, App 이
+/// 넘긴다)에서만 바꾸고, 관리자가 강제했으면 바꾸지 않는다. 메뉴 확인·자동 확인 자체는 Update Feature 가 한다.
 /// Settings 씬의 View 와 이 Model 은 앱 시작 때 한 번 만들어지므로, 생성자는 저장만 하고 읽기는 `onAppear()` 에서 한다.
 @MainActor
 @Observable
@@ -30,6 +32,10 @@ public final class SettingsModel {
   public private(set) var androidSDKCandidate: SettingsSDKFolderResult?
   /// 고른 폴더를 판정하는 중이다. 그동안 다시 고르기·되돌리기는 무시한다.
   public private(set) var isInspectingSDKFolder = false
+  /// 마지막으로 읽은 새 버전 자동 확인 설정·잠금. `onAppear`·토글 변경 뒤 최신 값으로 바꾼다.
+  public private(set) var automaticUpdateCheck: AutomaticUpdateCheckSetting = .enabledDefault
+  /// 이 빌드에 배포 저장소가 있어 업데이트 기능을 쓴다 ("업데이트" 절을 보인다). 거짓이면 토글 변경을 무시한다.
+  public let isUpdateCheckAvailable: Bool
 
   @ObservationIgnored private let preferences: any PreferencesClient
   @ObservationIgnored private let download: any DownloadClient
@@ -49,12 +55,14 @@ public final class SettingsModel {
     download: any DownloadClient,
     androidSDK: any AndroidSDKClient,
     home: URL,
+    isUpdateCheckAvailable: Bool,
     androidSDKLocationChanged: @escaping @MainActor () -> Void
   ) {
     self.preferences = preferences
     self.download = download
     self.androidSDK = androidSDK
     self.home = home
+    self.isUpdateCheckAvailable = isUpdateCheckAvailable
     self.androidSDKLocationChanged = androidSDKLocationChanged
   }
 
@@ -103,12 +111,13 @@ public final class SettingsModel {
     return true
   }
 
-  /// 창이 열릴 때마다: 남은 확인·판정을 버리고, 최신 목록·SDK 위치를 읽고, 입력과 결과 줄을 지운다.
+  /// 창이 열릴 때마다: 남은 확인·판정을 버리고, 최신 목록·SDK 위치·자동 확인 설정을 읽고, 입력과 결과 줄을 지운다.
   public func onAppear() {
     self.cancelCheck()
     self.dropInspection()
     self.setting = self.preferences.catalogURLs()
     self.androidSDKPath = self.preferences.androidSDKPath()
+    self.automaticUpdateCheck = self.preferences.automaticUpdateCheck()
     self.draftText = ""
     self.result = nil
     self.androidSDKCandidate = nil
@@ -195,6 +204,14 @@ public final class SettingsModel {
     self.androidSDKCandidate = nil
     let outcome = self.saveAndroidSDKPath(nil)
     await self.removeLeftovers(previous: outcome.previous)
+  }
+
+  /// "새 버전을 자동으로 확인" 토글. 잠겼거나 업데이트 기능이 없는 빌드면 무시한다. 저장한 뒤(실패해도) 다시 읽는다:
+  /// 창을 연 뒤 관리자가 잠갔으면 쓰기가 실패하고 잠금 안내로 바뀐다.
+  public func automaticUpdateCheckChanged(_ isEnabled: Bool) {
+    guard self.isUpdateCheckAvailable, !self.automaticUpdateCheck.isLocked else { return }
+    try? self.preferences.setAutomaticUpdateCheck(isEnabled)
+    self.automaticUpdateCheck = self.preferences.automaticUpdateCheck()
   }
 
   /// 저장하고 다시 읽는다. 저장 직전에 읽은 위치와 달라졌을 때만 Android 화면에 알리고 이전 위치를 previous 로 돌려준다

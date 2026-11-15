@@ -22,6 +22,7 @@ struct SettingsAndroidSDKLeftoversTests: SettingsAndroidSDKTesting {
   ) -> SettingsModel {
     let model = SettingsModel(
       preferences: preferences, download: Self.catalogFake(), androidSDK: androidSDK, home: testHome,
+      isUpdateCheckAvailable: true,
       androidSDKLocationChanged: { cleanups.counts.append(Self.cleanedRoots(androidSDK).count) }
     )
     model.onAppear()
