@@ -263,9 +263,10 @@ public final class TestConditionsModel {
 
 // 타입 본문 길이(lint `type_body_length`)에 들지 않게 같은 파일의 extension 에 둔다 (같은 파일이라 `private` 상태에 닿는다).
 public extension TestConditionsModel {
-  /// "앱 목록 다시 읽기". 읽는 중이 아니면(읽었거나 실패했으면) 다시 읽는다. 고른 앱이 새 목록에 있으면 그대로 둔다.
+  /// "앱 목록 다시 읽기". 읽는 중이 아니면(읽었거나 실패했으면) 다시 읽는다. 읽는 동안 마지막 목록과 고른 앱(그 아래 권한·푸시
+  /// 구역)을 그대로 두고, 고른 앱이 새 목록에 있으면 그대로 둔다.
   func appsRefreshTapped() async {
-    guard let draft = self.draft, draft.app.apps != .loading else { return }
+    guard let draft = self.draft, !draft.app.isReadingApps else { return }
     await self.loadApps(on: draft.deviceID, session: draft.session)
   }
 

@@ -15,8 +15,11 @@ public enum TestConditionsResult: Hashable, Sendable {
 public struct TestConditionsAppDraft: Hashable, Sendable {
   /// 설치된 앱 목록.
   public enum AppList: Hashable, Sendable {
+    /// 첫 읽기 (보일 목록이 아직 없다).
     case loading
     case loaded([InstalledApp])
+    /// 마지막으로 읽은 목록을 그대로 보이며 다시 읽는 중 (고른 앱과 그 아래 권한·푸시 구역도 그대로 둔다).
+    case reloading([InstalledApp])
     case failed(SimulatorError)
   }
 
@@ -31,7 +34,7 @@ public struct TestConditionsAppDraft: Hashable, Sendable {
   public private(set) var apps: AppList = .loading
   /// 앱 목록 읽기 요청 번호. 같은 시트에서 다시 읽으면 늘어, 앞 읽기의 늦은 결과를 버린다.
   public private(set) var appsRequest = 0
-  /// 고른 앱. 늘 `.loaded` 목록에 있는 값이다 (목록이 바뀌어 없어지면 nil 이거나 자동 선택 규칙의 값).
+  /// 고른 앱. 늘 `loadedApps`(`.loaded`·`.reloading`) 목록에 있는 값이다 (목록이 바뀌어 없어지면 nil 이거나 자동 선택 규칙의 값).
   public private(set) var selectedAppID: AppBundleID?
   public private(set) var pushInput: PushInputMode = .form
   public private(set) var pushTitle = ""
@@ -58,9 +61,25 @@ public struct TestConditionsAppDraft: Hashable, Sendable {
 
   // MARK: - 계산
 
-  /// 고른 앱 (목록에 있는 값).
+  /// 보이는 앱 목록: 읽었거나(`.loaded`) 다시 읽는 중(`.reloading`, 마지막 목록)이면 그 목록, 아니면 nil.
+  public var loadedApps: [InstalledApp]? {
+    switch self.apps {
+    case let .loaded(apps), let .reloading(apps): apps
+    case .loading, .failed: nil
+    }
+  }
+
+  /// 앱 목록을 읽는 중인가 (첫 읽기·다시 읽기).
+  public var isReadingApps: Bool {
+    switch self.apps {
+    case .loading, .reloading: true
+    case .loaded, .failed: false
+    }
+  }
+
+  /// 고른 앱 (보이는 목록에 있는 값. 다시 읽는 동안에도 마지막 목록의 값이다).
   public var selectedApp: InstalledApp? {
-    guard case let .loaded(apps) = self.apps, let id = self.selectedAppID else { return nil }
+    guard let apps = self.loadedApps, let id = self.selectedAppID else { return nil }
     return apps.first { $0.bundleID == id }
   }
 
@@ -91,9 +110,14 @@ public struct TestConditionsAppDraft: Hashable, Sendable {
 
   // MARK: - 바꾸기 (Model 만 부른다)
 
-  /// 앱 목록 읽기를 시작한다 (요청 번호를 올린다).
+  /// 앱 목록 읽기를 시작한다 (요청 번호를 올린다). 보일 목록이 있으면(`.loaded`·`.reloading`) 그 목록과 선택을 그대로 두고
+  /// `.reloading` 으로, 없으면(첫 읽기·실패 뒤) `.loading` 으로.
   mutating func appsStarted() {
-    self.apps = .loading
+    if let apps = self.loadedApps {
+      self.apps = .reloading(apps)
+    } else {
+      self.apps = .loading
+    }
     self.appsRequest += 1
   }
 
@@ -114,16 +138,16 @@ public struct TestConditionsAppDraft: Hashable, Sendable {
     }
   }
 
-  /// 목록을 읽지 못했다. 선택도 지운다 (목록에 있는 값만 고를 수 있다).
+  /// 목록을 읽지 못했다 (다시 읽기였어도). 선택도 지운다 (목록에 있는 값만 고를 수 있다. 실패한 기기의 마지막 목록은 믿지 않는다).
   mutating func appsFailed(_ error: SimulatorError) {
     self.apps = .failed(error)
     self.selectedAppID = nil
   }
 
-  /// 앱을 고른다. nil 이거나 `.loaded` 목록에 있는 값만 받는다 (받았으면 true).
+  /// 앱을 고른다. nil 이거나 보이는 목록(`loadedApps`, 다시 읽는 동안은 마지막 목록)에 있는 값만 받는다 (받았으면 true).
   mutating func appSelected(_ id: AppBundleID?) -> Bool {
     if let id {
-      guard case let .loaded(apps) = self.apps, apps.contains(where: { $0.bundleID == id }) else { return false }
+      guard let apps = self.loadedApps, apps.contains(where: { $0.bundleID == id }) else { return false }
     }
     self.selectedAppID = id
     return true

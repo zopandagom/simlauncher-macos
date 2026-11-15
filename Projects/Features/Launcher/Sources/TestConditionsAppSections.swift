@@ -4,6 +4,7 @@ import SwiftUI
 
 /// 테스트 조건 시트 `Form` 의 앱 단위 구역: 앱(고르기·앱 목록 다시 읽기) → 권한(서비스 11개 × 허용·거부·다시 묻기, SimLauncher 가
 /// 바꾼 값, 상시 안내) → 푸시 알림(제목·본문 폼 또는 JSON, 상시 안내). 앱을 고르지 않았으면 권한·푸시 알림 구역은 한 줄 안내만 보인다.
+/// 앱 목록을 다시 읽는 동안에는 마지막 목록·고른 앱과 권한·푸시 구역을 그대로 두고, 다시 읽기 버튼 자리에만 읽는 중을 보인다.
 /// Model 은 `let model` 로 받아 이벤트 메서드만 부른다. 그 기기에 적용 중인 명령이 있으면 권한·푸시 컨트롤을 끈다 (앱 고르기는 켜 둔다).
 struct TestConditionsAppSections: View {
   let model: TestConditionsModel
@@ -58,29 +59,46 @@ struct TestConditionsAppSections: View {
         }
         self.refreshButton
       }
-    case let .loaded(apps) where apps.isEmpty:
-      VStack(alignment: .leading, spacing: 6) {
-        Text(LauncherText.noInstalledAppsForConditions)
-          .fixedSize(horizontal: false, vertical: true)
-        self.refreshButton
-      }
-    case let .loaded(apps):
-      VStack(alignment: .leading, spacing: 4) {
-        HStack {
-          Picker(LauncherText.appSection, selection: Binding<AppBundleID?>(
-            get: { self.app.selectedAppID },
-            set: { self.model.appSelected($0) }
-          )) {
-            Text(LauncherText.noAppSelected).tag(AppBundleID?.none)
-            ForEach(apps) { installed in
-              Text(LauncherText.appPickerName(installed)).tag(Optional(installed.bundleID))
-            }
-          }
-          .pickerStyle(.menu)
-          self.refreshButton
+    case .loaded, .reloading:
+      let apps = self.app.loadedApps ?? []
+      if apps.isEmpty {
+        VStack(alignment: .leading, spacing: 6) {
+          Text(LauncherText.noInstalledAppsForConditions)
+            .fixedSize(horizontal: false, vertical: true)
+          self.refreshControl
         }
-        self.caption(LauncherText.appsRefreshNote)
+      } else {
+        VStack(alignment: .leading, spacing: 4) {
+          HStack {
+            Picker(LauncherText.appSection, selection: Binding<AppBundleID?>(
+              get: { self.app.selectedAppID },
+              set: { self.model.appSelected($0) }
+            )) {
+              Text(LauncherText.noAppSelected).tag(AppBundleID?.none)
+              ForEach(apps) { installed in
+                Text(LauncherText.appPickerName(installed)).tag(Optional(installed.bundleID))
+              }
+            }
+            .pickerStyle(.menu)
+            self.refreshControl
+          }
+          self.caption(LauncherText.appsRefreshNote)
+        }
       }
+    }
+  }
+
+  /// 다시 읽는 중이면 작은 진행 표시, 아니면 다시 읽기 버튼.
+  @ViewBuilder
+  private var refreshControl: some View {
+    if self.app.isReadingApps {
+      HStack(spacing: 4) {
+        ProgressView()
+          .controlSize(.small)
+        self.caption(LauncherText.readingApps)
+      }
+    } else {
+      self.refreshButton
     }
   }
 
