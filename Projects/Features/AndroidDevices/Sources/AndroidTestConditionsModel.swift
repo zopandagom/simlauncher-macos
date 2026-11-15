@@ -179,7 +179,8 @@ public final class AndroidTestConditionsModel {
   // MARK: - 내부
 
   /// 지금 값을 읽어 반영한다. 돌아왔을 때 시트가 닫혔거나 다시 열렸으면 버린다. 읽는 동안 그 기기의 외관 쓰기가 끝났으면 쓰기 전
-  /// 값일 수 있어 한 번 더 읽는다 (그래도 바뀌면 그 결과를 쓴다: 그 뒤 쓰기는 자기 결과로 표시를 고친다).
+  /// 값일 수 있어 한 번 더 읽는다. 읽는 동안에는 외관을 바꿀 수 없고(`.loaded` 가 아님) 쓰기 결과도 읽은 값(`.loaded`)이 있을 때만
+  /// 반영되어(`nightModeApplied`) 읽는 동안 `.loaded` 가 되지 않으므로, 겹치는 쓰기는 읽기 전에 시작한 하나뿐이라 한 번이면 된다.
   private func readConditions(on id: AndroidVirtualDevice.ID, session: Int) async {
     var retried = false
     while true {
@@ -219,8 +220,8 @@ public final class AndroidTestConditionsModel {
 // 타입 본문 길이(lint `type_body_length`)에 들지 않게 같은 파일의 extension 에 둔다 (같은 파일이라 `private` 상태에 닿는다).
 public extension AndroidTestConditionsModel {
   /// "앱 목록 다시 읽기". 읽는 중(첫 읽기·다시 읽기)이 아니면(읽었거나 실패했으면) 다시 읽는다. 읽는 동안 마지막 목록·고른 패키지·
-  /// 권한 값을 그대로 보인다. 고른 패키지가 새 목록에 있으면 그대로 두고, 고른 패키지가 있으면 그 권한도 다시 읽는다 (다시 설치한
-  /// 앱일 수 있다. 같은 패키지면 읽는 동안에도 마지막 권한 값을 보인다).
+  /// 읽어 둔 권한 값(`.loaded` 일 때)을 그대로 보인다. 고른 패키지가 새 목록에 있으면 그대로 두고, 고른 패키지가 있으면 그 권한도 다시 읽는다 (다시 설치한
+  /// 앱일 수 있다. 같은 패키지면 읽어 둔 권한 값(`.loaded`)이 있을 때 읽는 동안에도 그 값을 보인다).
   func packagesRefreshTapped() async {
     guard let draft = self.draft, !draft.app.isReadingPackages else { return }
     await self.loadPackages(on: draft.deviceID, session: draft.session)
@@ -298,8 +299,8 @@ public extension AndroidTestConditionsModel {
   }
 
   /// 설치된 패키지 목록을 읽어 반영한다. 돌아왔을 때 시트가 닫혔거나 다시 열렸거나(번호) 그 뒤 다시 읽기를 시작했으면(요청 번호)
-  /// 버린다. 반영 뒤 고른 패키지가 있으면 그 권한을 읽는다: 반영 전과 같은 패키지면 마지막 권한 값을 그대로 보이며 읽고
-  /// (`keepingShown`), 선택 규칙으로 다른 패키지가 골라졌으면 `.loading` 부터.
+  /// 버린다. 반영 뒤 고른 패키지가 있으면 그 권한을 읽는다: 반영 전과 같은 패키지면 읽어 둔 권한 값(`.loaded`)이 있을 때 그 값을
+  /// 그대로 보이며 읽고(`keepingShown`. 없으면 `.loading` 부터), 선택 규칙으로 다른 패키지가 골라졌으면 `.loading` 부터.
   private func loadPackages(on id: AndroidVirtualDevice.ID, session: Int) async {
     guard self.draft?.session == session else { return }
     self.draft?.updateApp { $0.packagesStarted() }
@@ -326,8 +327,10 @@ public extension AndroidTestConditionsModel {
   }
 
   /// 고른 패키지의 런타임 권한을 읽어 반영한다. 돌아왔을 때 시트·요청 번호·고른 패키지가 그대로일 때만 반영한다. 읽는 동안 그 기기의
-  /// 권한 쓰기가 끝났으면 쓰기 전 값일 수 있어 한 번 더 읽는다 (화면 설정 읽기 `readConditions` 와 같은 규칙). `keepingShown` 이면
-  /// 읽어 둔 권한 값을 읽는 동안 그대로 보인다 (같은 패키지를 다시 읽을 때만. `permissionsStarted(keepingShown:)`).
+  /// 권한 쓰기가 끝났으면 쓰기 전 값일 수 있어 다시 읽고, 쓰기가 끝나지 않은 읽기를 얻을 때까지 되풀이한다 (읽는 동안 끝난 쓰기는 자기
+  /// 결과로 표시를 `.loaded` 로 고쳐(`keepingShown` 이고 읽어 둔 값(`.loaded`)이 있으면 처음부터 `.loaded`) 읽는 동안에도 토글을 쓸 수 있어 여러 번 겹칠 수 있다.
+  /// 쓰기는 기기당 하나라 조작을 멈추면 끝난다). `keepingShown` 이고 읽어 둔 권한 값(`.loaded`)이 있으면 그 값을 읽는 동안 그대로 보인다 (같은 패키지를 다시
+  /// 읽을 때만. `permissionsStarted(keepingShown:)`).
   private func loadPermissions(
     of package: AndroidPackageName,
     on id: AndroidVirtualDevice.ID,
@@ -337,7 +340,6 @@ public extension AndroidTestConditionsModel {
     guard self.draft?.session == session else { return }
     self.draft?.updateApp { $0.permissionsStarted(keepingShown: keepingShown) }
     guard let request = self.draft?.app.permissionsRequest else { return }
-    var retried = false
     while true {
       let epoch = self.permissionEpoch[id, default: 0]
       let result: Result<AndroidAppPermissions, AndroidEmulatorError>
@@ -351,8 +353,7 @@ public extension AndroidTestConditionsModel {
             draft.app.permissionsRequest == request,
             draft.app.selectedPackage == package
       else { return }
-      if self.permissionEpoch[id, default: 0] != epoch, !retried {
-        retried = true
+      if self.permissionEpoch[id, default: 0] != epoch {
         continue
       }
       switch result {
