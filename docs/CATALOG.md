@@ -173,6 +173,16 @@ defaults write com.zopandagom.simlauncher CatalogURLs -array "https://builds.exa
   - 상한: 메뉴에 보이는 필터(읽은 항목, 같은 이름은 하나로)는 50개까지 저장한다. 50개면 새 이름은 저장할 수 없고 같은 이름 덮어쓰기만 된다. 관리자가 50개 넘게 넣었으면 모두 보인다.
   - 반영 시점: 앱이 실행 중이어도 로그 창을 열 때와 "저장된 필터" 메뉴 동작(불러오기·"지금 필터 저장…"·저장·삭제) 때 다시 읽는다. 메뉴를 펼치기만 해서는 읽지 않는다.
   - 구성 프로필로 강제하면 `CatalogURLs` 와 같은 판정(`objectIsForced`)으로 잠긴다: 메뉴의 목록과 불러오기는 그대로 되고, "지금 필터 저장…" 은 관리자가 정한 목록이라는 안내와 함께 꺼지며 삭제 메뉴가 없다. 앱은 그 키에 쓰지 않는다. 실측 범위: `LogFilters` 강제는 실측하지 않았고, `CatalogURLs` 와 같은 `objectIsForced` 판정이라 같게 동작할 것으로 본다. `defaults read` 가 강제 값을 보이지 않는다는 주의도 `CatalogURLs` 와 같다.
+- `AutomaticUpdateCheck`(Bool): 새 버전 자동 확인(앱을 켤 때와 다른 앱에서 돌아올 때, 마지막 확인에서 하루가 지났으면 이 앱 배포 저장소의 최신 릴리스 버전 파일(`releases/latest/download/SimLauncher-version.json`)을 받는다. ARCHITECTURE §4 네트워크 행). 키가 없으면 켬이다. 사용자는 설정 창 "업데이트" 의 "새 버전을 자동으로 확인" 으로 끄고 켠다. 관리자가 미리 끌 수 있다:
+
+  ```sh
+  defaults write com.zopandagom.simlauncher AutomaticUpdateCheck -bool false
+  ```
+
+  - 읽기 규칙: Bool·숫자 0·1 과 문자열 `YES`·`NO`·`true`·`false`·`1`·`0`(대소문자 무시)을 읽는다. 그 밖의 값(숫자 2, 다른 문자열, 배열·사전·날짜)은 끔으로 본다(`LogFilters` 의 Bool 칸과 달리 키가 없으면 켬, 읽을 수 없으면 끔이다). 강제 값도 같은 규칙이다.
+  - 구성 프로필로 강제하면 `CatalogURLs` 와 같은 판정(`objectIsForced`)으로 잠긴다: 설정 창의 토글은 강제 값으로 보이고 관리자가 정한 설정이라는 안내와 함께 바꿀 수 없으며, 앱은 그 키에 쓰지 않는다. 자동 확인만 막는다: 메뉴 "SimLauncher > 업데이트 확인…" 으로 사용자가 직접 하는 확인은 막지 않는다.
+  - 배포 저장소가 없는 빌드(포크가 `Env.releaseRepository` 를 비운 빌드)에는 업데이트 기능이 없어(설정 창에 "업데이트" 구역도 없다) 이 키는 효과가 없다.
+- `SkippedUpdateVersion`(문자열)·`LastUpdateCheck`(날짜)·`DismissedUpdateBanner`(사전 `{version, dismissedAt}`): 업데이트 알림의 앱 기록이다(건너뛴 버전, 서버가 답한 마지막 확인 시각, 배너 닫기(×)로 하루 동안 숨긴 버전과 그 시각). 앱이 기록하며 미리 넣는 용도가 아니다. 강제돼 있으면 앱은 쓰지 않는다(건너뛰기·숨김은 그 실행 동안만 지키고, 확인 시각을 기록하지 못하면 자동 확인은 1시간에 한 번까지다).
 
 ## 10. 앱에서 설치하기
 
@@ -217,7 +227,7 @@ https://github.com/zopandagom/simlauncher-macos/releases/download/sample-catalog
   4. 카탈로그 게시: 고정 태그 `sample-catalog-v2` 의 prerelease 릴리스에 `catalog.json` 을 바꿔 올리고, 고정 주소에서 다시 받아 같은지 확인한다.
 - Android 서명 키: Android 는 설치된 앱을 서명이 같은 apk 로만 업데이트하므로, 러너마다 새 디버그 키로 서명하면 다음 빌드 설치가 서명 불일치(`INSTALL_FAILED_UPDATE_INCOMPATIBLE`)로 실패한다. 그래서 샘플은 공개해 둔(비밀이 아닌) 샘플 전용 개인 키·인증서 [`Examples/SampleAndroidApp/sample-signing.pem`](../Examples/SampleAndroidApp/sample-signing.pem)(PEM 텍스트, **비밀 아님**)을 커밋해 두고, 워크플로가 openssl 로 PKCS12 로 바꿔 서명한다. 자기 앱에서는 이 키를 쓰지 말고 회사 서명 키를 GitHub Secret 으로 넣는다 ([`Examples/SampleAndroidApp/README.md`](../Examples/SampleAndroidApp/README.md)).
 - Gradle 래퍼를 두지 않는 이유: 래퍼 jar 는 검토할 수 없는 바이너리라 커밋하지 않고, `gradle/actions/setup-gradle`(커밋 SHA 로 고정)의 `gradle-version` 으로 Gradle 버전을 고정한다. 샘플 Android 앱은 로컬에서 빌드하지 않는다(이 워크플로만 빌드한다).
-- `releases/latest` 를 쓰지 않는 이유: 이 레포는 SimLauncher 앱 릴리스도 같은 레포에 두므로 latest 를 앱 릴리스용으로 비워 둔다. 샘플 릴리스는 모두 prerelease 라 latest 가 되지 않는다. 빌드만 두는 레포라면 `releases/latest/download/catalog.json` 도 고정 주소로 쓸 수 있지만, 버전의 `buildURL` 은 그때도 태그 고정 주소로 쓴다(6절).
+- `releases/latest` 를 쓰지 않는 이유: 이 레포는 SimLauncher 앱 릴리스도 같은 레포에 두므로 latest 를 앱 릴리스용으로 비워 둔다(SimLauncher 의 업데이트 알림이 이 레포 latest Release 의 `SimLauncher-version.json` 을 받는다). 샘플 릴리스는 모두 prerelease 라 latest 가 되지 않는다. 빌드만 두는 레포라면 `releases/latest/download/catalog.json` 도 고정 주소로 쓸 수 있지만, 버전의 `buildURL` 은 그때도 태그 고정 주소로 쓴다(6절).
 - 재실행: 같은 run 을 다시 돌리면 같은 태그라 버전이 늘지 않고, 이미 게시된 빌드(두 자산이 다 올라간 릴리스)는 다시 올리지 않는다. 새로 실행하면 새 태그가 생기고 옛 버전 주소는 그대로 옛 빌드를 가리킨다.
 - 실패: 카탈로그는 매번 릴리스 목록에서 다시 만들므로 실패한 실행은 다음 성공 실행이 고친다. 카탈로그를 바꿔 올리는 짧은 동안이나 그 업로드가 실패하면 주소가 404 가 되고(앱에는 받기 실패로 보인다), 재실행이나 다음 실행이 다시 올린다. 빌드 zip·apk 는 7일 동안 run 에 남아, 그 안에는 실패한 `publish` 만 "Re-run failed jobs" 로 다시 돌릴 수 있다. 7일이 지났으면 "Re-run all jobs" 나 새 실행으로 한다.
 - 정리: 오래된 빌드는 자동으로 지우지 않는다. 실행마다 버전이 두 개(iOS·Android) 늘고 하나가 약 380 바이트라 5 MiB(1절)까지 약 6천 9백 번 실행할 수 있다. 지우려면 `gh release delete sample-build-<run_id> --cleanup-tag` 로 릴리스와 태그를 함께 지운다. 다음 실행의 카탈로그에서 빠지고, 그 전까지 그 버전을 고르면 빌드가 없다는 안내(10절)가 보인다.
