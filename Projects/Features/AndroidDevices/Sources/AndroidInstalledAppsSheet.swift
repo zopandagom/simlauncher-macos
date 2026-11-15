@@ -12,6 +12,9 @@ struct AndroidInstalledAppsSheet: View {
   let model: AndroidInstalledAppsModel
   /// 마지막으로 그린 초안. 닫히는 동안 Model 의 `draft` 는 이미 nil 이라, 글자가 비지 않도록 View 가 들고 있는다.
   @State private var shownDraft: AndroidInstalledAppsDraft?
+  /// 마지막으로 띄운 확인 대기. "삭제"·"취소" 를 누르면 Model 이 곧바로 `pendingAction` 을 비우므로, 대화상자가 닫히는 동안 제목·
+  /// 본문이 비지 않도록 View 가 들고 있는다 (기기 삭제 확인의 `presentedConfirmation` 과 같다).
+  @State private var shownAction: AndroidInstalledAppsDraft.Action?
 
   var body: some View {
     Group {
@@ -27,7 +30,9 @@ struct AndroidInstalledAppsSheet: View {
   }
 
   private func form(_ draft: AndroidInstalledAppsDraft) -> some View {
-    VStack(alignment: .leading, spacing: 12) {
+    // 여는 첫 렌더는 Model 값, 닫히는 동안은 들고 있던 값.
+    let shownAction = draft.pendingAction ?? self.shownAction
+    return VStack(alignment: .leading, spacing: 12) {
       Text(AndroidDevicesText.installedAppsSheetTitle(for: draft.device))
         .font(.headline)
         .accessibilityAddTraits(.isHeader)
@@ -44,7 +49,7 @@ struct AndroidInstalledAppsSheet: View {
     .frame(minWidth: 480, idealWidth: 520, minHeight: 420, idealHeight: 480)
     .interactiveDismissDisabled(!draft.canClose)
     .confirmationDialog(
-      AndroidDevicesText.removeAppConfirmationTitle(draft.pendingAction?.package.rawValue ?? ""),
+      AndroidDevicesText.removeAppConfirmationTitle(shownAction?.package.rawValue ?? ""),
       isPresented: Binding(
         get: { draft.pendingAction != nil },
         set: { isPresented in
@@ -54,7 +59,7 @@ struct AndroidInstalledAppsSheet: View {
         }
       ),
       titleVisibility: .visible,
-      presenting: draft.pendingAction
+      presenting: shownAction
     ) { action in
       Button(AndroidDevicesText.removeAppConfirmButton, role: .destructive) {
         // 버튼 동작 뒤 SwiftUI 가 곧바로 actionCancelled() 를 부르므로 값을 넘긴다.
@@ -65,6 +70,11 @@ struct AndroidInstalledAppsSheet: View {
       }
     } message: { _ in
       Text(AndroidDevicesText.removeAppConfirmationMessage(on: draft.device))
+    }
+    .onChange(of: draft.pendingAction, initial: true) { _, new in
+      if let new {
+        self.shownAction = new
+      }
     }
   }
 
@@ -118,7 +128,8 @@ struct AndroidInstalledAppsSheet: View {
         }
         .disabled(!draft.canRefresh)
       }
-    case let .loaded(packages) where packages.isEmpty:
+    case let .loaded(packages) where packages.isEmpty, let .reloading(packages) where packages.isEmpty:
+      // 빈 목록을 다시 읽는 동안에도(마지막 앱을 지운 뒤의 다시 읽기 등) 안내를 그대로 보인다.
       Text(AndroidDevicesText.noInstalledAppsForConditions)
         .foregroundStyle(.secondary)
         .fixedSize(horizontal: false, vertical: true)
