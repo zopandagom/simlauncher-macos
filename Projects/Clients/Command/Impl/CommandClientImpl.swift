@@ -26,50 +26,86 @@ public struct CommandClientImpl: CommandClient {
     _ arguments: [String],
     environment: [String: String]
   ) async throws(CommandError) -> CommandResult {
+    try await self.runToEnd(Request(executable: executable, arguments: arguments, environment: environment), input: nil)
+  }
+
+  public func run(
+    _ executable: URL,
+    _ arguments: [String],
+    environment: [String: String],
+    standardInput: Data
+  ) async throws(CommandError) -> CommandResult {
+    try await self.runToEnd(
+      Request(executable: executable, arguments: arguments, environment: environment),
+      input: standardInput
+    )
+  }
+
+  /// 두 `run` 이 함께 쓰는 경로. `input` 이 nil 이면 stdin 은 /dev/null, 아니면 파이프로 그 바이트를 쓰고 닫는다.
+  private func runToEnd(_ request: Request, input: Data?) async throws(CommandError) -> CommandResult {
     let result: Result<CommandResult, CommandError> = await withCheckedContinuation { continuation in
-      // 블로킹 읽기·대기는 협력 스레드 풀 밖에서 한다.
+      // 블로킹 읽기·쓰기·대기는 협력 스레드 풀 밖에서 한다.
       DispatchQueue.global().async {
-        let process = Process()
-        process.executableURL = executable
-        process.arguments = arguments
-        process.environment = environment
-        process.standardInput = FileHandle.nullDevice
-        let stdoutPipe = Pipe()
-        let stderrPipe = Pipe()
-        process.standardOutput = stdoutPipe
-        process.standardError = stderrPipe
-        do {
-          try process.run()
-        } catch {
-          continuation.resume(returning: .failure(.launchFailed))
-          return
-        }
-        // 출력이 파이프 버퍼(64KB)를 넘으면 자식이 쓰기에서 멈추므로,
-        // 종료를 기다리기 전에 stdout·stderr 를 동시에 끝까지 읽는다.
-        let stderrBox = Mutex<Data>(Data())
-        let stderrHandle = stderrPipe.fileHandleForReading
-        let group = DispatchGroup()
-        group.enter()
-        DispatchQueue.global().async {
-          let data = stderrHandle.readDataToEndOfFile()
-          stderrBox.withLock { $0 = data }
-          group.leave()
-        }
-        let stdout = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
-        group.wait()
-        process.waitUntilExit()
-        continuation.resume(
-          returning: .success(
-            CommandResult(
-              exitCode: process.terminationStatus,
-              stdout: stdout,
-              stderr: stderrBox.withLock { $0 }
-            )
-          )
-        )
+        continuation.resume(returning: Self.runBlocking(request, input: input))
       }
     }
     return try result.get()
+  }
+
+  private static func runBlocking(_ request: Request, input: Data?) -> Result<CommandResult, CommandError> {
+    let process = Process()
+    process.executableURL = request.executable
+    process.arguments = request.arguments
+    process.environment = request.environment
+    let stdinPipe = input.map { _ in Pipe() }
+    process.standardInput = stdinPipe ?? FileHandle.nullDevice
+    let stdoutPipe = Pipe()
+    let stderrPipe = Pipe()
+    process.standardOutput = stdoutPipe
+    process.standardError = stderrPipe
+    do {
+      try process.run()
+    } catch {
+      try? stdinPipe?.fileHandleForWriting.close()
+      try? stdoutPipe.fileHandleForReading.close()
+      try? stderrPipe.fileHandleForReading.close()
+      return .failure(.launchFailed)
+    }
+    // 출력이 파이프 버퍼(64KB)를 넘으면 자식이 쓰기에서 멈추므로, 종료를 기다리기 전에 stdout·stderr 를 동시에 끝까지 읽는다.
+    // stdin 쓰기도 다른 큐에서 동시에 한다 (자식이 입력을 다 읽기 전에 출력을 쓰면 서로 막지 않게).
+    let group = DispatchGroup()
+    if let stdinPipe, let input {
+      Self.write(input, to: stdinPipe.fileHandleForWriting, group: group)
+    }
+    let stderrBox = Mutex<Data>(Data())
+    let stderrHandle = stderrPipe.fileHandleForReading
+    group.enter()
+    DispatchQueue.global().async {
+      let data = stderrHandle.readDataToEndOfFile()
+      stderrBox.withLock { $0 = data }
+      group.leave()
+    }
+    let stdout = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+    group.wait()
+    process.waitUntilExit()
+    return .success(
+      CommandResult(exitCode: process.terminationStatus, stdout: stdout, stderr: stderrBox.withLock { $0 })
+    )
+  }
+
+  /// `input` 을 쓰고 닫는다 (자식에게 EOF). 자식이 다 읽기 전에 끝나면 쓰기가 EPIPE 로 실패하는데, `F_SETNOSIGPIPE` 로 SIGPIPE 를
+  /// 막아 앱이 죽지 않게 하고 실패는 무시한다. 자식이 끝났을 때 읽는 끝이 모두 닫혀 EPIPE 가 나는 것은, 부모 쪽에 넘어온 읽는 끝을
+  /// Foundation `Process` 가 실행 뒤 닫는 것에 기댄다 (닫지 않으면 큰 입력에서 쓰기가 끝나지 않는다. 실제 프로세스 테스트가 확인한다).
+  private static func write(_ input: Data, to handle: FileHandle, group: DispatchGroup) {
+    _ = fcntl(handle.fileDescriptor, F_SETNOSIGPIPE, 1)
+    group.enter()
+    DispatchQueue.global().async {
+      if !input.isEmpty {
+        try? handle.write(contentsOf: input)
+      }
+      try? handle.close()
+      group.leave()
+    }
   }
 
   public func runCancellable(

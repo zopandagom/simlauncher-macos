@@ -24,6 +24,18 @@ public protocol CommandClient: Sendable {
     environment: [String: String]
   ) async throws(CommandError) -> CommandResult
 
+  /// `run` 과 같고(끝날 때까지 기다려 stdout·stderr 를 끝까지 읽음, 취소를 전하지 않음, 시작하지 못할 때만 `.launchFailed`),
+  /// stdin 만 다르다: `standardInput` 바이트를 자식 stdin 에 쓴 뒤 닫는다(EOF). 쓰기는 출력 읽기와 동시에 다른 큐에서 해
+  /// 큰 입력·큰 출력에서 서로 막지 않는다. 자식이 다 읽기 전에 끝나도 앱은 죽지 않는다(쓰기 끝에 `F_SETNOSIGPIPE`, 쓰기 실패는 무시).
+  /// 쓰기·닫기가 끝난 뒤 돌아온다. 쓰는 곳: `simctl push … -` (payload 를 파일 없이 넘긴다).
+  /// - Parameter environment: 프로세스 환경 전체. 물려받은 환경에 더하지 않는다.
+  func run(
+    _ executable: URL,
+    _ arguments: [String],
+    environment: [String: String],
+    standardInput: Data
+  ) async throws(CommandError) -> CommandResult
+
   /// stdin 은 비우고, 출력 조각을 받은 순서대로(stdout·stderr 각각 안에서) `onOutput` 에 넘기며 실행한다.
   /// 앞 조각의 `onOutput` 이 끝난 뒤 다음 조각을 넘긴다. 정상 종료면 모든 조각을 넘긴 뒤 전체 stdout·stderr 를 결과로 돌려준다.
   /// 프로세스가 스스로 끝난 뒤 취소가 오면 결과(전체 출력)를 돌려주되, 일부 조각은 `onOutput` 에 넘기지 않았을 수 있다.

@@ -16,6 +16,8 @@ public final class CommandClientFake: CommandClient {
     public let isLaunch: Bool
     /// `streamCancellable` 로 왔으면 true (`isCancellable` 도 true, `timeout` 은 nil).
     public let isStream: Bool
+    /// `run(_:_:environment:standardInput:)` 로 왔으면 넘긴 stdin 바이트. 그 밖의 호출은 nil.
+    public let standardInput: Data?
 
     /// 기존 3-인자 비교는 `run` 요청(false·nil)과 같다.
     public init(
@@ -25,7 +27,8 @@ public final class CommandClientFake: CommandClient {
       isCancellable: Bool = false,
       timeout: Duration? = nil,
       isLaunch: Bool = false,
-      isStream: Bool = false
+      isStream: Bool = false,
+      standardInput: Data? = nil
     ) {
       self.executable = executable
       self.arguments = arguments
@@ -34,6 +37,7 @@ public final class CommandClientFake: CommandClient {
       self.timeout = timeout
       self.isLaunch = isLaunch
       self.isStream = isStream
+      self.standardInput = standardInput
     }
   }
 
@@ -109,6 +113,23 @@ public final class CommandClientFake: CommandClient {
     environment: [String: String]
   ) async throws(CommandError) -> CommandResult {
     let invocation = Invocation(executable: executable, arguments: arguments, environment: environment)
+    self.recorded.withLock { $0.append(invocation) }
+    return try self.handler(invocation)
+  }
+
+  /// `standardInput` 을 담아 기록하고 `run` 과 같은 `handler` 로 답한다.
+  public func run(
+    _ executable: URL,
+    _ arguments: [String],
+    environment: [String: String],
+    standardInput: Data
+  ) async throws(CommandError) -> CommandResult {
+    let invocation = Invocation(
+      executable: executable,
+      arguments: arguments,
+      environment: environment,
+      standardInput: standardInput
+    )
     self.recorded.withLock { $0.append(invocation) }
     return try self.handler(invocation)
   }
