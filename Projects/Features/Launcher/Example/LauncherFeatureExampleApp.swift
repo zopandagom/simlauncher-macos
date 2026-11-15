@@ -33,6 +33,8 @@ import WorkspaceTesting
 /// "테스트 조건…" 시트는 `TestConditionsModel` 이 같은 `SimulatorClientFake`(화면 설정을 기기별로 기억하고 고르면 바꾼다,
 /// 위치·권한은 늘 받아들이고 푸시는 늘 보냄이다)로 돈다. 앱 구역은 "앱 실행…" 과 같은 설치된 앱 목록을 읽는다.
 /// 읽기 실패·지원 안 함·적용 안 됨·기기 꺼짐과 앱 목록 실패·빈 목록·푸시를 받지 않음은 "테스트 조건" 미리보기에서 본다.
+/// "설치된 앱…" 시트는 `InstalledAppsModel` 이 같은 Fake 로 목록을 읽고 확인 뒤 지운다 (Fake 는 지워도 목록을 바꾸지 않는다).
+/// 읽기 실패·빈 목록·지우기 실패는 "설치된 앱" 미리보기에서 본다.
 /// Example 에는 Settings 씬이 없다(설정 창은 App 에서 확인한다).
 @main
 struct LauncherFeatureExampleApp: App {
@@ -40,12 +42,14 @@ struct LauncherFeatureExampleApp: App {
   @State private var catalogModel: CatalogInstallModel
   @State private var appSheetsModel: LauncherAppSheetsModel
   @State private var conditionsModel: TestConditionsModel
+  @State private var installedAppsModel: InstalledAppsModel
 
   init() {
     let models = Self.makeModels()
     self._model = State(initialValue: models.launcher)
     self._appSheetsModel = State(initialValue: models.appSheets)
     self._conditionsModel = State(initialValue: models.conditions)
+    self._installedAppsModel = State(initialValue: models.installedApps)
     self._catalogModel = State(initialValue: makeCatalogModel(.exampleCatalogs, installingWith: models.launcher))
   }
 
@@ -55,7 +59,8 @@ struct LauncherFeatureExampleApp: App {
         model: self.model,
         catalogModel: self.catalogModel,
         appSheetsModel: self.appSheetsModel,
-        conditionsModel: self.conditionsModel
+        conditionsModel: self.conditionsModel,
+        installedAppsModel: self.installedAppsModel
       )
     }
   }
@@ -79,10 +84,7 @@ struct LauncherFeatureExampleApp: App {
       appSheetPresented: { box.hasPresentedSheet }
     )
     let appSheets = makeAppSheetsModel(simulator: fake, launcher: launcher)
-    let conditions = makeConditionsModel(simulator: fake, launcher: launcher)
-    box.model = appSheets
-    box.conditions = conditions
-    return ExampleModels(launcher: launcher, appSheets: appSheets, conditions: conditions)
+    return ExampleModels(launcher: launcher, appSheets: appSheets, simulator: fake, box: box)
   }
 }
 
@@ -157,14 +159,13 @@ func previewLauncher(
   )
   let catalogModel = makeCatalogModel(catalogs, installingWith: launcher, catalogDownload: configureCatalogDownload)
   let appSheets = makeAppSheetsModel(simulator: fake, launcher: launcher)
-  let conditions = makeConditionsModel(simulator: fake, launcher: launcher)
-  box.model = appSheets
-  box.conditions = conditions
+  let models = ExampleModels(launcher: launcher, appSheets: appSheets, simulator: fake, box: box)
   return LauncherView(
     model: launcher,
     catalogModel: catalogModel,
     appSheetsModel: appSheets,
-    conditionsModel: conditions
+    conditionsModel: models.conditions,
+    installedAppsModel: models.installedApps
   )
 }
 

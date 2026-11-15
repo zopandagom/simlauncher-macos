@@ -3,7 +3,7 @@ import DownloadInterface
 import SimulatorInterface
 import SimulatorTesting
 
-/// "앱 실행…" 시트와 "테스트 조건…" 시트의 앱 구역이 보일 설치된 앱 (번들 ID 는 예시 값).
+/// "앱 실행…" 시트, "테스트 조건…" 시트의 앱 구역, "설치된 앱…" 시트가 보일 설치된 앱 (번들 ID 는 예시 값).
 enum ExampleInstalledApps {
   static let all: [InstalledApp] = [
     InstalledApp(bundleID: AppBundleID("com.example.sample")!, displayName: "Sample", version: "1.3.0", build: "42"),

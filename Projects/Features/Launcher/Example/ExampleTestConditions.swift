@@ -4,13 +4,36 @@ import SimulatorInterface
 import SimulatorTesting
 import SwiftUI
 
-// 테스트 조건 시트 연결 (App 의 조립과 같다)과 시트 상태 미리보기. `LauncherFeatureExampleApp.swift` 가 600 줄에 닿아 나눴다.
+// 테스트 조건·설치된 앱 시트 연결 (App 의 조립과 같다)과 시트 상태 미리보기. `LauncherFeatureExampleApp.swift` 가 600 줄에 닿아
+// 나눴다.
 
 /// Example 앱이 `@State` 로 갖는 Model 묶음.
 struct ExampleModels {
   let launcher: LauncherModel
   let appSheets: LauncherAppSheetsModel
   let conditions: TestConditionsModel
+  let installedApps: InstalledAppsModel
+
+  /// App 처럼 테스트 조건·설치된 앱 시트 Model 을 기기 목록에 잇고, 기기 목록이 읽는 상자에 세 시트 Model 을 넣는다.
+  @MainActor
+  init(
+    launcher: LauncherModel,
+    appSheets: LauncherAppSheetsModel,
+    simulator: SimulatorClientFake,
+    box: ExampleAppSheetsBox
+  ) {
+    self.launcher = launcher
+    self.appSheets = appSheets
+    self.conditions = makeConditionsModel(simulator: simulator, launcher: launcher)
+    self.installedApps = InstalledAppsModel(
+      simulator: simulator,
+      target: { launcher.installedAppsTarget($0) },
+      refreshRequested: { await launcher.refreshButtonTapped() }
+    )
+    box.model = appSheets
+    box.conditions = self.conditions
+    box.installedApps = self.installedApps
+  }
 }
 
 /// App 처럼 테스트 조건 시트 Model 을 기기 목록에 잇는다 (열 기기·다시 읽기는 `launcher`).
@@ -28,9 +51,11 @@ func makeConditionsModel(simulator: SimulatorClientFake, launcher: LauncherModel
 final class ExampleAppSheetsBox {
   weak var model: LauncherAppSheetsModel?
   weak var conditions: TestConditionsModel?
+  weak var installedApps: InstalledAppsModel?
 
   var hasPresentedSheet: Bool {
     (self.model?.hasPresentedSheet ?? false) || (self.conditions?.hasPresentedSheet ?? false)
+      || (self.installedApps?.hasPresentedSheet ?? false)
   }
 }
 
@@ -106,4 +131,29 @@ final class ExampleAppSheetsBox {
 
 #Preview("테스트 조건 앱: 푸시 내용 거절") {
   previewLauncher { $0.setPushOutcome(.payloadRejected) }
+}
+
+// MARK: - 설치된 앱 미리보기
+
+// 설치된 앱 시트의 상태 미리보기. 켜진 기기 행의 "설치된 앱…" 을 누른다. Fake 는 지워도 목록을 바꾸지 않아, 지운 뒤 다시 읽은
+// 목록에 그 앱이 다시 보인다 (지운 직후의 결과 줄과 목록에서 빠지는 모습만 본다).
+
+#Preview("설치된 앱: 읽는 중·지우는 중 (2초씩 걸린다)") {
+  previewLauncher { $0.setDelay(.seconds(2)) }
+}
+
+#Preview("설치된 앱: 앱 목록을 읽지 못함 (다시 읽기)") {
+  previewLauncher { $0.setInstalledAppsError(.commandFailed) }
+}
+
+#Preview("설치된 앱: 설치한 앱 없음") {
+  previewLauncher { ExampleInstalledApps.install(on: $0, apps: []) }
+}
+
+#Preview("설치된 앱: 지우기가 기기 꺼짐으로 실패 (목록 실패·기기 목록 다시 읽기)") {
+  previewLauncher { $0.setUninstallError(.deviceNotBooted) }
+}
+
+#Preview("설치된 앱: 지우기가 명령 실패 (결과 줄·목록 다시 읽기)") {
+  previewLauncher { $0.setUninstallError(.commandFailed) }
 }
