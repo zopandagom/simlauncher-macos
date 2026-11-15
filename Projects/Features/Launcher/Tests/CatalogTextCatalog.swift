@@ -60,13 +60,14 @@ enum CatalogTextCatalog {
 
 extension CatalogTextCatalog {
   /// `table[key]` 에 인자를 넣은 값. 키가 표에 없으면 빈 서식이라 기대 문구가 비어 확인이 실패한다.
+  /// `String(localized:)` 처럼 현재 로캘로 서식을 만든다 (`%lld` 는 자릿수를 구분한다: 4096 → "4,096").
   static func format(_ table: [String: String], _ key: String, _ arguments: any CVarArg...) -> String {
-    String(format: table[key] ?? "", arguments: arguments)
+    String(format: table[key] ?? "", locale: .current, arguments: arguments)
   }
 
-  /// 표의 키 값에 인자를 넣은 것과 코드 결과를 비교하는 확인.
+  /// 표의 키 값에 인자를 넣은 것과 코드 결과를 비교하는 확인. 서식은 `format` 과 같이 현재 로캘로 만든다.
   static func check(_ table: [String: String], _ key: String, _ actual: String, _ arguments: any CVarArg...) -> Check {
-    Check(key: key, expected: String(format: table[key] ?? "", arguments: arguments), actual: actual)
+    Check(key: key, expected: String(format: table[key] ?? "", locale: .current, arguments: arguments), actual: actual)
   }
 
   /// 여러 줄 문구의 `index` 번째 줄 (없으면 빈 문자열).

@@ -75,7 +75,7 @@ enum TestConditionsTextCatalog {
   /// Android 문장 (iOS 는 글씨 크기·경로·시나리오가 있어 문장이 다르다).
   static func androidChecks(_ table: [String: String]) -> [Check] {
     let pairs: [(String, String)] = [
-      ("외관·위치 같은 테스트 조건을 바꿉니다.", AndroidDevicesText.testConditionsHelp),
+      ("외관·위치·권한 같은 테스트 조건을 바꿉니다.", AndroidDevicesText.testConditionsHelp),
       ("지금은 자동·예약 모드입니다. 라이트·다크를 고르면 바뀝니다.", AndroidDevicesText.nightModeOtherNote),
       (
         "Android 기기는 경로·시나리오를 지원하지 않습니다. 에뮬레이터 창의 ⋯ > Location 에서 경로를 재생할 수 있습니다.",

@@ -3,8 +3,9 @@ import Core
 import SwiftUI
 
 /// Android 테스트 조건 시트: 제목 → 머리 안내 → `Form` { 화면(외관) · 위치(위치 서비스 꺼짐 안내, 마지막으로 보낸 위치, 한 점,
-/// 경로·시나리오 미지원 안내) } → 마지막 적용의 실패 줄 → 닫기. 입력과 선택은 `Binding(get:set:)` 으로 Model 의 이벤트 메서드에 잇는다.
-/// 그 기기에 적용 중인 명령이 있으면 모든 적용 컨트롤을 끈다. TC-B·C 는 `Form` 끝에 앱 단위 구역을 더한다.
+/// 경로·시나리오 미지원 안내) · 앱 · 권한 · 푸시 알림 불가 안내(`AndroidTestConditionsAppSections`) } → 마지막 적용의 실패 줄 → 닫기.
+/// 입력과 선택은 `Binding(get:set:)` 으로 Model 의 이벤트 메서드에 잇는다. 그 기기에 적용 중인 명령이 있으면 모든 적용 컨트롤을 끈다.
+/// TC-C 는 `Form` 끝에 앱 언어를 더한다.
 struct AndroidTestConditionsSheet: View {
   let model: AndroidTestConditionsModel
   /// 마지막으로 그린 초안. 닫히는 동안 Model 의 `draft` 는 이미 nil 이라, 글자가 비지 않도록 View 가 들고 있는다.
@@ -40,6 +41,7 @@ struct AndroidTestConditionsSheet: View {
         Section(AndroidDevicesText.locationSection) {
           self.location(draft, isApplying: isApplying)
         }
+        AndroidTestConditionsAppSections(model: self.model, draft: draft, isApplying: isApplying)
       }
       .formStyle(.grouped)
       .frame(minHeight: 260, maxHeight: .infinity)

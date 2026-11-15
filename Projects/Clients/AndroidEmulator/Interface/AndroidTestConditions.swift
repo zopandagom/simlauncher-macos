@@ -32,3 +32,66 @@ public enum AndroidConditionOutcome: Hashable, Sendable {
   /// `emu geo fix` 가 `KO:` 줄로 답하거나 `OK` 줄이 없음).
   case notApplied
 }
+
+/// 런타임 권한 이름 (`android.permission.CAMERA`). 기기 출력(`dumpsys package`)에서 읽은 값이 adb 셸 인자로 가므로 형식을 검사한 값만
+/// 만든다: 1~255자, 비지 않은 ASCII 영숫자·`_` 조각을 `.` 로 이은 2조각 이상. 아니면 nil.
+public struct AndroidRuntimePermission: Hashable, Sendable, Comparable {
+  public static let maxLength = 255
+
+  public let rawValue: String
+
+  public init?(_ rawValue: String) {
+    guard (1 ... Self.maxLength).contains(rawValue.unicodeScalars.count) else {
+      return nil
+    }
+    let components = rawValue.split(separator: ".", omittingEmptySubsequences: false)
+    guard components.count >= 2, components.allSatisfy(Self.isValidComponent) else {
+      return nil
+    }
+    self.rawValue = rawValue
+  }
+
+  /// 비지 않고 ASCII 영숫자·`_` 만.
+  private static func isValidComponent(_ component: Substring) -> Bool {
+    !component.isEmpty && component.unicodeScalars.allSatisfy { scalar in
+      scalar == "_" || ("a" ... "z").contains(scalar) || ("A" ... "Z").contains(scalar)
+        || ("0" ... "9").contains(scalar)
+    }
+  }
+
+  public static func < (lhs: AndroidRuntimePermission, rhs: AndroidRuntimePermission) -> Bool {
+    lhs.rawValue < rhs.rawValue
+  }
+}
+
+/// 앱 하나의 런타임 권한 하나와 지금 상태 (`dumpsys package` 의 `runtime permissions:` 블록 줄 `<이름>: granted=<true|false>`).
+public struct AndroidPermissionGrant: Hashable, Sendable {
+  public let permission: AndroidRuntimePermission
+  public let isGranted: Bool
+
+  public init(permission: AndroidRuntimePermission, isGranted: Bool) {
+    self.permission = permission
+    self.isGranted = isGranted
+  }
+}
+
+/// 앱 하나의 런타임 권한 읽기 결과.
+public enum AndroidAppPermissions: Hashable, Sendable {
+  /// user 0 의 `runtime permissions:` 블록 순서 그대로. 비면 바꿀 수 있는 권한을 요청하지 않는 앱.
+  case runtime([AndroidPermissionGrant])
+  /// 앱이 기기에 없다 (`dumpsys package` 의 `Unable to find package: <패키지>` 줄, exit 0, 실측).
+  case appNotInstalled
+}
+
+/// 런타임 권한 쓰기 결과. 명령 자체의 실패(꺼짐·없는 기기·adb 없음)는 `AndroidEmulatorError` 로 던진다.
+public enum AndroidPermissionOutcome: Hashable, Sendable {
+  /// 쓴 뒤 다시 읽은 상태에서 그 권한이 요청 값이다. 다시 읽은 목록 전체를 담는다.
+  case applied([AndroidPermissionGrant])
+  /// 명령은 돌았는데 다시 읽은 상태가 요청 값이 아니거나 그 권한이 목록에 없다. 다시 읽은 목록 전체를 담는다
+  /// (앱이 선언하지 않은 권한은 출력 없이 exit 0, 바꿀 수 없는 권한은 exit 255 `SecurityException`, 없는 권한은 exit 255
+  /// `IllegalArgumentException`, 실측 API 37).
+  case notApplied([AndroidPermissionGrant])
+  /// 앱이 기기에 없다: 쓰기(`pm grant`·`pm revoke`)의 `Failure [package not found]`·
+  /// `Error: package not found` 줄(exit 1, 실측) 또는 다시 읽기의 `AndroidAppPermissions.appNotInstalled`.
+  case appNotInstalled
+}

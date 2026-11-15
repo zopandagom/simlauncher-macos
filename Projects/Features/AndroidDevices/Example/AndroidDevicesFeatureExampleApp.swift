@@ -24,7 +24,8 @@ import WorkspaceTesting
 /// "로그 보기" 가 눌린다 (이 데모에는 로그 창이 없어 눌러도 창이 열리지 않는다).
 /// 파일·명령·네트워크를 쓰지 않으므로 아무것도 켜거나 만들거나 설치하지 않는다 (Fake 의 목록만 바뀐다).
 /// 앱 설치(파일·URL·카탈로그)·실행·링크 열기·스크린샷·녹화·테스트 조건은 켜진 기기("Pixel Tablet")에서 해 본다.
-/// 테스트 조건은 Fake(외관을 기기별로 기억하고 고르면 바꾼다, 위치는 늘 받아들인다)로 돌고, 실패·적용 안 됨은 "테스트 조건" 장면에서 본다.
+/// 테스트 조건은 Fake(외관을 기기별로 기억하고 고르면 바꾼다, 위치는 늘 받아들인다, 켜진 기기의 샘플 앱 권한을 기억하고 토글하면 바꾼다)로
+/// 돌고, 실패·적용 안 됨과 앱 구역의 목록 실패·권한 읽기 실패·앱 없음은 "테스트 조건" 장면에서 본다.
 /// 왼쪽 목록에서 상태를 고른다. "Android 도구" 버튼은 App 이 도구 화면을 여는 대신 아래 줄에 누른 횟수를 보인다.
 @main
 struct AndroidDevicesFeatureExampleApp: App {
@@ -150,6 +151,10 @@ enum DemoScenario: String, CaseIterable, Hashable {
   case conditionsOther = "테스트 조건: 자동·예약 모드, 위치 서비스 꺼짐"
   case conditionsNotApplied = "테스트 조건: 적용 안 됨 (외관·위치)"
   case conditionsDeviceOff = "테스트 조건: 기기 꺼짐 (바꾸면 실패)"
+  case conditionsPackagesFailure = "테스트 조건: 앱 목록 읽기 실패"
+  case conditionsPermissionsFailure = "테스트 조건: 권한 읽기 실패"
+  case conditionsPermissionNotApplied = "테스트 조건: 권한 적용 안 됨"
+  case conditionsAppMissing = "테스트 조건: 고른 앱이 기기에 없음"
 
   private static let allDevices = AndroidDeviceInventory(
     devices: [
@@ -243,7 +248,9 @@ enum DemoScenario: String, CaseIterable, Hashable {
       break
     case .avdFolderUnavailable:
       fake.setFetchError(.avdFolderUnavailable)
-    case .conditionsReadFailure, .conditionsOther, .conditionsNotApplied, .conditionsDeviceOff:
+    case .conditionsReadFailure, .conditionsOther, .conditionsNotApplied, .conditionsDeviceOff,
+         .conditionsPackagesFailure, .conditionsPermissionsFailure, .conditionsPermissionNotApplied,
+         .conditionsAppMissing:
       DemoTestConditions.configure(fake, for: self)
     default:
       self.configureAppOperations(fake)
@@ -333,6 +340,7 @@ extension DemoScenario {
     let fake = AndroidEmulatorClientFake(inventory: self.inventory)
     fake.setDelay(.seconds(1))
     fake.setInstalledPackages(.success(Self.samplePackages))
+    DemoTestConditions.installPermissions(on: fake)
     let package = AndroidPackageClientFake()
     package.setDelay(.seconds(1))
     let download = DownloadClientFake()

@@ -1,6 +1,26 @@
 {
   "sourceLanguage" : "ko",
   "strings" : {
+    "%@ 권한이 바뀌지 않았습니다. 바꿀 수 없는 권한일 수 있습니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 권한이 바뀌지 않았습니다. 바꿀 수 없는 권한일 수 있습니다."
+          }
+        }
+      }
+    },
+    "%@ 앱이 기기에 없습니다. 앱 목록 다시 읽기를 누르세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 앱이 기기에 없습니다. 앱 목록 다시 읽기를 누르세요."
+          }
+        }
+      }
+    },
     "%@, %@" : {
       "localizations" : {
         "ko" : {
@@ -57,6 +77,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : ".apk 파일을 고르거나, https 주소나 등록한 빌드 카탈로그에서 받아 이 기기에 설치하고 바로 실행합니다. 이 줄에 .apk 를 끌어다 놓아도 됩니다."
+          }
+        }
+      }
+    },
+    "Android 앱 푸시(FCM)는 Google 서버를 거쳐야 해서 SimLauncher 가 에뮬레이터에 보낼 수 없습니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Android 앱 푸시(FCM)는 Google 서버를 거쳐야 해서 SimLauncher 가 에뮬레이터에 보낼 수 없습니다."
           }
         }
       }
@@ -391,6 +421,16 @@
         }
       }
     },
+    "권한" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "권한"
+          }
+        }
+      }
+    },
     "기기가 꺼져 있습니다. 기기를 켠 뒤 다시 시도하세요." : {
       "localizations" : {
         "ko" : {
@@ -431,6 +471,26 @@
         }
       }
     },
+    "끄면 실행 중인 앱이 종료됩니다(로그도 끝납니다)." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "끄면 실행 중인 앱이 종료됩니다(로그도 끝납니다)."
+          }
+        }
+      }
+    },
+    "끄면 앱이 다시 물을 수 있는 상태가 됩니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "끄면 앱이 다시 물을 수 있는 상태가 됩니다."
+          }
+        }
+      }
+    },
     "뉴욕" : {
       "localizations" : {
         "ko" : {
@@ -461,12 +521,32 @@
         }
       }
     },
+    "대략적인 위치" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "대략적인 위치"
+          }
+        }
+      }
+    },
     "도쿄" : {
       "localizations" : {
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "도쿄"
+          }
+        }
+      }
+    },
+    "동영상" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "동영상"
           }
         }
       }
@@ -491,12 +571,32 @@
         }
       }
     },
+    "마이크" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "마이크"
+          }
+        }
+      }
+    },
     "바꾼 조건은 기기에 바로 적용되고, 시트를 닫거나 SimLauncher 를 꺼도 기기에 남습니다." : {
       "localizations" : {
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "바꾼 조건은 기기에 바로 적용되고, 시트를 닫거나 SimLauncher 를 꺼도 기기에 남습니다."
+          }
+        }
+      }
+    },
+    "백그라운드 위치" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "백그라운드 위치"
           }
         }
       }
@@ -511,12 +611,32 @@
         }
       }
     },
+    "사진" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "사진"
+          }
+        }
+      }
+    },
     "서울" : {
       "localizations" : {
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "서울"
+          }
+        }
+      }
+    },
+    "선택한 사진·동영상" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "선택한 사진·동영상"
           }
         }
       }
@@ -541,12 +661,102 @@
         }
       }
     },
+    "시트를 연 뒤 설치한 앱은 앱 목록 다시 읽기로 보입니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "시트를 연 뒤 설치한 앱은 앱 목록 다시 읽기로 보입니다."
+          }
+        }
+      }
+    },
+    "알림" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "알림"
+          }
+        }
+      }
+    },
+    "앱 목록 다시 읽기" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "앱 목록 다시 읽기"
+          }
+        }
+      }
+    },
+    "앱 목록을 읽는 중…" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "앱 목록을 읽는 중…"
+          }
+        }
+      }
+    },
+    "앱 목록을 읽지 못했습니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "앱 목록을 읽지 못했습니다."
+          }
+        }
+      }
+    },
+    "앱을 고르세요" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "앱을 고르세요"
+          }
+        }
+      }
+    },
+    "앱이 기기에 없습니다. 앱 목록 다시 읽기를 누르세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "앱이 기기에 없습니다. 앱 목록 다시 읽기를 누르세요."
+          }
+        }
+      }
+    },
     "에뮬레이터가 위치를 받지 않았습니다." : {
       "localizations" : {
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "에뮬레이터가 위치를 받지 않았습니다."
+          }
+        }
+      }
+    },
+    "연락처 쓰기" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "연락처 쓰기"
+          }
+        }
+      }
+    },
+    "연락처 읽기" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "연락처 읽기"
           }
         }
       }
@@ -571,12 +781,12 @@
         }
       }
     },
-    "외관·위치 같은 테스트 조건을 바꿉니다." : {
+    "외관·위치·권한 같은 테스트 조건을 바꿉니다." : {
       "localizations" : {
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "외관·위치 같은 테스트 조건을 바꿉니다."
+            "value" : "외관·위치·권한 같은 테스트 조건을 바꿉니다."
           }
         }
       }
@@ -617,6 +827,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "위도는 -90 에서 90 사이여야 합니다."
+          }
+        }
+      }
+    },
+    "위에서 앱을 고르세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "위에서 앱을 고르세요."
           }
         }
       }
@@ -2871,6 +3091,16 @@
         }
       }
     },
+    "음악·오디오" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "음악·오디오"
+          }
+        }
+      }
+    },
     "이 Mac 에서 실행할 수 없는 시스템 이미지(%@)를 쓰는 기기입니다. 삭제만 할 수 있습니다." : {
       "localizations" : {
         "ko" : {
@@ -2897,6 +3127,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "이 기기에 설치한 앱 중 하나를 골라 로그를 받으며 실행합니다."
+          }
+        }
+      }
+    },
+    "이 기기에 설치한 앱이 없습니다. 앱을 설치한 뒤 앱 목록 다시 읽기를 누르세요." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 기기에 설치한 앱이 없습니다. 앱을 설치한 뒤 앱 목록 다시 읽기를 누르세요."
           }
         }
       }
@@ -3071,6 +3311,16 @@
         }
       }
     },
+    "이 앱은 바꿀 수 있는 권한을 요청하지 않습니다." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 앱은 바꿀 수 있는 권한을 요청하지 않습니다."
+          }
+        }
+      }
+    },
     "이 앱은 이 기기보다 높은 Android API 에서 실행됩니다. 더 높은 API 의 기기를 만들어 설치하세요." : {
       "localizations" : {
         "ko" : {
@@ -3231,6 +3481,26 @@
         }
       }
     },
+    "저장소 쓰기" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "저장소 쓰기"
+          }
+        }
+      }
+    },
+    "저장소 읽기" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "저장소 읽기"
+          }
+        }
+      }
+    },
     "저장한 녹화 파일을 찾지 못했습니다. 파일이 옮겨지거나 지워졌을 수 있습니다. Finder 에서 동영상 폴더의 SimLauncher 폴더를 열어 확인하세요." : {
       "localizations" : {
         "ko" : {
@@ -3257,6 +3527,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "적용하는 중…"
+          }
+        }
+      }
+    },
+    "정확한 위치" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "정확한 위치"
           }
         }
       }
@@ -3391,6 +3671,16 @@
         }
       }
     },
+    "카메라" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "카메라"
+          }
+        }
+      }
+    },
     "카탈로그 최상위" : {
       "localizations" : {
         "ko" : {
@@ -3477,6 +3767,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "카탈로그의 schemaVersion %lld 은 없는 규격입니다 (지원: 1~%lld)."
+          }
+        }
+      }
+    },
+    "캘린더 쓰기" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "캘린더 쓰기"
+          }
+        }
+      }
+    },
+    "캘린더 읽기" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "캘린더 읽기"
           }
         }
       }
@@ -3657,6 +3967,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "폴더블 (%@)"
+          }
+        }
+      }
+    },
+    "푸시 알림" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "푸시 알림"
           }
         }
       }

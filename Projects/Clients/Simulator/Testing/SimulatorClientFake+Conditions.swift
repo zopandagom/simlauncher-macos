@@ -1,7 +1,7 @@
 import Core
 import SimulatorInterface
 
-// MARK: - 테스트 조건 (화면 설정 읽기·쓰기, 위치)
+// MARK: - 테스트 조건 (화면 설정 읽기·쓰기, 위치, 개인정보 접근, 푸시)
 
 public extension SimulatorClientFake {
   /// 테스트 조건 호출 (`Call.testCondition`).
@@ -9,6 +9,8 @@ public extension SimulatorClientFake {
     case displaySettings(VirtualDevice.ID)
     case setDisplaySetting(IOSDisplaySetting, VirtualDevice.ID)
     case simulateLocation(IOSLocationSimulation, VirtualDevice.ID)
+    case setPrivacy(IOSPrivacyAction, IOSPrivacyService, AppBundleID, VirtualDevice.ID)
+    case sendPush(PushPayload, AppBundleID, VirtualDevice.ID)
   }
 
   /// 설정하지 않은 기기의 화면 설정: 라이트·기본 글씨 크기(large)·고대비 끔.
@@ -54,7 +56,22 @@ public extension SimulatorClientFake {
     self.state.withLock { $0.conditions.scenarioUnavailable = unavailable }
   }
 
-  /// 이후 세 테스트 조건 호출이 기록만 하고 `resumeConditions()` 까지 기다린다.
+  /// 설정하면 이후 `setPrivacy(_:_:for:on:)` 이 이 에러를 던진다.
+  func setPrivacyError(_ error: SimulatorError?) {
+    self.state.withLock { $0.conditions.privacyError = error }
+  }
+
+  /// 이후 `sendPush(_:to:on:)` 의 결과 (기본 `.sent`). 에러(`setPushError`)가 있으면 에러가 먼저다.
+  func setPushOutcome(_ outcome: IOSPushOutcome) {
+    self.state.withLock { $0.conditions.pushOutcome = outcome }
+  }
+
+  /// 설정하면 이후 `sendPush(_:to:on:)` 이 이 에러를 던진다.
+  func setPushError(_ error: SimulatorError?) {
+    self.state.withLock { $0.conditions.pushError = error }
+  }
+
+  /// 이후 다섯 테스트 조건 호출(화면 설정 읽기·쓰기, 위치, 개인정보 접근, 푸시)이 기록만 하고 `resumeConditions()` 까지 기다린다.
   func suspendConditions() {
     self.suspend(.conditions)
   }
@@ -64,7 +81,7 @@ public extension SimulatorClientFake {
     self.resume(.conditions)
   }
 
-  /// 이후 읽기(`displaySettings(on:)`)만 기록하고 `resumeConditionReads()` 까지 기다린다 (쓰기·위치는 기다리지 않는다).
+  /// 이후 읽기(`displaySettings(on:)`)만 기록하고 `resumeConditionReads()` 까지 기다린다 (쓰기·위치·개인정보 접근·푸시는 기다리지 않는다).
   /// `suspendConditions()` 와 함께 걸면 둘 다 풀려야 돌아온다.
   func suspendConditionReads() {
     self.suspend(.conditionReads)
@@ -132,6 +149,37 @@ public extension SimulatorClientFake {
     }
     return .scenarioUnavailable
   }
+
+  /// `install(_:on:)` 과 같은 순서로 기록·멈춤·지연·에러·기기 상태를 본다. 설치 여부는 보지 않고(실제도 미설치에 exit 0), 저장하지 않는다
+  /// (실제로도 읽을 수 없다).
+  func setPrivacy(
+    _ action: IOSPrivacyAction,
+    _ service: IOSPrivacyService,
+    for app: AppBundleID,
+    on id: VirtualDevice.ID
+  ) async throws(SimulatorError) {
+    self.record(.testCondition(.setPrivacy(action, service, app, id)))
+    await self.waitIfSuspended(.conditions)
+    await self.sleepIfNeeded()
+    if let error = self.bootedDeviceError(id, configured: \.conditions.privacyError) {
+      throw error
+    }
+  }
+
+  /// `install(_:on:)` 과 같은 순서로 기록·멈춤·지연·에러·기기 상태를 보고, `setPushOutcome` 값(기본 `.sent`)을 돌려준다.
+  func sendPush(
+    _ payload: PushPayload,
+    to app: AppBundleID,
+    on id: VirtualDevice.ID
+  ) async throws(SimulatorError) -> IOSPushOutcome {
+    self.record(.testCondition(.sendPush(payload, app, id)))
+    await self.waitIfSuspended(.conditions)
+    await self.sleepIfNeeded()
+    if let error = self.bootedDeviceError(id, configured: \.conditions.pushError) {
+      throw error
+    }
+    return self.state.withLock { $0.conditions.pushOutcome }
+  }
 }
 
 /// 테스트 조건 Fake 상태 (`SimulatorClientFake.State.conditions`).
@@ -142,4 +190,7 @@ struct SimulatorConditionState {
   var notAppliedRead: IOSDisplaySettings?
   var locationError: SimulatorError?
   var scenarioUnavailable = false
+  var privacyError: SimulatorError?
+  var pushOutcome: IOSPushOutcome = .sent
+  var pushError: SimulatorError?
 }

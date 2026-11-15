@@ -13,7 +13,7 @@ extension LauncherText {
   }
 
   static var testConditionsHelp: String {
-    String(localized: "외관·글씨 크기·위치 같은 테스트 조건을 바꿉니다.", bundle: .module)
+    String(localized: "외관·글씨 크기·위치·권한·알림 같은 테스트 조건을 바꿉니다.", bundle: .module)
   }
 
   /// (공통) "테스트 조건…" 버튼이 막힌 이유 (툴팁). 기기 규칙은 스크린샷과 같다 (켜는 중은 `.notBooted`).
@@ -283,7 +283,7 @@ extension LauncherText {
 
   // MARK: - 실패·적용 안 됨
 
-  /// 적용 실패·적용 안 됨 줄.
+  /// 적용 실패·적용 안 됨·푸시를 기기가 받지 않음 줄.
   static func testConditionsMessage(_ message: TestConditionsMessage) -> String {
     switch message {
     case let .failed(_, error):
@@ -294,6 +294,12 @@ extension LauncherText {
       String(localized: "이 iOS 버전은 \(self.itemName(item)) 설정을 지원하지 않습니다.", bundle: .module)
     case .scenarioUnavailable:
       String(localized: "이 Xcode 에는 이 시나리오가 없습니다. 다른 시나리오나 경로를 쓰세요.", bundle: .module)
+    case let .pushNotAuthorized(appName):
+      self.pushNotAuthorized(appName: appName)
+    case .pushNoVisibleContent:
+      self.pushNoVisibleContent
+    case .pushRejected:
+      self.pushRejected
     }
   }
 
@@ -316,6 +322,8 @@ extension LauncherText {
     case .contentSize: self.contentSizeLabel
     case .increaseContrast: self.increaseContrastLabel
     case .location: self.locationSection
+    case let .privacy(service): self.privacyServiceName(service)
+    case .push: self.pushSection
     }
   }
 }

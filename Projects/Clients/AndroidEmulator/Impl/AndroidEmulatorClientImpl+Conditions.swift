@@ -3,7 +3,7 @@ import CommandInterface
 import Core
 import Foundation
 
-// MARK: - 테스트 조건 (외관·위치)
+// MARK: - 테스트 조건 (외관·위치·런타임 권한)
 
 public extension AndroidEmulatorClientImpl {
   /// 위치 서비스 읽기의 실패(취소 제외)는 nil 로 둔다.
@@ -57,5 +57,67 @@ public extension AndroidEmulatorClientImpl {
       tools: tools
     )
     return try ADBConditionCommands.parseGeoFix(result).get()
+  }
+
+  @concurrent
+  func runtimePermissions(
+    of package: AndroidPackageName,
+    on id: AndroidVirtualDevice.ID
+  ) async throws(AndroidEmulatorError) -> AndroidAppPermissions {
+    let tools = try await SDKTools.resolve(self.sdkRoot())
+    let serial = try await self.bootedSerial(id, tools: tools)
+    return try await self.readRuntimePermissions(of: package, serial: serial, tools: tools)
+  }
+
+  /// grant 또는 revoke 의 해석(`ADBPermissionCommands.parseChange`)이 `.appNotInstalled` 면 다시 읽지 않고 `.appNotInstalled`.
+  /// 거부는 그 뒤 플래그를 지운다. 플래그 지우기는 해석 결과가 `.deviceNotBooted` 일 때만 던지고 그 밖의 해석 결과는 무시한다
+  /// (미설치·미선언에도 exit 0 이라 정상 흐름에서 실패하지 않는다, 실측. 남는 것은 "다시 묻지 않음" 표시뿐이고 다음 거부에서 다시
+  /// 지운다). 명령 실행 자체의 실패(adb 없음·시간 초과·취소)는 던진다.
+  @concurrent
+  func setRuntimePermission(
+    _ permission: AndroidRuntimePermission,
+    granted: Bool,
+    of package: AndroidPackageName,
+    on id: AndroidVirtualDevice.ID
+  ) async throws(AndroidEmulatorError) -> AndroidPermissionOutcome {
+    let tools = try await SDKTools.resolve(self.sdkRoot())
+    let serial = try await self.bootedSerial(id, tools: tools)
+    let change = granted
+      ? ADBPermissionCommands.grantArguments(serial: serial, package: package, permission: permission)
+      : ADBPermissionCommands.revokeArguments(serial: serial, package: package, permission: permission)
+    let changed = try await self.runApp(change, tools: tools)
+    if try ADBPermissionCommands.parseChange(changed).get() == .appNotInstalled {
+      return .appNotInstalled
+    }
+    if !granted {
+      let cleared = try await self.runApp(
+        ADBPermissionCommands.clearFlagsArguments(serial: serial, package: package, permission: permission),
+        tools: tools
+      )
+      if case .failure(.deviceNotBooted) = ADBPermissionCommands.parseChange(cleared) {
+        throw .deviceNotBooted
+      }
+    }
+    switch try await self.readRuntimePermissions(of: package, serial: serial, tools: tools) {
+    case .appNotInstalled:
+      return .appNotInstalled
+    case let .runtime(grants):
+      let applied = grants.contains { $0.permission == permission && $0.isGranted == granted }
+      return applied ? .applied(grants) : .notApplied(grants)
+    }
+  }
+}
+
+extension AndroidEmulatorClientImpl {
+  private func readRuntimePermissions(
+    of package: AndroidPackageName,
+    serial: String,
+    tools: SDKTools
+  ) async throws(AndroidEmulatorError) -> AndroidAppPermissions {
+    let result = try await self.runApp(
+      ADBPermissionCommands.dumpsysPackageArguments(serial: serial, package: package),
+      tools: tools
+    )
+    return try ADBPermissionCommands.parseRuntimePermissions(result, package: package).get()
   }
 }

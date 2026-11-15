@@ -44,6 +44,7 @@ struct LauncherResourcesTests {
     keys.formUnion(Self.checkCatalogTexts(in: table))
     keys.formUnion(BatchTextCatalog.checkedKeys(in: table))
     keys.formUnion(TestConditionsTextCatalog.checkedKeys(in: table))
+    keys.formUnion(AppConditionsTextCatalog.checkedKeys(in: table))
     #expect(keys == Set(table.keys))
   }
 

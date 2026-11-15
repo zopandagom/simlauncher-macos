@@ -23,7 +23,7 @@ enum TestConditionsTextCatalog {
   private static func plainChecks(_ table: [String: String]) -> [Check] {
     let pairs: [(String, String)] = [
       ("테스트 조건…", LauncherText.testConditionsButton),
-      ("외관·글씨 크기·위치 같은 테스트 조건을 바꿉니다.", LauncherText.testConditionsHelp),
+      ("외관·글씨 크기·위치·권한·알림 같은 테스트 조건을 바꿉니다.", LauncherText.testConditionsHelp),
       ("켜진 기기에서만 테스트 조건을 바꿀 수 있습니다. 기기를 켠 뒤 다시 시도하세요", LauncherText.testConditionsBlockReason(.notBooted)),
       ("사용할 수 없는 기기에서는 테스트 조건을 바꿀 수 없습니다", LauncherText.testConditionsBlockReason(.unavailable)),
       ("바꾼 조건은 기기에 바로 적용되고, 시트를 닫거나 SimLauncher 를 꺼도 기기에 남습니다.", LauncherText.testConditionsSheetNote),

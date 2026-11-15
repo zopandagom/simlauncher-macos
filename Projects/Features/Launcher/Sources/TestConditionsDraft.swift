@@ -3,12 +3,16 @@ import Foundation
 import SimulatorInterface
 
 /// 테스트 조건 시트에서 바꾸는 항목. 기기별 "적용 중" 표시(`TestConditionsModel.applying`)와 실패 문구가 어느 항목의 것인지 가른다.
-/// TC-B·C 가 앱 단위 항목(권한·푸시·언어)을 케이스로 더한다.
+/// TC-C 가 앱 단위 항목(언어)을 케이스로 더한다.
 public enum TestConditionItem: Hashable, Sendable {
   case appearance
   case contentSize
   case increaseContrast
   case location
+  /// 고른 앱의 개인정보 접근 (`simctl privacy`).
+  case privacy(IOSPrivacyService)
+  /// 고른 앱에 푸시 알림 보내기 (`simctl push`).
+  case push
 }
 
 /// 마지막 적용이 기기에 반영되지 않은 이유. 다음 적용을 시작하면 지운다.
@@ -21,6 +25,12 @@ public enum TestConditionsMessage: Hashable, Sendable {
   case unsupported(TestConditionItem)
   /// 이 Xcode 에 고른 위치 시나리오가 없다.
   case scenarioUnavailable
+  /// 앱이 알림 권한을 받지 않았거나 기기에 없다 (iOS 27.0 에서 확인, `IOSPushOutcome.notAuthorized`). 앱 이름은 보내기를 시작한 때의 값이다.
+  case pushNotAuthorized(appName: String)
+  /// 이 iOS 는 화면에 보일 내용이 없는 알림을 받지 않는다 (iOS 27.0 에서 확인, `IOSPushOutcome.noVisibleContent`).
+  case pushNoVisibleContent
+  /// 기기가 알림 내용의 형식을 거절했다 (`IOSPushOutcome.payloadRejected`).
+  case pushRejected
 }
 
 /// SimLauncher 가 이 기기에 마지막으로 보낸 위치와 그 시각. 기기에서 지금 위치를 읽을 수 없어 보낸 기록만 보인다.
@@ -45,6 +55,7 @@ public struct SentLocation: Hashable, Sendable {
 
 /// 테스트 조건 시트 초안. 기기는 "테스트 조건…" 을 누른 시점의 값이다. 열 때마다 Model 이 새 번호(`session`)를 붙여, 닫았다
 /// 다시 연 뒤 늦게 온 앞 읽기 결과를 버린다. 적용 중 표시는 시트를 닫았다 다시 열어도 이어지도록 Model 의 `applying` 에 있다.
+/// 앱 단위 구역(앱 고르기·권한·푸시 알림)의 상태는 `app` 이 갖는다.
 /// 바꾸는 메서드는 Model 만 부른다 (View 는 Model 의 `draft` 를 읽기만 한다).
 public struct TestConditionsDraft: Hashable, Sendable {
   /// 화면 구역(외관·글씨 크기·고대비)의 지금 값.
@@ -68,11 +79,17 @@ public struct TestConditionsDraft: Hashable, Sendable {
   public private(set) var routeText = ""
   public private(set) var routeSpeed: LocationRouteSpeed = .walking
   public private(set) var scenario: IOSLocationScenario = .cityRun
+  /// 앱 단위 구역: 설치된 앱 목록·고른 앱·푸시 입력·마지막 성공 결과.
+  public private(set) var app: TestConditionsAppDraft
 
   init(deviceID: VirtualDevice.ID, device: LauncherNotice.Device, session: Int) {
     self.deviceID = deviceID
     self.device = device
     self.session = session
+    self.app = TestConditionsAppDraft(exampleJSON: TestConditionsAppDraft.exampleJSON(
+      title: LauncherText.pushExampleTitle,
+      body: LauncherText.pushExampleBody
+    ))
   }
 
   // MARK: - 입력 검사
@@ -137,6 +154,17 @@ public struct TestConditionsDraft: Hashable, Sendable {
     self.message = message
   }
 
+  /// 적용을 시작한다: 지난 적용의 실패 줄과 성공 줄을 지운다.
+  mutating func applyStarted() {
+    self.message = nil
+    self.app.resultChanged(nil)
+  }
+
+  /// 앱 단위 구역을 바꾼다 (`app` 은 밖에서 대입할 수 없어 Model 이 이 창구로 그 mutating 메서드를 부른다).
+  mutating func updateApp(_ change: (inout TestConditionsAppDraft) -> Void) {
+    change(&self.app)
+  }
+
   mutating func pointTextChanged(_ text: String) {
     self.pointText = text
   }
@@ -181,7 +209,7 @@ extension IOSDisplaySettings {
     case .appearance: self.appearance == .unsupported
     case .contentSize: self.contentSize == .unsupported
     case .increaseContrast: self.increaseContrast == .unsupported
-    case .location: false
+    case .location, .privacy, .push: false
     }
   }
 }

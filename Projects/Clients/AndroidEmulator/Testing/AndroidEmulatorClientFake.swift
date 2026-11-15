@@ -12,9 +12,9 @@ import Synchronization
 /// - `delete` 는 성공하면 그 기기를 빼고 설정한 결과(기본 `.deleted`)를 돌려준다. 목록에 없는 기기여도 성공한다.
 /// - `erase` 는 성공해도 목록을 바꾸지 않는다.
 /// - 앱 작업(`deviceTraits`·`install`·`launchWithLogcat`·`openURL`·`installedPackages`·`screenshot`·`recordScreen`·
-///   `layoutSnapshot`·테스트 조건(`+Conditions.swift`))은 설정한
-/// 결과만 돌려주고
-///   목록·기기 상태를 보지 않는다. 기본은 `AndroidDeviceTraits.sample`·성공·빈 앱 목록. 기기별 설정(`…(_:for:)`)이 전체 설정보다 먼저다.
+///   `layoutSnapshot`·테스트 조건(외관·위치·런타임 권한, `+Conditions.swift`))은 설정한 결과만 돌려주고
+///   목록·기기 상태를 보지 않는다. 기본은 `AndroidDeviceTraits.sample`·성공·빈 앱 목록(런타임 권한은 설정하지 않은 앱이면 앱 없음).
+///   기기별 설정(`…(_:for:)`)이 전체 설정보다 먼저다.
 /// - `screenshot`·`recordScreen` 은 파일을 만들거나 쓰지 않는다. `recordScreen` 은 기본으로 바로 시작 신호를 보내고 호출한 Task 가
 ///   취소될 때까지 기다린 뒤 `.saved` 를 돌려준다 (iOS `SimulatorClientFake.recordVideo` 와 같다).
 /// - `launchWithLogcat` 은 처리기(`setLogcatHandler`)가 없으면 설정한 실행 에러(기기별 먼저)를 던지거나, `.launched` 를 보내고 호출한
