@@ -294,6 +294,7 @@ struct ExampleControls: View {
       "마지막 확인 기록: \(preferences.storedLastUpdateCheck.map { "\($0)" } ?? "없음")",
       "배너 숨김: \(dismissal ?? "없음")",
       "건너뛴 버전: \(preferences.storedSkippedUpdateVersion ?? "없음")",
+      "받은 최신 버전: \(preferences.storedLatestKnownUpdateVersion ?? "없음")",
     ]
     return VStack(alignment: .leading, spacing: 4) {
       ForEach(lines, id: \.self) { line in
