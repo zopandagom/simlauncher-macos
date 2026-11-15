@@ -15,6 +15,11 @@ public enum Env {
   static let marketingVersion = "1.2.0"
   /// 빌드 번호. 배포할 때마다 1씩 올린다 (버전이 바뀌어도 되돌리지 않는다. 1.0.0 은 1, 1.1.0 은 2, 1.2.0 은 3).
   static let buildNumber = "3"
+  /// 업데이트 알림이 확인하는 GitHub 저장소 "<소유자>/<이름>" (앱 Info.plist 키 `SimLauncherReleaseRepository`).
+  /// 앱은 이 값으로만 버전 파일 주소(`releases/latest/download/SimLauncher-version.json`, 릴리스마다 올린다: docs/RELEASING.md)와
+  /// 다운로드 페이지 주소를 만든다 (Core `ReleaseRepository`).
+  /// 포크해 배포하면 자기 저장소로 바꾸고, 비우면(또는 형식이 틀리면) 업데이트 기능(메뉴·창·설정 구역·자동 확인·배너)이 없다.
+  static let releaseRepository = "zopandagom/simlauncher-macos"
   /// 앱 타깃(`SimLauncher`)에만 주는 설정. Example 앱·모듈·테스트에는 주지 않는다.
   static let appTargetSettings: SettingsDictionary = [
     // 공증 필수. entitlement 없이 simctl·xcodebuild·URLSession 등이 돈다 (실측, docs/RELEASING.md)
@@ -22,11 +27,13 @@ public enum Env {
     "MARKETING_VERSION": .string(Self.marketingVersion),
     "CURRENT_PROJECT_VERSION": .string(Self.buildNumber),
   ]
-  /// 앱 타깃 Info.plist 에만 넣는 값. Tuist 기본 Info.plist 의 고정 버전(1.0·1)과 빈 저작권 문구를 바꾼다.
+  /// 앱 타깃 Info.plist 에만 넣는 값. Tuist 기본 Info.plist 의 고정 버전(1.0·1)과 빈 저작권 문구를 바꾸고,
+  /// 업데이트 알림의 배포 저장소(`SimLauncherReleaseRepository`)를 넣는다 (Example 앱에는 없다).
   static let appVersionInfoPlist: [String: Plist.Value] = [
     "CFBundleShortVersionString": "$(MARKETING_VERSION)",
     "CFBundleVersion": "$(CURRENT_PROJECT_VERSION)",
     "NSHumanReadableCopyright": "Copyright © 2026 Joongwon Kim. MIT License.",
+    "SimLauncherReleaseRepository": .string(Self.releaseRepository),
   ]
   /// 화면 문자열은 한국어 먼저. 모든 프로젝트가 같은 개발 언어를 써야 String Catalog 의 원문 언어가 맞는다.
   static let projectOptions: Project.Options = .options(defaultKnownRegions: ["ko", "en"], developmentRegion: "ko")

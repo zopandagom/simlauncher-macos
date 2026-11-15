@@ -36,11 +36,14 @@ public extension Client {
   /// 쓸 Xcode 확인·선택(xcode-select, /Applications), 라이선스·첫 실행 준비 확인, Xcode·App Store 열기,
   /// 기본 iOS 런타임 확인·설치(`xcodebuild -downloadPlatform iOS`).
   static let devEnvironment = Client("DevEnvironment")
-  /// 사용자가 입력·등록한 HTTPS 주소와 앱이 정한 Android SDK 저장소 주소(`dl.google.com/android/repository`)에서
+  /// 사용자가 입력·등록한 HTTPS 주소와 앱이 정한 Android SDK 저장소 주소(`dl.google.com/android/repository`),
+  /// 앱이 정한 최신 릴리스 버전 파일 주소(빌드 설정의 배포 저장소로 만든 고정 주소, UpdateCheck Client 가 넘김)에서
   /// 큰 파일(임시 폴더, 진행률·취소)과 작은 파일(메모리, 상한)을 받는다 (URLSession). https 로만 리다이렉트를 따라가고 인증은 하지 않는다.
   static let download = Client("Download")
   /// 사용자 설정(UserDefaults 표준 도메인 = 앱 번들 ID): 빌드 카탈로그 주소 목록 읽기·추가·삭제(`CatalogURLs`),
-  /// Android SDK 위치 읽기·바꾸기(`AndroidSDKPath`), 동의한 Android SDK 라이선스 원문의 지문 읽기·더하기(`AcceptedAndroidLicenses`).
+  /// Android SDK 위치 읽기·바꾸기(`AndroidSDKPath`), 동의한 Android SDK 라이선스 원문의 지문 읽기·더하기(`AcceptedAndroidLicenses`),
+  /// 저장한 로그 필터 읽기·저장·삭제(`LogFilters`), 새 버전 자동 확인 켜기·끄기(`AutomaticUpdateCheck`, 없으면 켬)와
+  /// 앱이 쓰는 업데이트 기록(건너뛴 버전 `SkippedUpdateVersion`, 마지막 확인 시각 `LastUpdateCheck`, 배너 숨김 `DismissedUpdateBanner`).
   /// 관리자가 구성 프로필로 강제한 키(`objectIsForced`)는 잠김이라 쓰지 않는다.
   static let preferences = Client("Preferences")
   /// 사용자 폴더와 Finder: 스크린샷·녹화 저장 폴더(사진·동영상 폴더의 `SimLauncher`) 준비와 파일 이름 예약(덮어쓰지 않음)·
@@ -71,6 +74,11 @@ public extension Client {
   /// 조합한다. iOS 는 SimLauncher 가 빌드해 띄운 XCUITest 러너(xcodebuild, DevEnvironment 가 고른 Xcode, CommandClient)와
   /// Simulator Client(실행 중 앱 목록·스크린샷·지우기)를 조합한다. 결과는 메모리에만.
   static let screenLayout = Client("ScreenLayout")
+  /// 이 앱 배포 저장소(빌드 설정 `Env.releaseRepository`, GitHub)의 최신 정식 릴리스 버전 묻기: 최신 릴리스의 버전 파일
+  /// `releases/latest/download/SimLauncher-version.json` 하나를 Download Client 의 `fetchData`(상한 64 KiB)로 받아
+  /// `version` 만 숫자 버전으로 해석한다.
+  /// 저장소가 없으면(포크 빌드) 요청 없이 `.notConfigured`. 네트워크 API 를 직접 쓰지 않는다.
+  static let updateCheck = Client("UpdateCheck")
 }
 
 /// 화면 단위 기능 모듈. Feature 끼리는 서로 의존하지 않는다.
@@ -81,7 +89,7 @@ public enum Feature: String, CaseIterable {
   /// iOS 개발 환경: Xcode 설치·라이선스·첫 실행 준비 단계별 안내와 다시 확인, 기본 iOS 런타임 설치(진행·취소) (iOS 전용. 이름은 바꾸지 않는다).
   case setup = "Setup"
   /// 설정 창(⌘,): 빌드 카탈로그 주소 등록(한 번 받아 형식 확인)·삭제, Android SDK 위치(다른 폴더 고르기·기본으로 되돌리기),
-  /// 관리자 강제 값은 잠금 안내.
+  /// 새 버전 자동 확인 토글(배포 저장소가 있는 빌드만), 관리자 강제 값은 잠금 안내.
   case settings = "Settings"
   /// Android 도구(SDK) 상태 확인과 없는 구성 요소 설치(라이선스 동의, 진행률·취소). 메인 창 사이드바의 Android 칸.
   case androidSetup = "AndroidSetup"
@@ -93,6 +101,9 @@ public enum Feature: String, CaseIterable {
   case deviceLog = "DeviceLog"
   /// 기기별 화면 레이아웃 창(iOS·Android 공용): 스크린샷 위 뷰 테두리, 클릭한 점의 노드 고르기와 속성(dp/pt·px), 새로 고침.
   case layoutInspector = "LayoutInspector"
+  /// 업데이트 알림: 새 버전 배너(메인 창 위쪽), 메뉴 "업데이트 확인…" 과 업데이트 확인 창, 이 버전 건너뛰기·하루 동안 숨기기,
+  /// 켤 때와 다른 앱에서 돌아올 때의 자동 확인(하루 한 번, 설정에서 끔). 배포 저장소가 없는 빌드에는 입구가 없다.
+  case update = "Update"
 
   public var name: String { "\(self.rawValue)Feature" }
   public var tests: String { "\(self.name)Tests" }
