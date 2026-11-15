@@ -39,6 +39,8 @@ public struct AndroidTestConditionsAppDraft: Hashable, Sendable {
   public enum PackageList: Hashable, Sendable {
     case loading
     case loaded([AndroidPackageName])
+    /// 마지막으로 읽은 목록을 그대로 보이며 다시 읽는 중 (앱 목록 다시 읽기). 고른 패키지와 권한 값도 그대로 둔다.
+    case reloading([AndroidPackageName])
     case failed(AndroidEmulatorError)
   }
 
@@ -52,12 +54,20 @@ public struct AndroidTestConditionsAppDraft: Hashable, Sendable {
     /// 앱이 기기에 없다 (목록을 읽은 뒤 지워졌다).
     case appNotInstalled
     case failed(AndroidEmulatorError)
+
+    var isLoaded: Bool {
+      if case .loaded = self {
+        true
+      } else {
+        false
+      }
+    }
   }
 
   public private(set) var packages: PackageList = .loading
   /// 패키지 목록 읽기 요청 번호. 같은 시트에서 다시 읽으면 늘어, 앞 읽기의 늦은 결과를 버린다.
   public private(set) var packagesRequest = 0
-  /// 고른 패키지. 늘 `.loaded` 목록에 있는 값이다.
+  /// 고른 패키지. 늘 `loadedPackages`(`.loaded`·`.reloading`) 목록에 있는 값이다.
   public private(set) var selectedPackage: AndroidPackageName?
   public private(set) var permissions: PermissionsState = .idle
   /// 권한 읽기 요청 번호. 다시 읽거나 다른 앱을 고르면 늘어, 앞 읽기의 늦은 결과를 버린다.
@@ -66,6 +76,22 @@ public struct AndroidTestConditionsAppDraft: Hashable, Sendable {
   init() {}
 
   // MARK: - 계산
+
+  /// 보일 패키지 목록: 읽었거나(`.loaded`) 마지막 목록을 보이며 다시 읽는 중(`.reloading`)이면 그 목록, 아니면 nil.
+  public var loadedPackages: [AndroidPackageName]? {
+    switch self.packages {
+    case let .loaded(packages), let .reloading(packages): packages
+    case .loading, .failed: nil
+    }
+  }
+
+  /// 패키지 목록을 읽는 중이다 (첫 읽기 `.loading` 이거나 다시 읽기 `.reloading`).
+  public var isReadingPackages: Bool {
+    switch self.packages {
+    case .loading, .reloading: true
+    case .loaded, .failed: false
+    }
+  }
 
   /// 표시 순서의 권한: 알려진 권한(`AndroidKnownPermission` 순서) 먼저, 나머지는 원래 이름 순. 읽지 않았으면 빈 목록.
   public var sortedPermissions: [AndroidPermissionGrant] {
@@ -88,8 +114,14 @@ public struct AndroidTestConditionsAppDraft: Hashable, Sendable {
 
   // MARK: - 바꾸기 (Model 만 부른다)
 
+  /// 패키지 목록 읽기를 시작한다 (요청 번호를 올린다). 보일 목록이 있으면(다시 읽기) 그 목록·선택·권한을 그대로 두고 `.reloading`,
+  /// 없으면(첫 읽기, 실패 뒤 다시 읽기) `.loading`.
   mutating func packagesStarted() {
-    self.packages = .loading
+    if let packages = self.loadedPackages {
+      self.packages = .reloading(packages)
+    } else {
+      self.packages = .loading
+    }
     self.packagesRequest += 1
   }
 
@@ -118,10 +150,11 @@ public struct AndroidTestConditionsAppDraft: Hashable, Sendable {
     self.permissions = .idle
   }
 
-  /// 패키지를 고른다. nil 이거나 `.loaded` 목록에 있는 값만 받는다 (받았으면 true). nil 이면 권한은 `.idle`.
+  /// 패키지를 고른다. nil 이거나 `loadedPackages` 목록(다시 읽는 동안은 마지막 목록)에 있는 값만 받는다 (받았으면 true).
+  /// nil 이면 권한은 `.idle`.
   mutating func packageSelected(_ package: AndroidPackageName?) -> Bool {
     if let package {
-      guard case let .loaded(packages) = self.packages, packages.contains(package) else { return false }
+      guard let packages = self.loadedPackages, packages.contains(package) else { return false }
     }
     self.selectedPackage = package
     if package == nil {
@@ -132,9 +165,13 @@ public struct AndroidTestConditionsAppDraft: Hashable, Sendable {
     return true
   }
 
-  /// 권한 읽기를 시작한다 (요청 번호를 올린다).
-  mutating func permissionsStarted() {
-    self.permissions = .loading
+  /// 권한 읽기를 시작한다 (요청 번호는 늘 올린다). `keepingShown` 이고 지금 권한을 읽어 둔 상태(`.loaded`)면 그 값을 그대로
+  /// 보이며 읽고(앱 목록 다시 읽기 뒤 같은 패키지를 다시 읽을 때), 아니면 `.loading`. `.loaded` 는 늘 지금 고른 패키지의 값이라
+  /// 같은 패키지일 때만 `keepingShown` 을 준다.
+  mutating func permissionsStarted(keepingShown: Bool = false) {
+    if !keepingShown || !self.permissions.isLoaded {
+      self.permissions = .loading
+    }
     self.permissionsRequest += 1
   }
 
