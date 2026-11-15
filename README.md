@@ -68,7 +68,7 @@
 SimLauncher 는 새 버전이 나왔는지 스스로 확인해서 알려 드려요. 앱을 새 버전으로 바꾸는 일은 직접 해요(자동으로 바꾸지 않아요).
 
 - **자동 확인**: SimLauncher 를 켤 때와 다른 앱에서 SimLauncher 로 돌아올 때, 마지막 확인에서 하루가 지났으면 GitHub 에서 최신 버전 정보를 받아요. GitHub 에 닿지 못했으면(인터넷 연결이 끊겼을 때 등) 한 시간 뒤 다시 해 봐요.
-- **배너**: 새 버전이 있으면 메인 창 위쪽에 "새 버전이 나왔습니다: SimLauncher 1.4.0 (지금 1.3.0)" 처럼 배너가 보여요.
+- **배너**: 새 버전이 있으면 메인 창 위쪽에 "새 버전이 나왔습니다: SimLauncher 1.4.0 (지금 1.3.0)" 처럼 배너가 보여요. 앱을 껐다 켜도(인터넷이 없어도) 배너는 남아 있고, 새 버전으로 업데이트하면 사라져요. 자동 확인을 끈 동안은 다시 켤 때 배너가 보이지 않아요.
   - **다운로드 페이지 열기**: 브라우저로 GitHub Releases 의 최신 버전 페이지를 열어요.
   - **이 버전 건너뛰기**: 그 버전은 배너로 더 알리지 않아요. 더 새 버전이 나오면 다시 알려요.
   - **×**(하루 동안 숨기기): 그 버전의 배너를 하루 동안 숨겨요. 그사이 더 새 버전이 나오면 바로 보여요.
@@ -429,7 +429,7 @@ SimLauncher 는 공개 레포라서, 어느 회사든 자기 빌드 저장소에
 - Tuist 모듈러 아키텍처 (Feature / Client Interface·Impl·Testing / Shared)
 - Foundation `Process` 로 `xcrun simctl`·Android `emulator`·`adb` 등 실행 (Command Client Impl)
 - Foundation `URLSession` 으로 카탈로그·빌드 다운로드와 Android SDK 저장소 목록·패키지 받기, 업데이트 확인(GitHub 릴리스의 버전 파일) (Download Client Impl. Android SDK 설치는 AndroidSDK Client Impl 이, 업데이트 확인은 UpdateCheck Client Impl 이 Download Client 를 거쳐 받는다)
-- Foundation `UserDefaults` 로 사용자 설정(카탈로그 주소, Android SDK 위치, Android SDK 라이선스 동의 기록, 저장한 로그 필터, 새 버전 자동 확인, 건너뛴 버전·마지막 확인 시각·배너 숨김) 저장 (Preferences Client Impl)
+- Foundation `UserDefaults` 로 사용자 설정(카탈로그 주소, Android SDK 위치, Android SDK 라이선스 동의 기록, 저장한 로그 필터, 새 버전 자동 확인, 건너뛴 버전·마지막 확인 시각·배너 숨김·받은 최신 버전) 저장 (Preferences Client Impl)
 - AppKit `NSWorkspace` 로 Finder 에서 보이기, Foundation `FileManager` 로 사진·동영상 폴더에 스크린샷·녹화 저장 폴더 준비·파일 이름 예약 (Workspace Client Impl)
 
 ### 시작하기

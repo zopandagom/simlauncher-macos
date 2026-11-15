@@ -182,7 +182,7 @@ defaults write com.zopandagom.simlauncher CatalogURLs -array "https://builds.exa
   - 읽기 규칙: Bool·숫자 0·1 과 문자열 `YES`·`NO`·`true`·`false`·`1`·`0`(대소문자 무시)을 읽는다. 그 밖의 값(숫자 2, 다른 문자열, 배열·사전·날짜)은 끔으로 본다(`LogFilters` 의 Bool 칸과 달리 키가 없으면 켬, 읽을 수 없으면 끔이다). 강제 값도 같은 규칙이다.
   - 구성 프로필로 강제하면 `CatalogURLs` 와 같은 판정(`objectIsForced`)으로 잠긴다: 설정 창의 토글은 강제 값으로 보이고 관리자가 정한 설정이라는 안내와 함께 바꿀 수 없으며, 앱은 그 키에 쓰지 않는다. 자동 확인만 막는다: 메뉴 "SimLauncher > 업데이트 확인…" 으로 사용자가 직접 하는 확인은 막지 않는다.
   - 배포 저장소가 없는 빌드(포크가 `Env.releaseRepository` 를 비운 빌드)에는 업데이트 기능이 없어(설정 창에 "업데이트" 구역도 없다) 이 키는 효과가 없다.
-- `SkippedUpdateVersion`(문자열)·`LastUpdateCheck`(날짜)·`DismissedUpdateBanner`(사전 `{version, dismissedAt}`): 업데이트 알림의 앱 기록이다(건너뛴 버전, 서버가 답한 마지막 확인 시각, 배너 닫기(×)로 하루 동안 숨긴 버전과 그 시각). 앱이 기록하며 미리 넣는 용도가 아니다. 강제돼 있으면 앱은 쓰지 않는다(건너뛰기·숨김은 그 실행 동안만 지키고, 확인 시각을 기록하지 못하면 자동 확인은 1시간에 한 번까지다).
+- `SkippedUpdateVersion`(문자열)·`LastUpdateCheck`(날짜)·`DismissedUpdateBanner`(사전 `{version, dismissedAt}`)·`LatestKnownUpdateVersion`(문자열): 업데이트 알림의 앱 기록이다(건너뛴 버전, 서버가 답한 마지막 확인 시각, 배너 닫기(×)로 하루 동안 숨긴 버전과 그 시각, 서버가 답한 마지막 최신 버전(다시 켰을 때 배너를 요청 없이 보이는 데 쓴다)). 앱이 기록하며 미리 넣는 용도가 아니다. 강제돼 있으면 앱은 쓰지 않는다(건너뛰기·숨김·받은 최신 버전은 그 실행 동안만 지키고, 확인 시각을 기록하지 못하면 자동 확인은 1시간에 한 번까지다). `LatestKnownUpdateVersion` 에 값을 넣으면 그 버전이 지금보다 높을 때 배너가 보이므로(여는 주소는 앱의 고정 주소) 넣지 않는다.
 
 ## 10. 앱에서 설치하기
 
