@@ -16,11 +16,13 @@ SAMPLE_ZIP := build/SampleApp.zip
 # catalog.json 검증기: Core 소스와 함께 컴파일해 앱과 같은 규칙(schemaVersion 1·2)으로 검사한다. mise 없이 돈다 (워크플로 publish 잡)
 CATALOG_VALIDATOR := build/validate-catalog
 CATALOG_FIXTURES := .github/scripts/Fixtures
+# String Catalog 영어 값 검사기의 픽스처 (pass-*.json 은 위반 없음, fail-*.json 은 같은 이름 .expected 의 위반 줄)
+STRINGS_FIXTURES := .github/scripts/StringsFixtures
 # make release 가 쓰는 공증 키체인 프로필 이름 (xcrun notarytool store-credentials 로 저장, docs/RELEASING.md)
 NOTARY_PROFILE ?= simlauncher-notary
 
-.PHONY: bootstrap generate project build test test-hooks release-scripts-test lint format clean sample catalog-check \
-	catalog-test release layout-runner-check
+.PHONY: bootstrap generate project build test test-hooks release-scripts-test strings-check strings-check-test lint format \
+	clean sample catalog-check catalog-test release layout-runner-check
 
 ## 최초 1회: 도구 설치 + git 훅 연결
 bootstrap:
@@ -44,6 +46,7 @@ test: project
 	rm -rf $(RESULT_BUNDLE)
 	$(MAKE) --no-print-directory test-hooks
 	$(MAKE) --no-print-directory release-scripts-test
+	$(MAKE) --no-print-directory strings-check-test
 	set -o pipefail && $(MISE) xcodebuild test \
 		-workspace $(WORKSPACE) -scheme $(SCHEME) -destination '$(DESTINATION)' \
 		-resultBundlePath $(RESULT_BUNDLE) \
@@ -59,10 +62,43 @@ test-hooks:
 release-scripts-test:
 	./.github/scripts/test-release-scripts.sh
 
+## String Catalog(Projects/ 아래 Localizable.xcstrings) 항목마다 영어(en) 값을 검사한다: 빠짐·빈 값·state·한글 섞임·포맷 지정자,
+## 복수형이 필요한 키(.github/scripts/xcstrings-plural-keys.txt). 빌드 없이 파일만 본다. 위반은 "파일<TAB>키<TAB>이유" 로 모두 쓰고 실패한다.
+## 규칙: .github/scripts/check-xcstrings.jq. make lint 가 포함
+strings-check:
+	./.github/scripts/check-xcstrings.sh
+
+## String Catalog 영어 값 검사기 회귀 테스트 (.github/scripts/StringsFixtures, make test 가 포함): 통과 픽스처는 종료 0 과 출력 없음,
+## 실패 픽스처는 종료 1 과 .expected 의 위반 줄 그대로, CI 형식(--github)은 % 이스케이프까지 확인한다
+strings-check-test:
+	@for f in $(STRINGS_FIXTURES)/pass-*.json; do \
+		output=$$(./.github/scripts/check-xcstrings.sh --plural-keys $(STRINGS_FIXTURES)/plural-keys.txt "$$f" 2>&1); status=$$?; \
+		if [[ $$status != 0 || -n $$output ]]; then \
+			echo "$$f: 종료 0 과 출력 없음을 기대했으나 종료 $$status: $$output" >&2; exit 1; \
+		fi; \
+		echo "통과 확인 $$f"; \
+	done
+	@for f in $(STRINGS_FIXTURES)/fail-*.json; do \
+		expected=$$(cat "$${f%.json}.expected") || exit 1; \
+		output=$$(./.github/scripts/check-xcstrings.sh --plural-keys $(STRINGS_FIXTURES)/plural-keys.txt "$$f" 2>&1); status=$$?; \
+		if [[ $$status != 1 || $$output != "$$expected" ]]; then \
+			echo "$$f: 종료 1 과 $${f%.json}.expected 를 기대했으나 종료 $$status:" >&2; diff <(echo "$$expected") <(echo "$$output") >&2; exit 1; \
+		fi; \
+		echo "거절 확인 $$f"; \
+	done
+	@f=$(STRINGS_FIXTURES)/fail-unpaired-percent; \
+		output=$$(./.github/scripts/check-xcstrings.sh --github --plural-keys $(STRINGS_FIXTURES)/plural-keys.txt "$$f.json" 2>&1); \
+		if [[ $$? != 1 || $$output != "$$(cat $$f.github.expected)" ]]; then \
+			echo "$$f.json: --github 출력이 $$f.github.expected 와 다릅니다: $$output" >&2; exit 1; \
+		fi; \
+		echo "CI 형식 확인 $$f.json"
+
 # SwiftFormat 은 숨김 폴더(.github)를 순회하지 않아 그 안의 Swift 가 든 폴더를 경로로 넘긴다. SwiftLint 는 순회한다.
+# 마지막으로 String Catalog 영어 값을 검사한다(strings-check). 이 위반은 make format 으로 고쳐지지 않는다
 lint:
 	$(MISE) swiftformat --lint . .github/scripts
 	$(MISE) swiftlint lint --strict --quiet
+	$(MAKE) --no-print-directory strings-check
 
 format:
 	$(MISE) swiftformat . .github/scripts
