@@ -2,7 +2,14 @@
   "sourceLanguage" : "ko",
   "strings" : {
     "%@ 레이아웃" : {
+      "extractionState" : "stale",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ Layout"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -12,7 +19,14 @@
       }
     },
     "Android 도구(adb)를 쓸 수 없습니다. 메인 창의 Android 화면에서 도구 상태를 확인하세요." : {
+      "extractionState" : "stale",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Android tools (adb) aren't available. Check the tool status on the Android screen in the main window."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -22,7 +36,14 @@
       }
     },
     "iOS 레이아웃 보기를 준비하고 있습니다. 최대 1~2분 걸릴 수 있습니다…" : {
+      "extractionState" : "stale",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preparing iOS layout inspection. This can take up to 1–2 minutes…"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -32,7 +53,14 @@
       }
     },
     "iOS 레이아웃 보기를 준비하지 못했습니다. 다시 시도하세요." : {
+      "extractionState" : "stale",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't prepare iOS layout inspection. Try again."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -42,7 +70,14 @@
       }
     },
     "Xcode 가 준비되지 않아 iOS 레이아웃을 읽을 수 없습니다. 메인 창의 개발 환경에서 Xcode 를 확인하세요." : {
+      "extractionState" : "stale",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can't read the iOS layout because Xcode isn't ready. Check Xcode in Developer Tools in the main window."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -52,7 +87,14 @@
       }
     },
     "기기 화면이 꺼져 있습니다. 에뮬레이터 창의 전원 버튼으로 화면을 켠 뒤 새로 고치세요." : {
+      "extractionState" : "stale",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The device screen is off. Turn on the screen with the power button in the emulator window, then refresh."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -62,7 +104,14 @@
       }
     },
     "기기가 제때 답하지 않았습니다. 잠시 뒤 새로 고치세요." : {
+      "extractionState" : "stale",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The device didn't respond in time. Refresh in a moment."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -72,7 +121,14 @@
       }
     },
     "기기가 켜져 있지 않습니다. 기기를 켠 뒤 새로 고치세요." : {
+      "extractionState" : "stale",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The device isn't running. Start the device, then refresh."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -82,7 +138,14 @@
       }
     },
     "기기를 찾을 수 없거나 지금 쓸 수 없습니다. 메인 창의 기기 목록을 확인하세요." : {
+      "extractionState" : "stale",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The device can't be found or isn't available right now. Check the device list in the main window."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -92,7 +155,14 @@
       }
     },
     "기기의 지금 화면을 다시 읽습니다. 화면이 바뀌어도 저절로 따라가지 않습니다." : {
+      "extractionState" : "stale",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reads the device's current screen again. The layout doesn't follow screen changes on its own."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -102,7 +172,14 @@
       }
     },
     "너비" : {
+      "extractionState" : "stale",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Width"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -112,7 +189,14 @@
       }
     },
     "높이" : {
+      "extractionState" : "stale",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Height"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -122,7 +206,14 @@
       }
     },
     "다른 도구가 이 기기의 화면 정보를 읽고 있어 레이아웃을 읽지 못했습니다. UI 테스트 같은 자동화 도구를 멈춘 뒤 새로 고치세요." : {
+      "extractionState" : "stale",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't read the layout because another tool is reading this device's screen information. Stop automation tools such as UI tests, then refresh."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -132,7 +223,14 @@
       }
     },
     "다시 시도" : {
+      "extractionState" : "stale",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Try Again"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -142,7 +240,14 @@
       }
     },
     "마지막 갱신 %@" : {
+      "extractionState" : "stale",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last updated %@"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -152,7 +257,14 @@
       }
     },
     "마지막 화면: %@" : {
+      "extractionState" : "stale",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last screen: %@"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -162,7 +274,14 @@
       }
     },
     "새로 고침" : {
+      "extractionState" : "stale",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Refresh"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -172,7 +291,14 @@
       }
     },
     "설명" : {
+      "extractionState" : "stale",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Description"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -182,7 +308,14 @@
       }
     },
     "속성" : {
+      "extractionState" : "stale",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Attributes"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -192,7 +325,14 @@
       }
     },
     "식별자" : {
+      "extractionState" : "stale",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identifier"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -202,7 +342,14 @@
       }
     },
     "이 기기의 레이아웃 보기는 아직 지원하지 않습니다." : {
+      "extractionState" : "stale",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Layout inspection isn't supported for this device yet."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -212,7 +359,14 @@
       }
     },
     "이 위치의 뷰" : {
+      "extractionState" : "stale",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Views at This Point"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -222,7 +376,14 @@
       }
     },
     "읽는 동안 앱이 화면에서 사라져 레이아웃을 읽지 못했습니다. 볼 앱을 앞에 띄운 뒤 새로 고치세요." : {
+      "extractionState" : "stale",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't read the layout because the app left the screen while reading. Bring the app to the front, then refresh."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -232,7 +393,14 @@
       }
     },
     "읽은 뷰가 없습니다." : {
+      "extractionState" : "stale",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No views were read."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -242,7 +410,14 @@
       }
     },
     "종류" : {
+      "extractionState" : "stale",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Type"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -252,7 +427,14 @@
       }
     },
     "텍스트" : {
+      "extractionState" : "stale",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -262,7 +444,14 @@
       }
     },
     "홈 화면·잠금 화면·알림 창 같은 시스템 화면의 레이아웃입니다. 앱을 보려면 기기에서 앱을 앞으로 가져온 뒤 새로 고치세요." : {
+      "extractionState" : "stale",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This is the layout of a system screen such as the Home Screen, Lock Screen, or Notification Center. To see an app, bring it to the front on the device, then refresh."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -272,7 +461,14 @@
       }
     },
     "화면 레이아웃" : {
+      "extractionState" : "stale",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Screen Layout"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -282,7 +478,14 @@
       }
     },
     "화면 밀도를 읽지 못해 px 로만 보입니다." : {
+      "extractionState" : "stale",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't read the screen density, so values are shown in px only."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -292,7 +495,14 @@
       }
     },
     "화면 정보를 읽지 못했습니다. 다시 시도하세요." : {
+      "extractionState" : "stale",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't read the screen information. Try again."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -302,7 +512,14 @@
       }
     },
     "화면을 읽는 중…" : {
+      "extractionState" : "stale",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reading screen…"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -312,7 +529,14 @@
       }
     },
     "화면을 클릭해 뷰를 고르세요" : {
+      "extractionState" : "stale",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Click the screen to choose a view"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -322,7 +546,14 @@
       }
     },
     "화면이 계속 바뀌고 있어(애니메이션·동영상 등) 레이아웃을 읽지 못했습니다. 화면이 멈춘 뒤 새로 고치세요." : {
+      "extractionState" : "stale",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't read the layout because the screen keeps changing (animation, video, etc.). Refresh once the screen stops changing."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
