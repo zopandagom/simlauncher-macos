@@ -1,9 +1,11 @@
 import Core
+import Foundation
 import PreferencesInterface
 import Synchronization
 
-/// UserDefaults 표준 도메인(앱 번들 ID)의 `CatalogURLs`·`AndroidSDKPath`·`AcceptedAndroidLicenses`·`LogFilters` 키를 읽고 쓴다.
-/// 쓰기 전에 키마다 강제 여부(`objectIsForced`)를 본다:
+/// UserDefaults 표준 도메인(앱 번들 ID)의 `CatalogURLs`·`AndroidSDKPath`·`AcceptedAndroidLicenses`·`LogFilters` 키와
+/// 업데이트 알림의 `AutomaticUpdateCheck`·`SkippedUpdateVersion`·`LastUpdateCheck`·`DismissedUpdateBanner`·
+/// `LatestKnownUpdateVersion` 키를 읽고 쓴다. 쓰기 전에 키마다 강제 여부(`objectIsForced`)를 본다:
 /// 강제 중에 쓰면 화면에는 변화가 없는데 사용자 도메인에 값이 남아 프로필을 지우는 순간 나타나므로 쓰지 않는다.
 public final class PreferencesClientImpl: PreferencesClient {
   private let store: any PreferenceStore
@@ -122,6 +124,76 @@ public final class PreferencesClientImpl: PreferencesClient {
         SavedLogFilterList.removeChange(named: name, in: items)
       }
       return SavedLogFilterSetting(filters: SavedLogFilterList.visible(items), isLocked: false)
+    }
+  }
+
+  public func automaticUpdateCheck() -> AutomaticUpdateCheckSetting {
+    AutomaticUpdateCheckSetting(
+      isEnabled: self.store.automaticUpdateCheck(),
+      isLocked: self.store.isAutomaticUpdateCheckForced()
+    )
+  }
+
+  public func setAutomaticUpdateCheck(_ isEnabled: Bool) throws(PreferencesError) {
+    try self.lock.withLock { _ throws(PreferencesError) in
+      guard !self.store.isAutomaticUpdateCheckForced() else {
+        throw .locked
+      }
+      self.store.setAutomaticUpdateCheck(isEnabled)
+    }
+  }
+
+  public func skippedUpdateVersion() -> String? {
+    self.store.skippedUpdateVersion()
+  }
+
+  public func setSkippedUpdateVersion(_ version: String) throws(PreferencesError) {
+    try self.lock.withLock { _ throws(PreferencesError) in
+      guard !self.store.isSkippedUpdateVersionForced() else {
+        throw .locked
+      }
+      self.store.setSkippedUpdateVersion(version)
+    }
+  }
+
+  public func lastUpdateCheck() -> Date? {
+    self.store.lastUpdateCheck()
+  }
+
+  /// 잠겼으면 조용히 쓰지 않는다 (기록 실패는 자동 확인이 재시도 간격으로 한 번 더 할 뿐이다).
+  public func setLastUpdateCheck(_ date: Date) {
+    self.lock.withLock { _ in
+      guard !self.store.isLastUpdateCheckForced() else {
+        return
+      }
+      self.store.setLastUpdateCheck(date)
+    }
+  }
+
+  public func updateBannerDismissal() -> UpdateBannerDismissal? {
+    self.store.updateBannerDismissal()
+  }
+
+  public func setUpdateBannerDismissal(_ dismissal: UpdateBannerDismissal) throws(PreferencesError) {
+    try self.lock.withLock { _ throws(PreferencesError) in
+      guard !self.store.isUpdateBannerDismissalForced() else {
+        throw .locked
+      }
+      self.store.setUpdateBannerDismissal(dismissal)
+    }
+  }
+
+  public func latestKnownUpdateVersion() -> String? {
+    self.store.latestKnownUpdateVersion()
+  }
+
+  /// 잠겼으면 조용히 쓰지도 지우지도 않는다 (Model 이 이 실행의 결과를 메모리에 들고 있다).
+  public func setLatestKnownUpdateVersion(_ version: String?) {
+    self.lock.withLock { _ in
+      guard !self.store.isLatestKnownUpdateVersionForced() else {
+        return
+      }
+      self.store.setLatestKnownUpdateVersion(version)
     }
   }
 }

@@ -4,7 +4,7 @@
 # macOS(/bin/bash 3.2)와 ubuntu(bash 5) 둘 다에서 돈다. 의존: git·jq·sort -V.
 # 픽스처: .github/scripts/Fixtures/release (gh/ = 가짜 gh 응답 틀, @키@ 자리를 테스트가 채운다)
 #   1. previous-tag   2. prepare(PR 목록·재료)   3. release-check ref·push   4. trial·version
-#   5. plan   6. check-summary   7. assemble   8. 큰 PR 본문 잘림
+#   5. plan   6. check-summary   7. assemble   8. 큰 PR 본문 잘림   9. version-file·version-file-check(업데이트 알림 버전 파일)
 # 출력은 .githooks/test-hooks.sh 와 같다: 사례마다 "ok   <사례>" 또는 "FAIL <사례>: <이유>" 와 그 아래 들여쓴 출력.
 # 하나라도 실패하면 마지막에 "FAIL …" 과 종료 1.
 set -euo pipefail
@@ -400,6 +400,51 @@ if ((s == 0)) && [[ $(tr -cd x <"$tmp/notes-big/context.md" | wc -c | tr -d ' ')
 else
   fail "prepare: PR 본문 8000자에서 자름" "종료 $s, x $(tr -cd x <"$tmp/notes-big/context.md" | wc -c)개" "$out"
 fi
+
+# ── 9. version-file·version-file-check ───────────────────────────────────
+# 기대 바이트는 1.2.0 Release 에 올린 파일·Swift 테스트(ReleaseVersionFileTests)의 리터럴과 같다.
+vf_dir="$tmp/version-file"
+mkdir -p "$vf_dir"
+for v in 1.2.0 1.10.0; do
+  printf '{"version":"%s"}\n' "$v" >"$vf_dir/expected-$v"
+  run "$check" version-file "$v" "$vf_dir/out-$v.json"
+  if ((s == 0)) && cmp -s "$vf_dir/expected-$v" "$vf_dir/out-$v.json"; then ok "version-file: $v → {\"version\":\"$v\"}+줄바꿈"; else
+    fail "version-file: $v → {\"version\":\"$v\"}+줄바꿈" "종료 $s 또는 바이트가 다릅니다" "$out$(cat "$vf_dir/out-$v.json" 2>/dev/null)"
+  fi
+done
+[[ -z $(cat "$gho") ]] || fail "version-file: GITHUB_OUTPUT 을 쓰지 않음" "$(cat "$gho")"
+for bad in v1.2.0 1.2 1.2.0-beta 1.2.0.1 "" "1.2.0 "; do
+  rm -f "$vf_dir/bad.json"
+  expect_fail "version-file 거절: '$bad'" "버전 태그 이름이 아닙니다" "$check" version-file "$bad" "$vf_dir/bad.json"
+  [[ ! -e $vf_dir/bad.json ]] || fail "version-file 거절: '$bad' 파일을 만들지 않음" "출력 파일이 생겼습니다"
+done
+expect_fail "version-file: 상위 폴더 없음(쓰기 실패)" "::error::버전 파일을 쓰지 못했습니다" \
+  "$check" version-file 1.2.0 "$vf_dir/missing/SimLauncher-version.json"
+for args in "1.2.0" "1.2.0 $vf_dir/a.json extra"; do
+  # shellcheck disable=SC2086 # 인자 개수를 바꾸려고 일부러 나눈다
+  run "$check" version-file $args
+  if ((s == 2)) && [[ ! -e $vf_dir/a.json ]]; then ok "version-file: 인자 $(wc -w <<<"$args" | tr -d ' ')개 → 종료 2"; else
+    fail "version-file: 인자 $(wc -w <<<"$args" | tr -d ' ')개 → 종료 2" "종료 $s" "$out"
+  fi
+done
+
+run "$check" version-file-check 1.2.0 "$vf_dir/expected-1.2.0"
+if ((s == 0)); then ok "version-file-check: 생성기 출력과 같은 내용 통과"; else
+  fail "version-file-check: 생성기 출력과 같은 내용 통과" "종료 $s" "$out"
+fi
+expect_fail "version-file-check: 버전 불일치 실패" '내용이 {"version":"1.3.0"} 가 아닙니다' \
+  "$check" version-file-check 1.3.0 "$vf_dir/expected-1.2.0"
+printf '{"version":"1.2.0","sha256":"x"}\n' >"$vf_dir/extra-key.json"
+expect_fail "version-file-check: 키가 더 있으면 실패" "가 아닙니다" "$check" version-file-check 1.2.0 "$vf_dir/extra-key.json"
+printf '"1.2.0"\n' >"$vf_dir/string.json"
+expect_fail "version-file-check: 객체 아님 실패" "가 아닙니다" "$check" version-file-check 1.2.0 "$vf_dir/string.json"
+printf 'Not Found' >"$vf_dir/not-json"
+expect_fail "version-file-check: JSON 아님 실패" "JSON 으로 읽지 못했습니다" "$check" version-file-check 1.2.0 "$vf_dir/not-json"
+expect_fail "version-file-check: 버전 인자 형식 오류 실패" "버전 태그 이름이 아닙니다" \
+  "$check" version-file-check v1.2.0 "$vf_dir/expected-1.2.0"
+expect_fail "version-file-check: 파일 없음 실패" "버전 파일이 없습니다" "$check" version-file-check 1.2.0 "$vf_dir/none.json"
+run "$check" version-file-check 1.2.0
+if ((s == 2)); then ok "version-file-check: 인자 1개 → 종료 2"; else fail "version-file-check: 인자 1개 → 종료 2" "종료 $s" "$out"; fi
 
 if ((failures > 0)); then
   echo "FAIL 릴리스 도우미 테스트 ${failures}개 실패 (통과 ${passes}개)"

@@ -5,6 +5,7 @@ import AppLogInterface
 import LauncherFeature
 import ScreenLayoutImpl
 import SetupFeature
+import UpdateFeature
 
 /// 앱 종료 요청(⌘Q·메뉴·로그아웃)을 받는다. 런타임 설치 중도 Android 도구 설치 중도 녹화 중도 아니고 iOS 레이아웃 러너도 없으면 바로 끝낸다.
 /// 묻는 순서: 런타임 설치가 준비·내려받기 중이면 먼저 그 확인 대화상자, 그다음 Android 도구 설치가 받기·확인·풀기 중이면
@@ -35,6 +36,10 @@ import SetupFeature
 /// iOS 는 Simulator 안의 그 앱도 꺼지고 (SimLauncher 종료 때 앱이 같이 꺼지는 것은 수용한 동작이다), Android 는 adb 와 기기 안
 /// logcat 만 끝나고 에뮬레이터 안의 앱은 남는다(측정). 비정상 종료면 이 경로를 거치지 않지만 iOS 는 받는 쪽 파이프가 닫혀 simctl 이
 /// 끝나고 앱도 꺼진다(측정). Android 의 기기 안 logcat 이 그때 끝나는지는 확인하지 못했다.
+/// 업데이트 확인은 종료 요청 때 묻지도 기다리지도 않는다 (받는 것이 메모리뿐이고 남는 파일이 없다).
+/// 업데이트 자동 확인: 실행(`applicationDidFinishLaunching`)과 다른 앱에서 돌아올 때(`applicationDidBecomeActive`) `UpdateModel` 에
+/// 알린다. 메인 창 View 가 아니라 여기서 받는 이유는 메인 창을 닫아도(앱은 켜져 있음) 돌아야 해서다. 조건(설정·24시간·1시간)과
+/// 겹침(실행 직후 두 알림이 겹쳐도 요청 하나)은 Model 이 정한다. SimLauncher 의 창끼리 옮겨 다니는 것은 활성화가 아니다.
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
   /// App 이 `init` 에서 넣는다. 없으면 설치를 보지 않는다.
@@ -49,11 +54,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   var appLog: (any AppLogClient)?
   /// App 이 `init` 에서 넣는다. 없으면 iOS 레이아웃 러너를 멈추지 않는다 (`hasActiveIOSRunners`·`stopAllIOSRunners()` 만 쓴다).
   var screenLayout: ScreenLayoutClientImpl?
+  /// App 이 `init` 에서 넣는다. 없으면 업데이트를 자동 확인하지 않는다.
+  var updateModel: UpdateModel?
   /// 녹화 저장·설치가 끝나기를 기다리는 중. 그동안 온 종료 요청은 거절한다 (기다림이 끝나면 앱이 스스로 종료한다).
   private var isWaitingToTerminate = false
   /// 녹화·설치를 기다리는 종료에서 러너 정리(5초 상한)를 이미 기다렸다. 다시 종료할 때 상한을 한 번 더 쓰지 않는다
   /// (그때까지 멈추지 않은 러너는 SIGTERM 을 받았거나 10분 유휴 제한으로 끝나고, 남은 앱은 다음 켜짐 정리가 지운다).
   private var didWaitForLayoutRunners = false
+
+  /// 앱을 켰다: 업데이트 자동 확인 조건이면 확인한다 (기다리지 않는다).
+  func applicationDidFinishLaunching(_ notification: Notification) {
+    guard let updateModel = self.updateModel else { return }
+    Task { await updateModel.appLaunched() }
+  }
+
+  /// 다른 앱에서 SimLauncher 로 돌아왔다: 요청 없이 배너를 다시 판정하고, 자동 확인 조건이면 확인한다 (기다리지 않는다).
+  func applicationDidBecomeActive(_ notification: Notification) {
+    guard let updateModel = self.updateModel else { return }
+    Task { await updateModel.appBecameActive() }
+  }
 
   func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
     guard !self.isWaitingToTerminate else { return .terminateCancel }

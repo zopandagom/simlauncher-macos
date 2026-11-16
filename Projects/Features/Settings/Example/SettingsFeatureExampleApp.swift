@@ -67,6 +67,8 @@ enum ExampleScenario: CaseIterable, Hashable {
   case sdkPickReadOnlySDK
   case sdkPickOtherContents
   case sdkPickUnsupportedVolume
+  case updateLocked
+  case updateUnavailable
 
   var title: String {
     switch self {
@@ -88,6 +90,8 @@ enum ExampleScenario: CaseIterable, Hashable {
     case .sdkPickReadOnlySDK: "SDK 위치 고르기: 쓸 수 없는 SDK 폴더"
     case .sdkPickOtherContents: "SDK 위치 고르기: 다른 파일이 든 폴더"
     case .sdkPickUnsupportedVolume: "SDK 위치 고르기: exFAT 디스크"
+    case .updateLocked: "업데이트: 자동 확인 관리자 잠금 (끔)"
+    case .updateUnavailable: "업데이트: 배포 저장소 없는 빌드 (절 없음)"
     }
   }
 
@@ -105,9 +109,13 @@ enum ExampleScenario: CaseIterable, Hashable {
     let androidSDK = AndroidSDKClientFake()
     androidSDK.setDelay(.milliseconds(500))
     androidSDK.setCandidateResult(self.candidateResult)
+    if self == .updateLocked {
+      preferences.setStoredAutomaticUpdateCheck(false, isLocked: true)
+    }
     return SettingsModel(
       preferences: preferences, download: download, androidSDK: androidSDK,
-      home: URL(filePath: "/Users/example", directoryHint: .isDirectory), androidSDKLocationChanged: {}
+      home: URL(filePath: "/Users/example", directoryHint: .isDirectory),
+      isUpdateCheckAvailable: self != .updateUnavailable, androidSDKLocationChanged: {}
     )
   }
 
@@ -142,7 +150,7 @@ enum ExampleScenario: CaseIterable, Hashable {
   private var fetchResult: Result<Data, DownloadError> {
     switch self {
     case .empty, .sample, .withProblems, .locked, .checking, .sdkChosen, .sdkLocked, .sdkInvalid, .sdkPickSDK,
-         .sdkPickReadOnlySDK, .sdkPickOtherContents, .sdkPickUnsupportedVolume:
+         .sdkPickReadOnlySDK, .sdkPickOtherContents, .sdkPickUnsupportedVolume, .updateLocked, .updateUnavailable:
       .success(ExampleCatalog.valid)
     case .notCatalog: .success(ExampleCatalog.loginPage)
     case .newerSchema: .success(ExampleCatalog.newerSchema)

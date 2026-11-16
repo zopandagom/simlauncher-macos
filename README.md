@@ -31,10 +31,10 @@
 **회사 빌드 목록**: 빌드 저장소 주소를 담은 `catalog.json` 하나를 등록하면 앱 이름·버전을 골라 설치할 수 있어요 ([규격](docs/CATALOG.md), GitHub Actions 예시 포함).
 
 ### 기술적으로 신경 쓴 점
-- **모듈 구조**: Tuist 로 Feature 7개 · Client 12개(Interface / Impl / Testing) · Shared 로 나누고, 규칙 기반 단방향 MV 를 썼어요. 모듈 경계는 빌드와 lint 로 지켜요: Feature 끼리 의존하지 못하게 Tuist 템플릿이 막고, 부수효과(`Process`·네트워크·UserDefaults 등)는 Client Impl 에서만, Impl 은 App 에서만 import 하도록 SwiftLint 사용자 규칙으로 만들어 커밋 훅과 CI 에서 검사해요.
+- **모듈 구조**: Tuist 로 Feature 8개 · Client 13개(Interface / Impl / Testing) · Shared 로 나누고, 규칙 기반 단방향 MV 를 썼어요. 모듈 경계는 빌드와 lint 로 지켜요: Feature 끼리 의존하지 못하게 Tuist 템플릿이 막고, 부수효과(`Process`·네트워크·UserDefaults 등)는 Client Impl 에서만, Impl 은 App 에서만 import 하도록 SwiftLint 사용자 규칙으로 만들어 커밋 훅과 CI 에서 검사해요.
 - **안전한 동시성과 테스트**: Swift 6 strict concurrency. Feature 는 Fake Client 로, Client Impl·도메인 규칙(Core)은 단위 테스트로 검증해 테스트가 약 2,400개예요.
 - **외부 도구 다루기**: `simctl`·Android `emulator`·`adb` 를 `Process` 로 실행하고, 켜는 중·끄는 중·실패·취소 같은 상태를 화면에 그대로 보여요. Android SDK 는 Google 저장소에서 필요한 패키지만 받아 Android Studio 와 같은 형식으로 설치해, Studio 와 함께 써도 다시 받지 않아요.
-- **배포**: 버전 태그를 push 하면 GitHub Actions 가 Developer ID 서명 → Apple 공증 → staple → 검사까지 마친 dmg 를 만들고, 이전 버전 이후 머지된 PR 목록과 Claude 가 요약한 바뀐 점으로 노트를 써서 GitHub Releases 에 게시해요. 같은 절차를 로컬에서 `make release` 로도 돌릴 수 있어요 ([RELEASING.md](docs/RELEASING.md)).
+- **배포**: 버전 태그를 push 하면 GitHub Actions 가 Developer ID 서명 → Apple 공증 → staple → 검사까지 마친 dmg 와 업데이트 알림용 버전 파일을 만들고, 이전 버전 이후 머지된 PR 목록과 Claude 가 요약한 바뀐 점으로 노트를 써서 GitHub Releases 에 게시해요. 같은 절차를 로컬에서 `make release` 로도 돌릴 수 있어요 ([RELEASING.md](docs/RELEASING.md)).
 - **개발 흐름**: main 직접 커밋을 막는 git 훅, PR 마다 lint·테스트 CI 와 자동 코드 리뷰, 문서([아키텍처](docs/ARCHITECTURE.md)·[규칙](docs/CONVENTIONS.md)·[로드맵](docs/DEVELOPMENT_PLAN.md))를 코드와 같은 PR 에서 고치는 방식으로 개발했어요. [Claude Code](https://claude.com/claude-code) 와 함께 개발하며, 작업 규칙과 리뷰 흐름을 레포에 정의해 두었어요([CLAUDE.md](CLAUDE.md), `.claude/skills`).
 
 ### 앞으로 개선할 점
@@ -48,7 +48,7 @@
 
 ![기기 목록](docs/media/device-list.png)
 
-**바로 가기**: [준비물](#준비물) · [설치하기](#설치하기) · [처음 실행하기](#처음-실행하기) · [사용법](#사용법) · [Android 기기 쓰기](#android-기기-쓰기) · [회사 빌드 목록 연결하기](#회사-빌드-목록-연결하기) · [문제가 생겼을 때](#문제가-생겼을-때) · [개발자 안내](#개발자-안내)
+**바로 가기**: [준비물](#준비물) · [설치하기](#설치하기) · [새 버전 알림 받고 업데이트하기](#새-버전-알림-받고-업데이트하기) · [처음 실행하기](#처음-실행하기) · [사용법](#사용법) · [Android 기기 쓰기](#android-기기-쓰기) · [회사 빌드 목록 연결하기](#회사-빌드-목록-연결하기) · [문제가 생겼을 때](#문제가-생겼을-때) · [개발자 안내](#개발자-안내)
 
 ## 준비물
 - **macOS 26 이상**인 Mac
@@ -63,6 +63,19 @@
    ![dmg 창](docs/media/install-dmg.png)
 
 3. 응용 프로그램 폴더에서 SimLauncher 를 여세요. 인터넷에서 받은 앱이라 처음 한 번 "열겠습니까?" 하고 물어보면 **열기** 를 누르면 돼요. Apple 의 공증을 받은 앱이라 다른 경고 없이 열려요.
+
+### 새 버전 알림 받고 업데이트하기
+SimLauncher 는 새 버전이 나왔는지 스스로 확인해서 알려 드려요. 앱을 새 버전으로 바꾸는 일은 직접 해요(자동으로 바꾸지 않아요).
+
+- **자동 확인**: SimLauncher 를 켤 때와 다른 앱에서 SimLauncher 로 돌아올 때, 마지막 확인에서 하루가 지났으면 GitHub 에서 최신 버전 정보를 받아요. GitHub 에 닿지 못했으면(인터넷 연결이 끊겼을 때 등) 한 시간 뒤 다시 해 봐요.
+- **배너**: 새 버전이 있으면 메인 창 위쪽에 "새 버전이 나왔습니다: SimLauncher 1.4.0 (지금 1.3.0)" 처럼 배너가 보여요. 앱을 껐다 켜도(인터넷이 없어도) 배너는 남아 있고, 새 버전으로 업데이트하면 사라져요. 자동 확인을 끈 동안은 다시 켤 때 배너가 보이지 않아요.
+  - **다운로드 페이지 열기**: 브라우저로 GitHub Releases 의 최신 버전 페이지를 열어요.
+  - **이 버전 건너뛰기**: 그 버전은 배너로 더 알리지 않아요. 더 새 버전이 나오면 다시 알려요.
+  - **×**(하루 동안 숨기기): 그 버전의 배너를 하루 동안 숨겨요. 그사이 더 새 버전이 나오면 바로 보여요.
+- **직접 확인**: 메뉴 막대의 **SimLauncher > 업데이트 확인…** 을 누르면 작은 창이 열려 결과(새 버전, 최신 버전을 쓰고 있음, 확인하지 못한 이유)를 보여요. 건너뛰었거나 숨긴 버전도 이 창에는 보이고(배너는 다시 나타나지 않아요), 창에서 다운로드 페이지를 열거나 건너뛸 수 있어요. 확인하는 동안 **닫기** 를 눌러도 확인은 끝까지 진행되고, 새 버전이면 메인 창 위쪽에 알려요.
+- **자동 확인 끄기**: **SimLauncher > 설정…**(⌘,) 의 **업데이트** 에서 **새 버전을 자동으로 확인** 을 끄세요. 꺼도 **업데이트 확인…** 으로 직접 확인할 수 있어요. 끄기 직전에 이미 시작된 확인이 있었다면 그 결과는 한 번 배너로 보일 수 있어요. 회사에서 미리 정해 두었다면 "관리자가 정한 설정이라 이 Mac 에서 바꿀 수 없습니다." 가 보여요.
+- **업데이트하기**: 다운로드 페이지에서 새 `SimLauncher-<버전>.dmg` 를 내려받아 열고, SimLauncher 를 종료한 뒤 **SimLauncher** 아이콘을 **Applications**(응용 프로그램) 폴더로 끌어다 놓아 대치하세요([설치하기](#설치하기) 2번과 같아요). 설정과 등록한 카탈로그는 그대로 남아요.
+- 확인할 때 쓰는 인터넷은 [인터넷은 언제 쓰나요?](#인터넷은-언제-쓰나요)를 보세요.
 
 ## 처음 실행하기
 SimLauncher 창 왼쪽 사이드바에는 **iOS** 와 **Android** 가 있고, 처음에는 iOS 칸이 열려요. 이 절과 [사용법](#사용법)은 iOS 기기 이야기예요. Android 는 [Android 기기 쓰기](#android-기기-쓰기)를 보세요.
@@ -370,10 +383,12 @@ https://github.com/zopandagom/simlauncher-macos/releases/download/sample-catalog
 | "서버가 로그인이나 접근 권한을 요구해 받지 못했습니다" 가 떠요 | 로그인이 필요한 주소는 쓸 수 없어요. 로그인 없이 받을 수 있는 주소를 담당자에게 요청하세요. |
 | "https:// 로 시작하는 주소만 …" 이 떠요 | `http://` 주소는 쓸 수 없어요. `https://` 주소를 써 주세요. |
 | 카탈로그가 "형식이 맞지 않아 읽지 않았습니다", "카탈로그(JSON 객체)로 읽지 못했습니다" 라고 해요 | 주소가 로그인 페이지 같은 웹 페이지가 아니라 `catalog.json` 파일을 바로 가리키는지 확인하세요. 주소가 맞다면 카탈로그를 만든 분께 알려 주세요. |
-| "이 카탈로그는 이 앱보다 새 규격 …" 이라고 해요 | SimLauncher 를 [최신 버전](https://github.com/zopandagom/simlauncher-macos/releases/latest)으로 업데이트하세요. |
+| "이 카탈로그는 이 앱보다 새 규격 …" 이라고 해요 | 메뉴 **SimLauncher > 업데이트 확인…** 으로 새 버전을 확인하고, SimLauncher 를 [최신 버전](https://github.com/zopandagom/simlauncher-macos/releases/latest)으로 업데이트하세요 ([새 버전 알림 받고 업데이트하기](#새-버전-알림-받고-업데이트하기)). |
 | 설치 뒤 "앱이 시작되지 않았거나 시작하자마자 종료되었습니다" 가 떠요 | 시뮬레이터 화면에서 앱 아이콘을 눌러 다시 실행해 보세요. 계속 그렇다면 앱 개발자에게 알려 주세요. |
 | 기기를 끄거나 초기화·삭제할 수 없어요 | 녹화 중이라면 녹화를 먼저 멈춰 주세요. 초기화·삭제는 기기를 끈 뒤에 할 수 있어요. "사용할 수 없음" 기기는 초기화할 수 없고 삭제만 할 수 있어요. |
 | **설치된 앱…** 이 꺼져 있어요 | 켜진 기기에서만 쓸 수 있어요. 기기가 다 켜진 뒤, 그 기기의 설치·실행·링크 열기가 끝나면 눌러 보세요(줄에 진행 표시가 있으면 아직 진행 중이에요). Android 도 같아요. |
+| 업데이트 확인 창에 "업데이트를 확인하지 못했습니다" 와 "요청이 거절되었습니다…" 가 떠요 | 회사 네트워크라면 프록시·방화벽이 `github.com`·`githubusercontent.com` 접속을 막고 있지 않은지 확인하고 잠시 뒤 다시 시도하세요. 창의 **다운로드 페이지 열기** 로 최신 버전을 직접 확인할 수도 있어요. |
+| 업데이트 확인 창에 "최신 릴리스에서 버전 정보를 찾지 못했습니다." 가 떠요 | 배포 저장소의 최신 릴리스에 버전 파일이 없을 때예요(포크해 직접 배포한다면 [RELEASING.md](docs/RELEASING.md) 1절). 창의 **다운로드 페이지 열기** 로 직접 확인하세요. |
 | 레이아웃 창에 "iOS 레이아웃 보기를 준비하지 못했습니다" 나 "Xcode 가 준비되지 않아…" 가 떠요 | 오른쪽 위 **개발 환경** 을 눌러 Xcode 설치·라이선스 동의·첫 실행 준비가 끝났는지 확인하세요. 기기가 다 켜진 뒤 레이아웃 창의 **다시 시도** 를 누르세요. |
 
 받기·카탈로그 문제(위 표의 주소·로그인·https·카탈로그 형식 줄)는 Android 에서도 같아요. Android 에서만 만나는 경우는 아래와 같아요.
@@ -392,11 +407,12 @@ https://github.com/zopandagom/simlauncher-macos/releases/download/sample-catalog
 | "기기의 저장 공간이 부족합니다" 가 떠요 | 줄의 **설치된 앱…** 에서 쓰지 않는 앱을 지우거나 기기를 초기화한 뒤 다시 설치하세요. |
 
 ## 인터넷은 언제 쓰나요?
-SimLauncher 는 아래 다섯 가지 경우에만 인터넷을 써요.
+SimLauncher 는 아래 여섯 가지 경우에만 인터넷을 써요.
 - 등록한 빌드 카탈로그(`catalog.json`)를 받을 때
 - 고르거나 입력한 주소에서 앱 빌드(iOS 는 .app 또는 .app 을 담은 zip, Android 는 .apk)를 받을 때
 - 설치하기로 고른 iOS 시뮬레이터를 Apple 서버에서 받을 때
 - Android 도구(SDK)를 설치하기로 골랐을 때 Google 의 Android SDK 저장소에서 받을 때
+- SimLauncher 새 버전이 있는지 GitHub 에서 확인할 때: 앱을 켤 때와 다른 앱에서 돌아올 때(마지막 확인에서 하루가 지났으면. GitHub 에 닿지 못했으면 한 시간 뒤 다시. 설정에서 끌 수 있어요)와 메뉴 **업데이트 확인…** 을 누를 때 SimLauncher 배포 저장소(`zopandagom/simlauncher-macos`)의 최신 릴리스에 올린 버전 파일(`SimLauncher-version.json`)을 GitHub(`github.com`, 파일은 `release-assets.githubusercontent.com`)에서 받아요. 받은 파일에서는 버전 번호만 쓰고, GitHub 에는 다른 받기와 같은 기본 정보(앱 이름·빌드 번호·macOS 커널 버전, 언어 설정, 접속 IP)만 가요. 다운로드 페이지는 SimLauncher 가 정한 주소를 브라우저가 열어요
 - Android 기기를 켤 때, 그리고 에뮬레이터 창의 지도 같은 기능을 쓸 때 Android 에뮬레이터가 스스로 Google 서버에서 업데이트 정보와 설정을 받을 때 (SimLauncher 가 끌 수 없어요. 사용 통계·오류 보고는 꺼요)
 
 에뮬레이터 안의 Android 는 실제 기기처럼 인터넷을 써요 (테스트하는 앱과 Android 의 Google 서비스). SimLauncher 가 보내는 데이터는 아니에요.
@@ -406,12 +422,14 @@ SimLauncher 는 아래 다섯 가지 경우에만 인터넷을 써요.
 ## 개발자 안내
 SimLauncher 는 공개 레포라서, 어느 회사든 자기 빌드 저장소에 맞춰 쓸 수 있어요.
 
+포크해서 직접 배포한다면 `Tuist/ProjectDescriptionHelpers/Project+Templates.swift` 의 `Env.releaseRepository` 를 자기 GitHub 저장소("<소유자>/<이름>")로 바꾸세요. 업데이트 알림이 그 저장소의 최신 릴리스를 확인해요. 릴리스마다 버전 파일 `SimLauncher-version.json` 이 있어야 해요(릴리스 워크플로가 올려요). 비우면 업데이트 확인 기능(메뉴·배너·설정)이 빠져요. 서명·번들 ID 등 함께 바꿀 값은 [RELEASING.md](docs/RELEASING.md) 2.2 의 4번을 보세요.
+
 ### 기술 스택
 - SwiftUI (규칙 기반 단방향 MV), Swift 6 strict concurrency, macOS 26.0+
 - Tuist 모듈러 아키텍처 (Feature / Client Interface·Impl·Testing / Shared)
 - Foundation `Process` 로 `xcrun simctl`·Android `emulator`·`adb` 등 실행 (Command Client Impl)
-- Foundation `URLSession` 으로 카탈로그·빌드 다운로드와 Android SDK 저장소 목록·패키지 받기 (Download Client Impl. Android SDK 설치는 AndroidSDK Client Impl 이 Download Client 를 거쳐 받는다)
-- Foundation `UserDefaults` 로 사용자 설정(카탈로그 주소, Android SDK 위치, Android SDK 라이선스 동의 기록) 저장 (Preferences Client Impl)
+- Foundation `URLSession` 으로 카탈로그·빌드 다운로드와 Android SDK 저장소 목록·패키지 받기, 업데이트 확인(GitHub 릴리스의 버전 파일) (Download Client Impl. Android SDK 설치는 AndroidSDK Client Impl 이, 업데이트 확인은 UpdateCheck Client Impl 이 Download Client 를 거쳐 받는다)
+- Foundation `UserDefaults` 로 사용자 설정(카탈로그 주소, Android SDK 위치, Android SDK 라이선스 동의 기록, 저장한 로그 필터, 새 버전 자동 확인, 건너뛴 버전·마지막 확인 시각·배너 숨김·받은 최신 버전) 저장 (Preferences Client Impl)
 - AppKit `NSWorkspace` 로 Finder 에서 보이기, Foundation `FileManager` 로 사진·동영상 폴더에 스크린샷·녹화 저장 폴더 준비·파일 이름 예약 (Workspace Client Impl)
 
 ### 시작하기
@@ -425,7 +443,7 @@ make sample      # 샘플 iOS 앱을 시뮬레이터용으로 빌드해 build/Sa
 make catalog-check CATALOG=catalog.json   # catalog.json 하나를 앱과 같은 규칙으로 검사
 make catalog-test  # 샘플 카탈로그 생성기·검증기 회귀 테스트
 make layout-runner-check  # iOS 레이아웃 러너 소스를 내보내 실제로 빌드해 보기 (러너 소스·Xcode 를 바꿀 때, make test·CI 밖)
-make release-scripts-test  # 릴리스 워크플로 도우미 스크립트(태그 검사·노트) 회귀 테스트
+make release-scripts-test  # 릴리스 워크플로 도우미 스크립트(태그 검사·노트·버전 파일 생성) 회귀 테스트
 make release     # 서명·공증 dmg 를 로컬에서 만들기 (예비 경로. 보통은 태그 push 로 워크플로가 게시, 준비: docs/RELEASING.md)
 ```
 

@@ -11,6 +11,16 @@ enum PreferenceKey {
   static let acceptedAndroidLicenses = "AcceptedAndroidLicenses"
   /// 저장한 로그 필터 (사전 배열, 형식은 `LogFilterValue`). docs/CATALOG.md 9절.
   static let logFilters = "LogFilters"
+  /// 새 버전 자동 확인 (Bool, 없으면 켬, 읽을 수 없으면 끔). docs/CATALOG.md 9절.
+  static let automaticUpdateCheck = "AutomaticUpdateCheck"
+  /// 건너뛴 버전 (문자열, `AppVersion.description`). 앱이 기록한다.
+  static let skippedUpdateVersion = "SkippedUpdateVersion"
+  /// 서버가 답한 마지막 업데이트 확인의 시각 (날짜). 앱이 기록한다.
+  static let lastUpdateCheck = "LastUpdateCheck"
+  /// 배너 숨김 (사전 `{ version, dismissedAt }`, 형식은 `UpdatePreferenceValue`). 앱이 기록한다.
+  static let dismissedUpdateBanner = "DismissedUpdateBanner"
+  /// 서버가 답한 마지막 최신 버전 (문자열, `AppVersion.description`). 앱이 기록한다.
+  static let latestKnownUpdateVersion = "LatestKnownUpdateVersion"
 }
 
 /// 설정 저장소. Impl 의 판정(잠금·중복·삭제·상한)을 실제 UserDefaults 없이 테스트하려고 둔다.
@@ -43,6 +53,34 @@ protocol PreferenceStore: Sendable {
   func updateLogFilters(
     _ decide: ([SavedLogFilter?]) throws(PreferencesError) -> SavedLogFilterList.Change?
   ) throws(PreferencesError) -> [SavedLogFilter?]
+
+  /// `AutomaticUpdateCheck` 를 `UpdatePreferenceValue.automaticUpdateCheck(from:)` 로 읽은 값 (키 없음 → 켬, 읽을 수 없음 → 끔).
+  func automaticUpdateCheck() -> Bool
+  func isAutomaticUpdateCheckForced() -> Bool
+  /// Bool 로 쓴다 (키를 지우지 않는다).
+  func setAutomaticUpdateCheck(_ isEnabled: Bool)
+
+  /// `SkippedUpdateVersion` 이 문자열이면 그 값.
+  func skippedUpdateVersion() -> String?
+  func isSkippedUpdateVersionForced() -> Bool
+  func setSkippedUpdateVersion(_ version: String)
+
+  /// `LastUpdateCheck` 가 날짜면 그 값.
+  func lastUpdateCheck() -> Date?
+  func isLastUpdateCheckForced() -> Bool
+  func setLastUpdateCheck(_ date: Date)
+
+  /// `DismissedUpdateBanner` 를 `UpdatePreferenceValue.bannerDismissal(from:)` 로 읽은 값.
+  func updateBannerDismissal() -> UpdateBannerDismissal?
+  func isUpdateBannerDismissalForced() -> Bool
+  /// `UpdatePreferenceValue.plist(for:)` 형식으로 쓴다.
+  func setUpdateBannerDismissal(_ dismissal: UpdateBannerDismissal)
+
+  /// `LatestKnownUpdateVersion` 이 문자열이면 그 값.
+  func latestKnownUpdateVersion() -> String?
+  func isLatestKnownUpdateVersionForced() -> Bool
+  /// nil 이면 키를 지운다.
+  func setLatestKnownUpdateVersion(_ version: String?)
 }
 
 /// UserDefaults 저장소. `UserDefaults` 는 Sendable 이 아니어서 들고 있지 않고, 호출마다 도메인으로 얻는다.
@@ -113,6 +151,71 @@ struct UserDefaultsPreferenceStore: PreferenceStore {
     let written = change.applied(to: raw) { filter -> Any in LogFilterValue.plist(for: filter) }
     defaults.set(written, forKey: PreferenceKey.logFilters)
     return change.applied(to: parsed) { $0 }
+  }
+
+  func automaticUpdateCheck() -> Bool {
+    UpdatePreferenceValue.automaticUpdateCheck(from: self.defaults.object(forKey: PreferenceKey.automaticUpdateCheck))
+  }
+
+  func isAutomaticUpdateCheckForced() -> Bool {
+    self.defaults.objectIsForced(forKey: PreferenceKey.automaticUpdateCheck)
+  }
+
+  /// 끄기·켜기 모두 Bool 로 쓴다. 지우면 `/Library/Preferences` 의 전체 사용자 값이 다시 보인다.
+  func setAutomaticUpdateCheck(_ isEnabled: Bool) {
+    self.defaults.set(isEnabled, forKey: PreferenceKey.automaticUpdateCheck)
+  }
+
+  func skippedUpdateVersion() -> String? {
+    UpdatePreferenceValue.string(from: self.defaults.object(forKey: PreferenceKey.skippedUpdateVersion))
+  }
+
+  func isSkippedUpdateVersionForced() -> Bool {
+    self.defaults.objectIsForced(forKey: PreferenceKey.skippedUpdateVersion)
+  }
+
+  func setSkippedUpdateVersion(_ version: String) {
+    self.defaults.set(version, forKey: PreferenceKey.skippedUpdateVersion)
+  }
+
+  func lastUpdateCheck() -> Date? {
+    UpdatePreferenceValue.date(from: self.defaults.object(forKey: PreferenceKey.lastUpdateCheck))
+  }
+
+  func isLastUpdateCheckForced() -> Bool {
+    self.defaults.objectIsForced(forKey: PreferenceKey.lastUpdateCheck)
+  }
+
+  func setLastUpdateCheck(_ date: Date) {
+    self.defaults.set(date, forKey: PreferenceKey.lastUpdateCheck)
+  }
+
+  func updateBannerDismissal() -> UpdateBannerDismissal? {
+    UpdatePreferenceValue.bannerDismissal(from: self.defaults.object(forKey: PreferenceKey.dismissedUpdateBanner))
+  }
+
+  func isUpdateBannerDismissalForced() -> Bool {
+    self.defaults.objectIsForced(forKey: PreferenceKey.dismissedUpdateBanner)
+  }
+
+  func setUpdateBannerDismissal(_ dismissal: UpdateBannerDismissal) {
+    self.defaults.set(UpdatePreferenceValue.plist(for: dismissal), forKey: PreferenceKey.dismissedUpdateBanner)
+  }
+
+  func latestKnownUpdateVersion() -> String? {
+    UpdatePreferenceValue.string(from: self.defaults.object(forKey: PreferenceKey.latestKnownUpdateVersion))
+  }
+
+  func isLatestKnownUpdateVersionForced() -> Bool {
+    self.defaults.objectIsForced(forKey: PreferenceKey.latestKnownUpdateVersion)
+  }
+
+  func setLatestKnownUpdateVersion(_ version: String?) {
+    if let version {
+      self.defaults.set(version, forKey: PreferenceKey.latestKnownUpdateVersion)
+    } else {
+      self.defaults.removeObject(forKey: PreferenceKey.latestKnownUpdateVersion)
+    }
   }
 
   private var defaults: UserDefaults {

@@ -257,7 +257,16 @@ enum SettingsTextCatalog {
     texts += SettingsText.message(for: BuildCatalogProblem.notJSONObject).components(separatedBy: "\n")
     texts += [self.line(.invalidID(position: .root), 2), self.line(.missingField(.schemaVersion, position: .root), 2)]
     texts += self.androidSDKTexts
+    texts += self.updateTexts
     return texts
+  }
+
+  /// "업데이트" 절의 문구 (모두 보간 없음).
+  static var updateTexts: [String] {
+    [
+      SettingsText.updateSectionTitle, SettingsText.automaticUpdateCheckToggle,
+      SettingsText.automaticUpdateCheckCaption, SettingsText.automaticUpdateCheckLockedNote,
+    ]
   }
 
   /// 판정 결과 줄의 모든 경우 (후보 × 쓸 수 있음).

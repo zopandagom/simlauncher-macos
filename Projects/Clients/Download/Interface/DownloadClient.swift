@@ -2,7 +2,10 @@ import Core
 import Foundation
 
 /// 사용자가 입력하거나 등록한 HTTPS 주소와, 사용자가 Android 도구 설치를 고를 때 AndroidSDK Client 가 넘기는 Google Android SDK
-/// 저장소 주소(앱이 정한 고정 주소 `dl.google.com/android/repository` 와 그 XML 의 archive)에서 파일을 받는 Client.
+/// 저장소 주소(앱이 정한 고정 주소 `dl.google.com/android/repository` 와 그 XML 의 archive), UpdateCheck Client 가 넘기는
+/// 최신 릴리스 버전 파일 주소(앱이 빌드 설정의 배포 저장소로 정한 고정 주소
+/// `github.com/<저장소>/releases/latest/download/SimLauncher-version.json`, GitHub 의 자산 저장소로 리다이렉트)에서
+/// 파일을 받는 Client.
 /// 네트워크는 이 Client 의 Impl 에서만 쓴다
 /// (lint `network_only_in_download_impl` 과 리뷰, CONVENTIONS §4). 호출마다 따로 받는다 (동시에 여러 개 가능).
 /// 리다이렉트는 https 로만 따라간다. 쿠키·캐시·자격 증명을 쓰거나 남기지 않고, 서버의 인증 요구(Basic·Negotiate 등)에
@@ -23,8 +26,9 @@ public protocol DownloadClient: Sendable {
     onProgress: @escaping @Sendable (DownloadProgress) async -> Void
   ) async throws(DownloadError) -> DownloadedFile
 
-  /// 작은 파일(카탈로그 JSON·Android SDK 저장소 XML)을 메모리로 받는다. 파일을 만들지 않는다. Content-Length 가 `maxBytes` 를 넘으면 본문을 받지 않고,
-  /// 없으면 받는 중 넘는 순간 멈추고 `.tooLarge`. 전체 시간 제한 60초. 취소 규칙은 `download` 와 같다.
+  /// 작은 파일(카탈로그 JSON·Android SDK 저장소 XML·업데이트 확인 버전 파일)을 메모리로 받는다. 파일을 만들지 않는다.
+  /// Content-Length 가 `maxBytes` 를 넘으면 본문을 받지 않고, 없으면 받는 중 넘는 순간 멈추고 `.tooLarge`.
+  /// 전체 시간 제한 60초. 취소 규칙은 `download` 와 같다.
   func fetchData(_ url: DownloadURL, maxBytes: Int) async throws(DownloadError) -> Data
 
   /// `download` 가 만든 폴더를 지운다. 실패는 던지지 않는다 (다음 `removeLeftoverDownloads()` 가 다시 지운다).

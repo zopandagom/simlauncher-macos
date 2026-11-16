@@ -12,6 +12,30 @@ enum StoredLogFilterItem: Hashable, Sendable {
   case unreadable(String)
 }
 
+/// 메모리 저장소의 plist 값 하나 (관리자가 넣을 수 있는 여러 타입을 흉내 낸다). `any` 로 실제 plist 객체를 만든다.
+enum StoredPlistValue: Hashable, Sendable {
+  case bool(Bool)
+  case integer(Int)
+  case string(String)
+  case date(Date)
+  case array([String])
+
+  var any: Any {
+    switch self {
+    case let .bool(value):
+      value
+    case let .integer(value):
+      NSNumber(value: value)
+    case let .string(value):
+      value
+    case let .date(value):
+      value
+    case let .array(value):
+      value
+    }
+  }
+}
+
 /// 메모리 저장소. 읽기·쓰기 각각만 자기 lock 으로 보호하고, 읽기는 값을 복사한 뒤 잠깐 쉬고 돌려준다.
 /// 읽기와 쓰기 사이를 넓혀, Impl 의 lock 이 "읽기 → 판정 → 쓰기" 를 묶지 않으면 동시 추가에서 쓰기를 잃게 한다.
 final class InMemoryPreferenceStore: PreferenceStore {
@@ -28,6 +52,23 @@ final class InMemoryPreferenceStore: PreferenceStore {
     var logFilterItems: [StoredLogFilterItem] = []
     var isLogFiltersForced = false
     var logFiltersSetCount = 0
+    /// `AutomaticUpdateCheck` 원본 값 (nil = 키 없음). 읽을 때 `UpdatePreferenceValue` 로 해석한다.
+    var automaticUpdateCheck: StoredPlistValue?
+    var isAutomaticUpdateCheckForced = false
+    var automaticUpdateCheckSetCount = 0
+    var skippedUpdateVersion: String?
+    var isSkippedUpdateVersionForced = false
+    var skippedUpdateVersionSetCount = 0
+    var lastUpdateCheck: Date?
+    var isLastUpdateCheckForced = false
+    var lastUpdateCheckSetCount = 0
+    var updateBannerDismissal: UpdateBannerDismissal?
+    var isUpdateBannerDismissalForced = false
+    var updateBannerDismissalSetCount = 0
+    var latestKnownUpdateVersion: String?
+    var isLatestKnownUpdateVersionForced = false
+    /// nil 쓰기(지우기)도 센다.
+    var latestKnownUpdateVersionSetCount = 0
   }
 
   private let state: Mutex<State>
@@ -184,6 +225,151 @@ final class InMemoryPreferenceStore: PreferenceStore {
       filter
     case .unreadable:
       nil
+    }
+  }
+}
+
+// MARK: - 업데이트 알림
+
+extension InMemoryPreferenceStore {
+  /// `AutomaticUpdateCheck` 원본 값 (쓰기는 `.bool`).
+  var storedAutomaticUpdateCheck: StoredPlistValue? {
+    self.state.withLock { $0.automaticUpdateCheck }
+  }
+
+  var automaticUpdateCheckSetCount: Int {
+    self.state.withLock { $0.automaticUpdateCheckSetCount }
+  }
+
+  var skippedUpdateVersionSetCount: Int {
+    self.state.withLock { $0.skippedUpdateVersionSetCount }
+  }
+
+  var lastUpdateCheckSetCount: Int {
+    self.state.withLock { $0.lastUpdateCheckSetCount }
+  }
+
+  var updateBannerDismissalSetCount: Int {
+    self.state.withLock { $0.updateBannerDismissalSetCount }
+  }
+
+  /// nil 쓰기(지우기)도 센다.
+  var latestKnownUpdateVersionSetCount: Int {
+    self.state.withLock { $0.latestKnownUpdateVersionSetCount }
+  }
+
+  /// 바깥 변경을 흉내 낸다. 쓰기 횟수에 넣지 않는다.
+  func replaceLatestKnownUpdateVersion(_ version: String?, isForced: Bool) {
+    self.state.withLock { state in
+      state.latestKnownUpdateVersion = version
+      state.isLatestKnownUpdateVersionForced = isForced
+    }
+  }
+
+  /// 바깥 변경을 흉내 낸다. 쓰기 횟수에 넣지 않는다.
+  func replaceAutomaticUpdateCheck(_ value: StoredPlistValue?, isForced: Bool) {
+    self.state.withLock { state in
+      state.automaticUpdateCheck = value
+      state.isAutomaticUpdateCheckForced = isForced
+    }
+  }
+
+  /// 바깥 변경을 흉내 낸다. 쓰기 횟수에 넣지 않는다.
+  func replaceSkippedUpdateVersion(_ version: String?, isForced: Bool) {
+    self.state.withLock { state in
+      state.skippedUpdateVersion = version
+      state.isSkippedUpdateVersionForced = isForced
+    }
+  }
+
+  /// 바깥 변경을 흉내 낸다. 쓰기 횟수에 넣지 않는다.
+  func replaceLastUpdateCheck(_ date: Date?, isForced: Bool) {
+    self.state.withLock { state in
+      state.lastUpdateCheck = date
+      state.isLastUpdateCheckForced = isForced
+    }
+  }
+
+  /// 바깥 변경을 흉내 낸다. 쓰기 횟수에 넣지 않는다.
+  func replaceUpdateBannerDismissal(_ dismissal: UpdateBannerDismissal?, isForced: Bool) {
+    self.state.withLock { state in
+      state.updateBannerDismissal = dismissal
+      state.isUpdateBannerDismissalForced = isForced
+    }
+  }
+
+  func automaticUpdateCheck() -> Bool {
+    UpdatePreferenceValue.automaticUpdateCheck(from: self.state.withLock { $0.automaticUpdateCheck }?.any)
+  }
+
+  func isAutomaticUpdateCheckForced() -> Bool {
+    self.state.withLock { $0.isAutomaticUpdateCheckForced }
+  }
+
+  func setAutomaticUpdateCheck(_ isEnabled: Bool) {
+    self.state.withLock { state in
+      state.automaticUpdateCheck = .bool(isEnabled)
+      state.automaticUpdateCheckSetCount += 1
+    }
+  }
+
+  func skippedUpdateVersion() -> String? {
+    self.state.withLock { $0.skippedUpdateVersion }
+  }
+
+  func isSkippedUpdateVersionForced() -> Bool {
+    self.state.withLock { $0.isSkippedUpdateVersionForced }
+  }
+
+  func setSkippedUpdateVersion(_ version: String) {
+    self.state.withLock { state in
+      state.skippedUpdateVersion = version
+      state.skippedUpdateVersionSetCount += 1
+    }
+  }
+
+  func lastUpdateCheck() -> Date? {
+    self.state.withLock { $0.lastUpdateCheck }
+  }
+
+  func isLastUpdateCheckForced() -> Bool {
+    self.state.withLock { $0.isLastUpdateCheckForced }
+  }
+
+  func setLastUpdateCheck(_ date: Date) {
+    self.state.withLock { state in
+      state.lastUpdateCheck = date
+      state.lastUpdateCheckSetCount += 1
+    }
+  }
+
+  func updateBannerDismissal() -> UpdateBannerDismissal? {
+    self.state.withLock { $0.updateBannerDismissal }
+  }
+
+  func isUpdateBannerDismissalForced() -> Bool {
+    self.state.withLock { $0.isUpdateBannerDismissalForced }
+  }
+
+  func setUpdateBannerDismissal(_ dismissal: UpdateBannerDismissal) {
+    self.state.withLock { state in
+      state.updateBannerDismissal = dismissal
+      state.updateBannerDismissalSetCount += 1
+    }
+  }
+
+  func latestKnownUpdateVersion() -> String? {
+    self.state.withLock { $0.latestKnownUpdateVersion }
+  }
+
+  func isLatestKnownUpdateVersionForced() -> Bool {
+    self.state.withLock { $0.isLatestKnownUpdateVersionForced }
+  }
+
+  func setLatestKnownUpdateVersion(_ version: String?) {
+    self.state.withLock { state in
+      state.latestKnownUpdateVersion = version
+      state.latestKnownUpdateVersionSetCount += 1
     }
   }
 }

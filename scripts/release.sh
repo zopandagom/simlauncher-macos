@@ -1,6 +1,7 @@
 #!/bin/bash
 # 배포 dmg 를 만든다: 사전 확인 → archive → Developer ID 내보내기 → 앱 서명 검사 → (사용자 확인) →
-# 앱 공증·staple → dmg 만들기·서명 → dmg 공증·staple → 최종 검사 → 배포 이름으로 옮기기. 준비·절차·실패별 할 일: docs/RELEASING.md
+# 앱 공증·staple → dmg 만들기·서명 → dmg 공증·staple → 최종 검사 → 배포 이름으로 옮기기 → 업데이트 알림용 버전 파일
+# (build/release/SimLauncher-version.json). 준비·절차·실패별 할 일: docs/RELEASING.md
 #
 # 입력 환경 변수 (docs/RELEASING.md 4절):
 #   로컬(기본): NOTARY_PROFILE(공증 키체인 프로필 이름, 필수), WORKSPACE(기본 SimLauncher.xcworkspace).
@@ -164,6 +165,10 @@ if settings_json=$(xcodebuild -showBuildSettings -workspace "$WORKSPACE" -scheme
   [[ -n $TEAM ]] || PREFLIGHT_ERRORS+=("P1 Env.developmentTeam 이 비어 있습니다 (Tuist/ProjectDescriptionHelpers/Project+Templates.swift).")
   [[ $hardened_runtime == YES ]] || PREFLIGHT_ERRORS+=("P1 앱 타깃의 ENABLE_HARDENED_RUNTIME 이 YES 가 아닙니다(실제: '$hardened_runtime'). 공증에 필요합니다 (Env.appTargetSettings).")
   [[ -n $MARKETING_VERSION && -n $BUILD_NUMBER ]] || PREFLIGHT_ERRORS+=("P1 버전(MARKETING_VERSION)이나 빌드 번호(CURRENT_PROJECT_VERSION)가 비어 있습니다 (Env.marketingVersion·Env.buildNumber).")
+  # 버전은 릴리스 태그·업데이트 알림 버전 파일 값과 같은 형식이어야 한다(.github/scripts/release-check.sh 의 TAG_RE).
+  # 공증 뒤 12단계의 버전 파일 만들기에서야 실패하지 않게 여기서 먼저 본다
+  [[ -z $MARKETING_VERSION || $MARKETING_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] \
+    || PREFLIGHT_ERRORS+=("P1 버전(MARKETING_VERSION)이 <major>.<minor>.<patch> 가 아닙니다(실제: '$MARKETING_VERSION'). 릴리스 태그와 업데이트 알림 버전 파일에 그대로 씁니다 (Env.marketingVersion).")
 else
   PREFLIGHT_ERRORS+=("P1 $SCHEME 타깃의 빌드 설정을 읽지 못했습니다. make project 가 성공하는지 확인하세요.")
 fi
@@ -561,9 +566,16 @@ fi
 mv "$WORK_DMG" "$DMG" \
   || fail 1 "검사를 통과한 dmg 를 배포 이름으로 옮기지 못했습니다." \
     "검사를 통과한 dmg 는 $WORK_DMG 에 있습니다. 이름을 $DMG 로 바꾸면 됩니다."
+# 앱의 업데이트 알림이 latest Release 에서 받는 버전 파일. dmg 와 함께 게시한다(release.yml publish, RELEASING 3.2).
+# 이름은 Core ReleaseRepository.versionFileName 과 같다. 0단계가 $OUT 을 지우므로 옛 파일이 남지 않는다
+VERSION_FILE_OUT="$OUT/SimLauncher-version.json"
+.github/scripts/release-check.sh version-file "$VERSION" "$VERSION_FILE_OUT" \
+  || fail 1 "업데이트 알림용 버전 파일을 만들지 못했습니다: $VERSION_FILE_OUT" \
+    "dmg 는 완성됐습니다($DMG). .github/scripts/release-check.sh version-file $VERSION $VERSION_FILE_OUT 로 직접 만든 뒤 dmg 와 함께 게시하세요."
 
 STEP=""
 echo
 shasum -a 256 "$DMG" \
   || echo "경고: SHA-256 을 구하지 못했습니다. shasum -a 256 $DMG 로 직접 구하세요 (Release 노트·게시 확인에 씁니다)." >&2
 echo "완료: $DMG"
+echo "버전 파일: $VERSION_FILE_OUT"
