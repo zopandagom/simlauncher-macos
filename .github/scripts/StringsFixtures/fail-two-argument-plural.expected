@@ -1,0 +1,1 @@
+.github/scripts/StringsFixtures/fail-two-argument-plural.json	"기기 %lld대 중 %lld대를 켰습니다"	원문의 인자가 2개인 키에 최상위 variations.plural 을 씁니다 (인자 하나만 복수형으로 고르려면 substitutions 를 쓰세요)

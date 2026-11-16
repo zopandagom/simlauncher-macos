@@ -1,0 +1,22 @@
+{
+  "sourceLanguage" : "ko",
+  "strings" : {
+    "완료 100%%" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "완료 100%%"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done 100%"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

@@ -1,0 +1,22 @@
+{
+  "sourceLanguage" : "ko",
+  "strings" : {
+    "설치" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "설치"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "  "
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

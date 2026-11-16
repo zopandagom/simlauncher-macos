@@ -1,0 +1,1 @@
+.github/scripts/StringsFixtures/fail-plural-required.json	"기기 %lld대를 켜지 못했습니다"	복수형 목록(xcstrings-plural-keys.txt)의 키인데 en 에 variations.plural 도 substitutions 도 없습니다

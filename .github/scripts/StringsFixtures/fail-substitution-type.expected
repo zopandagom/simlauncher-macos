@@ -1,0 +1,3 @@
+.github/scripts/StringsFixtures/fail-substitution-type.json	"기기 %lld대 중 %lld대를 켰습니다"	en 의 인자 1 이 %@ 입니다 (원문은 %lld)
+.github/scripts/StringsFixtures/fail-substitution-type.json	"기기 %lld대 중 %lld대를 켰습니다"	en substitutions.devices.one 의 인자 1 이 %@ 입니다 (원문은 %lld)
+.github/scripts/StringsFixtures/fail-substitution-type.json	"기기 %lld대 중 %lld대를 켰습니다"	en substitutions.devices.other 의 인자 1 이 %@ 입니다 (원문은 %lld)

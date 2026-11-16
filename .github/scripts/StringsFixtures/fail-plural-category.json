@@ -1,0 +1,28 @@
+{
+  "sourceLanguage" : "ko",
+  "strings" : {
+    "기기 %lld대를 켜지 못했습니다" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기기 %lld대를 켜지 못했습니다"
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Couldn't start %lld devices"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

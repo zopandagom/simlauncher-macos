@@ -51,7 +51,8 @@ jobs:
   # lint 는 macOS 러너보다 빨리 뜨는 Ubuntu 컨테이너에서 먼저 돌려, 실패하면 macOS 테스트를 건너뛴다.
   # 버전은 .mise.toml 과 맞춘다.
   # SwiftFormat·SwiftLint 위반은 Checks API 로 "lint 결과" 체크에 어노테이션으로 올려 PR 의 Files changed 에서 해당 줄에 전부 표시한다.
-  # String Catalog stale 표시는 ::error 워크플로 명령으로 올린다. 판정은 SwiftFormat·SwiftLint·String Catalog stale 표시 단계의 종료 코드가 한다.
+  # String Catalog stale 표시와 영어 값 위반은 ::error 워크플로 명령으로 올린다. 판정은 SwiftFormat·SwiftLint·String Catalog stale 표시·
+  # String Catalog 영어 값 단계의 종료 코드가 한다.
   lint:
     needs: changes
     if: ${{ needs.changes.outputs.code == 'true' }}
@@ -91,6 +92,11 @@ jobs:
             done < build/stale.txt
             exit 1
           fi
+      - name: String Catalog 영어 값
+        # make strings-check 와 같은 검사(항목마다 en 값: 빠짐·빈 값·state·한글·포맷 지정자·복수형, .github/scripts/check-xcstrings.sh).
+        # 위반마다 어노테이션으로 올린다.
+        if: ${{ !cancelled() }}
+        run: .github/scripts/check-xcstrings.sh --github
       - name: lint 결과 어노테이션
         if: ${{ !cancelled() }}
         run: .github/scripts/annotate-lint.sh build/swiftformat.json build/swiftlint.json

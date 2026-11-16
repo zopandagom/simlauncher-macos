@@ -1,0 +1,81 @@
+{
+  "sourceLanguage" : "ko",
+  "strings" : {
+    "설치" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "설치"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Install"
+          }
+        }
+      }
+    },
+    "%lld번째 앱(id: %@)" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld번째 앱(id: %@)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(id: %2$@) app %1$lld"
+          }
+        }
+      }
+    },
+    "%@의 %@" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@의 %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%2$@ of %1$@"
+          }
+        }
+      }
+    },
+    "곧은 따옴표(\")로 바꾸세요\n둘째 줄" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "곧은 따옴표(\")로 바꾸세요\n둘째 줄"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use straight quotes (\")\nSecond line"
+          }
+        }
+      }
+    },
+    "안 옮김" : {
+      "shouldTranslate" : false,
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "안 옮김"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

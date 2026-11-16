@@ -1,0 +1,5 @@
+# 픽스처용 복수형 목록 (make strings-check-test). 모듈 이름 = 픽스처 파일 이름에서 확장자를 뺀 것
+pass-plural	기기 %lld대를 켜지 못했습니다
+pass-substitutions	기기 %lld대 중 %lld대를 켰습니다
+fail-plural-required	기기 %lld대를 켜지 못했습니다
+fail-plural-list-absent	기기 %lld대를 켜지 못했습니다

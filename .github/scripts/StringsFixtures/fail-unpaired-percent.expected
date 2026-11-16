@@ -1,0 +1,1 @@
+.github/scripts/StringsFixtures/fail-unpaired-percent.json	"완료 100%%"	en: 짝 없는 % 가 있습니다 (글자 % 는 %% 로 씁니다)
