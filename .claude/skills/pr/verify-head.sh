@@ -9,7 +9,10 @@
 #   - 카탈로그 생성기·검증기·픽스처(.github/scripts)와 검증기가 컴파일하는 Core 소스, Makefile: make catalog-test
 #   - 릴리스 워크플로 도우미 스크립트·테스트·픽스처(.github/scripts/release-*·test-release-scripts.sh·Fixtures/release/), Makefile:
 #     make release-scripts-test (make test 가 이미 있으면 넣지 않는다. make test 가 포함한다)
-#   - 같은 검사는 한 번만, 순서는 lint → test → sample → catalog-test → release-scripts-test
+#   - String Catalog 영어 값 검사기·복수형 목록·픽스처(.github/scripts/check-xcstrings.*·xcstrings-plural-keys.txt·StringsFixtures/), Makefile:
+#     make strings-check(바뀐 규칙으로 실제 카탈로그를 본다. make lint 가 이미 있으면 넣지 않는다. make lint 가 포함한다)와
+#     make strings-check-test (make test 가 이미 있으면 넣지 않는다. make test 가 포함한다)
+#   - 같은 검사는 한 번만, 순서는 lint → test → sample → catalog-test → release-scripts-test → strings-check → strings-check-test
 #   - .githooks/: make test-hooks
 #   - scripts/ 의 셸 스크립트: scripts/*.sh 를 파일마다 bash -n (bash -n a.sh b.sh 는 a.sh 만 검사하므로 하나씩)
 #   - .claude/settings.json: JSON 문법
@@ -31,13 +34,18 @@ build_paths='^(Projects/|Tuist/|Workspace\.swift|Tuist\.swift|Makefile|\.mise\.t
 sample_paths='^(Examples/|Makefile|\.mise\.toml|Tuist\.swift|Tuist/)'
 catalog_paths='^(\.github/scripts/(validate-catalog\.swift|sample-catalog\.sh|Fixtures/)|Projects/Shared/Core/Sources/|Makefile)'
 release_paths='^(\.github/scripts/(release-[a-z-]+\.(sh|md)|test-release-scripts\.sh|Fixtures/release/)|Makefile)'
+strings_paths='^(\.github/scripts/(check-xcstrings\.(sh|jq)|xcstrings-plural-keys\.txt|StringsFixtures/)|Makefile)'
+lint_paths="$build_paths|^Examples/|^\.github/scripts/.*\.swift$"
 checks=()
-grep -Eq "$build_paths|^Examples/|^\.github/scripts/.*\.swift$" <<<"$files" && checks+=("make lint")
+grep -Eq "$lint_paths" <<<"$files" && checks+=("make lint")
 grep -Eq "$build_paths" <<<"$files" && checks+=("make test")
 grep -Eq "$sample_paths" <<<"$files" && checks+=("make sample")
 grep -Eq "$catalog_paths" <<<"$files" && checks+=("make catalog-test")
 grep -Eq "$release_paths" <<<"$files" && ! grep -Eq "$build_paths" <<<"$files" &&
   checks+=("make release-scripts-test")
+grep -Eq "$strings_paths" <<<"$files" && ! grep -Eq "$lint_paths" <<<"$files" && checks+=("make strings-check")
+grep -Eq "$strings_paths" <<<"$files" && ! grep -Eq "$build_paths" <<<"$files" &&
+  checks+=("make strings-check-test")
 grep -q '^\.githooks/' <<<"$files" && checks+=("make test-hooks")
 # 스크립트를 지워 남은 파일이 없으면 글롭이 그대로 남으므로 건너뛴다.
 grep -Eq '^scripts/[^/]+\.sh$' <<<"$files" &&

@@ -17,11 +17,12 @@ CI(`.github/workflows/ci.yml`)와 같은 Makefile 타깃으로 검증한다. 로
 1. **Lint** — `make lint`
    - 실패하면 `make format` 을 한 번 실행한 뒤 다시 `make lint` 를 실행한다.
    - 그래도 남는 오류는 대부분 아키텍처 규칙(`.swiftlint.yml` 의 `custom_rules`)이다. 억제 주석으로 숨기지 않고(CONVENTIONS §6) docs/ARCHITECTURE.md 에 맞게 코드를 고친다.
+   - `make lint` 가 부르는 String Catalog 영어 값 검사(`make strings-check`)의 위반은 `make format` 으로 고쳐지지 않는다. 출력의 `파일<TAB>키<TAB>이유` 줄(키는 JSON 문자열)을 그대로 보고하고, 번역 값을 지어 넣지 않는다.
 2. **Build & Test** — `make test` (timeout 은 10분으로 넉넉하게)
    - 모든 모듈의 테스트가 `SimLauncher-Workspace` 스킴 하나로 실행된다.
-   - `make test` 는 xcodebuild 전에 git 훅 테스트(`test-hooks`)와 릴리스 워크플로 도우미 스크립트 테스트(`release-scripts-test`)를 먼저 돌린다.
+   - `make test` 는 xcodebuild 전에 git 훅 테스트(`test-hooks`), 릴리스 워크플로 도우미 스크립트 테스트(`release-scripts-test`), String Catalog 영어 값 검사기 테스트(`strings-check-test`)를 먼저 돌린다.
 3. **실패 분석**
-   - 훅 테스트·릴리스 도우미 스크립트 테스트 실패는 출력의 `FAIL <사례>` 줄과 그 아래 출력을 보고한다 (xcodebuild 까지 가지 않아 결과 번들이 없다).
+   - 훅 테스트·릴리스 도우미 스크립트 테스트 실패는 출력의 `FAIL <사례>` 줄과 그 아래 출력을, 검사기 테스트 실패는 픽스처 경로와 기대·실제 차이 줄을 보고한다 (xcodebuild 까지 가지 않아 결과 번들이 없다).
    - 빌드 오류는 xcbeautify 출력의 `❌` 줄과 `error:` 줄을 본다 (컴파일 오류는 xcbeautify 가 `error:` 를 지우고 `❌` 만 남긴다).
    - 테스트 실패는 결과 번들에서 요약을 읽는다.
      ```bash
