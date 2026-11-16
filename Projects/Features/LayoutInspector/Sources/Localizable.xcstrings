@@ -2,7 +2,6 @@
   "sourceLanguage" : "ko",
   "strings" : {
     "%@ 레이아웃" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -19,7 +18,6 @@
       }
     },
     "Android 도구(adb)를 쓸 수 없습니다. 메인 창의 Android 화면에서 도구 상태를 확인하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -36,7 +34,6 @@
       }
     },
     "iOS 레이아웃 보기를 준비하고 있습니다. 최대 1~2분 걸릴 수 있습니다…" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -53,7 +50,6 @@
       }
     },
     "iOS 레이아웃 보기를 준비하지 못했습니다. 다시 시도하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -70,7 +66,6 @@
       }
     },
     "Xcode 가 준비되지 않아 iOS 레이아웃을 읽을 수 없습니다. 메인 창의 개발 환경에서 Xcode 를 확인하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -87,7 +82,6 @@
       }
     },
     "기기 화면이 꺼져 있습니다. 에뮬레이터 창의 전원 버튼으로 화면을 켠 뒤 새로 고치세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -104,7 +98,6 @@
       }
     },
     "기기가 제때 답하지 않았습니다. 잠시 뒤 새로 고치세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -121,7 +114,6 @@
       }
     },
     "기기가 켜져 있지 않습니다. 기기를 켠 뒤 새로 고치세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -138,7 +130,6 @@
       }
     },
     "기기를 찾을 수 없거나 지금 쓸 수 없습니다. 메인 창의 기기 목록을 확인하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -155,7 +146,6 @@
       }
     },
     "기기의 지금 화면을 다시 읽습니다. 화면이 바뀌어도 저절로 따라가지 않습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -172,7 +162,6 @@
       }
     },
     "너비" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -189,7 +178,6 @@
       }
     },
     "높이" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -206,7 +194,6 @@
       }
     },
     "다른 도구가 이 기기의 화면 정보를 읽고 있어 레이아웃을 읽지 못했습니다. UI 테스트 같은 자동화 도구를 멈춘 뒤 새로 고치세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -223,7 +210,6 @@
       }
     },
     "다시 시도" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -240,7 +226,6 @@
       }
     },
     "마지막 갱신 %@" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -257,7 +242,6 @@
       }
     },
     "마지막 화면: %@" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -274,7 +258,6 @@
       }
     },
     "새로 고침" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -291,7 +274,6 @@
       }
     },
     "설명" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -308,7 +290,6 @@
       }
     },
     "속성" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -325,7 +306,6 @@
       }
     },
     "식별자" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -342,7 +322,6 @@
       }
     },
     "이 기기의 레이아웃 보기는 아직 지원하지 않습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -359,7 +338,6 @@
       }
     },
     "이 위치의 뷰" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -376,7 +354,6 @@
       }
     },
     "읽는 동안 앱이 화면에서 사라져 레이아웃을 읽지 못했습니다. 볼 앱을 앞에 띄운 뒤 새로 고치세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -393,7 +370,6 @@
       }
     },
     "읽은 뷰가 없습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -410,7 +386,6 @@
       }
     },
     "종류" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -427,7 +402,6 @@
       }
     },
     "텍스트" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -444,7 +418,6 @@
       }
     },
     "홈 화면·잠금 화면·알림 창 같은 시스템 화면의 레이아웃입니다. 앱을 보려면 기기에서 앱을 앞으로 가져온 뒤 새로 고치세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -461,7 +434,6 @@
       }
     },
     "화면 레이아웃" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -478,7 +450,6 @@
       }
     },
     "화면 밀도를 읽지 못해 px 로만 보입니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -495,7 +466,6 @@
       }
     },
     "화면 정보를 읽지 못했습니다. 다시 시도하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -512,7 +482,6 @@
       }
     },
     "화면을 읽는 중…" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -529,7 +498,6 @@
       }
     },
     "화면을 클릭해 뷰를 고르세요" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -546,7 +514,6 @@
       }
     },
     "화면이 계속 바뀌고 있어(애니메이션·동영상 등) 레이아웃을 읽지 못했습니다. 화면이 멈춘 뒤 새로 고치세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {

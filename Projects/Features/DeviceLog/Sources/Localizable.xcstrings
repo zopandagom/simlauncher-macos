@@ -2,7 +2,6 @@
   "sourceLanguage" : "ko",
   "strings" : {
     "‘%@’ 필터가 이미 있습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -19,7 +18,6 @@
       }
     },
     "%@ · 시작 %@ · %@" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -36,7 +34,6 @@
       }
     },
     "%@ 로그" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -53,7 +50,6 @@
       }
     },
     "Android 도구를 찾지 못해 다시 실행하지 못했습니다. 메인 창 Android 칸 오른쪽 위 Android 도구에서 상태를 확인하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -70,7 +66,6 @@
       }
     },
     "SimLauncher 에서 앱을 설치·실행하면 그때부터의 로그가 여기에 쌓입니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -87,7 +82,6 @@
       }
     },
     "Xcode 를 찾지 못했거나 아직 준비되지 않아 다시 실행하지 못했습니다. 메인 창 오른쪽 위 개발 환경을 눌러 준비를 마친 뒤 다시 시도하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -104,7 +98,6 @@
       }
     },
     "걸러 볼 글자" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -121,7 +114,6 @@
       }
     },
     "계속" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -138,7 +130,6 @@
       }
     },
     "관리자가 정한 필터 목록이라 저장하거나 지울 수 없습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -155,7 +146,6 @@
       }
     },
     "기기 상태를 확인하지 못했습니다. 잠시 뒤 다시 시도하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -172,7 +162,6 @@
       }
     },
     "기기가 꺼져 있어 다시 실행하지 않았습니다. 기기 목록에서 켠 뒤 다시 실행하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -189,7 +178,6 @@
       }
     },
     "기기를 찾지 못해 다시 실행하지 못했습니다. 기기 목록에 이 기기가 있는지 확인하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -206,7 +194,6 @@
       }
     },
     "기기에 이 앱이 없습니다. 기기 목록에서 다시 설치하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -223,7 +210,6 @@
       }
     },
     "끝남" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -240,7 +226,6 @@
       }
     },
     "끝남 — SimLauncher 가 앱을 다시 설치·실행했습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -257,7 +242,6 @@
       }
     },
     "끝남 — 기기가 꺼졌거나 연결이 끊겼습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -274,7 +258,6 @@
       }
     },
     "끝남 — 기기가 꺼졌습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -291,7 +274,6 @@
       }
     },
     "끝남 — 로그 받기를 멈췄습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -308,7 +290,6 @@
       }
     },
     "끝남 — 앱이 끝났습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -325,7 +306,6 @@
       }
     },
     "다시 실행" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -342,7 +322,6 @@
       }
     },
     "다시 실행하지 못했습니다. 잠시 뒤 다시 시도하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -359,7 +338,6 @@
       }
     },
     "대소문자 구분" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -376,7 +354,6 @@
       }
     },
     "따라가기" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -393,7 +370,6 @@
       }
     },
     "맞추는 방법" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -410,7 +386,6 @@
       }
     },
     "바꾸기" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -427,7 +402,6 @@
       }
     },
     "받는 중" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -444,7 +418,6 @@
       }
     },
     "버퍼가 차서 앞 %lld줄을 버렸습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -473,7 +446,6 @@
       }
     },
     "보이는 %lld줄 / 전체 %lld줄" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -512,7 +484,6 @@
       }
     },
     "삭제" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -529,7 +500,6 @@
       }
     },
     "새 줄 %lld" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -546,7 +516,6 @@
       }
     },
     "시작" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -563,7 +532,6 @@
       }
     },
     "앱" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -580,7 +548,6 @@
       }
     },
     "앱 로그" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -597,7 +564,6 @@
       }
     },
     "앱이 시작되지 않았거나 시작하자마자 종료되었습니다. 다시 실행해 보고, 계속되면 앱 개발자에게 알려 주세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -614,7 +580,6 @@
       }
     },
     "이 기기를 지금 쓸 수 없어 다시 실행하지 못했습니다. 기기 목록에서 이유를 확인하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -631,7 +596,6 @@
       }
     },
     "이 기기의 로그가 없습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -648,7 +612,6 @@
       }
     },
     "이 실행의 기록이 정리되어 다시 실행할 수 없습니다. 기기 목록에서 앱을 다시 설치하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -665,7 +628,6 @@
       }
     },
     "이 앱에는 홈 화면에서 여는 화면이 없어 실행할 수 없습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -682,7 +644,6 @@
       }
     },
     "이름은 %lld자까지 쓸 수 있습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -699,7 +660,6 @@
       }
     },
     "일시정지" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -716,7 +676,6 @@
       }
     },
     "읽을 수 없는 정규식을 고치면 저장할 수 있습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -733,7 +692,6 @@
       }
     },
     "저장" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -750,7 +708,6 @@
       }
     },
     "저장된 필터" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -767,7 +724,6 @@
       }
     },
     "저장된 필터가 없습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -784,7 +740,6 @@
       }
     },
     "저장된 필터는 %lld개까지입니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -801,7 +756,6 @@
       }
     },
     "정규식" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -818,7 +772,6 @@
       }
     },
     "정규식을 읽을 수 없습니다. 바로 앞 결과를 보이고 있습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -835,7 +788,6 @@
       }
     },
     "제외" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -852,7 +804,6 @@
       }
     },
     "조건 글자는 %lld자까지 저장할 수 있습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -869,7 +820,6 @@
       }
     },
     "조건 글자를 입력하면 저장할 수 있습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -886,7 +836,6 @@
       }
     },
     "조건 더하기" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -903,7 +852,6 @@
       }
     },
     "조건 지우기" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -920,7 +868,6 @@
       }
     },
     "조건은 %lld개까지 저장할 수 있습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -937,7 +884,6 @@
       }
     },
     "지금 필터 저장…" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -954,7 +900,6 @@
       }
     },
     "지금 필터로 바꿀까요?" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -971,7 +916,6 @@
       }
     },
     "지금까지 받은 줄을 창에서 지웁니다. 앱과 로그 받기는 계속됩니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -988,7 +932,6 @@
       }
     },
     "지우기" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1005,7 +948,6 @@
       }
     },
     "취소" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1022,7 +964,6 @@
       }
     },
     "켜면 새 줄이 올 때 맨 아래로 스크롤합니다. 위로 스크롤하면 꺼지고 맨 아래로 내리면 다시 켜집니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1039,7 +980,6 @@
       }
     },
     "켜면 이 조건에 맞는 줄을 숨깁니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1056,7 +996,6 @@
       }
     },
     "켜진 기기에서 이 앱을 다시 실행하고 새 로그를 받습니다. 기기를 켜지는 않습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1073,7 +1012,6 @@
       }
     },
     "포함" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1090,7 +1028,6 @@
       }
     },
     "포함 조건은 하나라도 맞으면 보이고, 제외 조건이 맞으면 숨깁니다. '시작' 은 시각·pid·tid·레벨 뒤의 태그부터 비교합니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1107,7 +1044,6 @@
       }
     },
     "포함 조건은 하나라도 맞으면 보이고, 제외 조건이 맞으면 숨깁니다. 여러 줄 print 는 줄마다 따로 걸러집니다(Logger·NSLog 머리말은 첫 줄에만 붙습니다). '시작' 은 머리말 뒤 메시지와 비교합니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1124,7 +1060,6 @@
       }
     },
     "필터 이름" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1141,7 +1076,6 @@
       }
     },
     "필터 저장" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1158,7 +1092,6 @@
       }
     },
     "필터에 맞는 줄이 없습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {

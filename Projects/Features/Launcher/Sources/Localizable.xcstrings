@@ -2,7 +2,6 @@
   "sourceLanguage" : "ko",
   "strings" : {
     ".app 이나 zip 이 아닌 항목은 설치할 수 없습니다. 시뮬레이터용으로 빌드한 .app 이나 그 .app 을 압축한 zip 을 골라 주세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -19,7 +18,6 @@
       }
     },
     ".ipa 파일은 설치할 수 없습니다. 시뮬레이터용으로 빌드한 .app 파일을 받아 주세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -36,7 +34,6 @@
       }
     },
     "“%@” (%@) 기기가 꺼져 녹화를 멈추고 저장했습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -53,7 +50,6 @@
       }
     },
     "“%@” (%@) 기기는 켜졌지만 Simulator 앱을 열지 못했습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -70,7 +66,6 @@
       }
     },
     "“%@” (%@) 기기를 끄지 못했습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -87,7 +82,6 @@
       }
     },
     "“%@” (%@) 기기를 만들었는지 확인하지 못했습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -104,7 +98,6 @@
       }
     },
     "“%@” (%@) 기기를 만들지 못했습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -121,7 +114,6 @@
       }
     },
     "“%@” (%@) 기기를 삭제하지 못했습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -138,7 +130,6 @@
       }
     },
     "“%@” (%@) 기기를 삭제할까요?" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -155,7 +146,6 @@
       }
     },
     "“%@” (%@) 기기를 초기화하지 못했습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -172,7 +162,6 @@
       }
     },
     "“%@” (%@) 기기를 초기화할까요?" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -189,7 +178,6 @@
       }
     },
     "“%@” (%@) 기기를 켜지 못했습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -206,7 +194,6 @@
       }
     },
     "“%@” (%@) 기기에 URL 에서 앱 설치" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -223,7 +210,6 @@
       }
     },
     "“%@” (%@) 기기에 앱을 설치하지 못했습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -240,7 +226,6 @@
       }
     },
     "“%@” (%@) 기기에 앱을 설치했지만 실행하지 못했습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -257,7 +242,6 @@
       }
     },
     "“%@” (%@) 기기에 카탈로그에서 앱 설치" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -274,7 +258,6 @@
       }
     },
     "“%@” (%@) 기기에서 링크 열기" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -291,7 +274,6 @@
       }
     },
     "“%@” (%@) 기기에서 링크를 열지 못했습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -308,7 +290,6 @@
       }
     },
     "“%@” (%@) 기기에서 앱 실행" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -325,7 +306,6 @@
       }
     },
     "“%@” (%@) 기기에서 앱을 실행하지 못했습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -342,7 +322,6 @@
       }
     },
     "“%@” (%@) 기기의 녹화 저장을 마치지 못했습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -359,7 +338,6 @@
       }
     },
     "“%@” (%@) 기기의 녹화가 중간에 끝났습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -376,7 +354,6 @@
       }
     },
     "“%@” (%@) 기기의 녹화를 저장했지만 Finder 에서 보여 주지 못했습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -393,7 +370,6 @@
       }
     },
     "“%@” (%@) 기기의 스크린샷을 저장하지 못했습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -410,7 +386,6 @@
       }
     },
     "“%@” (%@) 기기의 스크린샷을 저장했지만 Finder 에서 보여 주지 못했습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -427,7 +402,6 @@
       }
     },
     "“%@” (%@) 기기의 화면을 녹화하지 못했습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -444,7 +418,6 @@
       }
     },
     "%@ (%@)" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -461,7 +434,6 @@
       }
     },
     "%@ 권한 바꾸기" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -478,7 +450,6 @@
       }
     },
     "%@ 설정이 적용되지 않았습니다. 기기를 다시 켠 뒤 시도하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -495,7 +466,6 @@
       }
     },
     "%@ 설치된 앱" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -512,7 +482,6 @@
       }
     },
     "%@ 앱에 알림을 보냈습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -529,7 +498,6 @@
       }
     },
     "%@ 앱을 지우는 중…" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -546,7 +514,6 @@
       }
     },
     "%@ 앱을 지우지 못했습니다. %@" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -563,7 +530,6 @@
       }
     },
     "%@ 앱을 지울까요?" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -580,7 +546,6 @@
       }
     },
     "%@ 앱을 지웠습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -597,7 +562,6 @@
       }
     },
     "%@ 앱의 %@ 권한을 바꿨습니다: %@" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -614,7 +578,6 @@
       }
     },
     "%@ 앱이 알림 권한을 받지 않았거나 기기에 없어 알림을 보일 수 없습니다. 앱에서 알림을 허용한 뒤 다시 보내세요. 앱을 지웠다면 앱 목록 다시 읽기를 누르세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -631,7 +594,6 @@
       }
     },
     "%@ 테스트 조건" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -648,7 +610,6 @@
       }
     },
     "%@, %@" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -665,7 +626,6 @@
       }
     },
     "%@: 설치하고 실행했습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -682,7 +642,6 @@
       }
     },
     "%@: 설치하지 못했습니다. %@" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -699,7 +658,6 @@
       }
     },
     "%@: 설치했지만 실행하지 못했습니다. %@" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -716,7 +674,6 @@
       }
     },
     "%@: 켜지 못해 설치하지 않았습니다. %@" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -733,7 +690,6 @@
       }
     },
     "%@: 켜지 못했습니다. %@" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -750,7 +706,6 @@
       }
     },
     "%@: 켰습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -767,7 +722,6 @@
       }
     },
     "%@에 필수 필드 %@ 가 없거나 null 입니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -784,7 +738,6 @@
       }
     },
     "%@의 %@" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -801,7 +754,6 @@
       }
     },
     "%@의 %@ 가 비어 있습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -818,7 +770,6 @@
       }
     },
     "%@의 %@ 값의 형식(타입)이 다릅니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -835,7 +786,6 @@
       }
     },
     "%@의 buildURL 을 쓸 수 없습니다: %@." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -852,7 +802,6 @@
       }
     },
     "%@의 createdAt 이 날짜 형식(예: 2026-10-21T04:08:49Z)이 아니거나 없는 날짜·시각입니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -869,7 +818,6 @@
       }
     },
     "%@의 id 가 같은 앱의 앞 버전과 같습니다 (대소문자 무시)." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -886,7 +834,6 @@
       }
     },
     "%@의 id 가 앞의 앱과 같습니다 (대소문자 무시)." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -903,7 +850,6 @@
       }
     },
     "%@의 id 가 형식에 맞지 않습니다 (영문·숫자로 시작하고 영문·숫자·. _ - 만, 128자까지)." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -920,7 +866,6 @@
       }
     },
     "%@의 platform 이 ios 나 android 가 아닙니다 (소문자로 씁니다)." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -937,7 +882,6 @@
       }
     },
     "%@이 객체가 아닙니다 (%@ 배열의 항목은 객체여야 합니다)." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -954,7 +898,6 @@
       }
     },
     "%lld / %lld 바이트" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -971,7 +914,6 @@
       }
     },
     "%lld번째 버전" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -988,7 +930,6 @@
       }
     },
     "%lld번째 버전(id: %@)" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1005,7 +946,6 @@
       }
     },
     "%lld번째 앱" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1022,7 +962,6 @@
       }
     },
     "%lld번째 앱(id: %@)" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1039,7 +978,6 @@
       }
     },
     "%lld번째 줄: %@" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1056,7 +994,6 @@
       }
     },
     "Apple 본사 (고정 위치)" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1073,7 +1010,6 @@
       }
     },
     "aps 가 비어 있습니다. alert 같은 값을 넣으세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1090,7 +1026,6 @@
       }
     },
     "aps 값은 { } 객체여야 합니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1107,7 +1042,6 @@
       }
     },
     "aps 의 alert 값은 글자나 { } 객체여야 합니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1124,7 +1058,6 @@
       }
     },
     "https:// 뒤에 서버 주소(예: example.com)를 입력하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1141,7 +1074,6 @@
       }
     },
     "https:// 로 시작하는 주소가 아닙니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1158,7 +1090,6 @@
       }
     },
     "https:// 로 시작하는 주소만 받을 수 있습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1175,7 +1106,6 @@
       }
     },
     "iOS %lld 이상 기기에서만 레이아웃을 볼 수 있습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1192,7 +1122,6 @@
       }
     },
     "iOS 는 권한의 지금 상태를 알려 주지 않아, SimLauncher 가 켜져 있는 동안 바꾼 값만 보입니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1209,7 +1138,6 @@
       }
     },
     "iOS 버전" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1226,7 +1154,6 @@
       }
     },
     "iOS 설치" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1243,7 +1170,6 @@
       }
     },
     "iOS 설치를 누르면 이 Xcode 에 맞는 iOS 시뮬레이터를 설치할 수 있습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1260,7 +1186,6 @@
       }
     },
     "iOS 시뮬레이터가 설치되어 있지 않습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1277,7 +1202,6 @@
       }
     },
     "iOS 시뮬레이터용 빌드가 아닙니다. 개발자에게 시뮬레이터용으로 빌드한 .app 을 요청하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1294,7 +1218,6 @@
       }
     },
     "JSON" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1311,7 +1234,6 @@
       }
     },
     "JSON 에 aps 키가 있어야 합니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1328,7 +1250,6 @@
       }
     },
     "JSON 을 넣으세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1345,7 +1266,6 @@
       }
     },
     "JSON 의 맨 바깥은 { } 객체여야 합니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1362,7 +1282,6 @@
       }
     },
     "JSON 형식이 아닙니다. 괄호·따옴표·쉼표를 확인하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1379,7 +1298,6 @@
       }
     },
     "Mac 용 앱은 iOS 시뮬레이터에 설치할 수 없습니다. 개발자에게 시뮬레이터용으로 빌드한 iOS 앱(.app)을 요청하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1396,7 +1314,6 @@
       }
     },
     "Mac 을 관리하는 담당자에게 주소가 catalog.json 파일을 바로 가리키는지 확인해 달라고 하고, 맞다면 카탈로그를 만든 사람에게 알려 주세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1413,7 +1330,6 @@
       }
     },
     "Mac 의 저장 공간이 부족해 zip 을 풀지 못했습니다. 공간을 확보한 뒤 다시 시도하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1430,7 +1346,6 @@
       }
     },
     "Mac 의 저장 공간이 부족해 받은 zip 을 풀지 못했습니다. 공간을 확보한 뒤 다시 시도하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1447,7 +1362,6 @@
       }
     },
     "Mac 의 저장 공간이 부족해 받지 못했습니다. 공간을 확보한 뒤 다시 시도하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1464,7 +1378,6 @@
       }
     },
     "SimLauncher 가 마지막으로 보낸 위치 (%@): %@" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1481,7 +1394,6 @@
       }
     },
     "SimLauncher 가 바꾼 값: %@" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1498,7 +1410,6 @@
       }
     },
     "SimLauncher 가 보낸 알림입니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1515,7 +1426,6 @@
       }
     },
     "Simulator 앱을 열지 못했습니다. %@" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1532,7 +1442,6 @@
       }
     },
     "URL 에서…" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1549,7 +1458,6 @@
       }
     },
     "Xcode 가 알려 준 결과를 읽지 못해 기기가 만들어졌는지 확인하지 못했습니다. 기기가 만들어졌을 수 있으니 목록을 확인한 뒤, 없을 때만 다시 만드세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1566,7 +1474,6 @@
       }
     },
     "Xcode 가 알려 준 기기 정보를 읽지 못했습니다. Xcode 를 최신 버전으로 업데이트한 뒤 다시 시도하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1583,7 +1490,6 @@
       }
     },
     "Xcode 를 찾지 못했거나 아직 준비되지 않았습니다. 오른쪽 위 개발 환경을 눌러 안내에 따라 준비를 마친 뒤 다시 시도하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1600,7 +1506,6 @@
       }
     },
     "Xcode 준비 상태와 iOS 시뮬레이터 설치를 확인합니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1617,7 +1522,6 @@
       }
     },
     "zip 맨 위에 .app 이 없습니다. 시뮬레이터용 .app 을 바로 압축한 zip 을 골라 주세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1634,7 +1538,6 @@
       }
     },
     "zip 맨 위에 .app 이 여러 개 있습니다. .app 하나만 압축한 zip 을 골라 주세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1651,7 +1554,6 @@
       }
     },
     "zip 안에 잘못된 경로나 링크(압축을 푸는 폴더 밖이나 없는 곳을 가리키는 항목)가 있어 설치하지 않았습니다. 믿을 수 있는 곳에서 받은 파일인지 확인하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1668,7 +1570,6 @@
       }
     },
     "zip 을 풀 임시 폴더를 준비하지 못했습니다. 잠시 뒤 다시 시도하고, 계속되면 Mac 을 다시 시작해 보세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1685,7 +1586,6 @@
       }
     },
     "zip 파일 대신 웹 페이지를 받았습니다. 로그인이 필요한 주소이거나 내려받기 페이지의 주소일 수 있습니다. 로그인 없이 zip 파일을 바로 받을 수 있는 주소를 입력하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1702,7 +1602,6 @@
       }
     },
     "zip 파일 대신 웹 페이지를 받았습니다. 이 버전의 빌드 주소가 로그인이 필요한 주소이거나 내려받기 페이지일 수 있습니다. 카탈로그를 만든 사람에게 알려 주세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1719,7 +1618,6 @@
       }
     },
     "zip 파일을 풀지 못했습니다. 파일이 손상되었거나, 끝까지 받지 못했거나, 비밀번호가 걸려 있을 수 있습니다. 파일을 다시 받아 주세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1736,7 +1634,6 @@
       }
     },
     "같은 이름의 녹화 파일이 너무 많아 새 파일 이름을 정하지 못했습니다. 동영상 폴더의 SimLauncher 폴더에서 이전 녹화 파일을 다른 곳으로 옮긴 뒤 다시 시도하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1753,7 +1650,6 @@
       }
     },
     "같은 이름의 스크린샷이 너무 많아 새 파일 이름을 정하지 못했습니다. 사진 폴더의 SimLauncher 폴더에서 이전 스크린샷을 다른 곳으로 옮긴 뒤 다시 시도하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1770,7 +1666,6 @@
       }
     },
     "개발 환경" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1787,7 +1682,6 @@
       }
     },
     "개발 환경 열기" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1804,7 +1698,6 @@
       }
     },
     "거부" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1821,7 +1714,6 @@
       }
     },
     "걷기" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1838,7 +1730,6 @@
       }
     },
     "경도는 -180 에서 180 사이여야 합니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1855,7 +1746,6 @@
       }
     },
     "경로" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1872,7 +1762,6 @@
       }
     },
     "경로 %lld개 지점 · %@" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1911,7 +1800,6 @@
       }
     },
     "경로 시작" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1928,7 +1816,6 @@
       }
     },
     "경로·시나리오는 기기 안에서 계속 움직입니다. 멈추려면 위치 지우기를 누르거나 다른 위치를 설정하세요. 기기를 끄면 멈춥니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1945,7 +1832,6 @@
       }
     },
     "고대비" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1962,7 +1848,6 @@
       }
     },
     "고른 iOS 버전이나 기기 종류를 지금 사용할 수 없습니다. 목록을 새로 고친 뒤 다시 골라 주세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1979,7 +1864,6 @@
       }
     },
     "고른 기기 %lld대에 앱을 설치하고 실행합니다. 설치할 수 없는 기기는 이유와 함께 건너뜁니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -2008,7 +1892,6 @@
       }
     },
     "고른 기기 중 꺼진 기기를 함께 켭니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2025,7 +1908,6 @@
       }
     },
     "고른 기기 중 앱을 설치할 수 있는 기기가 없습니다. 사용할 수 없거나, 켜거나 끄는 중이거나, 다른 작업 중입니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2042,7 +1924,6 @@
       }
     },
     "고른 기기 중 켤 수 있는 꺼진 기기가 없습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2059,7 +1940,6 @@
       }
     },
     "고속도로" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2076,7 +1956,6 @@
       }
     },
     "고속도로 주행" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2093,7 +1972,6 @@
       }
     },
     "관리자가 정한 카탈로그 목록이 비어 있습니다. Mac 을 관리하는 담당자에게 문의하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2110,7 +1988,6 @@
       }
     },
     "권한" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2127,7 +2004,6 @@
       }
     },
     "글씨 크기" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2144,7 +2020,6 @@
       }
     },
     "기기 %lld대 중 %lld대를 켰습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2183,7 +2058,6 @@
       }
     },
     "기기 %lld대 중 %lld대에 앱을 설치했습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2222,7 +2096,6 @@
       }
     },
     "기기 %lld대를 켜지 못했습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -2251,7 +2124,6 @@
       }
     },
     "기기 %lld대에 URL 에서 앱 설치" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -2280,7 +2152,6 @@
       }
     },
     "기기 %lld대에 앱을 설치하지 못했습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -2309,7 +2180,6 @@
       }
     },
     "기기 %lld대에 카탈로그에서 앱 설치" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -2338,7 +2208,6 @@
       }
     },
     "기기 %lld대에 함께 받는 중입니다. 취소하면 모두 멈추고 받은 부분을 지웁니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -2367,7 +2236,6 @@
       }
     },
     "기기 만들기" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2384,7 +2252,6 @@
       }
     },
     "기기 목록을 불러오는 중…" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2401,7 +2268,6 @@
       }
     },
     "기기 목록을 불러오지 못했습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2418,7 +2284,6 @@
       }
     },
     "기기 목록을 새로 고치지 못했습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2435,7 +2300,6 @@
       }
     },
     "기기 이름은 1~100자로, 줄바꿈 같은 제어 문자 없이 입력하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2452,7 +2316,6 @@
       }
     },
     "기기 작업" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2469,7 +2332,6 @@
       }
     },
     "기기 종류" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2486,7 +2348,6 @@
       }
     },
     "기기 화면을 동영상 폴더의 SimLauncher 폴더에 녹화합니다. 중지하면 저장하고 Finder 에서 보여 줍니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2503,7 +2364,6 @@
       }
     },
     "기기 화면을 사진 폴더의 SimLauncher 폴더에 PNG 파일로 저장하고 Finder 에서 보여 줍니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2520,7 +2380,6 @@
       }
     },
     "기기가 꺼져 있습니다. 기기를 켠 뒤 다시 시도하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2537,7 +2396,6 @@
       }
     },
     "기기가 꺼져 있어 앱 목록을 읽지 못했습니다. 다시 시도를 누르면 기기를 켜고 읽습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2554,7 +2412,6 @@
       }
     },
     "기기가 알림 내용을 거절했습니다. JSON 의 aps 값을 확인하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2571,7 +2428,6 @@
       }
     },
     "기기가 이 링크의 형식을 받아들이지 않았습니다. 링크를 다시 확인해 입력하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2588,7 +2444,6 @@
       }
     },
     "기기가 켜져 있지 않아 녹화하지 못했습니다. 기기를 켠 뒤 다시 시도하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2605,7 +2460,6 @@
       }
     },
     "기기가 켜져 있지 않아 스크린샷을 찍지 못했습니다. 기기를 켠 뒤 다시 시도하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2622,7 +2476,6 @@
       }
     },
     "기기가 켜져 있지 않아 앱 설치·실행이나 링크 열기를 하지 못했습니다. 기기를 켠 뒤 다시 시도하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2639,7 +2492,6 @@
       }
     },
     "기기를 끄거나 초기화해도 이 기록은 남습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2656,7 +2508,6 @@
       }
     },
     "기기를 만드는 중…" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2673,7 +2524,6 @@
       }
     },
     "기기를 찾지 못했습니다. 목록을 새로 고친 뒤 다시 시도하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2690,7 +2540,6 @@
       }
     },
     "기기를 켜거나 끄는 중에는 링크를 열 수 없습니다. 끝난 뒤 다시 시도하세요" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2707,7 +2556,6 @@
       }
     },
     "기기를 켜거나 끄는 중에는 쓸 수 없습니다. 끝난 뒤 다시 시도하세요" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2724,7 +2572,6 @@
       }
     },
     "기기를 켜거나 끄는 중에는 앱을 설치할 수 없습니다. 끝난 뒤 다시 시도하세요" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2741,7 +2588,6 @@
       }
     },
     "기기를 켜거나 끄는 중에는 앱을 실행할 수 없습니다. 끝난 뒤 다시 시도하세요" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2758,7 +2604,6 @@
       }
     },
     "기기를 켜는 중… 켜지면 설치한 앱 목록을 불러옵니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2775,7 +2620,6 @@
       }
     },
     "기기를 켜지 못했습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2792,7 +2636,6 @@
       }
     },
     "기기에 설치한 앱과 데이터, 설정이 모두 지워지고 처음 상태로 돌아갑니다. 되돌릴 수 없습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2809,7 +2652,6 @@
       }
     },
     "기기에서 지금 위치를 읽을 수 없어 SimLauncher 가 보낸 기록만 보입니다. 다른 도구로 바꾸면 달라질 수 있습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2826,7 +2668,6 @@
       }
     },
     "기기와 그 안의 앱·데이터가 모두 지워지며 되돌릴 수 없습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2843,7 +2684,6 @@
       }
     },
     "기본" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2860,7 +2700,6 @@
       }
     },
     "꺼짐" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2877,7 +2716,6 @@
       }
     },
     "꺼지기 전까지 녹화한 화면을 동영상 폴더의 SimLauncher 폴더에 저장했습니다. 다시 녹화하려면 기기를 켠 뒤 녹화를 누르세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2894,7 +2732,6 @@
       }
     },
     "끄기" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2911,7 +2748,6 @@
       }
     },
     "끄는 중" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2928,7 +2764,6 @@
       }
     },
     "끝난 데까지 동영상 폴더의 SimLauncher 폴더에 저장했습니다. 디스크 공간이 남아 있는지, 기기가 켜져 있는지 확인한 뒤 다시 녹화하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2945,7 +2780,6 @@
       }
     },
     "녹화" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2962,7 +2796,6 @@
       }
     },
     "녹화 저장이 늦어져 끝나지 않았습니다. 기기를 끄면 그때까지 녹화한 화면이 동영상 폴더의 SimLauncher 폴더의 같은 파일에 저장됩니다. 기기를 다시 켜면 다시 녹화할 수 있습니다. 녹화된 화면이 없었다면 빈 파일이 남습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2979,7 +2812,6 @@
       }
     },
     "녹화 중" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2996,7 +2828,6 @@
       }
     },
     "녹화 중에는 끄거나 초기화·삭제할 수 없습니다. 녹화를 먼저 멈추세요" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3013,7 +2844,6 @@
       }
     },
     "녹화 중인 기기의 화면을 동영상 폴더의 SimLauncher 폴더에 저장하고 앱을 종료합니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3030,7 +2860,6 @@
       }
     },
     "녹화된 화면이 없어 파일을 저장하지 못했습니다. 기기가 켜져 있는지 확인하고, 계속 실패하면 기기를 껐다 켠 뒤 다시 시도하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3047,7 +2876,6 @@
       }
     },
     "녹화를 먼저 멈추세요" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3064,7 +2892,6 @@
       }
     },
     "녹화를 멈추고 저장한 뒤 종료할까요?" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3081,7 +2908,6 @@
       }
     },
     "녹화를 시작하는 중…" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3098,7 +2924,6 @@
       }
     },
     "녹화를 시작하지 못했습니다. 동영상 폴더의 SimLauncher 폴더에 쓸 수 있는지, 디스크 공간이 남아 있는지 확인한 뒤 다시 시도하세요. 계속 실패하면 기기를 껐다 켠 뒤 다시 시도하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3115,7 +2940,6 @@
       }
     },
     "녹화를 저장하는 중…" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3132,7 +2956,6 @@
       }
     },
     "뉴욕" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3149,7 +2972,6 @@
       }
     },
     "다른 iOS 버전 설치" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3166,7 +2988,6 @@
       }
     },
     "다시 묻기 (초기화)" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3183,7 +3004,6 @@
       }
     },
     "다시 시도" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3200,7 +3020,6 @@
       }
     },
     "다시 읽기" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3217,7 +3036,6 @@
       }
     },
     "다크" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3234,7 +3052,6 @@
       }
     },
     "닫기" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3251,7 +3068,6 @@
       }
     },
     "달리기" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3268,7 +3084,6 @@
       }
     },
     "대상: %@" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3285,7 +3100,6 @@
       }
     },
     "도시 달리기" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3302,7 +3116,6 @@
       }
     },
     "도시 자전거" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3319,7 +3132,6 @@
       }
     },
     "도쿄" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3336,7 +3148,6 @@
       }
     },
     "동영상 폴더 안에 SimLauncher 폴더를 만들거나 그 안에 파일을 쓸 수 없습니다. Finder 에서 동영상 폴더에 SimLauncher 라는 이름의 파일이 있지 않은지, 디스크 공간이 남아 있는지 확인한 뒤 다시 시도하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3353,7 +3164,6 @@
       }
     },
     "동작 및 피트니스" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3370,7 +3180,6 @@
       }
     },
     "등록된 카탈로그가 없습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3387,7 +3196,6 @@
       }
     },
     "따옴표가 “ ” 로 바뀌었습니다. 곧은 따옴표(\")로 바꾸세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3404,7 +3212,6 @@
       }
     },
     "라이트" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3421,7 +3228,6 @@
       }
     },
     "런던" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3438,7 +3244,6 @@
       }
     },
     "레이아웃 보기" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3455,7 +3260,6 @@
       }
     },
     "로그 보기" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3472,7 +3276,6 @@
       }
     },
     "링크" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3489,7 +3292,6 @@
       }
     },
     "링크 앞에 myapp:// 나 https:// 같은 스킴을 붙여 입력하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3506,7 +3308,6 @@
       }
     },
     "링크 열기…" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3523,7 +3324,6 @@
       }
     },
     "링크로 읽을 수 없습니다. 앞에 myapp:// 나 https:// 같은 스킴이 있는지, 스킴과 호스트(:// 앞뒤)에 공백이나 쓸 수 없는 문자가 없는지 확인하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3540,7 +3340,6 @@
       }
     },
     "링크를 여는 중…" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3557,7 +3356,6 @@
       }
     },
     "마이크" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3574,7 +3372,6 @@
       }
     },
     "만들 수 있는 iPhone·iPad 기기 종류가 없습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3591,7 +3388,6 @@
       }
     },
     "만들기" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3608,7 +3404,6 @@
       }
     },
     "목록에서 기기를 고르세요. ⌘ 키를 누른 채 클릭하면 여러 대를, ⇧ 키를 누른 채 클릭하면 사이의 기기를 함께 고릅니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3625,7 +3420,6 @@
       }
     },
     "미디어 및 Apple Music" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3642,7 +3436,6 @@
       }
     },
     "미리 알림" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3659,7 +3452,6 @@
       }
     },
     "바꾸기" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3676,7 +3468,6 @@
       }
     },
     "바꾼 조건은 기기에 바로 적용되고, 시트를 닫거나 SimLauncher 를 꺼도 기기에 남습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3693,7 +3484,6 @@
       }
     },
     "받기 취소" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3710,7 +3500,6 @@
       }
     },
     "받기를 멈추고 받은 부분을 지웁니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3727,7 +3516,6 @@
       }
     },
     "받는 중 연결이 끊겨 받은 부분을 지웠습니다. 다시 시도하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3744,7 +3532,6 @@
       }
     },
     "받는 중 연결이 끊겼습니다. 다시 시도하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3761,7 +3548,6 @@
       }
     },
     "받는 중…" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3778,7 +3564,6 @@
       }
     },
     "받는 중… %@" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3795,7 +3580,6 @@
       }
     },
     "받는 중… %@ / %@" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3812,7 +3596,6 @@
       }
     },
     "받아서 설치" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3829,7 +3612,6 @@
       }
     },
     "받은 zip 맨 위에 .app 이 없습니다. .ipa 이거나 .app 이 폴더 안에 있을 수 있습니다. 시뮬레이터용 .app 을 바로 압축한 zip 을 올려 달라고 카탈로그를 만든 사람에게 알려 주세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3846,7 +3628,6 @@
       }
     },
     "받은 zip 맨 위에 .app 이 없습니다. .ipa 이거나 .app 이 폴더 안에 있을 수 있습니다. 시뮬레이터용 .app 을 바로 압축한 zip 의 주소를 입력하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3863,7 +3644,6 @@
       }
     },
     "받은 zip 맨 위에 .app 이 여러 개 있습니다. .app 하나만 압축한 zip 을 올려 달라고 카탈로그를 만든 사람에게 알려 주세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3880,7 +3660,6 @@
       }
     },
     "받은 zip 맨 위에 .app 이 여러 개 있습니다. .app 하나만 압축한 zip 의 주소를 입력하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3897,7 +3676,6 @@
       }
     },
     "받은 파일을 둘 임시 폴더를 준비하지 못했습니다. 잠시 뒤 다시 시도하고, 계속되면 Mac 을 다시 시작해 보세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3914,7 +3692,6 @@
       }
     },
     "받은 파일을 읽지 못했습니다. 다시 시도하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3931,7 +3708,6 @@
       }
     },
     "받은 파일을 카탈로그(JSON 객체)로 읽지 못했습니다. 로그인 페이지 같은 웹 페이지이거나 다른 파일일 수 있습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3948,7 +3724,6 @@
       }
     },
     "받은 파일이 zip 이 아니거나 손상되었습니다. 다시 시도하고, 계속되면 카탈로그를 만든 사람에게 알려 주세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3965,7 +3740,6 @@
       }
     },
     "받은 파일이 zip 이 아니거나 손상되었습니다. 주소가 .app 을 압축한 zip 파일을 바로 가리키는지 확인하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3982,7 +3756,6 @@
       }
     },
     "버전" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3999,7 +3772,6 @@
       }
     },
     "버전 %@" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4016,7 +3788,6 @@
       }
     },
     "버전 %@ (%@)" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4033,7 +3804,6 @@
       }
     },
     "번들 ID: %@\n“%@” (%@) 기기에서 앱과 앱 데이터를 지웁니다. 실행 중이면 종료됩니다. 되돌릴 수 없습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4050,7 +3820,6 @@
       }
     },
     "보내기" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4067,7 +3836,6 @@
       }
     },
     "본문" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4084,7 +3852,6 @@
       }
     },
     "본문을 넣으세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4101,7 +3868,6 @@
       }
     },
     "브랜치 %@" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4118,7 +3884,6 @@
       }
     },
     "빈 주소입니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4135,7 +3900,6 @@
       }
     },
     "빌드 %@" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4152,7 +3916,6 @@
       }
     },
     "빌드 서버 주소를 찾지 못했습니다. 회사 안의 주소라면 사내망(VPN 등)에 연결되어 있는지 확인하고, 계속되면 카탈로그를 만든 사람에게 알려 주세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4169,7 +3932,6 @@
       }
     },
     "빌드 서버에 연결하지 못했습니다. 회사 안의 주소라면 사내망(VPN 등) 연결과 프록시 설정을 확인하고, 계속되면 카탈로그를 만든 사람에게 알려 주세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4186,7 +3948,6 @@
       }
     },
     "빌드 서버와 보안 연결(TLS)을 맺지 못했습니다(인증서 문제 등). 계속되면 서버 관리자나 카탈로그를 만든 사람에게 알려 주세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4203,7 +3964,6 @@
       }
     },
     "빌드 파일을 받지 못했습니다. 다시 시도하고, 계속되면 카탈로그를 만든 사람에게 알려 주세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4220,7 +3980,6 @@
       }
     },
     "사용자 이름이나 비밀번호가 든 주소는 쓸 수 없습니다. 로그인 없이 받을 수 있는 주소를 입력하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4237,7 +3996,6 @@
       }
     },
     "사용자 이름이나 비밀번호가 들어 있습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4254,7 +4012,6 @@
       }
     },
     "사용할 수 없는 기기는 초기화할 수 없고 삭제만 할 수 있습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4271,7 +4028,6 @@
       }
     },
     "사용할 수 없는 기기에는 앱을 설치할 수 없습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4288,7 +4044,6 @@
       }
     },
     "사용할 수 없는 기기에서는 녹화할 수 없습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4305,7 +4060,6 @@
       }
     },
     "사용할 수 없는 기기에서는 레이아웃을 볼 수 없습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4322,7 +4076,6 @@
       }
     },
     "사용할 수 없는 기기에서는 링크를 열 수 없습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4339,7 +4092,6 @@
       }
     },
     "사용할 수 없는 기기에서는 설치된 앱을 볼 수 없습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4356,7 +4108,6 @@
       }
     },
     "사용할 수 없는 기기에서는 스크린샷을 찍을 수 없습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4373,7 +4124,6 @@
       }
     },
     "사용할 수 없는 기기에서는 쓸 수 없습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4390,7 +4140,6 @@
       }
     },
     "사용할 수 없는 기기에서는 앱을 실행할 수 없습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4407,7 +4156,6 @@
       }
     },
     "사용할 수 없는 기기에서는 테스트 조건을 바꿀 수 없습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4424,7 +4172,6 @@
       }
     },
     "사용할 수 없음" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4441,7 +4188,6 @@
       }
     },
     "사진" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4458,7 +4204,6 @@
       }
     },
     "사진 추가" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4475,7 +4220,6 @@
       }
     },
     "사진 폴더 안에 SimLauncher 폴더를 만들거나 그 안에 파일을 쓸 수 없습니다. Finder 에서 사진 폴더에 SimLauncher 라는 이름의 파일이 있지 않은지, 디스크 공간이 남아 있는지 확인한 뒤 다시 시도하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4492,7 +4236,6 @@
       }
     },
     "삭제" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4509,7 +4252,6 @@
       }
     },
     "삭제…" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4526,7 +4268,6 @@
       }
     },
     "삭제·초기화는 기기를 끈 뒤에 할 수 있습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4543,7 +4284,6 @@
       }
     },
     "상태 확인 중" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4560,7 +4300,6 @@
       }
     },
     "새 기기 만들기" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4577,7 +4316,6 @@
       }
     },
     "새로 고침" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4594,7 +4332,6 @@
       }
     },
     "서버 오류로 받지 못했습니다 (HTTP %lld). 잠시 뒤 다시 시도하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4611,7 +4348,6 @@
       }
     },
     "서버 주소(예: example.com)가 없습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4628,7 +4364,6 @@
       }
     },
     "서버 주소를 찾지 못했습니다. 주소의 철자를 확인하고, 회사 안의 주소라면 사내망(VPN 등)에 연결되어 있는지 확인하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4645,7 +4380,6 @@
       }
     },
     "서버 주소를 찾지 못했습니다. 회사 안의 주소라면 사내망(VPN 등)에 연결되어 있는지 확인하고, 아니면 Mac 을 관리하는 담당자에게 주소의 철자를 확인해 달라고 하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4662,7 +4396,6 @@
       }
     },
     "서버 주소를 찾지 못했습니다. 회사 안의 주소라면 사내망(VPN 등)에 연결되어 있는지 확인하고, 아니면 설정(⌘,)에서 주소의 철자를 확인하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4679,7 +4412,6 @@
       }
     },
     "서버가 https 가 아닌 주소(http 등)로 넘겨 보내 받지 않았습니다. https 로 바로 받을 수 있는지 카탈로그를 만든 사람에게 확인하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4696,7 +4428,6 @@
       }
     },
     "서버가 https 가 아닌 주소(http 등)로 넘겨 보내 빌드를 받지 않았습니다. 이 버전의 빌드를 https 로 바로 받을 수 있게 해 달라고 카탈로그를 만든 사람에게 알려 주세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4713,7 +4444,6 @@
       }
     },
     "서버가 로그인이나 접근 권한을 요구해 받지 못했습니다 (HTTP %lld). 로그인 없이 받을 수 있는 주소인지 확인하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4730,7 +4460,6 @@
       }
     },
     "서버가 빌드 파일을 주지 않았습니다 (HTTP %lld). 다시 시도하고, 계속되면 카탈로그를 만든 사람에게 알려 주세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4747,7 +4476,6 @@
       }
     },
     "서버가 안전하지 않은 주소(http)로 넘겨 보내 받지 않았습니다. https 로 바로 받을 수 있는 주소인지 빌드를 올린 사람에게 확인하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4764,7 +4492,6 @@
       }
     },
     "서버가 오래 응답하지 않아 멈췄습니다. 연결을 확인한 뒤 다시 시도하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4781,7 +4508,6 @@
       }
     },
     "서버가 접근을 거부해 받지 못했습니다 (HTTP %lld). Mac 을 관리하는 담당자에게 주소가 맞는지 확인해 달라고 하고, 맞다면 로그인 없이 받을 수 있는 주소인지 카탈로그를 만든 사람에게 확인하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4798,7 +4524,6 @@
       }
     },
     "서버가 접근을 거부해 받지 못했습니다 (HTTP %lld). 설정(⌘,)에서 주소가 맞는지 확인하고, 맞다면 로그인 없이 받을 수 있는 주소인지 카탈로그를 만든 사람에게 확인하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4815,7 +4540,6 @@
       }
     },
     "서버가 접근을 거부해 빌드를 받지 못했습니다 (HTTP %lld). 지워졌거나 로그인이 필요한 빌드일 수 있습니다. 다른 버전을 고르거나 카탈로그를 만든 사람에게 알려 주세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4832,7 +4556,6 @@
       }
     },
     "서버가 카탈로그를 주지 않았습니다 (HTTP %lld). 다시 시도하고, 계속되면 Mac 을 관리하는 담당자에게 주소를 확인해 달라고 하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4849,7 +4572,6 @@
       }
     },
     "서버가 카탈로그를 주지 않았습니다 (HTTP %lld). 설정(⌘,)에서 주소를 확인한 뒤 다시 시도하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4866,7 +4588,6 @@
       }
     },
     "서버가 파일을 주지 않았습니다 (HTTP %lld). 주소를 확인한 뒤 다시 시도하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4883,7 +4604,6 @@
       }
     },
     "서버에 연결하지 못했습니다. 주소를 확인하고, 회사 안의 주소라면 사내망(VPN 등) 연결과 프록시 설정을 확인하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4900,7 +4620,6 @@
       }
     },
     "서버에 연결하지 못했습니다. 회사 안의 주소라면 사내망(VPN 등) 연결과 프록시 설정을 확인하고, 아니면 Mac 을 관리하는 담당자에게 주소를 확인해 달라고 하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4917,7 +4636,6 @@
       }
     },
     "서버에 연결하지 못했습니다. 회사 안의 주소라면 사내망(VPN 등) 연결과 프록시 설정을 확인하고, 아니면 설정(⌘,)에서 주소를 확인하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4934,7 +4652,6 @@
       }
     },
     "서버에 이 버전의 빌드 파일이 없습니다 (HTTP %lld). 지워진 빌드일 수 있습니다. 다른 버전을 고르거나 카탈로그를 만든 사람에게 알려 주세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4951,7 +4668,6 @@
       }
     },
     "서버에 카탈로그 파일이 없습니다 (HTTP %lld). Mac 을 관리하는 담당자에게 주소가 맞는지 확인해 달라고 하고, 맞다면 카탈로그를 만든 사람에게 알려 주세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4968,7 +4684,6 @@
       }
     },
     "서버에 카탈로그 파일이 없습니다 (HTTP %lld). 설정(⌘,)에서 주소가 맞는지 확인하고, 맞다면 카탈로그를 만든 사람에게 알려 주세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4985,7 +4700,6 @@
       }
     },
     "서버에 파일이 없습니다 (HTTP %lld). 주소가 맞는지, 파일이 지워지지 않았는지 확인하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5002,7 +4716,6 @@
       }
     },
     "서버와 보안 연결(TLS)을 맺지 못했습니다(인증서 문제 등). Mac 을 관리하는 담당자에게 주소가 맞는지 확인해 달라고 하고, 계속되면 서버 관리자에게 알려 주세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5019,7 +4732,6 @@
       }
     },
     "서버와 보안 연결(TLS)을 맺지 못했습니다(인증서 문제 등). 설정(⌘,)에서 주소가 맞는지 확인하고, 계속되면 서버 관리자에게 알려 주세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5036,7 +4748,6 @@
       }
     },
     "서버의 보안 인증서를 확인하지 못해 받지 않았습니다. 주소가 맞는지 확인하고, 계속되면 서버 관리자에게 알려 주세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5053,7 +4764,6 @@
       }
     },
     "서울" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5070,7 +4780,6 @@
       }
     },
     "선택한 기기 켜기" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5087,7 +4796,6 @@
       }
     },
     "선택한 기기에 앱 설치" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5104,7 +4812,6 @@
       }
     },
     "설정 열기" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5121,7 +4828,6 @@
       }
     },
     "설정(⌘,)에서 주소가 catalog.json 파일을 바로 가리키는지 확인하고, 맞다면 카탈로그를 만든 사람에게 알려 주세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5138,7 +4844,6 @@
       }
     },
     "설정(⌘,)의 “빌드 카탈로그” 에 catalog.json 주소를 등록한 뒤 새로 고침을 누르세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5155,7 +4860,6 @@
       }
     },
     "설치된 iOS 버전으로 만들 수 있는 기기 종류를 찾지 못했습니다. 다른 iOS 버전 설치를 눌러 이 Xcode 의 기본 iOS 를 설치하거나, Xcode 를 최신 버전으로 업데이트한 뒤 새로 고치세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5172,7 +4876,6 @@
       }
     },
     "설치된 앱…" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5189,7 +4892,6 @@
       }
     },
     "설치한 앱 목록을 불러오는 중…" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5206,7 +4908,6 @@
       }
     },
     "설치한 앱을 기기에서 찾지 못해 실행하지 못했습니다. 다시 설치해 보세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5223,7 +4924,6 @@
       }
     },
     "설치할 앱 파일을 찾을 수 없습니다. 파일이 옮겨지거나 지워졌을 수 있습니다. 파일을 다시 고르거나 주소에서 다시 받아 설치하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5240,7 +4940,6 @@
       }
     },
     "속도" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5257,7 +4956,6 @@
       }
     },
     "손쉬운 사용 1" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5274,7 +4972,6 @@
       }
     },
     "손쉬운 사용 2" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5291,7 +4988,6 @@
       }
     },
     "손쉬운 사용 3" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5308,7 +5004,6 @@
       }
     },
     "손쉬운 사용 4" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5325,7 +5020,6 @@
       }
     },
     "손쉬운 사용 5" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5342,7 +5036,6 @@
       }
     },
     "스크린샷" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5359,7 +5052,6 @@
       }
     },
     "스크린샷을 찍는 중…" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5376,7 +5068,6 @@
       }
     },
     "시나리오" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5393,7 +5084,6 @@
       }
     },
     "시나리오 %@" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5410,7 +5100,6 @@
       }
     },
     "시나리오 실행" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5427,7 +5116,6 @@
       }
     },
     "시드니" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5444,7 +5132,6 @@
       }
     },
     "시뮬레이터용 .app 을 압축한 zip 파일의 https 주소를 입력하세요. 로그인이 필요한 주소에서는 받을 수 없습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5461,7 +5148,6 @@
       }
     },
     "시뮬레이터용 .app 이나 그 .app 을 압축한 zip 을 파일에서 고르거나, https 주소나 등록한 빌드 카탈로그에서 받아 이 기기에 설치하고 바로 실행합니다. 이 줄에 .app 이나 zip 을 끌어다 놓아도 됩니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5478,7 +5164,6 @@
       }
     },
     "시트를 연 뒤 설치한 앱은 앱 목록 다시 읽기로 보입니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5495,7 +5180,6 @@
       }
     },
     "실행" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5512,7 +5196,6 @@
       }
     },
     "쓸 수 없는 주소라 읽지 않았습니다: %@. Mac 을 관리하는 담당자에게 알려 주세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5529,7 +5212,6 @@
       }
     },
     "쓸 수 없는 주소라 읽지 않았습니다: %@. 설정(⌘,)에서 지우고 https 주소로 다시 등록하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5546,7 +5228,6 @@
       }
     },
     "아주 작게" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5563,7 +5244,6 @@
       }
     },
     "아주 크게" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5580,7 +5260,6 @@
       }
     },
     "알림 권한은 바꿀 수 없습니다. 앱에서 알림을 허용하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5597,7 +5276,6 @@
       }
     },
     "알림 내용이 %lld 바이트입니다. %lld 바이트 이하로 줄이세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5636,7 +5314,6 @@
       }
     },
     "앱" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5653,7 +5330,6 @@
       }
     },
     "앱 목록 다시 읽기" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5670,7 +5346,6 @@
       }
     },
     "앱 목록을 읽는 중…" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5687,7 +5362,6 @@
       }
     },
     "앱 목록을 읽지 못했습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5704,7 +5378,6 @@
       }
     },
     "앱 목록을 읽지 못했습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5721,7 +5394,6 @@
       }
     },
     "앱 설치" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5738,7 +5410,6 @@
       }
     },
     "앱 스킴 링크(딥링크)나 웹 주소를 입력해 이 기기에서 엽니다. 기기가 꺼져 있으면 켭니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5755,7 +5426,6 @@
       }
     },
     "앱 실행…" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5772,7 +5442,6 @@
       }
     },
     "앱 실행… 이나 앱 설치로 SimLauncher 가 이 기기에서 앱을 실행하면 로그를 볼 수 있습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5789,7 +5458,6 @@
       }
     },
     "앱 정보(Info.plist)나 실행 파일을 읽지 못했습니다. 빌드가 끝까지 완료된 .app 인지 확인하거나 파일을 다시 받아 주세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5806,7 +5474,6 @@
       }
     },
     "앱 화면의 뷰 테두리와 위치·크기를 봅니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5823,7 +5490,6 @@
       }
     },
     "앱을 고르세요" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5840,7 +5506,6 @@
       }
     },
     "앱을 설치하는 중…" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5857,7 +5522,6 @@
       }
     },
     "앱을 실행하는 중…" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5874,7 +5538,6 @@
       }
     },
     "앱이 시작되지 않았거나 시작하자마자 종료되었습니다. 시뮬레이터에서 앱 아이콘을 눌러 다시 실행해 보고, 계속되면 앱 개발자에게 알려 주세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5891,7 +5554,6 @@
       }
     },
     "앱이 알림 권한을 받아야 알림이 보입니다. 권한이 없으면 iOS 버전에 따라 '보냈습니다' 로 나와도 화면에 보이지 않을 수 있습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5908,7 +5570,6 @@
       }
     },
     "연락처" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5925,7 +5586,6 @@
       }
     },
     "열기" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5942,7 +5602,6 @@
       }
     },
     "예: 37.5665, 126.9780" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5959,7 +5618,6 @@
       }
     },
     "예: https://example.com/MyApp.zip" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5976,7 +5634,6 @@
       }
     },
     "예: myapp://item/1 또는 https://example.com" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5993,7 +5650,6 @@
       }
     },
     "오른쪽 위 + 버튼이나 아래 버튼으로 iPhone·iPad 기기를 만드세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6010,7 +5666,6 @@
       }
     },
     "오른쪽 위 개발 환경을 눌러 Xcode 준비 상태를 확인한 뒤 다시 시도하세요. 계속 실패하면 Mac 을 재시동한 뒤 다시 시도하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6027,7 +5682,6 @@
       }
     },
     "외관" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6044,7 +5698,6 @@
       }
     },
     "외관·글씨 크기·위치·권한·알림 같은 테스트 조건을 바꿉니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6061,7 +5714,6 @@
       }
     },
     "왼쪽에서 앱을 고르세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6078,7 +5730,6 @@
       }
     },
     "웹 주소는 끌어다 놓아 설치할 수 없습니다. 앱 설치 메뉴의 “URL 에서…” 에 주소를 입력하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6095,7 +5746,6 @@
       }
     },
     "위도, 경도" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6112,7 +5762,6 @@
       }
     },
     "위도, 경도를 숫자로 넣으세요. 소수점은 마침표(.)입니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6129,7 +5778,6 @@
       }
     },
     "위도는 -90 에서 90 사이여야 합니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6146,7 +5794,6 @@
       }
     },
     "위에서 앱을 고르세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6163,7 +5810,6 @@
       }
     },
     "위치" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6180,7 +5826,6 @@
       }
     },
     "위치 (사용하는 동안)" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6197,7 +5842,6 @@
       }
     },
     "위치 (항상)" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6214,7 +5858,6 @@
       }
     },
     "위치 밖의 권한을 바꾸면 실행 중인 앱이 종료됩니다(값이 같아도). SimLauncher 로 실행해 로그를 받던 앱이면 로그도 끝납니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6231,7 +5874,6 @@
       }
     },
     "위치 지우기" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6248,7 +5890,6 @@
       }
     },
     "위치 지움" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6265,7 +5906,6 @@
       }
     },
     "이 iOS 는 화면에 보일 내용(alert)이 없는 알림을 받지 않습니다. 제목이나 본문을 넣으세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6282,7 +5922,6 @@
       }
     },
     "이 iOS 버전은 %@ 설정을 지원하지 않습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6299,7 +5938,6 @@
       }
     },
     "이 iOS 버전은 이 설정을 지원하지 않습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6316,7 +5954,6 @@
       }
     },
     "이 Mac 의 Xcode 에서 Simulator 앱을 찾지 못했습니다. Xcode 를 최신 버전으로 업데이트하거나 다시 설치하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6333,7 +5970,6 @@
       }
     },
     "이 Mac 이 쓰는 프록시가 인증을 요구해 받지 못했습니다 (HTTP 407). 회사 네트워크라면 관리자에게 프록시 설정을 문의하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6350,7 +5986,6 @@
       }
     },
     "이 Xcode 에는 이 시나리오가 없습니다. 다른 시나리오나 경로를 쓰세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6367,7 +6002,6 @@
       }
     },
     "이 기기를 다른 도구(Xcode 등)가 이미 녹화하고 있습니다. 그 녹화를 멈춘 뒤 다시 시도하세요. 앞선 녹화가 제대로 끝나지 않았다면 기기를 껐다 켠 뒤 다시 시도하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6384,7 +6018,6 @@
       }
     },
     "이 기기를 더 이상 찾을 수 없습니다. 목록을 새로 고친 뒤 다른 기기를 골라 주세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6401,7 +6034,6 @@
       }
     },
     "이 기기를 지금 사용할 수 없습니다. 오른쪽 위 개발 환경에서 Xcode 준비 상태를 확인한 뒤 목록을 새로 고치세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6418,7 +6050,6 @@
       }
     },
     "이 기기에 설치한 앱 중 하나를 골라 로그를 받으며 실행합니다. 기기가 꺼져 있으면 켭니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6435,7 +6066,6 @@
       }
     },
     "이 기기에 설치한 앱을 보고 지웁니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6452,7 +6082,6 @@
       }
     },
     "이 기기에 설치한 앱이 없습니다. 앱을 설치한 뒤 앱 목록 다시 읽기를 누르세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6469,7 +6098,6 @@
       }
     },
     "이 기기에 직접 설치한 앱이 없습니다. 앱 설치로 먼저 설치하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6486,7 +6114,6 @@
       }
     },
     "이 기기에 필요한 iOS 버전이 이 Mac 에 설치되어 있지 않아 사용할 수 없습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6503,7 +6130,6 @@
       }
     },
     "이 기기에서 다른 작업이 진행 중이라 설치하지 않았습니다. 끝난 뒤 이 기기에만 다시 설치하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6520,7 +6146,6 @@
       }
     },
     "이 기기에서 실행한 앱의 로그 창을 엽니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6537,7 +6162,6 @@
       }
     },
     "이 기기에서 실행할 수 없는 빌드입니다. 시뮬레이터용으로 빌드했는지, 이 기기 종류(iPhone·iPad)를 지원하는지 개발자에게 확인하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6554,7 +6178,6 @@
       }
     },
     "이 기기의 iOS 버전을 지금 사용할 수 없습니다. 오른쪽 위 개발 환경에서 Xcode 준비 상태를 확인한 뒤 목록을 새로 고치세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6571,7 +6194,6 @@
       }
     },
     "이 링크를 열 수 있는 앱이 기기에 없습니다. 링크를 처리할 앱을 이 기기에 먼저 설치했는지, 링크의 스킴(:// 앞부분) 철자가 맞는지 확인하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6588,7 +6210,6 @@
       }
     },
     "이 앱에는 Apple 실리콘 Mac 의 시뮬레이터에서 실행할 코드(arm64)가 없습니다. 개발자에게 arm64 가 포함된 시뮬레이터 빌드를 요청하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6605,7 +6226,6 @@
       }
     },
     "이 앱에는 Intel Mac 의 시뮬레이터에서 실행할 코드(x86_64)가 없습니다. 개발자에게 x86_64 가 포함된 시뮬레이터 빌드를 요청하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6622,7 +6242,6 @@
       }
     },
     "이 앱에는 버전이 없습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6639,7 +6258,6 @@
       }
     },
     "이 앱은 iOS %@ 이상에서 실행됩니다. 더 높은 iOS 버전의 기기에 설치하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6656,7 +6274,6 @@
       }
     },
     "이 앱은 이 기기보다 높은 iOS 버전이 필요합니다. 더 높은 iOS 버전의 기기에 설치하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6673,7 +6290,6 @@
       }
     },
     "이 위치로 설정" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6690,7 +6306,6 @@
       }
     },
     "이 카탈로그는 이 앱보다 새 규격(schemaVersion %lld)입니다. SimLauncher 를 업데이트하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6707,7 +6322,6 @@
       }
     },
     "이 카탈로그에는 iOS 앱이 없습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6724,7 +6338,6 @@
       }
     },
     "이 카탈로그에는 앱이 없습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6741,7 +6354,6 @@
       }
     },
     "이름" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6758,7 +6370,6 @@
       }
     },
     "이름에 줄바꿈이나 탭은 쓸 수 없습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6775,7 +6386,6 @@
       }
     },
     "이름은 100자까지 입력할 수 있습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6792,7 +6402,6 @@
       }
     },
     "이름을 입력하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6809,7 +6418,6 @@
       }
     },
     "이미 실행 중이면 끝내고 다시 실행합니다. 실행한 뒤 로그 보기로 앱 로그를 볼 수 있습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6826,7 +6434,6 @@
       }
     },
     "인터넷에 연결되어 있지 않습니다. 연결을 확인한 뒤 다시 시도하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6843,7 +6450,6 @@
       }
     },
     "입력 방식" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6860,7 +6466,6 @@
       }
     },
     "자동차" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6877,7 +6482,6 @@
       }
     },
     "자전거" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6894,7 +6498,6 @@
       }
     },
     "자주 쓰는 위치" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6911,7 +6514,6 @@
       }
     },
     "작게" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6928,7 +6530,6 @@
       }
     },
     "저장하고 종료" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6945,7 +6546,6 @@
       }
     },
     "저장한 녹화 파일을 찾지 못했습니다. 파일이 옮겨지거나 지워졌을 수 있습니다. Finder 에서 동영상 폴더의 SimLauncher 폴더를 열어 확인하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6962,7 +6562,6 @@
       }
     },
     "저장한 스크린샷 파일을 찾지 못했습니다. 파일이 옮겨지거나 지워졌을 수 있습니다. Finder 에서 사진 폴더의 SimLauncher 폴더를 열어 확인하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6979,7 +6578,6 @@
       }
     },
     "적용하는 중…" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6996,7 +6594,6 @@
       }
     },
     "제목 (선택)" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7013,7 +6610,6 @@
       }
     },
     "제목·본문" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7030,7 +6626,6 @@
       }
     },
     "조금 작게" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7047,7 +6642,6 @@
       }
     },
     "조금 크게" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7064,7 +6658,6 @@
       }
     },
     "주소" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7081,7 +6674,6 @@
       }
     },
     "주소로 읽을 수 없습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7098,7 +6690,6 @@
       }
     },
     "주소로 읽을 수 없습니다. 공백이나 쓸 수 없는 문자가 섞이지 않았는지 확인하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7115,7 +6706,6 @@
       }
     },
     "중지" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7132,7 +6722,6 @@
       }
     },
     "지금 Xcode 가 이 기기 모델을 지원하지 않아 사용할 수 없습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7149,7 +6738,6 @@
       }
     },
     "지금 값을 알 수 없습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7166,7 +6754,6 @@
       }
     },
     "지금 값을 읽는 중…" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7183,7 +6770,6 @@
       }
     },
     "지금 값을 읽지 못했습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7200,7 +6786,6 @@
       }
     },
     "지금 이 Mac 에서 만들 수 있는 iPhone·iPad 기기 종류가 없습니다. 다른 iOS 버전 설치를 눌러 이 Xcode 의 기본 iOS 를 설치하거나, Xcode 를 최신 버전으로 업데이트한 뒤 새로 고치세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7217,7 +6802,6 @@
       }
     },
     "지점은 100개까지 넣을 수 있습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7234,7 +6818,6 @@
       }
     },
     "지점을 2개 이상 넣으세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7251,7 +6834,6 @@
       }
     },
     "직접 설치한 앱만 보입니다. 지운 앱은 다시 설치해야 합니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7268,7 +6850,6 @@
       }
     },
     "진행 중인 경로·시나리오를 멈추고 시뮬레이션한 위치를 지웁니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7285,7 +6866,6 @@
       }
     },
     "초기화" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7302,7 +6882,6 @@
       }
     },
     "초기화…" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7319,7 +6898,6 @@
       }
     },
     "취소" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7336,7 +6914,6 @@
       }
     },
     "취소하는 중…" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7353,7 +6930,6 @@
       }
     },
     "카메라" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7370,7 +6946,6 @@
       }
     },
     "카탈로그 최상위" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7387,7 +6962,6 @@
       }
     },
     "카탈로그 형식이 맞지 않아 읽지 않았습니다." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7404,7 +6978,6 @@
       }
     },
     "카탈로그를 60초 안에 받지 못해 멈췄습니다. 연결을 확인한 뒤 다시 시도하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7421,7 +6994,6 @@
       }
     },
     "카탈로그를 만든 사람에게 알려 주세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7438,7 +7010,6 @@
       }
     },
     "카탈로그를 받지 못했습니다. 다시 시도하고, 계속되면 Mac 을 관리하는 담당자에게 주소를 확인해 달라고 하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7455,7 +7026,6 @@
       }
     },
     "카탈로그를 받지 못했습니다. 다시 시도하고, 계속되면 설정(⌘,)에서 주소를 확인하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7472,7 +7042,6 @@
       }
     },
     "카탈로그를 읽는 중…" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7489,7 +7058,6 @@
       }
     },
     "카탈로그에서…" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7506,7 +7074,6 @@
       }
     },
     "카탈로그의 schemaVersion %lld 은 없는 규격입니다 (지원: 1~%lld)." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7523,7 +7090,6 @@
       }
     },
     "캘린더" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7540,7 +7106,6 @@
       }
     },
     "켜기" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7557,7 +7122,6 @@
       }
     },
     "켜는 중" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7574,7 +7138,6 @@
       }
     },
     "켜져 있거나 상태가 바뀌는 중인 기기는 삭제하거나 초기화할 수 없습니다. 기기를 끈 뒤 다시 시도하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7591,7 +7154,6 @@
       }
     },
     "켜진 기기에서만 녹화할 수 있습니다. 기기를 켠 뒤 다시 시도하세요" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7608,7 +7170,6 @@
       }
     },
     "켜진 기기에서만 레이아웃을 볼 수 있습니다. 기기를 켠 뒤 다시 시도하세요" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7625,7 +7186,6 @@
       }
     },
     "켜진 기기에서만 설치된 앱을 볼 수 있습니다. 기기를 켠 뒤 다시 시도하세요" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7642,7 +7202,6 @@
       }
     },
     "켜진 기기에서만 스크린샷을 찍을 수 있습니다. 기기를 켠 뒤 다시 시도하세요" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7659,7 +7218,6 @@
       }
     },
     "켜진 기기에서만 쓸 수 있습니다. 기기를 켠 뒤 다시 시도하세요" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7676,7 +7234,6 @@
       }
     },
     "켜진 기기에서만 테스트 조건을 바꿀 수 있습니다. 기기를 켠 뒤 다시 시도하세요" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7693,7 +7250,6 @@
       }
     },
     "켜짐" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7710,7 +7266,6 @@
       }
     },
     "쿠퍼티노" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7727,7 +7282,6 @@
       }
     },
     "크게" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7744,7 +7298,6 @@
       }
     },
     "태그 %@" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7761,7 +7314,6 @@
       }
     },
     "테스트 알림" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7778,7 +7330,6 @@
       }
     },
     "테스트 조건…" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7795,7 +7346,6 @@
       }
     },
     "파일에서 고르기…" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7812,7 +7362,6 @@
       }
     },
     "파일을 받지 못했습니다. 주소를 확인한 뒤 다시 시도하세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7829,7 +7378,6 @@
       }
     },
     "파일이 5 MiB 를 넘어 받지 않았습니다. Mac 을 관리하는 담당자에게 주소가 catalog.json 파일을 바로 가리키는지 확인해 달라고 하고, 맞다면 오래된 버전 항목을 지워 달라고 카탈로그를 만든 사람에게 알려 주세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7846,7 +7394,6 @@
       }
     },
     "파일이 5 MiB 를 넘어 받지 않았습니다. 설정(⌘,)에서 주소가 catalog.json 파일을 바로 가리키는지 확인하고, 맞다면 오래된 버전 항목을 지워 달라고 카탈로그를 만든 사람에게 알려 주세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7863,7 +7410,6 @@
       }
     },
     "표시할 iPhone·iPad 시뮬레이터가 없습니다" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7880,7 +7426,6 @@
       }
     },
     "푸시 알림" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7897,7 +7442,6 @@
       }
     },
     "한 번에 앱 하나만 설치할 수 있습니다. .app 이나 zip 하나만 끌어다 놓으세요." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7914,7 +7458,6 @@
       }
     },
     "한 줄에 한 지점씩 위도, 경도를 넣으세요 (2~100개)." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7931,7 +7474,6 @@
       }
     },
     "허용" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7948,7 +7490,6 @@
       }
     },
     "화면" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7965,7 +7506,6 @@
       }
     },
     "확인" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
