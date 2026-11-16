@@ -18,7 +18,7 @@ extension AndroidDevicesText {
     String(localized: "이 기기에 설치한 앱을 보고 지웁니다.", bundle: .module)
   }
 
-  /// (공통) "설치된 앱…" 버튼이 막힌 이유 (툴팁). 기기 규칙은 앱 작업과 같다 (켜는 중은 `.notBooted`).
+  /// (공통) "설치된 앱…" 항목(⋯ 메뉴)이 막힌 이유 (툴팁). 기기 규칙은 앱 작업과 같다 (켜는 중은 `.notBooted`).
   static func installedAppsBlockReason(_ reason: AndroidAppActionBlockReason) -> String {
     switch reason {
     case .notBooted:

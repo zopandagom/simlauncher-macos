@@ -5,7 +5,7 @@ import Testing
 /// URL·카탈로그에서 설치의 공유 문구(행·URL 시트 공통 문구, 받기 실패 전부, 카탈로그 시트·카탈로그 읽기 실패 전부)는 iOS 기기 목록
 /// (Launcher)과 같은 키·값으로 이 모듈에도 둔다 (Feature 끼리 의존하지 않기 위해, ARCHITECTURE §4 화면 문자열 행). 스크린샷·녹화·레이아웃 보기,
 /// 여러 기기 설치, 앱 로그(로그 보기 버튼·툴팁, 앱 실행 시트 안내), 테스트 조건(앱 단위 구역 포함), 설치된 앱 공유 문구도 같다. 이 테스트는
-/// Launcher 원본 String Catalog 를 소스 경로로 읽어 (a) 공유 키가 Launcher 와 이 모듈의 원본 카탈로그에 모두 있고 ko 값이 같은지,
+/// Launcher 원본 String Catalog 를 소스 경로로 읽어 (a) 공유 키가 Launcher 와 이 모듈의 원본 카탈로그에 모두 있고 ko 값과 en 값(복수형 포함)이 같은지,
 /// (b) 이 모듈 문구 함수의 결과가 Launcher 값으로 만든 문구와 같은지 본다. 키가 한국어 원문이라 Launcher 가 문구를 고치면 키가 바뀌어
 /// (a) 가 실패하고, 이 모듈만 고치면 (b) 가 실패한다. Settings 와의 조각 동기화는 Launcher 의 `CatalogFragmentSyncTests` 가 맡는다.
 struct LauncherTextSyncTests {
@@ -31,10 +31,46 @@ struct LauncherTextSyncTests {
     return table
   }
 
+  /// 두 원본 String Catalog 의 키 → en 항목(복수형·substitutions 를 포함한 JSON 값 전체). 공유 키는 en 도 Launcher 와 같아야 한다
+  /// (공유 문장은 용어집의 중립 낱말로 한 번만 번역하고, 모듈별로 바꾸지 않는다).
+  struct EnglishTables {
+    let launcher: [String: NSDictionary]
+    let android: [String: NSDictionary]
+
+    /// 키의 en 항목이 Launcher 에 있고 이 모듈과 같다.
+    func matches(_ key: String) -> Bool {
+      guard let value = self.launcher[key] else { return false }
+      return self.android[key] == value
+    }
+  }
+
+  /// String Catalog(JSON)의 키 → en 항목.
+  static func englishTable(at url: URL) throws -> [String: NSDictionary] {
+    let data = try Data(contentsOf: url)
+    let root = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+    let strings = try #require(root["strings"] as? [String: Any])
+    var table: [String: NSDictionary] = [:]
+    for (key, entry) in strings {
+      let localizations = (entry as? [String: Any])?["localizations"] as? [String: Any]
+      if let english = localizations?["en"] as? NSDictionary {
+        table[key] = english
+      }
+    }
+    return table
+  }
+
+  static func englishTables() throws -> EnglishTables {
+    try EnglishTables(
+      launcher: self.englishTable(at: NameProblemSyncTests.launcherCatalog),
+      android: self.englishTable(at: self.androidCatalog)
+    )
+  }
+
   @Test("공유 문구 102개가 Launcher 원본과 이 모듈 원본에 같은 키·값으로 있고, 문구 함수의 결과가 Launcher 값으로 만든 문구와 같다")
   func sharedTextsMatchLauncher() throws {
     let launcher = try Self.koreanTable(at: NameProblemSyncTests.launcherCatalog)
     let android = try Self.koreanTable(at: Self.androidCatalog)
+    let english = try Self.englishTables()
     #expect(!launcher.isEmpty)
     let checks = DownloadTextCatalog.sharedChecks(launcher)
 
@@ -42,6 +78,7 @@ struct LauncherTextSyncTests {
     for check in checks {
       #expect(launcher[check.key] == check.key, "Launcher 에 없거나 다른 값: \(check.key)")
       #expect(android[check.key] == launcher[check.key], "이 모듈에 없거나 다른 값: \(check.key)")
+      #expect(english.matches(check.key), "en 값이 Launcher 와 다르거나 없다: \(check.key)")
       #expect(check.actual == check.expected, "\(check.key)")
     }
   }
@@ -50,12 +87,14 @@ struct LauncherTextSyncTests {
   func sharedCaptureTextsMatchLauncher() throws {
     let launcher = try Self.koreanTable(at: NameProblemSyncTests.launcherCatalog)
     let android = try Self.koreanTable(at: Self.androidCatalog)
+    let english = try Self.englishTables()
     let checks = CaptureTextCatalog.sharedChecks(launcher)
 
     #expect(Set(checks.map(\.key)).count == 29)
     for check in checks {
       #expect(launcher[check.key] == check.key, "Launcher 에 없거나 다른 값: \(check.key)")
       #expect(android[check.key] == launcher[check.key], "이 모듈에 없거나 다른 값: \(check.key)")
+      #expect(english.matches(check.key), "en 값이 Launcher 와 다르거나 없다: \(check.key)")
       #expect(check.actual == check.expected, "\(check.key)")
     }
   }
@@ -64,12 +103,14 @@ struct LauncherTextSyncTests {
   func sharedBatchTextsMatchLauncher() throws {
     let launcher = try Self.koreanTable(at: NameProblemSyncTests.launcherCatalog)
     let android = try Self.koreanTable(at: Self.androidCatalog)
+    let english = try Self.englishTables()
     let checks = BatchTextCatalog.sharedChecks(launcher)
 
     #expect(Set(checks.map(\.key)).count == 12)
     for check in checks {
       #expect(launcher[check.key] == check.key, "Launcher 에 없거나 다른 값: \(check.key)")
       #expect(android[check.key] == launcher[check.key], "이 모듈에 없거나 다른 값: \(check.key)")
+      #expect(english.matches(check.key), "en 값이 Launcher 와 다르거나 없다: \(check.key)")
       #expect(check.actual == check.expected, "\(check.key)")
     }
   }
@@ -78,12 +119,14 @@ struct LauncherTextSyncTests {
   func sharedAppLogTextsMatchLauncher() throws {
     let launcher = try Self.koreanTable(at: NameProblemSyncTests.launcherCatalog)
     let android = try Self.koreanTable(at: Self.androidCatalog)
+    let english = try Self.englishTables()
     let checks = AppLogTextCatalog.sharedChecks(launcher)
 
     #expect(Set(checks.map(\.key)).count == 4)
     for check in checks {
       #expect(launcher[check.key] == check.key, "Launcher 에 없거나 다른 값: \(check.key)")
       #expect(android[check.key] == launcher[check.key], "이 모듈에 없거나 다른 값: \(check.key)")
+      #expect(english.matches(check.key), "en 값이 Launcher 와 다르거나 없다: \(check.key)")
       #expect(check.actual == check.expected, "\(check.key)")
     }
   }
@@ -92,12 +135,14 @@ struct LauncherTextSyncTests {
   func sharedTestConditionsTextsMatchLauncher() throws {
     let launcher = try Self.koreanTable(at: NameProblemSyncTests.launcherCatalog)
     let android = try Self.koreanTable(at: Self.androidCatalog)
+    let english = try Self.englishTables()
     let checks = TestConditionsTextCatalog.sharedChecks(launcher)
 
     #expect(Set(checks.map(\.key)).count == 33)
     for check in checks {
       #expect(launcher[check.key] == check.key, "Launcher 에 없거나 다른 값: \(check.key)")
       #expect(android[check.key] == launcher[check.key], "이 모듈에 없거나 다른 값: \(check.key)")
+      #expect(english.matches(check.key), "en 값이 Launcher 와 다르거나 없다: \(check.key)")
       #expect(check.actual == check.expected, "\(check.key)")
     }
   }
@@ -106,12 +151,14 @@ struct LauncherTextSyncTests {
   func sharedAppConditionsTextsMatchLauncher() throws {
     let launcher = try Self.koreanTable(at: NameProblemSyncTests.launcherCatalog)
     let android = try Self.koreanTable(at: Self.androidCatalog)
+    let english = try Self.englishTables()
     let checks = AppConditionsTextCatalog.sharedChecks(launcher)
 
     #expect(Set(checks.map(\.key)).count == 13)
     for check in checks {
       #expect(launcher[check.key] == check.key, "Launcher 에 없거나 다른 값: \(check.key)")
       #expect(android[check.key] == launcher[check.key], "이 모듈에 없거나 다른 값: \(check.key)")
+      #expect(english.matches(check.key), "en 값이 Launcher 와 다르거나 없다: \(check.key)")
       #expect(check.actual == check.expected, "\(check.key)")
     }
   }
@@ -120,12 +167,14 @@ struct LauncherTextSyncTests {
   func sharedInstalledAppsTextsMatchLauncher() throws {
     let launcher = try Self.koreanTable(at: NameProblemSyncTests.launcherCatalog)
     let android = try Self.koreanTable(at: Self.androidCatalog)
+    let english = try Self.englishTables()
     let checks = InstalledAppsTextCatalog.sharedChecks(launcher)
 
     #expect(Set(checks.map(\.key)).count == 12)
     for check in checks {
       #expect(launcher[check.key] == check.key, "Launcher 에 없거나 다른 값: \(check.key)")
       #expect(android[check.key] == launcher[check.key], "이 모듈에 없거나 다른 값: \(check.key)")
+      #expect(english.matches(check.key), "en 값이 Launcher 와 다르거나 없다: \(check.key)")
       #expect(check.actual == check.expected, "\(check.key)")
     }
   }

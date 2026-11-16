@@ -3,6 +3,12 @@
   "strings" : {
     "‘%@’ 필터가 이미 있습니다" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A filter named ‘%@’ already exists"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -13,6 +19,12 @@
     },
     "%@ · 시작 %@ · %@" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · Started %@ · %@"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -23,6 +35,12 @@
     },
     "%@ 로그" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ Logs"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -33,6 +51,12 @@
     },
     "Android 도구를 찾지 못해 다시 실행하지 못했습니다. 메인 창 Android 칸 오른쪽 위 Android 도구에서 상태를 확인하세요." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't find the Android tools, so the app couldn't be relaunched. Check the status in Android Tools at the top right of the Android section in the main window."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -43,6 +67,12 @@
     },
     "SimLauncher 에서 앱을 설치·실행하면 그때부터의 로그가 여기에 쌓입니다." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When you install and launch an app with SimLauncher, its logs collect here from then on."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -53,6 +83,12 @@
     },
     "Xcode 를 찾지 못했거나 아직 준비되지 않아 다시 실행하지 못했습니다. 메인 창 오른쪽 위 개발 환경을 눌러 준비를 마친 뒤 다시 시도하세요." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xcode wasn't found or isn't ready yet, so the app couldn't be relaunched. Click Developer Tools at the top right of the main window to finish setup, then try again."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -63,6 +99,12 @@
     },
     "걸러 볼 글자" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filter Text"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -73,6 +115,12 @@
     },
     "계속" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resume"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -83,6 +131,12 @@
     },
     "관리자가 정한 필터 목록이라 저장하거나 지울 수 없습니다." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This filter list is set by your administrator, so filters can't be saved or deleted."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -93,6 +147,12 @@
     },
     "기기 상태를 확인하지 못했습니다. 잠시 뒤 다시 시도하세요." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't check the device state. Try again in a moment."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -103,6 +163,12 @@
     },
     "기기가 꺼져 있어 다시 실행하지 않았습니다. 기기 목록에서 켠 뒤 다시 실행하세요." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The device isn't running, so the app wasn't relaunched. Start the device from the device list, then relaunch."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -113,6 +179,12 @@
     },
     "기기를 찾지 못해 다시 실행하지 못했습니다. 기기 목록에 이 기기가 있는지 확인하세요." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't find the device, so the app couldn't be relaunched. Make sure this device is in the device list."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -123,6 +195,12 @@
     },
     "기기에 이 앱이 없습니다. 기기 목록에서 다시 설치하세요." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This app isn't on the device. Install it again from the device list."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -133,6 +211,12 @@
     },
     "끝남" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ended"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -143,6 +227,12 @@
     },
     "끝남 — SimLauncher 가 앱을 다시 설치·실행했습니다" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ended — SimLauncher reinstalled and relaunched the app"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -153,6 +243,12 @@
     },
     "끝남 — 기기가 꺼졌거나 연결이 끊겼습니다" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ended — the device shut down or disconnected"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -163,6 +259,12 @@
     },
     "끝남 — 기기가 꺼졌습니다" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ended — the device shut down"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -173,6 +275,12 @@
     },
     "끝남 — 로그 받기를 멈췄습니다" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ended — stopped receiving logs"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -183,6 +291,12 @@
     },
     "끝남 — 앱이 끝났습니다" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ended — the app quit"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -193,6 +307,12 @@
     },
     "다시 실행" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relaunch"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -203,6 +323,12 @@
     },
     "다시 실행하지 못했습니다. 잠시 뒤 다시 시도하세요." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't relaunch. Try again in a moment."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -213,6 +339,12 @@
     },
     "대소문자 구분" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Case Sensitive"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -223,6 +355,12 @@
     },
     "따라가기" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auto-Scroll"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -233,6 +371,12 @@
     },
     "맞추는 방법" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Match"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -243,6 +387,12 @@
     },
     "바꾸기" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Replace"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -253,6 +403,12 @@
     },
     "받는 중" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Receiving"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -263,6 +419,24 @@
     },
     "버퍼가 차서 앞 %lld줄을 버렸습니다" : {
       "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The buffer was full, so the first %lld line was dropped"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The buffer was full, so the first %lld lines were dropped"
+                }
+              }
+            }
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -273,6 +447,34 @@
     },
     "보이는 %lld줄 / 전체 %lld줄" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Showing %1$lld of %#@total@"
+          },
+          "substitutions" : {
+            "total" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg line"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg lines"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -283,6 +485,12 @@
     },
     "삭제" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -293,6 +501,12 @@
     },
     "새 줄 %lld" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Lines: %lld"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -303,6 +517,12 @@
     },
     "시작" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starts With"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -313,6 +533,12 @@
     },
     "앱" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -323,6 +549,12 @@
     },
     "앱 로그" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App Logs"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -333,6 +565,12 @@
     },
     "앱이 시작되지 않았거나 시작하자마자 종료되었습니다. 다시 실행해 보고, 계속되면 앱 개발자에게 알려 주세요." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The app didn't start or quit right after starting. Try relaunching it. If the problem continues, tell the app's developer."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -343,6 +581,12 @@
     },
     "이 기기를 지금 쓸 수 없어 다시 실행하지 못했습니다. 기기 목록에서 이유를 확인하세요." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This device can't be used right now, so the app couldn't be relaunched. Check the reason in the device list."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -353,6 +597,12 @@
     },
     "이 기기의 로그가 없습니다" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Logs for This Device"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -363,6 +613,12 @@
     },
     "이 실행의 기록이 정리되어 다시 실행할 수 없습니다. 기기 목록에서 앱을 다시 설치하세요." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The records for this launch have been cleaned up, so it can't be relaunched. Install the app again from the device list."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -373,6 +629,12 @@
     },
     "이 앱에는 홈 화면에서 여는 화면이 없어 실행할 수 없습니다." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This app has no screen that opens from the home screen, so it can't be launched."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -383,6 +645,12 @@
     },
     "이름은 %lld자까지 쓸 수 있습니다." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Names can be up to %lld characters."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -393,6 +661,12 @@
     },
     "일시정지" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pause"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -403,6 +677,12 @@
     },
     "읽을 수 없는 정규식을 고치면 저장할 수 있습니다." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fix the unreadable regex to save."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -413,6 +693,12 @@
     },
     "저장" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -423,6 +709,12 @@
     },
     "저장된 필터" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saved Filters"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -433,6 +725,12 @@
     },
     "저장된 필터가 없습니다" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Saved Filters"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -443,6 +741,12 @@
     },
     "저장된 필터는 %lld개까지입니다." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can save up to %lld filters."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -453,6 +757,12 @@
     },
     "정규식" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Regex"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -463,6 +773,12 @@
     },
     "정규식을 읽을 수 없습니다. 바로 앞 결과를 보이고 있습니다." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can't read the regex. Showing the previous results."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -473,6 +789,12 @@
     },
     "제외" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exclude"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -483,6 +805,12 @@
     },
     "조건 글자는 %lld자까지 저장할 수 있습니다." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Condition text can be up to %lld characters."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -493,6 +821,12 @@
     },
     "조건 글자를 입력하면 저장할 수 있습니다." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter condition text to save."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -503,6 +837,12 @@
     },
     "조건 더하기" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Condition"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -513,6 +853,12 @@
     },
     "조건 지우기" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove Condition"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -523,6 +869,12 @@
     },
     "조건은 %lld개까지 저장할 수 있습니다." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can save up to %lld conditions."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -533,6 +885,12 @@
     },
     "지금 필터 저장…" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save Current Filter…"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -543,6 +901,12 @@
     },
     "지금 필터로 바꿀까요?" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Replace it with the current filter?"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -553,6 +917,12 @@
     },
     "지금까지 받은 줄을 창에서 지웁니다. 앱과 로그 받기는 계속됩니다." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clears the lines received so far from the window. The app and log receiving continue."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -563,6 +933,12 @@
     },
     "지우기" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -573,6 +949,12 @@
     },
     "취소" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -583,6 +965,12 @@
     },
     "켜면 새 줄이 올 때 맨 아래로 스크롤합니다. 위로 스크롤하면 꺼지고 맨 아래로 내리면 다시 켜집니다." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When on, scrolls to the bottom as new lines arrive. Scrolling up turns it off, and scrolling back to the bottom turns it on again."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -593,6 +981,12 @@
     },
     "켜면 이 조건에 맞는 줄을 숨깁니다." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When on, hides lines that match this condition."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -603,6 +997,12 @@
     },
     "켜진 기기에서 이 앱을 다시 실행하고 새 로그를 받습니다. 기기를 켜지는 않습니다." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relaunches this app on the running device and receives new logs. Doesn't start the device."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -613,6 +1013,12 @@
     },
     "포함" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Contains"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -623,6 +1029,12 @@
     },
     "포함 조건은 하나라도 맞으면 보이고, 제외 조건이 맞으면 숨깁니다. '시작' 은 시각·pid·tid·레벨 뒤의 태그부터 비교합니다." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lines are shown if any Contains condition matches, and hidden if an Exclude condition matches. 'Starts With' compares from the tag after the time, pid, tid, and level."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -633,6 +1045,12 @@
     },
     "포함 조건은 하나라도 맞으면 보이고, 제외 조건이 맞으면 숨깁니다. 여러 줄 print 는 줄마다 따로 걸러집니다(Logger·NSLog 머리말은 첫 줄에만 붙습니다). '시작' 은 머리말 뒤 메시지와 비교합니다." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lines are shown if any Contains condition matches, and hidden if an Exclude condition matches. Multiline print output is filtered line by line (the Logger and NSLog header is attached only to the first line). 'Starts With' compares with the message after the header."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -643,6 +1061,12 @@
     },
     "필터 이름" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filter Name"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -653,6 +1077,12 @@
     },
     "필터 저장" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save Filter"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -663,6 +1093,12 @@
     },
     "필터에 맞는 줄이 없습니다" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Lines Match the Filter"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",

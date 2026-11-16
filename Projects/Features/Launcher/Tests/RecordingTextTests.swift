@@ -100,7 +100,7 @@ struct RecordingTextTests {
     for text in texts {
       #expect(!text.isEmpty)
     }
-    // 녹화 버튼이 막힌 이유는 스크린샷 문구가 아니다.
+    // 녹화 항목(⋯ 메뉴)이 막힌 이유는 스크린샷 문구가 아니다.
     for reason in LauncherTextCatalog.screenshotBlockReasons {
       #expect(LauncherText.recordBlockReason(reason) != LauncherText.screenshotBlockReason(reason))
     }

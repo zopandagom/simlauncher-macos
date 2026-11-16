@@ -3,6 +3,12 @@
   "strings" : {
     "App Store 를 열지 못했습니다" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't open the App Store"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -13,6 +19,12 @@
     },
     "App Store 앱을 직접 열고 Xcode 를 검색해 설치하세요." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open the App Store app yourself, search for Xcode, and install it."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -23,6 +35,12 @@
     },
     "App Store 열기" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open App Store"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -33,6 +51,12 @@
     },
     "Finder 의 응용 프로그램 폴더에서 Xcode 를 직접 열어 주세요." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Xcode yourself from the Applications folder in Finder."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -43,6 +67,12 @@
     },
     "iOS 버전을 확인하지 못했습니다" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't Check the iOS Version"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -53,6 +83,12 @@
     },
     "iOS 시뮬레이터 상태를 확인하지 못했습니다" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't Check the iOS Simulator Status"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -63,6 +99,12 @@
     },
     "iOS 시뮬레이터 설치" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Install iOS Simulator"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -73,6 +115,12 @@
     },
     "iOS 시뮬레이터가 이 Mac 에 없습니다. 설치를 누르면 Apple 서버에서 내려받아 설치합니다. 수 GB 를 내려받아 시간이 오래 걸릴 수 있고, 인터넷 연결과 Mac 의 저장 공간이 필요합니다." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The iOS Simulator isn't on this Mac. Click Install to download and install it from Apple servers. Several GB are downloaded, so it can take a long time, and you need an internet connection and storage space on your Mac."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -83,6 +131,12 @@
     },
     "iOS 시뮬레이터를 설치하는 중입니다" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Installing iOS Simulator"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -93,6 +147,12 @@
     },
     "iOS 시뮬레이터를 설치하세요" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Install iOS Simulator"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -103,6 +163,12 @@
     },
     "iOS 시뮬레이터를 설치하지 못했습니다. 인터넷 연결과 Mac 의 저장 공간이 충분한지 확인한 뒤 다시 설치를 누르세요. 계속 실패하면 Mac 을 재시동한 뒤 다시 시도하세요." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't install the iOS Simulator. Make sure you're connected to the internet and your Mac has enough storage space, then click Install again. If it keeps failing, restart your Mac and try again."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -113,6 +179,12 @@
     },
     "iOS 시뮬레이터를 설치했습니다." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Installed the iOS Simulator."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -123,6 +195,12 @@
     },
     "iOS 시뮬레이터를 쓰려면 Xcode 가 필요합니다. App Store 열기를 눌러 Xcode 를 설치하세요. 내려받는 데 시간이 걸릴 수 있습니다." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The iOS Simulator requires Xcode. Click Open App Store to install Xcode. Downloading can take a while."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -133,6 +211,12 @@
     },
     "iOS 시뮬레이터를 쓸 수 없습니다" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can't Use iOS Simulator"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -143,6 +227,12 @@
     },
     "iOS 시뮬레이터를 준비하는 중입니다" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preparing iOS Simulator"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -153,6 +243,12 @@
     },
     "Xcode 가 삭제되었거나 옮겨졌습니다. 화면의 안내에 따라 Xcode 를 다시 설치하세요." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xcode was deleted or moved. Follow the instructions on screen to install Xcode again."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -163,6 +259,12 @@
     },
     "Xcode 가 응답하지 않았거나 시작되지 않았습니다. Xcode 를 설치하거나 업데이트하는 중이면 끝난 뒤 다시 확인을 누르세요. 계속 실패하면 Mac 을 재시동하거나 App Store 에서 Xcode 를 다시 설치하세요." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xcode didn't respond or didn't start. If Xcode is installing or updating, click Check Again after it finishes. If it keeps failing, restart your Mac or reinstall Xcode from the App Store."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -173,6 +275,12 @@
     },
     "Xcode 라이선스에 동의하세요" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accept the Xcode License"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -183,6 +291,12 @@
     },
     "Xcode 를 설치하세요" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Install Xcode"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -193,6 +307,12 @@
     },
     "Xcode 를 열지 못했습니다" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't open Xcode"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -203,6 +323,12 @@
     },
     "Xcode 를 찾지 못해 설치하지 못했습니다. 화면의 안내에 따라 Xcode 를 설치하세요." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't find Xcode, so nothing was installed. Follow the instructions on screen to install Xcode."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -213,6 +339,12 @@
     },
     "Xcode 를 찾지 못했습니다" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't find Xcode"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -223,6 +355,12 @@
     },
     "Xcode 를 찾지 못했습니다. App Store 에서 Xcode 를 설치한 뒤 다시 확인을 누르세요." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't find Xcode. Install Xcode from the App Store, then click Check Again."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -233,6 +371,12 @@
     },
     "Xcode 상태를 확인하지 못했습니다" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't Check the Xcode Status"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -243,6 +387,12 @@
     },
     "Xcode 설치" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Install Xcode"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -253,6 +403,12 @@
     },
     "Xcode 열기" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Xcode"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -263,6 +419,12 @@
     },
     "Xcode 열기를 누르면 Xcode 가 라이선스 동의 창을 띄웁니다. 창의 안내에 따라 동의하세요." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When you click Open Xcode, Xcode shows a window to accept the license. Follow the instructions in that window to accept it."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -273,6 +435,12 @@
     },
     "Xcode 열기를 누르면 Xcode 가 추가 구성요소를 설치하는 창을 띄웁니다. 창의 안내에 따라 설치하고 끝날 때까지 기다리세요." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When you click Open Xcode, Xcode shows a window to install additional components. Follow the instructions in that window to install them, and wait until it finishes."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -283,6 +451,12 @@
     },
     "Xcode 의 설치 도구를 시작하지 못했습니다. Xcode 를 설치하거나 업데이트하는 중이면 끝난 뒤 다시 설치를 누르세요. 계속 실패하면 App Store 에서 Xcode 를 다시 설치하세요." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't start Xcode's installer. If Xcode is installing or updating, click Install again after it finishes. If it keeps failing, reinstall Xcode from the App Store."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -293,6 +467,12 @@
     },
     "Xcode 첫 실행 준비를 마치세요" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finish Xcode First Launch Setup"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -303,6 +483,12 @@
     },
     "개발 환경을 확인하는 중…" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checking Developer Tools…"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -313,6 +499,12 @@
     },
     "계속 설치" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continue Installing"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -323,6 +515,12 @@
     },
     "관리자 암호가 필요합니다" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Requires an administrator password"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -333,6 +531,12 @@
     },
     "기기 목록 열기" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Device List"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -343,6 +547,12 @@
     },
     "내려받기가 멈춰 있습니다. 인터넷 연결을 확인하세요. 잠깐 끊긴 경우에는 연결되면 이어서 받습니다. 계속 멈춰 있으면 취소한 뒤 다시 설치하세요." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The download is stalled. Check your internet connection. If the connection dropped briefly, the download resumes when it reconnects. If it stays stalled, cancel and install again."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -353,6 +563,12 @@
     },
     "내려받는 중…" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Downloading…"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -363,6 +579,12 @@
     },
     "내려받은 iOS 시뮬레이터를 확인하고 있습니다. 잠시 뒤 다시 확인을 누르세요." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verifying the downloaded iOS Simulator. Click Check Again in a moment."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -373,6 +595,12 @@
     },
     "다시 확인" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check Again"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -383,6 +611,12 @@
     },
     "다시 확인을 누르세요. 계속 실패하면 Mac 을 재시동한 뒤 다시 시도하세요." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Click Check Again. If it keeps failing, restart your Mac and try again."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -393,6 +627,12 @@
     },
     "단계를 마치고 이 앱으로 돌아오면 자동으로 다시 확인합니다." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When you finish the step and return to this app, it checks again automatically."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -403,6 +643,12 @@
     },
     "라이선스 동의" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "License Agreement"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -413,6 +659,12 @@
     },
     "사용하는 Xcode" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xcode in Use"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -423,6 +675,12 @@
     },
     "설치 결과를 확인하는 중…" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checking the installation…"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -433,6 +691,12 @@
     },
     "설치 마무리 단계라 취소할 수 없습니다. 곧 끝납니다." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Installation is finishing and can't be canceled. It will be done soon."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -443,6 +707,12 @@
     },
     "설치가 끝날 때까지 기다리세요. 창을 닫아도 설치는 계속됩니다." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wait until the installation finishes. Installation continues even if you close the window."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -453,6 +723,12 @@
     },
     "설치가 끝났지만 iOS 시뮬레이터가 아직 보이지 않습니다. 잠시 뒤 다시 확인을 누르세요." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Installation finished, but the iOS Simulator doesn't appear yet. Click Check Again in a moment."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -463,6 +739,12 @@
     },
     "설치된 iOS 시뮬레이터를 쓸 수 없는 상태입니다. Mac 을 재시동한 뒤 다시 확인을 누르세요." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The installed iOS Simulator can't be used. Restart your Mac, then click Check Again."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -473,6 +755,12 @@
     },
     "설치를 마치면 앱을 종료합니다." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The app quits after the installation finishes."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -483,6 +771,12 @@
     },
     "설치를 준비하는 중…" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preparing to install…"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -493,6 +787,12 @@
     },
     "설치를 취소했습니다." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Installation canceled."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -503,6 +803,12 @@
     },
     "설치하는 중…" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Installing…"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -513,6 +819,12 @@
     },
     "설치할 iOS" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS Version to Install"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -523,6 +835,12 @@
     },
     "이 Mac 에는 Command Line Tools 만 설치되어 있습니다. Command Line Tools 로는 iOS 시뮬레이터를 쓸 수 없어 Xcode 가 필요합니다. App Store 열기를 눌러 Xcode 를 설치하세요." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only the Command Line Tools are installed on this Mac. The iOS Simulator can't be used with the Command Line Tools alone, so Xcode is required. Click Open App Store to install Xcode."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -533,6 +851,12 @@
     },
     "이 Xcode 가 쓰는 iOS 버전을 읽지 못했습니다. App Store 에서 Xcode 를 최신 버전으로 업데이트하거나 다시 설치하세요." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't read the iOS version this Xcode uses. Update Xcode to the latest version from the App Store, or reinstall it."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -543,6 +867,12 @@
     },
     "이미 다른 iOS 버전의 기기가 있으면 설치하지 않고 기기 목록을 열어도 됩니다." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "If you already have devices with another iOS version, you can open the device list without installing."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -553,6 +883,12 @@
     },
     "이제 iOS 시뮬레이터 기기를 켜고 앱을 설치할 수 있습니다." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can now boot iOS Simulator devices and install apps."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -563,6 +899,12 @@
     },
     "종료" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quit"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -573,6 +915,12 @@
     },
     "준비가 끝났습니다" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You're All Set"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -583,6 +931,12 @@
     },
     "지금 종료하면 설치가 취소됩니다. 취소를 마치는 데 몇 초 걸릴 수 있고, 끝나면 앱이 종료됩니다. 마무리 단계에 들어갔으면 설치를 마친 뒤 종료합니다." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "If you quit now, the installation is canceled. Canceling can take a few seconds, and the app quits when it's done. If installation has started finishing, the app quits after it completes."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -593,6 +947,12 @@
     },
     "첫 실행 준비" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "First Launch Setup"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -603,6 +963,12 @@
     },
     "취소" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -613,6 +979,12 @@
     },
     "취소를 마치면 앱을 종료합니다." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The app quits after canceling finishes."
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -623,6 +995,12 @@
     },
     "취소하는 중…" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Canceling…"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -633,6 +1011,12 @@
     },
     "확인" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OK"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -643,6 +1027,12 @@
     },
     "확인 중…" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checking…"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",

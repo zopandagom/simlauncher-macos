@@ -65,8 +65,14 @@ struct MainWindow: View {
         .safeAreaInset(edge: .top, spacing: 0) {
           UpdateBanner(model: self.updateModel)
         }
+        .frame(minWidth: Self.detailMinWidth)
     }
   }
+
+  /// detail 의 최소 폭. 기기 행(`DeviceRow`·`AndroidDeviceRow`)의 글자 버튼은 줄어들지 않으므로, 영어에서 버튼 영역이 가장 넓은
+  /// 녹화 중 행(앱 설치·앱 실행·로그 보기·경과 시간·중지·끄기·⋯ 약 593pt)과 이름 열 최소 폭·여백(약 220pt)이 잘리지 않는 폭이다.
+  /// 이 때문에 창의 최소 폭은 사이드바를 더해 약 960~980pt 다.
+  private static let detailMinWidth: CGFloat = 820
 
   @ViewBuilder
   private var detail: some View {

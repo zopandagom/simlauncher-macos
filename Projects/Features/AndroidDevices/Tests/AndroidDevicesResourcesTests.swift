@@ -179,15 +179,16 @@ struct AndroidDevicesTextTests {
 }
 
 /// iOS 기기 만들기와 같은 키·값으로 둔 이름 문제 문구 (Feature 끼리 의존하지 않기 위해, ARCHITECTURE §4 화면 문자열 행).
-/// Launcher 원본 String Catalog 를 소스 경로로 읽어, 한쪽만 고치면 실패한다.
+/// Launcher 원본 String Catalog 를 소스 경로로 읽어, 한쪽만 고치면 실패한다. en 값(두 원본 카탈로그의 en 항목)도 같아야 한다.
 struct NameProblemSyncTests {
   static let launcherCatalog = URL(filePath: #filePath)
     .deletingLastPathComponent()
     .appending(path: "../../Launcher/Sources/Localizable.xcstrings")
     .standardized
 
-  @Test("이름 문제 문구 3개가 Launcher 원본에 같은 키·값으로 있다")
+  @Test("이름 문제 문구 3개가 Launcher 원본에 같은 키·값으로 있고, en 값도 같다")
   func nameProblemsMatchLauncher() throws {
+    let english = try LauncherTextSyncTests.englishTables()
     let data = try Data(contentsOf: Self.launcherCatalog)
     let root = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
     let strings = try #require(root["strings"] as? [String: Any])
@@ -197,12 +198,13 @@ struct NameProblemSyncTests {
       let localizations = entry?["localizations"] as? [String: Any]
       let unit = (localizations?["ko"] as? [String: Any])?["stringUnit"] as? [String: Any]
       #expect(unit?["value"] as? String == text, "Launcher 에 없거나 다른 값: \(text)")
+      #expect(english.matches(text), "en 값이 Launcher 와 다르거나 없다: \(text)")
     }
   }
 }
 
 /// 화면 문구에는 기기 상표명을 쓰지 않는다 (ARCHITECTURE §4 Android 기기 행). 폴더블의 `hw.device.name` 은 config 에만 쓰는
-/// 화면에 보이지 않는 값이다. 원본 String Catalog 를 소스 경로로 읽어 모든 키·ko 값도 본다.
+/// 화면에 보이지 않는 값이다. 원본 String Catalog 를 소스 경로로 읽어 모든 키·ko 값과 en 값(복수형·substitutions 의 모든 변형)도 본다.
 struct BrandNameTests {
   static let catalog = URL(filePath: #filePath)
     .deletingLastPathComponent()
@@ -223,9 +225,15 @@ struct BrandNameTests {
     let catalogTexts = strings.flatMap { key, entry in
       let localizations = (entry as? [String: Any])?["localizations"] as? [String: Any]
       let unit = (localizations?["ko"] as? [String: Any])?["stringUnit"] as? [String: Any]
-      return [key, unit?["value"] as? String ?? ""]
+      return [key, unit?["value"] as? String ?? ""] + Self.values(in: localizations?["en"])
     }
     #expect(!strings.isEmpty)
+    // en 값을 실제로 읽었다 (모든 항목에 en 이 있다. 빠지면 make strings-check 도 실패한다).
+    for (key, entry) in strings {
+      let localizations = (entry as? [String: Any])?["localizations"] as? [String: Any]
+      let englishValues = Self.values(in: localizations?["en"])
+      #expect(!englishValues.isEmpty, "en 값이 없다: \(key)")
+    }
     for text in texts + catalogTexts {
       let lowered = text.lowercased()
       for brand in Self.brands {
@@ -233,12 +241,24 @@ struct BrandNameTests {
       }
     }
   }
+
+  /// en 항목 안의 모든 `stringUnit.value` (단순값, `variations.plural.*`, `substitutions.*.variations.plural.*`).
+  static func values(in node: Any?) -> [String] {
+    if let dictionary = node as? [String: Any] {
+      if let unit = dictionary["stringUnit"] as? [String: Any], let value = unit["value"] as? String {
+        return [value] + dictionary.filter { $0.key != "stringUnit" }.values.flatMap { self.values(in: $0) }
+      }
+      return dictionary.values.flatMap { self.values(in: $0) }
+    }
+    return []
+  }
 }
 
-/// iOS 링크 열기와 같은 키·값으로 둔 링크 문구 (이름 문제와 같은 방식).
+/// iOS 링크 열기와 같은 키·값으로 둔 링크 문구 (이름 문제와 같은 방식, en 값도 같다).
 struct LinkProblemSyncTests {
-  @Test("링크 열기 문구 8개가 Launcher 원본에 같은 키·값으로 있다")
+  @Test("링크 열기 문구 8개가 Launcher 원본에 같은 키·값으로 있고, en 값도 같다")
   func linkTextsMatchLauncher() throws {
+    let english = try LauncherTextSyncTests.englishTables()
     let data = try Data(contentsOf: NameProblemSyncTests.launcherCatalog)
     let root = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
     let strings = try #require(root["strings"] as? [String: Any])
@@ -254,6 +274,7 @@ struct LinkProblemSyncTests {
       let localizations = entry?["localizations"] as? [String: Any]
       let unit = (localizations?["ko"] as? [String: Any])?["stringUnit"] as? [String: Any]
       #expect(unit?["value"] as? String == text, "Launcher 에 없거나 다른 값: \(text)")
+      #expect(english.matches(text), "en 값이 Launcher 와 다르거나 없다: \(text)")
     }
     #expect(AndroidDevicesText.linkProblem(.empty) == nil)
   }
@@ -356,6 +377,9 @@ enum AndroidDevicesTextCatalog {
     ]
     texts += [AndroidAppActionBlockReason.notBooted, .unavailable].map { AndroidDevicesText.appActionBlockReason($0) }
     texts += [AndroidAppActionBlockReason.notBooted, .unavailable].map { AndroidDevicesText.layoutBlockReason($0) }
+    texts += [AndroidAppActionBlockReason.notBooted, .unavailable].map {
+      AndroidDevicesText.deviceMenuGroupBlockReason($0)
+    }
     texts += [DeepLinkProblem.malformed, .missingScheme].compactMap { AndroidDevicesText.linkProblem($0) }
     texts += self.packageErrors.map { AndroidDevicesText.message(for: $0) }
     texts += [AndroidVirtualDevice.State.shutdown, .booting, .booted].map { AndroidDevicesText.stateLabel(for: $0) }

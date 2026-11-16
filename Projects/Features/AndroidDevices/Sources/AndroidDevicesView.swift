@@ -7,7 +7,7 @@ import UniformTypeIdentifiers
 /// 화면 문자열은 `AndroidDevicesText` 가 이 모듈의 `Localizable.xcstrings` 에서 찾는다.
 /// 목록은 ⌘·⇧ 클릭으로 여러 기기를 고를 수 있고(선택은 Model 상태), 툴바의 "선택한 기기 켜기" 가 고른 기기를 함께 켜고,
 /// "선택한 기기에 앱 설치"(파일에서 고르기…·URL 에서…·카탈로그에서…)가 고른 기기 중 켜진 기기에 함께 설치한다.
-/// 행의 버튼·메뉴·드롭(스크린샷·녹화 포함)은 그 행 한 대에만 동작한다. 사라질 때(`onDisappear`) 자동 다시 읽기를 멈추게 알린다.
+/// 행의 버튼·⋯ 메뉴(스크린샷·녹화 포함)·드롭은 그 행 한 대에만 동작한다. 사라질 때(`onDisappear`) 자동 다시 읽기를 멈추게 알린다.
 /// URL·카탈로그 시트는 `downloadModel`, 앱 실행·링크 열기 시트는 `appSheetsModel`, 테스트 조건 시트는 `conditionsModel`,
 /// 설치된 앱 시트는 `installedAppsModel` (모두 App 소유)의 초안으로 띄운다.
 /// 행 "로그 보기" 는 `appSheetsModel.logDevices` 로 누를 수 있는지 정하고, 그 기기의 로그 창(`AppLogTarget.android`)을 연다.
