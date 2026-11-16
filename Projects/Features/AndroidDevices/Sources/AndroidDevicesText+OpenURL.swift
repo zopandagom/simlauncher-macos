@@ -2,7 +2,7 @@ import AndroidEmulatorInterface
 import Core
 import Foundation
 
-/// 링크 열기 문구. 버튼·입력란·예시·열기 버튼·입력 문제·받을 앱 없음 문장은 iOS 기기 목록(Launcher)과 같은 키·값이다
+/// 링크 열기 문구. 메뉴 항목·입력란·예시·열기 버튼·입력 문제·받을 앱 없음 문장은 iOS 기기 목록(Launcher)과 같은 키·값이다
 /// (Feature 끼리 공유하지 않아 따로 두고 `LinkProblemSyncTests` 가 묶는다). 도움말·시트 제목·알림 제목은 Android 문장이다.
 /// 키는 다른 문구와 같은 `Localizable.xcstrings` 에 있다.
 extension AndroidDevicesText {

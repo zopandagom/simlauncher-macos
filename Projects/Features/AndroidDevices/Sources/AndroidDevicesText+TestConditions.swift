@@ -16,7 +16,7 @@ extension AndroidDevicesText {
     String(localized: "외관·위치·권한 같은 테스트 조건을 바꿉니다.", bundle: .module)
   }
 
-  /// (공통) "테스트 조건…" 버튼이 막힌 이유 (툴팁). 기기 규칙은 스크린샷과 같다 (켜는 중은 `.notBooted`).
+  /// (공통) "테스트 조건…" 항목(⋯ 메뉴)이 막힌 이유 (툴팁). 기기 규칙은 스크린샷과 같다 (켜는 중은 `.notBooted`).
   static func testConditionsBlockReason(_ reason: AndroidAppActionBlockReason) -> String {
     switch reason {
     case .notBooted:

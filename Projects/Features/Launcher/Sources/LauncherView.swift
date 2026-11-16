@@ -5,7 +5,7 @@ import UniformTypeIdentifiers
 /// 상태를 읽어 그리기만 하고, 사용자 동작은 Model 의 이벤트 메서드로 넘긴다.
 /// 화면 문자열은 `LauncherText` 가 이 모듈의 `Localizable.xcstrings` 에서 찾는다.
 /// 목록은 ⌘·⇧ 클릭으로 여러 기기를 고를 수 있고(선택은 Model 상태), 툴바의 "선택한 기기에 앱 설치" 메뉴와
-/// "선택한 기기 켜기" 버튼이 고른 기기에 동작한다. 행의 버튼·메뉴·드롭은 그 행 한 대에만 동작한다.
+/// "선택한 기기 켜기" 버튼이 고른 기기에 동작한다. 행의 버튼·⋯ 메뉴·드롭은 그 행 한 대에만 동작한다.
 public struct LauncherView: View {
   let model: LauncherModel
   /// 카탈로그에서 설치 시트. 기기 목록 상태를 함께 쓰지 않아 따로 둔 Model 이다 (App 이 소유한다).

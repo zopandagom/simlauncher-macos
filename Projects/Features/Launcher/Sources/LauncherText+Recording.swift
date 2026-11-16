@@ -31,7 +31,7 @@ extension LauncherText {
     String(localized: "녹화를 저장하는 중…", bundle: .module)
   }
 
-  /// 녹화 버튼이 막힌 이유 (툴팁). 기기 규칙은 스크린샷과 같다.
+  /// 녹화 항목(⋯ 메뉴)이 막힌 이유 (툴팁). 기기 규칙은 스크린샷과 같다.
   static func recordBlockReason(_ reason: ScreenshotBlockReason) -> String {
     switch reason {
     case .notBooted:

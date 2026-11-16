@@ -21,7 +21,7 @@ extension LauncherText {
     String(localized: "링크를 여는 중…", bundle: .module)
   }
 
-  /// 링크 열기 버튼이 막힌 이유. 시트를 연 사이 기기 상태가 바뀐 실패의 본문에도 쓴다.
+  /// 링크 열기 항목(⋯ 메뉴)이 막힌 이유. 시트를 연 사이 기기 상태가 바뀐 실패의 본문에도 쓴다.
   /// 막힘 규칙은 앱 설치와 같다 (`appInstallAvailability`).
   static func openURLBlockReason(_ reason: AppInstallBlockReason) -> String {
     switch reason {

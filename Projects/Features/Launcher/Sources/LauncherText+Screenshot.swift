@@ -19,7 +19,7 @@ extension LauncherText {
     String(localized: "스크린샷을 찍는 중…", bundle: .module)
   }
 
-  /// 스크린샷 버튼이 막힌 이유 (툴팁).
+  /// 스크린샷 항목(⋯ 메뉴)이 막힌 이유 (툴팁).
   static func screenshotBlockReason(_ reason: ScreenshotBlockReason) -> String {
     switch reason {
     case .notBooted:

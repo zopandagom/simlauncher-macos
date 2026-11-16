@@ -4,7 +4,7 @@ import Foundation
 import WorkspaceInterface
 
 /// 스크린샷·녹화 문구. 키는 다른 문구와 같은 `Localizable.xcstrings` 에 있다.
-/// 행의 버튼·진행·막힌 이유, 저장 폴더 실패, 꺼짐·Finder·기기 꺼짐 저장 문구는 iOS 기기 목록(Launcher)과 같은 키·값으로 둔다
+/// 행의 진행·⋯ 메뉴 항목·막힌 이유, 저장 폴더 실패, 꺼짐·Finder·기기 꺼짐 저장 문구는 iOS 기기 목록(Launcher)과 같은 키·값으로 둔다
 /// (`LauncherTextSyncTests`). 알림 제목은 Android 기기 라벨(`label(_:)`)을 넣고, 기기 안에서 녹화해 가져오는 데서 생기는
 /// 실패(시작·가져오기·3분 제한·기기 꺼짐)는 Android 문구다. 저장 폴더(사진·동영상) 실패 문구는 `AndroidDevicesText+CaptureFolder.swift`.
 extension AndroidDevicesText {
@@ -22,7 +22,7 @@ extension AndroidDevicesText {
     String(localized: "스크린샷을 찍는 중…", bundle: .module)
   }
 
-  /// 스크린샷 버튼이 막힌 이유 (툴팁).
+  /// 스크린샷 항목(⋯ 메뉴)이 막힌 이유 (툴팁).
   static func screenshotBlockReason(_ reason: AndroidAppActionBlockReason) -> String {
     switch reason {
     case .notBooted:
@@ -58,7 +58,7 @@ extension AndroidDevicesText {
     String(localized: "녹화를 저장하는 중…", bundle: .module)
   }
 
-  /// 녹화 버튼이 막힌 이유 (툴팁). 기기 규칙은 스크린샷과 같다.
+  /// 녹화 항목(⋯ 메뉴)이 막힌 이유 (툴팁). 기기 규칙은 스크린샷과 같다.
   static func recordBlockReason(_ reason: AndroidAppActionBlockReason) -> String {
     switch reason {
     case .notBooted:
