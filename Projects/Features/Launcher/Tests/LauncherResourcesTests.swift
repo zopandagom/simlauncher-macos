@@ -528,6 +528,8 @@ enum LauncherTextCatalog {
     texts += [LauncherText.viewLogButton, LauncherText.viewLogHelp, LauncherText.viewLogUnavailableHelp]
     texts += [LauncherText.layoutButton, LauncherText.layoutHelp]
     texts += self.screenshotBlockReasons.map { LauncherText.layoutBlockReason($0) }
+    texts += self.installBlockReasons.map { LauncherText.appGroupBlockReason($0) }
+    texts += self.screenshotBlockReasons.map { LauncherText.screenGroupBlockReason($0) }
     texts += [
       LauncherText.okButton, LauncherText.unavailableLabel, LauncherText.bootButton, LauncherText.shutdownButton,
       LauncherText.loading, LauncherText.loadFailedTitle, LauncherText.refreshButton, LauncherText.retryButton,
