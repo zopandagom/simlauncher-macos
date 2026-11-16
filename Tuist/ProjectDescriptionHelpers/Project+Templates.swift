@@ -6,7 +6,14 @@ public enum Env {
   public static let destinations: Destinations = [.mac]
   public static let deploymentTargets: DeploymentTargets = .macOS("26.0")
   /// 앱 타깃(App·Example) Info.plist 에 공통으로 넣는 값.
-  static let appInfoPlist: [String: Plist.Value] = [:]
+  /// - `CFBundleLocalizations`: 앱이 고를 수 있는 화면 언어. 없으면 macOS 가 앱 언어를 개발 언어(ko)로 정하고, Feature 리소스 번들도
+  ///   그 언어를 따라 en 값이 있어도 한국어로 보인다(시스템 메뉴 포함). 이 키가 있어야 시스템 언어나 앱별 언어 설정이 en 을 고른다.
+  /// - `CFBundleDevelopmentRegion`: 앱이 지원하지 않는 언어(ko·en 밖)를 쓰는 Mac 에서 보일 언어. 그런 사용자에게는 영어를 보인다.
+  ///   String Catalog 의 원문 언어(프로젝트 개발 언어 `projectOptions` 의 ko)와는 다른 값이다.
+  static let appInfoPlist: [String: Plist.Value] = [
+    "CFBundleLocalizations": ["ko", "en"],
+    "CFBundleDevelopmentRegion": "en",
+  ]
   /// Apple Developer Program 팀 ID(공개 값). 배포 서명은 릴리스 워크플로(`release` 환경의 Developer ID .p12, manual export)가 하고, 예비 경로
   /// `make release` 는 Xcode 자동 서명(클라우드 관리 Developer ID 인증서)으로 내보낸다 (docs/RELEASING.md).
   /// 개발 실행은 `CODE_SIGN_IDENTITY = "-"`(Tuist 기본)라 ad-hoc 으로 돌고, `make build`·`make test`·CI 는 서명하지 않는다.
@@ -35,8 +42,15 @@ public enum Env {
     "NSHumanReadableCopyright": "Copyright © 2026 Joongwon Kim. MIT License.",
     "SimLauncherReleaseRepository": .string(Self.releaseRepository),
   ]
-  /// 화면 문자열은 한국어 먼저. 모든 프로젝트가 같은 개발 언어를 써야 String Catalog 의 원문 언어가 맞는다.
-  static let projectOptions: Project.Options = .options(defaultKnownRegions: ["ko", "en"], developmentRegion: "ko")
+  /// 화면 문자열의 원문(String Catalog 의 키·원문 언어)은 한국어이고 영어 값을 함께 둔다. 모든 프로젝트가 같은 개발 언어를 써야
+  /// String Catalog 의 원문 언어가 맞는다. 앱이 보일 언어는 `appInfoPlist` 가 정한다.
+  /// 모듈 스킴의 테스트는 한국어(ko·KR)로 돌린다: 테스트가 문구 함수의 결과를 한국어로 단정하므로 영어 Mac·CI 러너에서도 같게
+  /// 돈다 (워크스페이스 스킴은 Workspace.swift). 영어 값은 테스트가 en 표를 직접 읽어 확인한다.
+  static let projectOptions: Project.Options = .options(
+    automaticSchemesOptions: .enabled(testLanguage: "ko", testRegion: "KR"),
+    defaultKnownRegions: ["ko", "en"],
+    developmentRegion: "ko"
+  )
 
   static let baseSettings: SettingsDictionary = [
     "SWIFT_VERSION": "6.0",
