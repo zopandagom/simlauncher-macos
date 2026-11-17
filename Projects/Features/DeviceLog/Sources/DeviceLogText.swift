@@ -4,6 +4,7 @@ import Foundation
 
 /// 로그 창 문구. 모두 이 모듈의 `Localizable.xcstrings` 에서 찾는다 (`bundle: .module`).
 /// 앱 출력·기기 이름·앱 이름은 여기를 거치지 않고 그대로 보이거나 보간 인자로 들어간다.
+/// 내보낼 글의 머리말(`LogExportText`)도 쓰는 문구는 `bundle` 인자를 받는다 (영어 테스트가 `en.lproj` 번들을 넘긴다).
 enum DeviceLogText {
   // MARK: - 창 위
 
@@ -34,25 +35,33 @@ enum DeviceLogText {
   }
 
   static var receiving: String {
-    String(localized: "받는 중", bundle: .module)
+    self.receivingText(bundle: .module)
+  }
+
+  static func receivingText(bundle: Bundle) -> String {
+    String(localized: "받는 중", bundle: bundle)
   }
 
   /// 상태 글자. 끝났으면 이유를 붙인다. Android 의 `.deviceShutDown` 은 adb 연결이 끊긴 경우도 포함해 문구가 다르다.
-  static func state(_ state: AppLogSessionState, platform: AppLogTarget.Platform) -> String {
+  static func state(
+    _ state: AppLogSessionState,
+    platform: AppLogTarget.Platform,
+    bundle: Bundle = .module
+  ) -> String {
     switch state {
     case .receiving:
-      self.receiving
+      self.receivingText(bundle: bundle)
     case .ended(.appExited):
-      String(localized: "끝남 — 앱이 끝났습니다", bundle: .module)
+      String(localized: "끝남 — 앱이 끝났습니다", bundle: bundle)
     case .ended(.deviceShutDown):
       switch platform {
-      case .iOS: String(localized: "끝남 — 기기가 꺼졌습니다", bundle: .module)
-      case .android: String(localized: "끝남 — 기기가 꺼졌거나 연결이 끊겼습니다", bundle: .module)
+      case .iOS: String(localized: "끝남 — 기기가 꺼졌습니다", bundle: bundle)
+      case .android: String(localized: "끝남 — 기기가 꺼졌거나 연결이 끊겼습니다", bundle: bundle)
       }
     case .ended(.replaced):
-      String(localized: "끝남 — SimLauncher 가 앱을 다시 설치·실행했습니다", bundle: .module)
+      String(localized: "끝남 — SimLauncher 가 앱을 다시 설치·실행했습니다", bundle: bundle)
     case .ended(.stopped):
-      String(localized: "끝남 — 로그 받기를 멈췄습니다", bundle: .module)
+      String(localized: "끝남 — 로그 받기를 멈췄습니다", bundle: bundle)
     }
   }
 
@@ -126,10 +135,14 @@ enum DeviceLogText {
   // MARK: - 필터
 
   static func kind(_ kind: LogFilter.Kind) -> String {
+    self.kind(kind, bundle: .module)
+  }
+
+  static func kind(_ kind: LogFilter.Kind, bundle: Bundle) -> String {
     switch kind {
-    case .contains: String(localized: "포함", bundle: .module)
-    case .prefix: String(localized: "시작", bundle: .module)
-    case .regex: String(localized: "정규식", bundle: .module)
+    case .contains: String(localized: "포함", bundle: bundle)
+    case .prefix: String(localized: "시작", bundle: bundle)
+    case .regex: String(localized: "정규식", bundle: bundle)
     }
   }
 
@@ -262,12 +275,12 @@ enum DeviceLogText {
 
   // MARK: - 창 아래
 
-  static func lineCounts(visible: Int, total: Int) -> String {
-    String(localized: "보이는 \(visible)줄 / 전체 \(total)줄", bundle: .module)
+  static func lineCounts(visible: Int, total: Int, bundle: Bundle = .module) -> String {
+    String(localized: "보이는 \(visible)줄 / 전체 \(total)줄", bundle: bundle)
   }
 
-  static func discarded(_ count: Int) -> String {
-    String(localized: "버퍼가 차서 앞 \(count)줄을 버렸습니다", bundle: .module)
+  static func discarded(_ count: Int, bundle: Bundle = .module) -> String {
+    String(localized: "버퍼가 차서 앞 \(count)줄을 버렸습니다", bundle: bundle)
   }
 
   static func newWhilePaused(_ count: Int) -> String {

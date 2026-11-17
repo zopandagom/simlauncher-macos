@@ -4,6 +4,7 @@ import Core
 import Foundation
 import PreferencesTesting
 import Testing
+import WorkspaceTesting
 @testable import DeviceLogFeature
 
 /// DeviceLog Model 테스트가 함께 쓰는 값과 도움 함수.
@@ -20,11 +21,13 @@ enum DeviceLogTestSupport {
     at offset: TimeInterval = 0,
     state: AppLogSessionState = .receiving,
     target: AppLogTarget = Self.target,
-    id: AppLogSessionID = AppLogSessionID(UUID())
+    id: AppLogSessionID = AppLogSessionID(UUID()),
+    deviceOS: AppLogDeviceOS? = .iOS(runtimeName: "iOS 27.0"),
+    appVersion: AppLogAppVersion? = AppLogAppVersion(version: "1.2", build: "34")
   ) -> AppLogSessionSummary {
     AppLogSessionSummary(
-      id: id, target: target, deviceName: "iPhone 17 Pro", appID: appID,
-      appName: appID.components(separatedBy: ".").last ?? appID,
+      id: id, target: target, deviceName: "iPhone 17 Pro", deviceOS: deviceOS, appID: appID,
+      appName: appID.components(separatedBy: ".").last ?? appID, appVersion: appVersion,
       startedAt: self.baseDate.addingTimeInterval(offset), state: state
     )
   }
@@ -36,14 +39,33 @@ enum DeviceLogTestSupport {
     let session: AppLogSessionSummary
   }
 
-  /// 세션을 넣은 Fake 와 Model. 저장된 필터를 보는 테스트는 Preferences Fake 를 만들어 넘기고 직접 들고 검사한다.
+  /// 세션을 넣은 Fake 와 Model. 저장된 필터를 보는 테스트는 Preferences Fake 를, 내보내기 테스트는 Workspace Fake 를 만들어 넘기고
+  /// 직접 들고 검사한다. 시계는 `exportDate`·서울 시간대로 고정한다.
   static func fixture(
     _ sessions: [AppLogSessionSummary],
-    preferences: PreferencesClientFake = PreferencesClientFake()
+    preferences: PreferencesClientFake = PreferencesClientFake(),
+    workspace: WorkspaceClientFake = WorkspaceClientFake(),
+    copiedFeedbackDuration: Duration = .seconds(2),
+    sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
   ) -> (DeviceLogModel, AppLogClientFake) {
     let fake = AppLogClientFake(sessions: sessions)
-    return (DeviceLogModel(appLog: fake, preferences: preferences), fake)
+    let model = DeviceLogModel(
+      appLog: fake,
+      preferences: preferences,
+      workspace: workspace,
+      simLauncherVersion: "1.3.0 (45)",
+      now: { Self.exportDate },
+      timeZone: Self.seoul,
+      copiedFeedbackDuration: copiedFeedbackDuration,
+      sleep: sleep
+    )
+    return (model, fake)
   }
+
+  /// 내보낸 시각 (2027-01-15 18:00:00 +09:00). 세션 시작(`baseDate`)보다 한 시간 뒤.
+  nonisolated static let exportDate = Date(timeIntervalSince1970: 1_800_000_000 + 3600)
+  /// UTC+9 (고정).
+  nonisolated static let seoul = TimeZone(secondsFromGMT: 32400) ?? .gmt
 
   /// 창을 열고 그 세션을 골라 보이는 줄이 `visible` 개가 되기까지 기다린다.
   static func openAndWait(
