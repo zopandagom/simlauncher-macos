@@ -7,7 +7,7 @@ SimLauncher 배포본을 만드는 방법이다. 기본 경로는 **버전 태�
 - `build/release/SimLauncher-<버전>.dmg`
   - 안에 `SimLauncher.app`(Developer ID Application 서명·Hardened Runtime·공증·티켓 staple)과 `Applications` 바로가기(`/Applications` 를 가리키는 심볼릭 링크)가 있다. 배경·창 배치 같은 꾸밈은 없다.
   - dmg 자체도 Developer ID 로 서명하고 공증·staple 한다.
-- `build/release/SimLauncher-version.json`: 앱의 업데이트 알림이 받는 버전 파일. 내용은 `{"version":"<버전>"}` 한 줄(UTF-8, 끝 줄바꿈, `.github/scripts/release-check.sh version-file` 이 만든다). 앱은 `https://github.com/<소유자>/<레포>/releases/latest/download/SimLauncher-version.json` 으로 받아 `version` 만 읽고 모르는 키는 무시한다(나중에 키를 더해도 옛 앱이 읽는다). 이름을 바꾸면 앱(Core `ReleaseRepository.versionFileName`)도 바꿔야 한다. 1.2.0 Release 에는 2026-11-15 에 손으로 올렸다(1.1.0·1.0.0 에는 없다: latest 가 아니라 앱이 보지 않는다).
+- `build/release/SimLauncher-version.json`: 앱의 업데이트 알림이 받는 버전 파일. 내용은 `{"version":"<버전>"}` 한 줄(UTF-8, 끝 줄바꿈, `.github/scripts/release-check.sh version-file` 이 만든다). 앱은 `https://github.com/<소유자>/<레포>/releases/latest/download/SimLauncher-version.json` 으로 받아 `version` 만 읽고 모르는 키는 무시한다(나중에 키를 더해도 옛 앱이 읽는다). 이름을 바꾸면 앱(Core `ReleaseRepository.versionFileName`)도 바꿔야 한다. 1.2.0 Release 에는 2026-11-15 에 손으로 올렸다(1.1.0·1.0.0 에는 없다: latest 가 아니라 앱이 보지 않는다). 1.3.0 부터는 릴리스 워크플로가 올린다(1.3.0 게시 run 44006495119 에서 처음 첨부된 것을 확인했다, 2026-11-17).
 
 `build/` 는 git 에 올리지 않는다. 같은 폴더의 `export/SimLauncher.app`(내보낸 앱)·`notary/`(공증 제출 결과 JSON·로그)·`archive.log`·`export.log` 는 원인 확인용으로 남는다. dmg 는 작업 이름 `unfinished-SimLauncher-<버전>.dmg` 로 만들어 서명·공증·staple·최종 검사를 하고, 모두 통과한 뒤에만 `SimLauncher-<버전>.dmg` 로 이름을 바꾼다. 실패하면 배포 이름 파일은 없고 작업 dmg 와 `notary/app-submit.zip`(앱 공증·staple 단계에서 실패했을 때)이 남을 수 있다 — 배포하지 않는다. 성공한 실행에도 지우지 못했다는 `경고:` 가 보였으면 `notary/app-submit.zip`·`dmg-root/` 가, 분리하지 못했다는 `경고:` 가 보였으면 `mnt/` 에 마운트된 dmg 가 남을 수 있다(스크립트가 끝날 때 한 번 더 분리를 시도한다. 배포 dmg 를 읽기 전용으로 마운트한 것이라 배포 dmg 에는 영향이 없고, 다음 실행이 0단계에서 정리한다).
 
@@ -92,7 +92,7 @@ SimLauncher 배포본을 만드는 방법이다. 기본 경로는 **버전 태�
 8. **게시 확인**: `gh api repos/<소유자>/<레포>/releases/latest -q .tag_name` 이 `<버전>` 이고, 첨부 파일의 `digest` 에서 `sha256:` 접두어를 뺀 값(`… -q '.assets[] | select(.name=="SimLauncher-<버전>.dmg") | .digest | ltrimstr("sha256:")'`)이 노트 "파일" 표의 SHA-256(로컬이면 3.2 의 3번 값)과 같은지 본다.
    그리고 `curl -fsSL https://github.com/<소유자>/<레포>/releases/latest/download/SimLauncher-version.json` 이 `{"version":"<버전>"}` 인지 본다(워크플로도 같은 확인을 한다. 올린 직후 1분쯤은 404 일 수 있다).
 9. **내려받은 게시본 확인**: README 설치 링크에서 브라우저로 dmg 를 받는다(quarantine 이 붙는다). `xattr -p com.apple.quarantine`·`shasum -a 256`·5절의 dmg `spctl` 을 확인하고, 앱을 응용 프로그램 폴더로 옮겨(이미 있으면 대치) 실행해 Gatekeeper 차단 없이 열리고 "SimLauncher에 관하여" 버전이 맞는지 본다. 이 Mac 에서 만든 앱이 응용 프로그램 폴더에 이미 있으면 quarantine 이 없으므로 받은 앱으로 대치해야 확인이 된다. 이 확인은 받은 파일의 Gatekeeper 판정과 실행 허용을 본다. 로드맵 단계 목표의 "다른 Mac" 확인(이 Mac 의 인증서·이전 실행 허용이 없는 환경)은 6절대로 다른 Mac 이나 새 사용자 계정에서 같은 방법으로 한다.
-10. **업데이트 알림 확인**: 이전 버전 앱(응용 프로그램 폴더의 직전 게시본. 9번에서 대치하기 전에 한다)에서 메뉴 "SimLauncher > 업데이트 확인…" 을 누르면 업데이트 확인 창에 새 버전이 보이고, "다운로드 페이지 열기" 가 브라우저로 이 Release 에 닿는지 본다(`…/releases/latest` 가 이 버전의 태그 페이지로 넘어간다). 이전 버전이 업데이트 알림이 없는 1.2.0 이하면 건너뛴다: 1.3.0 게시 때는 9번에서 대치한 1.3.0 앱의 같은 메뉴가 "최신 버전을 쓰고 있습니다 (SimLauncher 1.3.0)." 인지만 본다.
+10. **업데이트 알림 확인**: 이전 버전 앱(응용 프로그램 폴더의 직전 게시본. 9번에서 대치하기 전에 한다)에서 메뉴 "SimLauncher > 업데이트 확인…" 을 누르면 업데이트 확인 창에 새 버전이 보이고, "다운로드 페이지 열기" 가 브라우저로 이 Release 에 닿는지 본다(`…/releases/latest` 가 이 버전의 태그 페이지로 넘어간다). (1.3.0 게시 때는 이전 버전 1.2.0 에 업데이트 알림이 없어, 9번에서 대치한 1.3.0 앱의 같은 메뉴가 "최신 버전을 쓰고 있습니다 (SimLauncher 1.3.0)." 인지만 봤다, 2026-11-17.)
 
 ### 3.2 로컬 `make release` 로 배포 (예비 경로)
 3.1 의 1·2번 뒤 main 최신을 받고(깨끗한 작업 트리에서 만드는 것을 권장):
