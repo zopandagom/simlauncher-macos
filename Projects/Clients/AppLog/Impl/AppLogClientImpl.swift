@@ -61,28 +61,12 @@ public actor AppLogClientImpl: AppLogClient {
 
   // MARK: - 실행
 
-  public func launchIOSApp(
-    _ bundleID: AppBundleID,
-    appName: String,
-    on device: VirtualDevice.ID,
-    deviceName: String
-  ) async throws(AppLogLaunchError) -> AppLogSessionID {
-    try await self.start(AppLogLaunchSpec(app: .iOS(bundleID, device), appName: appName, deviceName: deviceName))
-  }
-
-  public func launchAndroidApp(
-    _ package: AndroidPackageName,
-    appName: String,
-    on device: AndroidVirtualDevice.ID,
-    deviceName: String
-  ) async throws(AppLogLaunchError) -> AppLogSessionID {
-    try await self.start(AppLogLaunchSpec(app: .android(package, device), appName: appName, deviceName: deviceName))
-  }
-
   /// 기기를 켜지 않는다. 목록을 다시 읽어 그 기기가 켜져 있을 때만 Simulator 앱을 먼저 열어(실패는 무시) 실행 결과가 보이게 한다
   /// (설치 흐름의 켜기·앱 열기와 같은 결과를 켜기 없이). 꺼졌거나 없거나 목록을 읽지 못하면 앱을 열지 않는다: 켜진 기기가 없을 때
   /// Simulator 앱을 열면 앱이 기기를 켤 수 있다. 그때도 실행은 시도해 simctl 의 실패(`.deviceNotBooted` 등)를 그대로 던진다.
   /// Android 는 목록을 읽지 않고 바로 실행한다 (꺼져 있으면 실행의 사전 확인이 `.deviceNotBooted`).
+  /// 앱 버전은 그 세션의 값이 아니라 같은 기기·앱으로 가장 늦게 실행을 요청한 값이다: 세션 A(v1) 뒤 다시 설치로 v2 를 실행했다면
+  /// A 를 다시 실행해도 뜨는 것은 v2 다 (v2 실행이 신호 전에 실패했어도 설치는 됐다). 기기 OS 는 같은 기기라 그대로 쓴다.
   public func relaunch(_ session: AppLogSessionID) async throws(AppLogLaunchError) -> AppLogSessionID {
     guard !self.running.isStopping else {
       throw .commandFailed
@@ -96,7 +80,7 @@ public actor AppLogClientImpl: AppLogClient {
         try? await self.simulator.openSimulatorApp()
       }
     }
-    return try await self.start(record.spec)
+    return try await self.start(record.spec.with(appVersion: self.table.latestVersion(for: record.spec.key)))
   }
 
   public func replacementWillStart(_ bundleID: AppBundleID, on device: VirtualDevice.ID) {
@@ -129,8 +113,10 @@ public actor AppLogClientImpl: AppLogClient {
       id: id,
       target: spec.target,
       deviceName: spec.deviceName,
+      deviceOS: spec.deviceOS,
       appID: spec.appID,
       appName: spec.appName,
+      appVersion: spec.appVersion,
       startedAt: Date(),
       state: .receiving
     )
@@ -302,6 +288,45 @@ public actor AppLogClientImpl: AppLogClient {
     if self.table.end(id, reason: reason) {
       self.broadcastSessions()
     }
+  }
+}
+
+// MARK: - 실행 요청
+
+public extension AppLogClientImpl {
+  func launchIOSApp(
+    _ bundleID: AppBundleID,
+    appName: String,
+    appVersion: AppLogAppVersion?,
+    on device: VirtualDevice
+  ) async throws(AppLogLaunchError) -> AppLogSessionID {
+    try await self.start(
+      AppLogLaunchSpec(
+        app: .iOS(bundleID, device.id),
+        appName: appName,
+        appVersion: appVersion,
+        deviceName: device.name,
+        deviceOS: .iOS(runtimeName: device.runtime.name)
+      )
+    )
+  }
+
+  func launchAndroidApp(
+    _ package: AndroidPackageName,
+    appName: String,
+    on device: AndroidVirtualDevice.ID,
+    deviceName: String,
+    apiLabel: String?
+  ) async throws(AppLogLaunchError) -> AppLogSessionID {
+    try await self.start(
+      AppLogLaunchSpec(
+        app: .android(package, device),
+        appName: appName,
+        appVersion: nil,
+        deviceName: deviceName,
+        deviceOS: apiLabel.map { .android(apiLabel: $0) }
+      )
+    )
   }
 }
 

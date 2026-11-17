@@ -255,6 +255,22 @@ struct AppLogFixture {
   static let otherPackage = AndroidPackageName("com.example.other")!
   static let avd = AndroidVirtualDevice.ID("Android_Device")
   static let otherAVD = AndroidVirtualDevice.ID("Pixel_Tablet")
+  static let version = AppLogAppVersion(version: "1.2", build: "34")
+  static let runtimeName = "iOS 27.0"
+
+  /// 실행에 넘기는 기기 (켜진 iPhone 과 같은 이름·런타임, ID 만 바꿀 수 있다).
+  static func device(_ id: VirtualDevice.ID) -> VirtualDevice {
+    VirtualDevice(
+      id: id,
+      name: "iPhone 17 Pro",
+      family: .phone,
+      state: .booted,
+      availability: .available,
+      runtime: SampleRuntime.iOS27
+    )
+  }
+
+  static let apiLabel = "37.0"
 
   let simulator: SimulatorClientFake
   let console: ConsoleDriver
@@ -284,11 +300,17 @@ struct AppLogFixture {
   /// 켜진 iPhone 에서 실행을 요청하는 Task (기다리지 않는다).
   func launch(
     _ bundleID: AppBundleID = Self.app,
-    on device: VirtualDevice.ID = SampleID.iPhoneOn
+    on device: VirtualDevice.ID = SampleID.iPhoneOn,
+    version: AppLogAppVersion? = Self.version
   ) -> Task<AppLogSessionID, any Error> {
     let client = self.client
     return Task {
-      try await client.launchIOSApp(bundleID, appName: "LogProbe", on: device, deviceName: "iPhone 17 Pro")
+      try await client.launchIOSApp(
+        bundleID,
+        appName: "LogProbe",
+        appVersion: version,
+        on: Self.device(device)
+      )
     }
   }
 
@@ -296,9 +318,10 @@ struct AppLogFixture {
   func launched(
     _ bundleID: AppBundleID = Self.app,
     on device: VirtualDevice.ID = SampleID.iPhoneOn,
+    version: AppLogAppVersion? = Self.version,
     run index: Int
   ) async throws -> (AppLogSessionID, ConsoleRun) {
-    let task = self.launch(bundleID, on: device)
+    let task = self.launch(bundleID, on: device, version: version)
     let run = try await self.console.run(index)
     await run.emit(.launched)
     return try await (task.value, run)
@@ -307,11 +330,18 @@ struct AppLogFixture {
   /// Android 기기에서 실행을 요청하는 Task (기다리지 않는다).
   func launchAndroid(
     _ package: AndroidPackageName = Self.package,
-    on device: AndroidVirtualDevice.ID = Self.avd
+    on device: AndroidVirtualDevice.ID = Self.avd,
+    apiLabel: String? = Self.apiLabel
   ) -> Task<AppLogSessionID, any Error> {
     let client = self.client
     return Task {
-      try await client.launchAndroidApp(package, appName: package.rawValue, on: device, deviceName: "Android Device")
+      try await client.launchAndroidApp(
+        package,
+        appName: package.rawValue,
+        on: device,
+        deviceName: "Android Device",
+        apiLabel: apiLabel
+      )
     }
   }
 
@@ -319,9 +349,10 @@ struct AppLogFixture {
   func launchedAndroid(
     _ package: AndroidPackageName = Self.package,
     on device: AndroidVirtualDevice.ID = Self.avd,
+    apiLabel: String? = Self.apiLabel,
     run index: Int
   ) async throws -> (AppLogSessionID, LogcatRun) {
-    let task = self.launchAndroid(package, on: device)
+    let task = self.launchAndroid(package, on: device, apiLabel: apiLabel)
     let run = try await self.logcat.run(index)
     await run.emit(.launched)
     return try await (task.value, run)

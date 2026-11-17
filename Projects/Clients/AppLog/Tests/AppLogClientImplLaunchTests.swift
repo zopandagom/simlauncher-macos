@@ -180,4 +180,72 @@ struct AppLogClientImplLaunchTests {
     #expect(updates.last?.map(\.id) == [first, second])
     updates.cancel()
   }
+
+  // MARK: - 앱 버전·기기 OS
+
+  @Test("iOS 요약은 실행 때 받은 앱 버전과 런타임 이름(기기 OS)을 그대로 싣는다, 버전을 모르면 nil")
+  func iosSummaryCarriesVersionAndOS() async throws {
+    let fixture = AppLogFixture()
+
+    let (id, _) = try await fixture.launched(run: 0)
+    let (unknown, _) = try await fixture.launched(AppLogFixture.otherApp, version: nil, run: 1)
+
+    let summaries = await fixture.summaries()
+    let summary = try #require(summaries.first { $0.id == id })
+    #expect(summary.appVersion == AppLogAppVersion(version: "1.2", build: "34"))
+    #expect(summary.deviceOS == .iOS(runtimeName: "iOS 27.0"))
+    let unknownSummary = try #require(summaries.first { $0.id == unknown })
+    #expect(unknownSummary.appVersion == nil)
+    #expect(unknownSummary.deviceOS == .iOS(runtimeName: "iOS 27.0"))
+  }
+
+  @Test("다시 실행은 같은 기기·앱으로 가장 늦게 실행을 요청한 버전을 쓴다 (그 실행이 신호 전에 실패했어도, 다른 앱은 영향 없음)")
+  func relaunchUsesLatestVersionOfSameApp() async throws {
+    let fixture = AppLogFixture()
+    let oldVersion = AppLogAppVersion(version: "1.0", build: "1")
+    let newVersion = AppLogAppVersion(version: "2.0", build: "2")
+    let failedVersion = AppLogAppVersion(version: "3.0", build: nil)
+    let (first, firstRun) = try await fixture.launched(version: oldVersion, run: 0)
+    firstRun.finish(.success(.exited))
+    _ = try await fixture.waitForEnd(of: first)
+    let (second, secondRun) = try await fixture.launched(version: newVersion, run: 1)
+    _ = try await fixture.launched(AppLogFixture.otherApp, version: AppLogAppVersion(version: "9", build: "9"), run: 2)
+
+    let relaunch = Task { try await fixture.client.relaunch(first) }
+    let relaunchRun = try await fixture.console.run(3)
+    await relaunchRun.emit(.launched)
+    let relaunched = try await relaunch.value
+    #expect(await fixture.summaries().first { $0.id == relaunched }?.appVersion == newVersion)
+
+    // 새 버전 실행이 신호 전에 실패해 버려져도(설치는 됐다) 그 버전을 쓴다.
+    secondRun.finish(.success(.exited))
+    _ = try await fixture.waitForEnd(of: second)
+    let failing = fixture.launch(version: failedVersion)
+    try await fixture.console.run(4).finish(.failure(.appLaunchFailed))
+    await #expect(throws: AppLogLaunchError.appLaunchFailed) { try await failing.value }
+
+    let again = Task { try await fixture.client.relaunch(first) }
+    let againRun = try await fixture.console.run(5)
+    await againRun.emit(.launched)
+    let relaunchedAgain = try await again.value
+    #expect(await fixture.summaries().first { $0.id == relaunchedAgain }?.appVersion == failedVersion)
+  }
+
+  @Test("다시 실행한 세션은 원래 세션의 기기 OS 를 그대로 쓴다")
+  func relaunchKeepsDeviceOS() async throws {
+    let fixture = AppLogFixture()
+    let (first, firstRun) = try await fixture.launched(run: 0)
+    firstRun.finish(.success(.exited))
+    _ = try await fixture.waitForEnd(of: first)
+
+    let task = Task { try await fixture.client.relaunch(first) }
+    let run = try await fixture.console.run(1)
+    await run.emit(.launched)
+    let second = try await task.value
+
+    let summary = try #require(await fixture.summaries().first { $0.id == second })
+    #expect(summary.deviceOS == .iOS(runtimeName: "iOS 27.0"))
+    #expect(summary.deviceName == "iPhone 17 Pro")
+    #expect(summary.appVersion == AppLogFixture.version)
+  }
 }

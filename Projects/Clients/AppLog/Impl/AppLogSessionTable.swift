@@ -37,7 +37,21 @@ struct AppLogLaunchSpec: Hashable, Sendable {
 
   let app: App
   let appName: String
+  /// iOS 앱 버전 (Android 는 nil).
+  let appVersion: AppLogAppVersion?
   let deviceName: String
+  let deviceOS: AppLogDeviceOS?
+
+  /// 앱 버전만 바꾼 실행 정보 (다시 실행).
+  func with(appVersion: AppLogAppVersion?) -> AppLogLaunchSpec {
+    AppLogLaunchSpec(
+      app: self.app,
+      appName: self.appName,
+      appVersion: appVersion,
+      deviceName: self.deviceName,
+      deviceOS: self.deviceOS
+    )
+  }
 
   var target: AppLogTarget {
     switch self.app {
@@ -85,6 +99,9 @@ struct AppLogSessionTable {
   private(set) var records: [AppLogSessionID: AppLogSessionRecord] = [:]
   /// 시작 순.
   private(set) var order: [AppLogSessionID] = []
+  /// 같은 기기·앱으로 가장 늦게 실행을 요청한 앱 버전 (다시 실행이 쓴다). 실행 요청(`begin`) 때 바꾸고, 그 실행이 버려지거나
+  /// 세션이 정리돼도 지우지 않는다 (신호 전에 실패한 실행도 그 버전은 이미 설치돼 있다).
+  private(set) var latestVersions: [AppLogSessionKey: AppLogAppVersion] = [:]
 
   /// 공개된 세션 요약, 시작 순.
   var publishedSummaries: [AppLogSessionSummary] {
@@ -98,10 +115,16 @@ struct AppLogSessionTable {
     self.records[id]
   }
 
+  /// 같은 기기·앱으로 가장 늦게 실행을 요청한 앱 버전. 그 실행이 버전을 몰랐으면(nil) nil.
+  func latestVersion(for key: AppLogSessionKey) -> AppLogAppVersion? {
+    self.latestVersions[key]
+  }
+
   /// 새 실행을 시작 중(비공개)으로 넣는다. 같은 키의 받는 중·시작 중 세션에 이 실행의 대체 표시를 단다
   /// (다시 설치 표시는 이 실행 표시로 바꾼다: 설치가 끝나 실행이 시작됐으니 남은 실패는 이 실행이 되돌린다).
   mutating func begin(_ summary: AppLogSessionSummary, spec: AppLogLaunchSpec) {
     let key = AppLogSessionKey(target: summary.target, appID: summary.appID)
+    self.latestVersions[key] = spec.appVersion
     var marked: [AppLogSessionID] = []
     for id in self.order {
       guard var record = self.records[id], record.key == key, record.isReceiving else { continue }
