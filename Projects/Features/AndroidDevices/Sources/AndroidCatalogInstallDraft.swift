@@ -19,14 +19,18 @@ public struct AndroidCatalogInstallDraft: Hashable, Sendable {
   public private(set) var selectedVersionID: BuildCatalog.VersionID?
   /// 지금 받기의 식별자. 늦게 온 결과(새로 고침 전·시트를 닫았다 다시 연 뒤)를 버린다.
   private var loadID: UUID?
+  /// 고른 버전이 다시 읽는 중 `appSelected` 가 앞 결과에서 저절로 고른 것이다. 그 구역 결과가 오면 새 결과의 가장 새 버전으로
+  /// 다시 고른다 (사용자가 버전을 직접 고르면 false 가 되어 기존 유지 규칙을 따른다).
+  private var versionPickedAutomatically = false
 
   init(targets: [AndroidTargetDevice]) {
     self.targets = targets
   }
 
-  /// 설정을 다시 읽은 값으로 구역을 새로 만들고(쓸 수 있는 주소는 `.loading`, 쓸 수 없으면 `.invalid`, 중복은 뺌) 받기 식별자를
-  /// 바꾼다. 고른 앱·버전은 그 카탈로그가 새 설정에도 쓸 수 있는 주소로 있으면 그대로 두고(결과가 오면 `loaded` 가 확인한다),
-  /// 없으면(지움·쓸 수 없게 됨·중복이 됨) 비운다. 받을 대상을 저장 순서로 돌려준다.
+  /// 설정을 다시 읽은 값으로 구역을 새로 만들고 받기 식별자를 바꾼다. 쓸 수 있는 주소는 앞에서 읽힌(다시 읽는 중 포함) 같은
+  /// 구역이면 앞 결과를 보이는 `.reloading`, 그 밖(실패·읽는 중이던 구역, 새 구역)은 `.loading`. 쓸 수 없으면 `.invalid`, 중복은 뺀다.
+  /// 고른 앱·버전은 새 설정의 받기 대상에 같은 카탈로그(`comparisonKey`)가 있으면 그대로 두고(결과가 오면 `loaded` 가 확인한다),
+  /// 없으면(지움·쓸 수 없게 됨) 비운다. 다른 표기·앞 항목과의 중복이면 같은 구역으로 남아 유지한다. 받을 대상을 저장 순서로 돌려준다.
   mutating func beginLoad(_ setting: CatalogURLSetting, id: UUID) -> [AndroidCatalogLoadTarget] {
     var sources: [AndroidCatalogSource] = []
     var targets: [AndroidCatalogLoadTarget] = []
@@ -34,7 +38,14 @@ public struct AndroidCatalogInstallDraft: Hashable, Sendable {
       switch entry.status {
       case let .usable(url):
         let sourceID = url.comparisonKey
-        sources.append(AndroidCatalogSource(id: sourceID, raw: entry.raw, state: .loading))
+        let previous = self.sources.first { $0.id == sourceID }
+        let state: AndroidCatalogSource.State =
+          if let previous, let catalog = Self.shownCatalog(previous) {
+            .reloading(catalog)
+          } else {
+            .loading
+          }
+        sources.append(AndroidCatalogSource(id: sourceID, raw: entry.raw, state: state))
         targets.append(AndroidCatalogLoadTarget(sourceID: sourceID, url: url))
       case let .invalid(problem):
         sources.append(AndroidCatalogSource(id: "invalid-\(index)", raw: entry.raw, state: .invalid(problem)))
@@ -51,8 +62,9 @@ public struct AndroidCatalogInstallDraft: Hashable, Sendable {
     return targets
   }
 
-  /// `id` 가 지금 받기일 때만 그 구역에 결과를 넣는다. 고른 앱이 그 구역이면: 실패면 선택을 비우고, 성공인데 Android 앱이 없으면
-  /// (지워짐·플랫폼이 바뀜) 선택을 비우고, 앱은 있는데 고른 버전이 없으면 버전 선택만 비운다 (다른 버전으로 바꾸지 않는다).
+  /// `id` 가 지금 받기일 때만 그 구역에 결과를 넣는다 (실패면 앞 목록도 사라진다). 고른 앱이 그 구역이면: 실패면 선택을 비우고,
+  /// 성공인데 Android 앱이 없으면(지워짐·플랫폼이 바뀜) 선택을 비운다. 앱이 있고 버전을 다시 읽는 중 저절로 골랐으면 새 결과의
+  /// 가장 새 버전으로 다시 고르고, 직접 고른 버전이 없으면 버전 선택만 비운다 (다른 버전으로 바꾸지 않는다).
   mutating func loaded(
     _ result: Result<BuildCatalog, AndroidCatalogLoadFailure>,
     for sourceID: AndroidCatalogSource.ID,
@@ -70,12 +82,18 @@ public struct AndroidCatalogInstallDraft: Hashable, Sendable {
       self.clearSelection()
       return
     }
+    if self.versionPickedAutomatically {
+      self.selectedVersionID = app.versions.first?.id
+      self.versionPickedAutomatically = false
+      return
+    }
     if let versionID = self.selectedVersionID, !app.versions.contains(where: { $0.id == versionID }) {
       self.selectedVersionID = nil
     }
   }
 
-  /// 읽힌 카탈로그의 Android 앱이면 고르고 가장 새 버전(`versions.first`, 없으면 nil)을 고른다. nil·없는 앱·iOS 앱이면 선택을 비운다.
+  /// 읽힌(다시 읽는 중이면 앞 결과) 카탈로그의 Android 앱이면 고르고 가장 새 버전(`versions.first`, 없으면 nil)을 고른다.
+  /// nil·없는 앱·iOS 앱이면 선택을 비운다.
   mutating func appSelected(_ key: AndroidCatalogAppKey?) {
     guard let key, let app = self.app(for: key) else {
       self.clearSelection()
@@ -83,39 +101,64 @@ public struct AndroidCatalogInstallDraft: Hashable, Sendable {
     }
     self.selectedApp = key
     self.selectedVersionID = app.versions.first?.id
+    self.versionPickedAutomatically = !self.isSettled(key.sourceID)
   }
 
   /// 고른 앱의 버전이면 고른다. 아니면(nil 포함) 무시한다.
   mutating func versionSelected(_ id: BuildCatalog.VersionID?) {
     guard let id, let app = self.selectedAppValue, app.versions.contains(where: { $0.id == id }) else { return }
     self.selectedVersionID = id
+    self.versionPickedAutomatically = false
   }
 
   private mutating func clearSelection() {
     self.selectedApp = nil
     self.selectedVersionID = nil
+    self.versionPickedAutomatically = false
   }
 
   private func app(for key: AndroidCatalogAppKey) -> BuildCatalog.App? {
     guard let source = self.sources.first(where: { $0.id == key.sourceID }),
-          case let .loaded(catalog) = source.state
+          let catalog = Self.shownCatalog(source)
     else { return nil }
     return catalog.app(key.appID, for: .android)
+  }
+
+  /// 구역이 결과가 온(`.loaded`) 상태다 (설치 가능 판정).
+  private func isSettled(_ sourceID: AndroidCatalogSource.ID) -> Bool {
+    guard let source = self.sources.first(where: { $0.id == sourceID }) else { return false }
+    if case .loaded = source.state {
+      return true
+    }
+    return false
+  }
+
+  /// 구역에 보일 카탈로그: 읽힌 결과, 다시 읽는 중이면 앞 결과. 그 밖 nil.
+  private static func shownCatalog(_ source: AndroidCatalogSource) -> BuildCatalog? {
+    switch source.state {
+    case let .loaded(catalog), let .reloading(catalog):
+      catalog
+    case .loading, .failed, .invalid:
+      nil
+    }
   }
 }
 
 // MARK: - 읽기
 
 public extension AndroidCatalogInstallDraft {
-  /// 고른 앱. 그 구역이 읽힌(`.loaded`) 상태이고 Android 앱이 있을 때만.
+  /// 고른 앱. 그 구역이 읽힌(`.loaded`) 또는 다시 읽는 중(`.reloading`, 앞 결과의 앱) 상태이고 Android 앱이 있을 때만.
   var selectedAppValue: BuildCatalog.App? {
     guard let key = self.selectedApp else { return nil }
     return self.app(for: key)
   }
 
-  /// 고른 버전. 고른 앱의 구역이 읽힌 상태이고 앱·버전이 있을 때만 (새로 고침으로 읽는 중이면 nil).
+  /// 설치 대상 버전. 설치 대상이라 결과가 온(`.loaded`) 구역만: 고른 앱의 구역이 읽힌 상태이고 앱·버전이 있을 때만
+  /// (새로 고침으로 다시 읽는 중이면 앞 결과에서 고른 버전이 있어도 nil).
   var selectedVersion: BuildCatalog.Version? {
-    guard let versionID = self.selectedVersionID else { return nil }
+    guard let versionID = self.selectedVersionID, let key = self.selectedApp, self.isSettled(key.sourceID) else {
+      return nil
+    }
     return self.selectedAppValue?.versions.first { $0.id == versionID }
   }
 
@@ -136,41 +179,46 @@ public extension AndroidCatalogInstallDraft {
       .failed(failure, isLocked: self.isLocked)
     case let .invalid(problem):
       .invalid(problem, isLocked: self.isLocked)
-    case .loading, .loaded:
+    case .loading, .loaded, .reloading:
       nil
     }
   }
 
-  /// 구역에 보일 앱: 읽힌 카탈로그의 Android 앱만 파일 순서로. 읽는 중·실패면 빈 배열.
-  func apps(in source: AndroidCatalogSource) -> [BuildCatalog.App] {
-    guard case let .loaded(catalog) = source.state else { return [] }
-    return catalog.apps(for: .android)
+  /// 구역에 보일 Android 앱 줄(파일 순서). 읽힌·다시 읽는 중(앞 결과) 구역만, 그 밖(읽는 중·실패·쓸 수 없는 주소)은 빈 배열.
+  func appRows(in source: AndroidCatalogSource) -> [AndroidCatalogAppRow] {
+    guard let catalog = Self.shownCatalog(source) else { return [] }
+    return catalog.apps(for: .android).map {
+      AndroidCatalogAppRow(id: AndroidCatalogAppKey(sourceID: source.id, appID: $0.id), name: $0.name)
+    }
   }
 
-  /// 읽힌 구역에 Android 앱이 없는 이유. 앱이 있거나 읽는 중·실패면 nil. View 는 이것으로만 고른다.
+  /// 읽힌(다시 읽는 중이면 앞 결과) 구역에 Android 앱이 없는 이유. 앱이 있거나 읽는 중·실패면 nil. View 는 이것으로만 고른다.
   func emptyReason(for source: AndroidCatalogSource) -> AndroidCatalogEmptyReason? {
-    guard case let .loaded(catalog) = source.state, catalog.apps(for: .android).isEmpty else { return nil }
+    guard let catalog = Self.shownCatalog(source), catalog.apps(for: .android).isEmpty else { return nil }
     if catalog.schemaVersion == 1 {
       return .schemaVersion1
     }
     return catalog.apps.isEmpty ? .noApps : .noAndroidApps
   }
 
-  /// 읽는 중인 구역이 있다 (새로 고침 버튼 옆 진행 표시).
+  /// 받는 중인 구역(읽는 중·다시 읽는 중)이 있다 (새로 고침 버튼 옆 진행 표시).
   var isLoading: Bool {
-    self.sources.contains { $0.state == .loading }
+    self.sources.contains {
+      switch $0.state {
+      case .loading, .reloading: true
+      case .loaded, .failed, .invalid: false
+      }
+    }
   }
 
   var canInstall: Bool {
     self.selectedVersion != nil
   }
 
-  /// 오른쪽 버전 칸에 보일 것. View 는 이것으로만 고른다.
+  /// 오른쪽 버전 칸에 보일 것. 고른 앱의 카탈로그를 다시 읽는 중이면 앞 결과의 버전 목록(설치는 `canInstall` 이 막는다).
+  /// View 는 이것으로만 고른다.
   var versionPane: AndroidCatalogVersionPane {
-    guard let key = self.selectedApp else { return .noSelection }
-    if let source = self.sources.first(where: { $0.id == key.sourceID }), source.state == .loading {
-      return .loading
-    }
+    guard self.selectedApp != nil else { return .noSelection }
     guard let app = self.selectedAppValue else { return .noSelection }
     guard !app.versions.isEmpty else { return .noVersions }
     return .versions(app.versions)
@@ -180,7 +228,10 @@ public extension AndroidCatalogInstallDraft {
 /// 시트의 카탈로그 구역 하나.
 public struct AndroidCatalogSource: Identifiable, Hashable, Sendable {
   public enum State: Hashable, Sendable {
+    /// 앞 결과 없이 읽는 중 ("카탈로그를 읽는 중…" 줄).
     case loading
+    /// 새로 고침으로 다시 읽는 중. 앞에서 읽힌 결과를 그대로 보이고 고를 수 있다 (설치는 결과가 올 때까지 막힌다).
+    case reloading(BuildCatalog)
     case loaded(BuildCatalog)
     case failed(AndroidCatalogLoadFailure)
     case invalid(DownloadURLProblem)
@@ -228,12 +279,17 @@ public struct AndroidCatalogAppKey: Hashable, Sendable {
   }
 }
 
+/// 구역의 앱 한 줄. `id` 는 목록 선택 값(`.tag`)과 같은 `AndroidCatalogAppKey` 라, 카탈로그 사이의 같은 앱 id 도 다른 줄이다
+/// (`ForEach` 정체성과 `.tag` 값이 다르면 같은 앱 id 줄이 함께 선택되고 다른 줄을 눌러도 앞 줄 값이 골라진다).
+public struct AndroidCatalogAppRow: Identifiable, Hashable, Sendable {
+  public let id: AndroidCatalogAppKey
+  public let name: String
+}
+
 /// 오른쪽 버전 칸의 내용.
 public enum AndroidCatalogVersionPane: Hashable, Sendable {
   /// 앱을 고르지 않았다.
   case noSelection
-  /// 고른 앱의 카탈로그를 다시 읽는 중이다.
-  case loading
   /// 고른 앱에 버전이 없다.
   case noVersions
   /// Core 정렬(최신순) 그대로.

@@ -3,6 +3,8 @@ import SwiftUI
 
 /// 카탈로그에서 설치 시트: 왼쪽은 카탈로그별(저장 순서) Android 앱 목록과 읽는 중·실패 이유·Android 앱이 없는 이유, 오른쪽은
 /// 고른 앱의 버전 목록(최신순), 아래는 새로 고침·취소·받아서 설치. 등록한 카탈로그가 없으면 두 열 대신 안내를 보인다.
+/// 새로 고침으로 다시 읽는 중인 카탈로그는 앞 목록(고를 수 있음)과 머리글 진행 표시를 보이고, 고른 앱의 카탈로그가 다시 읽는 중이면
+/// 버전 칸은 앞 목록을 보이되 "받아서 설치" 는 결과가 올 때까지 꺼진다.
 /// iOS `CatalogInstallSheet` 와 같은 배치이고, 대상이 한 대면 제목에 기기를, 여러 대면 제목 아래 대상 줄에 이름을 보인다. 입력은 모두 Model 의 이벤트 메서드로
 /// 넘기고, 받기는 Model 이벤트(`catalogMenuTapped`·`catalogRefreshTapped`)가 시작한다 (이 View 의 `.task`·`onAppear` 로 받지 않는다).
 /// 카탈로그 값(주소·앱·버전 이름·브랜치·태그·빌드 번호)은 번역 키로 쓰지 않고 `Text(verbatim:)` 으로만 보인다.
@@ -84,7 +86,7 @@ struct AndroidCatalogInstallSheet: View {
       ForEach(draft.sources) { (source: AndroidCatalogSource) in
         AndroidCatalogSourceSection(
           source: source,
-          apps: draft.apps(in: source),
+          rows: draft.appRows(in: source),
           emptyReason: draft.emptyReason(for: source),
           note: draft.note(for: source)
         )
@@ -97,14 +99,6 @@ struct AndroidCatalogInstallSheet: View {
     switch draft.versionPane {
     case .noSelection:
       self.placeholder(AndroidDevicesText.catalogNoSelection)
-    case .loading:
-      VStack(spacing: 8) {
-        ProgressView()
-          .controlSize(.small)
-        Text(AndroidDevicesText.catalogLoading)
-          .foregroundStyle(.secondary)
-      }
-      .frame(maxWidth: .infinity, maxHeight: .infinity)
     case .noVersions:
       self.placeholder(AndroidDevicesText.catalogNoVersions)
     case let .versions(versions):
@@ -133,6 +127,7 @@ struct AndroidCatalogInstallSheet: View {
         if draft.isLoading {
           ProgressView()
             .controlSize(.small)
+            .accessibilityLabel(AndroidDevicesText.catalogLoading)
         }
       }
       Spacer()
@@ -149,30 +144,38 @@ struct AndroidCatalogInstallSheet: View {
   }
 }
 
-/// 카탈로그 구역 하나: 머리글(저장된 주소 그대로, 한 줄·가운데 생략)과 Android 앱 줄, 또는 읽는 중·실패 이유·쓸 수 없는 주소 이유·
-/// Android 앱이 없는 이유 줄. 상태 줄은 고를 수 없다.
+/// 카탈로그 구역 하나: 머리글(저장된 주소 그대로, 한 줄·가운데 생략. 다시 읽는 중이면 진행 표시)과 Android 앱 줄, 또는 읽는 중·
+/// 실패 이유·쓸 수 없는 주소 이유·Android 앱이 없는 이유 줄. 상태 줄은 고를 수 없다. 다시 읽는 중이면 앞 결과의 줄을 그대로 보인다.
 private struct AndroidCatalogSourceSection: View {
   let source: AndroidCatalogSource
-  /// 이 구역의 Android 앱 (파일 순서). 읽는 중·실패면 비어 있다.
-  let apps: [BuildCatalog.App]
-  /// 읽혔지만 Android 앱이 없는 이유. 앱이 있거나 읽는 중·실패면 nil.
+  /// 이 구역의 Android 앱 줄 (파일 순서, 다시 읽는 중이면 앞 결과). 읽는 중·실패면 비어 있다.
+  let rows: [AndroidCatalogAppRow]
+  /// 읽혔지만(다시 읽는 중이면 앞 결과) Android 앱이 없는 이유. 앱이 있거나 읽는 중·실패면 nil.
   let emptyReason: AndroidCatalogEmptyReason?
   /// 상태 줄(실패 이유·쓸 수 없는 주소)과 그 잠김. 읽는 중·읽힌 구역이면 nil.
   let note: AndroidCatalogSourceNote?
 
   var body: some View {
     Section {
-      self.rows
+      self.sectionContent
     } header: {
-      Text(verbatim: self.source.raw)
-        .lineLimit(1)
-        .truncationMode(.middle)
-        .help(Text(verbatim: self.source.raw))
+      HStack(spacing: 6) {
+        Text(verbatim: self.source.raw)
+          .lineLimit(1)
+          .truncationMode(.middle)
+          .help(Text(verbatim: self.source.raw))
+        if case .reloading = self.source.state {
+          ProgressView()
+            .controlSize(.mini)
+            .accessibilityLabel(AndroidDevicesText.catalogLoading)
+        }
+      }
+      .accessibilityElement(children: .combine)
     }
   }
 
   @ViewBuilder
-  private var rows: some View {
+  private var sectionContent: some View {
     switch self.source.state {
     case .loading:
       HStack(spacing: 6) {
@@ -182,13 +185,14 @@ private struct AndroidCatalogSourceSection: View {
           .foregroundStyle(.secondary)
       }
       .selectionDisabled()
-    case .loaded:
+    case .loaded, .reloading:
       if let reason = self.emptyReason {
         self.statusText(AndroidDevicesText.catalogEmptyReason(reason))
       } else {
-        ForEach(self.apps) { (app: BuildCatalog.App) in
-          Text(verbatim: app.name)
-            .tag(AndroidCatalogAppKey(sourceID: self.source.id, appID: app.id))
+        // 정체성(row.id)과 선택 값(.tag)이 같은 AndroidCatalogAppKey 라 카탈로그 사이의 같은 앱 id 도 다른 줄이다.
+        ForEach(self.rows) { (row: AndroidCatalogAppRow) in
+          Text(verbatim: row.name)
+            .tag(row.id)
         }
       }
     case .failed, .invalid:
