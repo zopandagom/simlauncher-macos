@@ -1,8 +1,8 @@
 import Core
 import SwiftUI
 
-/// 카탈로그에서 설치 시트: 왼쪽은 카탈로그별(저장 순서) 앱 목록과 읽는 중·실패 이유, 오른쪽은 고른 앱의 버전 목록(최신순),
-/// 아래는 새로 고침·취소·받아서 설치. 등록한 카탈로그가 없으면 두 열 대신 안내를 보인다. 입력은 모두 Model 의 이벤트 메서드로
+/// 카탈로그에서 설치 시트: 왼쪽은 카탈로그별(저장 순서) 앱 목록과 읽는 중·실패 이유(다시 읽는 중이면 앞 목록과 머리글 진행
+/// 표시), 오른쪽은 고른 앱의 버전 목록(최신순), 아래는 새로 고침·취소·받아서 설치. 등록한 카탈로그가 없으면 두 열 대신 안내를 보인다. 입력은 모두 Model 의 이벤트 메서드로
 /// 넘기고, 받기는 Model 이벤트(`menuTapped`·`refreshButtonTapped`)가 시작한다 (이 View 의 `.task`·`onAppear` 로 받지 않는다).
 /// 카탈로그 값(주소·앱·버전 이름·브랜치·태그·빌드 번호)은 번역 키로 쓰지 않고 `Text(verbatim:)` 으로만 보인다.
 /// 대상이 여러 대(툴바 "선택한 기기에 앱 설치")면 제목에 대수를, 그 아래 줄에 대상 이름을 보인다.
@@ -86,7 +86,12 @@ struct CatalogInstallSheet: View {
   private func appList(_ draft: CatalogInstallDraft) -> some View {
     List(selection: Binding(get: { draft.selectedApp }, set: { self.model.appSelected($0) })) {
       ForEach(draft.sources) { (source: CatalogSource) in
-        CatalogSourceSection(source: source, note: draft.note(for: source), emptyReason: draft.emptyReason(for: source))
+        CatalogSourceSection(
+          source: source,
+          rows: draft.appRows(in: source),
+          note: draft.note(for: source),
+          emptyReason: draft.emptyReason(for: source)
+        )
       }
     }
   }
@@ -96,14 +101,6 @@ struct CatalogInstallSheet: View {
     switch draft.versionPane {
     case .noSelection:
       self.placeholder(LauncherText.catalogNoSelection)
-    case .loading:
-      VStack(spacing: 8) {
-        ProgressView()
-          .controlSize(.small)
-        Text(LauncherText.catalogLoading)
-          .foregroundStyle(.secondary)
-      }
-      .frame(maxWidth: .infinity, maxHeight: .infinity)
     case .noVersions:
       self.placeholder(LauncherText.catalogNoVersions)
     case let .versions(versions):
@@ -132,6 +129,7 @@ struct CatalogInstallSheet: View {
         if draft.isLoading {
           ProgressView()
             .controlSize(.small)
+            .accessibilityLabel(LauncherText.catalogLoading)
         }
       }
       Spacer()
@@ -149,9 +147,11 @@ struct CatalogInstallSheet: View {
 }
 
 /// 카탈로그 구역 하나: 머리글(저장된 주소 그대로, 한 줄·가운데 생략)과 앱 줄, 또는 읽는 중·실패 이유·쓸 수 없는 주소 이유 줄.
-/// 상태 줄은 고를 수 없다.
+/// 다시 읽는 중이면 앞 결과의 앱 줄을 그대로 보이고(고를 수 있다) 머리글에 진행 표시를 둔다. 상태 줄은 고를 수 없다.
 private struct CatalogSourceSection: View {
   let source: CatalogSource
+  /// 앱 줄. 줄의 `id`(`CatalogAppKey`)가 `ForEach` 정체성이자 선택 `.tag` 값이다.
+  let rows: [CatalogAppRow]
   /// 상태 줄(실패 이유·쓸 수 없는 주소)과 그 잠김. 읽는 중·읽힌 구역이면 nil.
   let note: CatalogSourceNote?
   /// 읽힌 구역에 iOS 앱이 없는 이유. 앱이 있거나 읽는 중·실패면 nil.
@@ -159,17 +159,25 @@ private struct CatalogSourceSection: View {
 
   var body: some View {
     Section {
-      self.rows
+      self.content
     } header: {
-      Text(verbatim: self.source.raw)
-        .lineLimit(1)
-        .truncationMode(.middle)
-        .help(Text(verbatim: self.source.raw))
+      HStack(spacing: 6) {
+        Text(verbatim: self.source.raw)
+          .lineLimit(1)
+          .truncationMode(.middle)
+          .help(Text(verbatim: self.source.raw))
+        if case .reloading = self.source.state {
+          ProgressView()
+            .controlSize(.mini)
+            .accessibilityLabel(LauncherText.catalogLoading)
+        }
+      }
+      .accessibilityElement(children: .combine)
     }
   }
 
   @ViewBuilder
-  private var rows: some View {
+  private var content: some View {
     switch self.source.state {
     case .loading:
       HStack(spacing: 6) {
@@ -179,7 +187,7 @@ private struct CatalogSourceSection: View {
           .foregroundStyle(.secondary)
       }
       .selectionDisabled()
-    case let .loaded(catalog):
+    case .loaded, .reloading:
       if let reason = self.emptyReason {
         switch reason {
         case .noApps:
@@ -188,9 +196,9 @@ private struct CatalogSourceSection: View {
           self.statusText(LauncherText.catalogNoIOSApps)
         }
       } else {
-        ForEach(catalog.apps(for: .ios)) { (app: BuildCatalog.App) in
-          Text(verbatim: app.name)
-            .tag(CatalogAppKey(sourceID: self.source.id, appID: app.id))
+        ForEach(self.rows) { (row: CatalogAppRow) in
+          Text(verbatim: row.name)
+            .tag(row.id)
         }
       }
     case .failed, .invalid:

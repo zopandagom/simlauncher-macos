@@ -116,6 +116,71 @@ struct CatalogInstallLoadTests: CatalogInstallModelTesting {
     #expect(Self.sourceStates(model) == [.loaded(fresh)])
   }
 
+  @Test("새로 고침 중에는 읽힌 카탈로그의 앱 줄·고른 앱·버전 목록을 그대로 보이고, 설치는 고른 앱의 카탈로그 결과가 올 때까지 요청하지 않는다")
+  func refreshKeepsShownListUntilResult() async throws {
+    let download = CatalogData.fake()
+    let (model, requests) = Self.catalogModel(download: download)
+    await model.menuTapped(Self.sampleDevice(SampleID.iPhoneOn))
+    model.appSelected(Self.alphaKey)
+    let catalog = try CatalogData.catalog(CatalogData.twoApps)
+    let alphaVersions = try #require(catalog.apps.first?.versions)
+
+    download.suspendFetches(for: CatalogData.first)
+    let refresh = Self.start { await model.refreshButtonTapped() }
+    // `.reloading` 도 `.loading` 이 아니므로 상태가 `.loading` 이 아닌지로 기다리지 않는다.
+    await Self.waitUntil {
+      download.suspendedFetchCount == 1 && Self.sourceStates(model) == [.reloading(catalog), .loaded(catalog)]
+    }
+    let rows = model.draft.map { draft in draft.sources.flatMap { draft.appRows(in: $0) } } ?? []
+    #expect(rows.map(\.name) == ["Alpha", "Beta", "Alpha", "Beta"])
+    #expect(model.draft?.selectedApp == Self.alphaKey)
+    #expect(model.draft?.versionPane == .versions(alphaVersions))
+    #expect(model.draft?.canInstall == false)
+    #expect(model.draft?.isLoading == true)
+
+    await model.installButtonTapped()
+    #expect(requests.values.isEmpty)
+    #expect(model.draft != nil)
+
+    download.resumeFetches(for: CatalogData.first)
+    await Self.waitUntil { refresh.isFinished }
+    #expect(model.draft?.canInstall == true)
+    await model.installButtonTapped()
+    #expect(requests.values.map(\.buildURL) == [CatalogData.alphaV2URL])
+    download.resumeFetches()
+  }
+
+  @Test("다시 읽는 중 새로 고침을 거듭 눌러도 앞 목록을 보이고 마지막 받기 결과만 들어간다")
+  func refreshAgainWhileReloading() async throws {
+    let download = CatalogData.fake()
+    let (model, _) = Self.catalogModel(
+      preferences: PreferencesClientFake(urls: [CatalogData.firstRaw]),
+      download: download
+    )
+    await model.menuTapped(Self.sampleDevice(SampleID.iPhoneOn))
+    let catalog = try CatalogData.catalog(CatalogData.twoApps)
+    #expect(Self.sourceStates(model) == [.loaded(catalog)])
+
+    download.suspendFetches(for: CatalogData.first)
+    let first = Self.start { await model.refreshButtonTapped() }
+    await Self.waitUntil { download.suspendedFetchCount == 1 && Self.fetchedURLs(download).count == 2 }
+    #expect(Self.sourceStates(model) == [.reloading(catalog)])
+
+    download.setFetchResult(.success(CatalogData.alphaV1Only))
+    let second = Self.start { await model.refreshButtonTapped() }
+    // 앞 받기는 바깥 Task 취소로 빠지고, 새 받기가 같은 주소라 다시 멈춘다.
+    await Self.waitUntil {
+      first.isFinished && download.suspendedFetchCount == 1 && Self.fetchedURLs(download).count == 3
+    }
+    #expect(Self.sourceStates(model) == [.reloading(catalog)])
+
+    download.resumeFetches(for: CatalogData.first)
+    await Self.waitUntil { second.isFinished }
+    let latest = try CatalogData.catalog(CatalogData.alphaV1Only)
+    #expect(Self.sourceStates(model) == [.loaded(latest)])
+    download.resumeFetches()
+  }
+
   @Test("다른 카탈로그를 아직 읽는 중에 설치를 누르면 시트를 닫고 그 받기를 취소한다")
   func installCancelsLoading() async {
     let download = CatalogData.fake()

@@ -295,6 +295,7 @@ enum CatalogData {
   static let alphaV1 = BuildCatalog.VersionID("v1")
   static let alphaV2 = BuildCatalog.VersionID("v2")
   static let betaV1 = BuildCatalog.VersionID("b1")
+  static let alphaV1URL = DownloadURL("https://builds.example.com/alpha-1.zip")!
   static let alphaV2URL = DownloadURL("https://builds.example.com/alpha-2.zip")!
 
   private static let alphaV1JSON = """
