@@ -1,7 +1,8 @@
 import Core
 import Foundation
 
-/// 사용자 폴더와 Finder. Impl 은 `FileManager`(사진·동영상 폴더)와 `NSWorkspace` 를 쓰고 파일을 덮어쓰지 않는다.
+/// 사용자 폴더·클립보드와 Finder. Impl 은 `FileManager`(사진·동영상 폴더)·`NSPasteboard`·`NSWorkspace` 를 쓴다.
+/// 스크린샷·녹화 예약은 파일을 덮어쓰지 않고, 로그 내보내기(`writeTextFile`)는 저장 패널이 확인한 파일만 바꾼다.
 public protocol WorkspaceClient: Sendable {
   /// 사진 폴더의 `SimLauncher` 폴더를 준비하고(없으면 만든다) 그 안에 `name.fileName(attempt: 1)` 의 빈 파일을
   /// 독점 생성(이미 있으면 실패)으로 만들어 그 URL 을 돌려준다. 이미 있으면 attempt 2…`ScreenshotFileName.maxAttempts` 로 다시 시도하고,
@@ -25,4 +26,14 @@ public protocol WorkspaceClient: Sendable {
   /// Finder 를 앞으로 가져와 그 파일을 선택해 보인다. 파일이 없으면 Finder 를 열지 않고 `.fileNotFound`
   /// (`NSWorkspace.activateFileViewerSelecting` 은 결과를 돌려주지 않고 없는 파일에도 Finder 만 앞으로 가져온다, 측정).
   func revealInFinder(_ file: URL) async throws(WorkspaceError)
+
+  /// 일반 클립보드(`NSPasteboard.general`)의 앞 내용을 지우고 글 하나(문자열 형식)를 그대로(제어 문자 포함) 쓴다.
+  /// 메인에서 쓴다 (33.7 MB 에서 15~91ms, 측정). 쓰지 못하면(`setString` 이 거짓) `.clipboardUnavailable`.
+  func copyToClipboard(_ text: String) async throws(WorkspaceExportError)
+
+  /// 사용자가 저장 패널에서 고른 파일 URL 에 글을 UTF-8(BOM 없음)로 원자적으로 쓴다 (임시 파일에 쓴 뒤 바꿔 넣기, 메인 밖).
+  /// 같은 이름이 있으면 바꾼다 — 덮어쓰기는 저장 패널이 이미 확인했다. 그 이름이 심볼릭 링크면 링크 자체가 일반 파일로 바뀌고
+  /// 대상은 그대로다 (측정). 실패하면 원래 파일은 그대로이고 임시 파일도 남지 않는다 (디스크 가득 참 측정).
+  /// 파일 URL 이 아니면 `.writeFailed`.
+  func writeTextFile(_ text: String, to file: URL) async throws(WorkspaceExportError)
 }

@@ -165,4 +165,72 @@ struct WorkspaceClientFakeTests {
     let file = try await task.value
     #expect(fake.reservedFiles == [file])
   }
+
+  // MARK: - 로그 내보내기
+
+  @Test("클립보드·파일 쓰기는 호출을 기록하고 성공한 글을 남긴다 (같은 파일은 마지막 글)")
+  func copyAndWriteAreRecorded() async throws {
+    let fake = WorkspaceClientFake()
+    let file = URL(filePath: "/tmp/log.txt")
+
+    try await fake.copyToClipboard("a\u{1B}[31m")
+    try await fake.writeTextFile("first", to: file)
+    try await fake.writeTextFile("second", to: file)
+
+    #expect(fake.calls == [
+      .copyToClipboard("a\u{1B}[31m"),
+      .writeTextFile(file, "first"),
+      .writeTextFile(file, "second"),
+    ])
+    #expect(fake.copiedTexts == ["a\u{1B}[31m"])
+    #expect(fake.writtenFiles == [file: "second"])
+  }
+
+  @Test("설정한 오류로 클립보드·파일 쓰기가 실패하고 기록은 남지만 글은 남지 않는다. nil 로 되돌리면 성공한다")
+  func copyAndWriteErrors() async throws {
+    let fake = WorkspaceClientFake()
+    let file = URL(filePath: "/tmp/log.txt")
+    fake.setCopyError(.clipboardUnavailable)
+    fake.setWriteError(.diskFull)
+
+    await #expect(throws: WorkspaceExportError.clipboardUnavailable) { try await fake.copyToClipboard("a") }
+    await #expect(throws: WorkspaceExportError.diskFull) { try await fake.writeTextFile("a", to: file) }
+    #expect(fake.calls == [.copyToClipboard("a"), .writeTextFile(file, "a")])
+    #expect(fake.copiedTexts.isEmpty)
+    #expect(fake.writtenFiles.isEmpty)
+
+    fake.setCopyError(nil)
+    fake.setWriteError(nil)
+    try await fake.copyToClipboard("b")
+    try await fake.writeTextFile("b", to: file)
+    #expect(fake.copiedTexts == ["b"])
+    #expect(fake.writtenFiles == [file: "b"])
+  }
+
+  @Test("멈춘 클립보드·파일 쓰기는 기록만 하고 resume 뒤에 끝난다, 예약 멈춤과 따로다")
+  func suspendedWritesWaitUntilResumed() async throws {
+    let fake = WorkspaceClientFake()
+    let file = URL(filePath: "/tmp/log.txt")
+    fake.suspendExports()
+
+    let copy = Task { try await fake.copyToClipboard("a") }
+    let write = Task { try await fake.writeTextFile("a", to: file) }
+    while fake.calls.count < 2 {
+      await Task.yield()
+    }
+    // 예약은 멈추지 않는다.
+    _ = try await fake.reserveScreenshotFile(Screenshot.name())
+    #expect(fake.copiedTexts.isEmpty)
+    #expect(fake.writtenFiles.isEmpty)
+
+    fake.resumeExports()
+    try await copy.value
+    try await write.value
+    #expect(fake.copiedTexts == ["a"])
+    #expect(fake.writtenFiles == [file: "a"])
+
+    // resume 뒤의 호출은 멈추지 않는다.
+    try await fake.copyToClipboard("b")
+    #expect(fake.copiedTexts == ["a", "b"])
+  }
 }
