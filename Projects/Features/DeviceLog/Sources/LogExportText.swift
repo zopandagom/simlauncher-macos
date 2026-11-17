@@ -112,10 +112,11 @@ enum LogExportText {
     for condition in conditions {
       let kind = DeviceLogText.kind(condition.kind, bundle: bundle)
       let text = self.escapedCondition(condition.text)
+      // 포함 조건은 맞추는 방법만 적는다 ("포함 · 포함" 처럼 같은 말이 겹치지 않게. 화면도 제외만 체크상자로 표시한다).
       lines.append(
         condition.isExcluded
           ? String(localized: "- 제외 · \(kind): \(text)", bundle: bundle)
-          : String(localized: "- 포함 · \(kind): \(text)", bundle: bundle)
+          : "- \(kind): \(text)"
       )
     }
     return lines

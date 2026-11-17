@@ -17,22 +17,6 @@
         }
       }
     },
-    "- 포함 · %@: %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "- Include · %@: %@"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "- 포함 · %@: %@"
-          }
-        }
-      }
-    },
     "‘%@’ 필터가 이미 있습니다" : {
       "localizations" : {
         "en" : {

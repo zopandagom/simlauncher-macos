@@ -96,7 +96,7 @@ struct LogExportTextTests {
     실행 시각: 2027-01-15 17:00:00 +09:00
     상태: 받는 중
     필터 (대소문자 무시):
-    - 포함 · 포함: network
+    - 포함: network
     - 제외 · 정규식: ^heartbeat
     줄: 보이는 2줄 / 전체 300줄
     버퍼가 차서 앞 5줄을 버렸습니다
@@ -166,7 +166,7 @@ struct LogExportTextTests {
     filter.setCaseSensitive(true)
     #expect(LogExportText.filter(filter, bundle: .module) == [
       "필터 (대소문자 구분):",
-      "- 포함 · 시작: Error",
+      "- 시작: Error",
       "- 제외 · 포함: noise",
     ])
   }
@@ -180,7 +180,7 @@ extension LogExportTextTests {
     filter.setText("a\nb\r\nc\td\u{2028}e\u{85}f", of: 0)
     #expect(LogExportText.filter(filter, bundle: .module) == [
       "필터 (대소문자 무시):",
-      "- 포함 · 포함: a\\nb\\r\\nc\\u{0009}d\\u{2028}e\\u{0085}f",
+      "- 포함: a\\nb\\r\\nc\\u{0009}d\\u{2028}e\\u{0085}f",
     ])
   }
 
@@ -273,7 +273,7 @@ extension LogExportTextTests {
       "Launched: 2027-01-15 17:00:00 +09:00",
       "Status: Ended — the app quit",
       "Filter (case-insensitive):",
-      "- Include · Contains: network",
+      "- Contains: network",
       "- Exclude · Regex: ^heartbeat",
       "Lines: Showing 2 of 300 lines",
       "The buffer was full, so the first 2 lines were dropped",

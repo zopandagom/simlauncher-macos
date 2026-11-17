@@ -226,12 +226,11 @@ enum DeviceLogTextCatalog {
       ("기기: %@", ["iPhone 17 Pro · iOS 27.0"]),
       ("실행 시각: %@", [started]),
       ("상태: %@", [state]),
-      ("- 포함 · %@: %@", [DeviceLogText.kind(.contains), "network"]),
       ("- 제외 · %@: %@", [DeviceLogText.kind(.contains), "noise"]),
       ("줄: %@", [counts]),
     ]
-    // 머리말 순서: 제목 다음부터 (필터 머리 줄은 고정 문구라 건너뛴다).
-    let lines = Array(header[1 ... 7]) + Array(header[9 ... 11])
+    // 머리말 순서: 제목 다음부터 (필터 머리 줄은 고정 문구, 포함 조건 줄은 번역 키가 없어 건너뛴다).
+    let lines = Array(header[1 ... 7]) + Array(header[10 ... 11])
     return zip(samples, lines).map { FormatSample(key: $0.0.0, arguments: $0.0.1, text: $0.1) }
   }
 }
