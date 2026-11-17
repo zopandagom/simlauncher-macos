@@ -3,7 +3,7 @@ import Core
 import Foundation
 
 /// Android 테스트 조건 시트에서 바꾸는 항목. 기기별 "적용 중" 표시와 실패 문구가 어느 항목의 것인지 가른다.
-/// TC-C 가 앱 단위 항목(언어)을 케이스로 더한다.
+/// 앱 단위 항목(앱 언어, TC-C)은 하지 않기로 했다 (DEVELOPMENT_PLAN "이후" 행).
 public enum AndroidTestConditionItem: Hashable, Sendable {
   case appearance
   case location
