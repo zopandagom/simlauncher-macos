@@ -5,6 +5,7 @@ import DeviceLogFeature
 import Foundation
 import PreferencesTesting
 import SwiftUI
+import WorkspaceTesting
 
 /// App 없이 로그 창만 띄우는 데모 앱. Preview 도 여기에 둔다.
 /// `AppLogClientFake` 에 기기 하나·세션 둘(받는 중인 LogProbe, 앱이 끝난 Other)을 넣는다. "로그 창 열기" 는 App 과 같이
@@ -12,6 +13,9 @@ import SwiftUI
 /// 부하 확인: "5만 줄 넣기" 는 받는 중 세션에 한 번에 5만 줄을, "초당 1000줄" 은 100ms 마다 100줄을 넣는다. 넣은 줄이 5만 줄을
 /// 넘으면 Client 처럼 앞을 버린 것으로 알린다 (`setDropped`). 이 상태로 필터 입력·스크롤·일시정지가 멈추지 않는지 본다.
 /// "다시 실행" 은 Fake 기본 동작(같은 기기·앱의 받는 중 세션을 새로 더함)이다.
+/// "복사"·"저장…" 은 `WorkspaceClientFake` 로 가서 클립보드·디스크를 건드리지 않는다 (저장 패널은 실제로 뜨고, 고른 파일에는 쓰지
+/// 않는다). 마지막으로 복사·저장한 글은 조종 창의 "마지막 내보낸 글 보기" 로, 저장 실패는 "저장 실패 흉내" 로 본다. LogProbe 는 앱 버전 1.2 (34)·iOS 27.0,
+/// Other 는 앱 버전을 모르는 세션이다.
 /// 저장된 필터: `PreferencesClientFake` 에 샘플 셋(오류만, HTTP 4xx·5xx, 깨진 정규식)과 읽을 수 없는 항목 하나를 넣는다.
 /// "저장된 필터 잠금" 은 관리자 강제를 흉내 낸다. Model 은 정한 때(창 열기·저장된 필터 메뉴 동작)만 다시 읽으므로, 켠 직후에는
 /// 메뉴가 그대로이고 "지금 필터 저장…" 을 한 번 누르면(시트는 열리지 않는다) 또는 창을 다시 열면 잠금이 보인다.
@@ -43,28 +47,57 @@ final class ExampleDemo {
 
   let fake: AppLogClientFake
   let preferences = PreferencesClientFake(logFilters: [.sampleErrors, .sampleHTTP, .sampleInvalidRegex, nil])
+  let workspace = WorkspaceClientFake()
   let model: DeviceLogModel
   let receivingSession = AppLogSessionID(UUID())
   private(set) var isStreaming = false
   /// 토글 표시를 다시 그리게 하는 값 (Fake 는 관찰되지 않는다).
   private(set) var savedFilterLockChanges = 0
+  private(set) var exportPreview = ""
+  private(set) var failsSaves = false
   @ObservationIgnored private var streamTask: Task<Void, Never>?
   @ObservationIgnored private var appended = 0
 
   init() {
     let started = Date()
     let ended = AppLogSessionSummary(
-      id: AppLogSessionID(UUID()), target: Self.target, deviceName: "iPhone 17 Pro", appID: "com.example.other",
-      appName: "Other", startedAt: started.addingTimeInterval(-600), state: .ended(.appExited)
+      id: AppLogSessionID(UUID()), target: Self.target, deviceName: "iPhone 17 Pro",
+      deviceOS: .iOS(runtimeName: "iOS 27.0"), appID: "com.example.other", appName: "Other",
+      appVersion: AppLogAppVersion(version: nil, build: nil), startedAt: started.addingTimeInterval(-600),
+      state: .ended(.appExited)
     )
     let receiving = AppLogSessionSummary(
       id: self.receivingSession, target: Self.target, deviceName: "iPhone 17 Pro",
-      appID: "dev.simlauncher.logprobe", appName: "LogProbe", startedAt: started, state: .receiving
+      deviceOS: .iOS(runtimeName: "iOS 27.0"), appID: "dev.simlauncher.logprobe", appName: "LogProbe",
+      appVersion: AppLogAppVersion(version: "1.2", build: "34"), startedAt: started, state: .receiving
     )
     self.fake = AppLogClientFake(sessions: [ended, receiving])
-    self.model = DeviceLogModel(appLog: self.fake, preferences: self.preferences)
+    self.model = DeviceLogModel(
+      appLog: self.fake,
+      preferences: self.preferences,
+      workspace: self.workspace,
+      simLauncherVersion: "1.3.0 (45)"
+    )
     self.fake.append(ExampleLines.endedSession, to: ended.id)
     self.append(ExampleLines.start)
+  }
+
+  /// 마지막으로 복사하거나 저장한 글의 앞 15줄. Fake 는 관찰되지 않아 "마지막 내보낸 글 보기" 를 누를 때 다시 읽는다.
+  func refreshExportPreview() {
+    let last = self.workspace.calls.reversed().lazy.compactMap { call -> String? in
+      switch call {
+      case let .copyToClipboard(text), let .writeTextFile(_, text): text
+      default: nil
+      }
+    }.first
+    self.exportPreview = (last ?? "").split(separator: "\n", omittingEmptySubsequences: false).prefix(15)
+      .joined(separator: "\n")
+  }
+
+  /// 저장(파일 쓰기) 실패를 흉내 낸다 (권한 없음).
+  func setFailsSaves(_ fails: Bool) {
+    self.failsSaves = fails
+    self.workspace.setWriteError(fails ? .noPermission : nil)
   }
 
   var isSavedFilterLocked: Bool {
@@ -136,6 +169,18 @@ struct ExampleControls: View {
       ) {
         Text(verbatim: "저장된 필터 잠금")
       }
+      Toggle(isOn: Binding(get: { self.demo.failsSaves }, set: { self.demo.setFailsSaves($0) })) {
+        Text(verbatim: "저장 실패 흉내 (권한 없음)")
+      }
+      Button {
+        self.demo.refreshExportPreview()
+      } label: {
+        Text(verbatim: "마지막 내보낸 글 보기")
+      }
+      Text(verbatim: self.demo.exportPreview)
+        .font(.system(.caption, design: .monospaced))
+        .textSelection(.enabled)
+        .fixedSize(horizontal: false, vertical: true)
     }
     .padding()
     .frame(minWidth: 280)
@@ -180,7 +225,12 @@ enum ExampleLines {
 
 #Preview("세션 없음") {
   DeviceLogView(
-    model: DeviceLogModel(appLog: AppLogClientFake(), preferences: PreferencesClientFake()),
+    model: DeviceLogModel(
+      appLog: AppLogClientFake(),
+      preferences: PreferencesClientFake(),
+      workspace: WorkspaceClientFake(),
+      simLauncherVersion: nil
+    ),
     target: .iOS(VirtualDevice.ID("5C0F3A2E-0000-4000-8000-000000000009"))
   )
 }

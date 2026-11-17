@@ -2,9 +2,10 @@ import AppLogInterface
 import Core
 import SwiftUI
 
-/// 기기 하나의 로그 창 내용: 위는 앱(세션) 고르기·상태·다시 실행, 가운데 필터와 줄 목록, 아래 줄 수와 일시정지·따라가기·지우기.
+/// 기기 하나의 로그 창 내용: 위는 앱(세션) 고르기·상태·다시 실행, 가운데 필터와 줄 목록, 아래 줄 수와 일시정지·따라가기·지우기와
+/// 보이는 줄 내보내기("복사"·"저장…", 그 밑에 저장 결과·실패 한 줄).
 /// App 이 `WindowGroup(id: AppLogTarget.windowID, for: AppLogTarget.self)` 로 대상마다 창 하나를 띄운다.
-/// 창을 닫으면(onDisappear) 줄과 필터 저장 시트만 버리고 앱과 받기는 계속된다.
+/// 창을 닫으면(onDisappear) 줄과 필터 저장 시트·내보내기 결과만 버리고 앱과 받기는 계속된다.
 public struct DeviceLogView: View {
   let model: DeviceLogModel
   let target: AppLogTarget
@@ -32,9 +33,12 @@ public struct DeviceLogView: View {
         Divider()
         self.lineList
         Divider()
-        self.footer
-          .padding(.horizontal)
-          .padding(.vertical, 8)
+        VStack(alignment: .leading, spacing: 6) {
+          self.footer
+          LogExportResultLine(model: self.model, target: self.target)
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
       }
     }
     .frame(minWidth: 640, minHeight: 360)
@@ -192,6 +196,7 @@ public struct DeviceLogView: View {
         self.model.clearTapped(in: self.target)
       }
       .help(DeviceLogText.clearHelp)
+      LogExportButtons(model: self.model, target: self.target)
     }
   }
 }
