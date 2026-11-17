@@ -22,3 +22,4 @@ Launcher	알림 내용이 %lld 바이트입니다. %lld 바이트 이하로 줄�
 Settings	등록했습니다. 앱 %lld개가 있습니다.
 DeviceLog	버퍼가 차서 앞 %lld줄을 버렸습니다
 DeviceLog	보이는 %lld줄 / 전체 %lld줄
+DeviceLog	일시정지 중: 멈춘 지점까지의 줄입니다. 멈춘 뒤 받은 %lld줄은 빠졌습니다
