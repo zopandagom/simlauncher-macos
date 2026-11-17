@@ -46,7 +46,10 @@ enum DeviceLogTestSupport {
     preferences: PreferencesClientFake = PreferencesClientFake(),
     workspace: WorkspaceClientFake = WorkspaceClientFake(),
     copiedFeedbackDuration: Duration = .seconds(2),
-    sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
+    sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) },
+    makeExportText: @escaping @Sendable (LogExportSnapshot, TimeZone) async -> String = {
+      await LogExportText.make($0, timeZone: $1)
+    }
   ) -> (DeviceLogModel, AppLogClientFake) {
     let fake = AppLogClientFake(sessions: sessions)
     let model = DeviceLogModel(
@@ -57,7 +60,8 @@ enum DeviceLogTestSupport {
       now: { Self.exportDate },
       timeZone: Self.seoul,
       copiedFeedbackDuration: copiedFeedbackDuration,
-      sleep: sleep
+      sleep: sleep,
+      makeExportText: makeExportText
     )
     return (model, fake)
   }

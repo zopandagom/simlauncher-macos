@@ -139,6 +139,7 @@ enum DemoScenario: String, CaseIterable, Hashable {
   case catalogFailure = "카탈로그: 받지 못한 카탈로그 있음"
   case catalogLocked = "카탈로그: 잠김 (관리자 설정)"
   case catalogEmpty = "카탈로그: 등록 없음"
+  case catalogSlowRefresh = "카탈로그: 느린 받기 (새로 고침 중 앞 목록 유지)"
   case slowScreenshot = "스크린샷: 찍는 중 유지"
   case screenshotFailure = "스크린샷 실패: 화면 읽기"
   case captureFolderFailure = "스크린샷·녹화 실패: 저장 폴더"
@@ -201,8 +202,12 @@ enum DemoScenario: String, CaseIterable, Hashable {
     download.setFetchResult(.success(DemoCatalog.catalogV2), for: DemoCatalog.v2URL)
     download.setFetchResult(.success(DemoCatalog.catalogV1), for: DemoCatalog.v1URL)
     download.setFetchResult(.success(DemoCatalog.iOSOnly), for: DemoCatalog.iOSOnlyURL)
+    download.setFetchResult(.success(DemoCatalog.catalogQA), for: DemoCatalog.qaURL)
     download.setFetchResult(.failure(.httpStatus(404)), for: DemoCatalog.missingURL)
     switch self {
+    case .catalogSlowRefresh:
+      // 카탈로그 받기(새로 고침 포함)를 늦춰 앞 목록 유지·설치 꺼짐을 본다. 이 장면에서는 apk 받기도 같이 늦다 (데모라 그대로 둔다).
+      download.setDelay(.seconds(2))
     case .slowDownload, .multiDeviceSlowDownload:
       download.setDownloadScript(progress: Array(Self.downloadProgress.prefix(4)), result: nil)
       download.suspendDownloads()
@@ -469,7 +474,8 @@ enum DemoCatalog {
   static let v1URL = DownloadURL("https://builds.example.com/ios-only/catalog-v1.json")!
   static let iOSOnlyURL = DownloadURL("https://cdn.example.org/team/catalog.json")!
   static let missingURL = DownloadURL("https://cdn.example.org/missing/catalog.json")!
-  static let urls = [v2URL, v1URL, iOSOnlyURL].map(\.url.absoluteString)
+  static let qaURL = DownloadURL("https://cdn.example.org/qa/catalog.json")!
+  static let urls = [v2URL, qaURL, v1URL, iOSOnlyURL].map(\.url.absoluteString)
 
   static let catalogV2 = Data("""
   {
@@ -490,6 +496,21 @@ enum DemoCatalog {
         ]
       },
       { "id": "com.example.empty", "name": "Empty", "platform": "android", "versions": [] }
+    ]
+  }
+  """.utf8)
+
+  static let catalogQA = Data("""
+  {
+    "schemaVersion": 2,
+    "apps": [
+      {
+        "id": "com.example.sample", "name": "Sample (QA)", "platform": "android",
+        "versions": [
+          { "id": "qa-44", "name": "1.4.0 QA (44)", "branch": "release/1.4", "buildNumber": "44",
+            "createdAt": "2026-10-23T02:00:00Z", "buildURL": "https://cdn.example.org/qa/Sample-QA-44.apk" }
+        ]
+      }
     ]
   }
   """.utf8)

@@ -88,13 +88,14 @@ struct AndroidDownloadInstallModelTests: AndroidDevicesTesting {
     let draft = try #require(model.catalogDraft)
     #expect(draft.targets == [AndroidTargetDevice(id: Self.tablet.id, label: Self.label)])
     #expect(draft.sources.count == 4)
-    #expect(draft.apps(in: draft.sources[0]).map(\.name) == ["Sample (Android)", "Empty"])
-    #expect(draft.apps(in: draft.sources[0]).allSatisfy { $0.platform == .android })
+    #expect(draft.appRows(in: draft.sources[0]).map(\.name) == ["Sample (Android)", "Empty"])
+    let appIDs = draft.appRows(in: draft.sources[0]).map(\.id.appID)
+    #expect(appIDs == [AndroidCatalogData.sampleID, AndroidCatalogData.emptyAppID])
     #expect(draft.emptyReason(for: draft.sources[0]) == nil)
     #expect(draft.emptyReason(for: draft.sources[1]) == .schemaVersion1)
     #expect(draft.emptyReason(for: draft.sources[2]) == .noAndroidApps)
     #expect(draft.emptyReason(for: draft.sources[3]) == .noApps)
-    #expect(draft.apps(in: draft.sources[1]).isEmpty)
+    #expect(draft.appRows(in: draft.sources[1]).isEmpty)
     #expect(!draft.isLoading)
     #expect(draft.versionPane == .noSelection)
   }
@@ -249,11 +250,13 @@ struct AndroidDownloadInstallModelTests: AndroidDevicesTesting {
       origin: .catalog
     )])
   }
+}
 
-  @Test("고른 앱의 카탈로그를 다시 읽는 중이면 버전 칸이 읽는 중이고 설치할 수 없다")
+extension AndroidDownloadInstallModelTests {
+  @Test("고른 앱의 카탈로그를 다시 읽는 중이면 버전 칸은 앞 버전 목록을 보이고 설치할 수 없다(설치를 눌러도 요청하지 않는다)")
   func versionPaneWhileReloading() async throws {
     let download = AndroidCatalogData.fake()
-    let model = Self.model(urls: [AndroidCatalogData.v2Raw], download: download)
+    let (model, requests) = Self.requestsSetup(urls: [AndroidCatalogData.v2Raw], download: download)
     await model.catalogMenuTapped([Self.tablet])
     let sourceID = try #require(model.catalogDraft?.sources.first?.id)
     model.catalogAppSelected(AndroidCatalogAppKey(sourceID: sourceID, appID: AndroidCatalogData.emptyAppID))
@@ -262,11 +265,58 @@ struct AndroidDownloadInstallModelTests: AndroidDevicesTesting {
     download.suspendFetches(for: AndroidCatalogData.catalogV2)
     let refresh = Self.start { await model.catalogRefreshTapped() }
     await Self.waitUntil { download.suspendedFetchCount == 1 }
-    #expect(model.catalogDraft?.versionPane == .loading)
+    let versions = try #require(
+      AndroidCatalogData.catalog(AndroidCatalogData.v2JSON).app(AndroidCatalogData.sampleID, for: .android)
+    ).versions
+    #expect(model.catalogDraft?.versionPane == .versions(versions))
     #expect(model.catalogDraft?.canInstall == false)
+    await model.catalogInstallTapped()
+    #expect(requests.items.isEmpty)
+    #expect(model.catalogDraft != nil)
     download.resumeFetches()
     await Self.waitUntil { refresh.isFinished }
     #expect(model.catalogDraft?.canInstall == true)
+  }
+
+  @Test("새로 고침 중에는 읽힌 카탈로그의 앱 줄·고른 앱·버전 목록을 그대로 보이고, 설치는 고른 앱의 카탈로그 결과가 올 때까지 요청하지 않는다")
+  func catalogRefreshKeepsShownListUntilResult() async throws {
+    let download = AndroidCatalogData.fake()
+    download.setFetchResult(.success(AndroidCatalogData.qaJSON), for: AndroidCatalogData.qaURL)
+    let (model, requests) = Self.requestsSetup(
+      urls: [AndroidCatalogData.v2Raw, AndroidCatalogData.qaRaw],
+      download: download
+    )
+    await model.catalogMenuTapped([Self.tablet])
+    let sourceID = try #require(model.catalogDraft?.sources.first?.id)
+    let key = AndroidCatalogAppKey(sourceID: sourceID, appID: AndroidCatalogData.sampleID)
+    model.catalogAppSelected(key)
+    let v2Catalog = try AndroidCatalogData.catalog(AndroidCatalogData.v2JSON)
+    let qaCatalog = try AndroidCatalogData.catalog(AndroidCatalogData.qaJSON)
+
+    download.suspendFetches(for: AndroidCatalogData.catalogV2)
+    let refresh = Self.start { await model.catalogRefreshTapped() }
+    // `.reloading` 도 `.loading` 이 아니므로 상태 전체와 멈춘 받기 수로 기다린다.
+    await Self.waitUntil {
+      download.suspendedFetchCount == 1 && model.catalogDraft?.sources.map(\.state) == [
+        .reloading(v2Catalog),
+        .loaded(qaCatalog),
+      ]
+    }
+    let draft = try #require(model.catalogDraft)
+    #expect(draft.appRows(in: draft.sources[0]).map(\.name) == ["Sample (Android)", "Empty"])
+    #expect(draft.selectedApp == key)
+    #expect(draft.selectedVersionID == AndroidCatalogData.newest)
+    #expect(draft.isLoading)
+    #expect(!draft.canInstall)
+    await model.catalogInstallTapped()
+    #expect(requests.items.isEmpty)
+    #expect(model.catalogDraft != nil)
+
+    download.resumeFetches(for: AndroidCatalogData.catalogV2)
+    await Self.waitUntil { refresh.isFinished }
+    #expect(model.catalogDraft?.canInstall == true)
+    await model.catalogInstallTapped()
+    #expect(requests.items.map(\.url) == [AndroidCatalogData.newestURL])
   }
 }
 

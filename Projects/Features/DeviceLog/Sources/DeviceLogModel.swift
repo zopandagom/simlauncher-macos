@@ -39,23 +39,22 @@ public final class DeviceLogModel {
   @ObservationIgnored private let timeZone: TimeZone
   @ObservationIgnored private let copiedFeedbackDuration: Duration
   @ObservationIgnored private let sleep: @Sendable (Duration) async throws -> Void
+  @ObservationIgnored private let makeExportText: @Sendable (LogExportSnapshot, TimeZone) async -> String
   @ObservationIgnored private var exportTokens: [AppLogTarget: Int] = [:]
   @ObservationIgnored private var pendingSaves: [AppLogTarget: LogExportSnapshot] = [:]
   @ObservationIgnored private var copiedResetTasks: [AppLogTarget: Task<Void, Never>] = [:]
 
-  /// - Parameters:
-  ///   - simLauncherVersion: 내보낼 글 머리말의 SimLauncher 버전 ("1.3.0 (45)"). 모르면 nil.
-  ///   - now·timeZone: 머리말 "내보낸 시각" 과 저장 파일 이름의 시각.
-  ///   - copiedFeedbackDuration·sleep: "복사됨" 을 보이는 시간과 그 기다리기 (테스트가 바꾼다).
-  public init(
+  /// `makeExportText`: 복사·저장할 글 만들기(메인 밖). 테스트가 글을 만드는 동안을 붙잡으려고 바꾼다.
+  init(
     appLog: any AppLogClient,
     preferences: any PreferencesClient,
     workspace: any WorkspaceClient,
     simLauncherVersion: String?,
-    now: @escaping @Sendable () -> Date = { Date() },
-    timeZone: TimeZone = .current,
-    copiedFeedbackDuration: Duration = .seconds(2),
-    sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
+    now: @escaping @Sendable () -> Date,
+    timeZone: TimeZone,
+    copiedFeedbackDuration: Duration,
+    sleep: @escaping @Sendable (Duration) async throws -> Void,
+    makeExportText: @escaping @Sendable (LogExportSnapshot, TimeZone) async -> String
   ) {
     self.appLog = appLog
     self.preferences = preferences
@@ -65,6 +64,7 @@ public final class DeviceLogModel {
     self.timeZone = timeZone
     self.copiedFeedbackDuration = copiedFeedbackDuration
     self.sleep = sleep
+    self.makeExportText = makeExportText
   }
 
   // MARK: - 창 열기·닫기·세션 고르기
@@ -317,6 +317,35 @@ public final class DeviceLogModel {
   }
 }
 
+public extension DeviceLogModel {
+  /// - Parameters:
+  ///   - simLauncherVersion: 내보낼 글 머리말의 SimLauncher 버전 ("1.3.0 (45)"). 모르면 nil.
+  ///   - now·timeZone: 머리말 "내보낸 시각" 과 저장 파일 이름의 시각.
+  ///   - copiedFeedbackDuration·sleep: "복사됨" 을 보이는 시간과 그 기다리기 (테스트가 바꾼다).
+  convenience init(
+    appLog: any AppLogClient,
+    preferences: any PreferencesClient,
+    workspace: any WorkspaceClient,
+    simLauncherVersion: String?,
+    now: @escaping @Sendable () -> Date = { Date() },
+    timeZone: TimeZone = .current,
+    copiedFeedbackDuration: Duration = .seconds(2),
+    sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
+  ) {
+    self.init(
+      appLog: appLog,
+      preferences: preferences,
+      workspace: workspace,
+      simLauncherVersion: simLauncherVersion,
+      now: now,
+      timeZone: timeZone,
+      copiedFeedbackDuration: copiedFeedbackDuration,
+      sleep: sleep,
+      makeExportText: { await LogExportText.make($0, timeZone: $1) }
+    )
+  }
+}
+
 // MARK: - 일시정지·따라가기·지우기·다시 실행
 
 // 클래스 본문 길이 상한(type_body_length) 때문에 같은 파일의 extension 에 둔다 (상태·private 소유물을 바꾼다).
@@ -391,7 +420,7 @@ public extension DeviceLogModel {
     guard let snapshot = self.beginExport(in: target) else { return }
     let token = self.exportTokens[target, default: 0]
     self.windows[target]?.setExport(.copying)
-    let text = await LogExportText.make(snapshot, timeZone: self.timeZone)
+    let text = await self.makeExportText(snapshot, self.timeZone)
     guard self.exportTokens[target] == token, self.windows[target]?.isOpen == true else { return }
     do throws(WorkspaceExportError) {
       try await self.workspace.copyToClipboard(text)
@@ -443,7 +472,7 @@ public extension DeviceLogModel {
     else { return }
     let token = self.exportTokens[target, default: 0]
     self.windows[target]?.setExport(.saving)
-    let text = await LogExportText.make(snapshot, timeZone: self.timeZone)
+    let text = await self.makeExportText(snapshot, self.timeZone)
     guard self.exportTokens[target] == token else { return }
     do throws(WorkspaceExportError) {
       try await self.workspace.writeTextFile(text, to: file)

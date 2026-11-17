@@ -182,7 +182,7 @@ struct CatalogInstallModelTests: CatalogInstallModelTesting {
   }
 
   @Test("고른 버전이 없으면(앱 없음·버전 없음·다시 읽는 중·닫힘) 설치를 요청하지 않고 시트를 그대로 둔다")
-  func installIgnoredWithoutVersion() async {
+  func installIgnoredWithoutVersion() async throws {
     let preferences = PreferencesClientFake(urls: [CatalogData.firstRaw])
     let download = CatalogData.fake()
     let (model, requests) = Self.catalogModel(preferences: preferences, download: download)
@@ -198,7 +198,7 @@ struct CatalogInstallModelTests: CatalogInstallModelTesting {
     await model.installButtonTapped()
     #expect(model.draft?.selectedApp == Self.alphaKey)
 
-    // 고른 앱의 카탈로그를 다시 읽는 중이면 고른 버전이 없다.
+    // 고른 앱의 카탈로그를 다시 읽는 중이면 앞 버전 목록은 보이지만 설치할 고른 버전이 없다.
     download.setFetchResult(.success(CatalogData.twoApps))
     await model.refreshButtonTapped()
     model.appSelected(Self.alphaKey)
@@ -206,7 +206,9 @@ struct CatalogInstallModelTests: CatalogInstallModelTesting {
     let refresh = Self.start { await model.refreshButtonTapped() }
     await Self.waitUntil { download.suspendedFetchCount == 1 }
     await model.installButtonTapped()
-    #expect(model.draft?.versionPane == .loading)
+    let alphaVersions = try #require(CatalogData.catalog(CatalogData.twoApps).apps.first?.versions)
+    #expect(model.draft?.versionPane == .versions(alphaVersions))
+    #expect(model.draft?.canInstall == false)
     #expect(requests.values.isEmpty)
 
     download.resumeFetches()

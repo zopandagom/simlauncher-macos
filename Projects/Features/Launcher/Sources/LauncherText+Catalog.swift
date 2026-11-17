@@ -24,7 +24,7 @@ extension LauncherText {
     String(localized: "버전", bundle: .module)
   }
 
-  /// 구역의 읽는 중 줄, 그리고 고른 앱의 카탈로그를 다시 읽는 중일 때 오른쪽 버전 칸.
+  /// 구역의 읽는 중 줄, 그리고 다시 읽는 중 진행 표시(구역 머리글·새로 고침 옆)의 접근성 이름.
   static var catalogLoading: String {
     String(localized: "카탈로그를 읽는 중…", bundle: .module)
   }
