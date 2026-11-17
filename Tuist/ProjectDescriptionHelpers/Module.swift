@@ -47,8 +47,9 @@ public extension Client {
   /// 받은 최신 버전 `LatestKnownUpdateVersion`).
   /// 관리자가 구성 프로필로 강제한 키(`objectIsForced`)는 잠김이라 쓰지 않는다.
   static let preferences = Client("Preferences")
-  /// 사용자 폴더와 Finder: 스크린샷·녹화 저장 폴더(사진·동영상 폴더의 `SimLauncher`) 준비와 파일 이름 예약(덮어쓰지 않음)·
-  /// 빈 예약 파일 지우기, Finder 에서 파일 선택해 보이기 (FileManager·NSWorkspace). 예약한 파일에 쓰는 것은 Simulator(simctl)·
+  /// 사용자 폴더·클립보드와 Finder: 스크린샷·녹화 저장 폴더(사진·동영상 폴더의 `SimLauncher`) 준비와 파일 이름 예약(덮어쓰지 않음)·
+  /// 빈 예약 파일 지우기, Finder 에서 파일 선택해 보이기, 로그 내보내기의 클립보드 쓰기와 사용자가 저장 패널에서 고른 파일에
+  /// 원자적으로 쓰기(패널이 확인한 덮어쓰기만) (FileManager·NSWorkspace·NSPasteboard). 예약한 파일에 쓰는 것은 Simulator(simctl)·
   /// AndroidEmulator(screencap 출력 쓰기, 녹화는 adb pull 로 바꿔 넣기) Impl 이다.
   static let workspace = Client("Workspace")
   /// Android SDK 위치(기본 `~/Library/Android/sdk` 또는 설정에서 고른 폴더, App 이 주는 provider)의 상태 확인(파일만 읽는다)과
@@ -69,7 +70,8 @@ public extension Client {
   static let androidPackage = Client("AndroidPackage")
   /// iOS·Android 앱을 로그 받기와 함께 실행하고, 기기·실행별 세션 버퍼(세션당 최근 5만 줄·32 MiB, 기기당 5개)와 끝남 이유를 갖는다.
   /// iOS 는 Simulator Client 의 `launchWithConsole` 을, Android 는 AndroidEmulator Client 의 `launchWithLogcat` 을 조합한다.
-  /// 앱 출력은 화면에만 보인다 (파일·Logger 없음).
+  /// 세션 요약에 iOS 앱 버전·기기 OS 를 싣는다 (실행을 부른 쪽이 넘긴 값). 앱 출력을 스스로 파일·Logger 로 남기지 않는다
+  /// (로그 창의 "복사"·"저장…" 만).
   static let appLog = Client("AppLog")
   /// 켜진 기기 화면의 뷰 계층과 스크린샷을 한 번에 읽는다 (레이아웃 창). Android 는 AndroidEmulator Client 의 `layoutSnapshot` 을
   /// 조합한다. iOS 는 SimLauncher 가 빌드해 띄운 XCUITest 러너(xcodebuild, DevEnvironment 가 고른 Xcode, CommandClient)와
@@ -98,7 +100,7 @@ public enum Feature: String, CaseIterable {
   /// 곧바로, 아니면 도구 화면의 "기기 목록 열기" 로 보인다 (도구가 없으면 꺼진 기기 삭제만).
   case androidDevices = "AndroidDevices"
   /// 기기별 앱 로그 창(iOS·Android 공용): 세션 고르기, 필터(포함·시작·정규식·제외)·강조, 일시정지·따라가기·지우기,
-  /// 끝난 세션 다시 실행.
+  /// 끝난 세션 다시 실행, 보이는 줄 복사·저장(머리말, Workspace Client).
   case deviceLog = "DeviceLog"
   /// 기기별 화면 레이아웃 창(iOS·Android 공용): 스크린샷 위 뷰 테두리, 클릭한 점의 노드 고르기와 속성(dp/pt·px), 새로 고침.
   case layoutInspector = "LayoutInspector"
