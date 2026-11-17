@@ -15,7 +15,8 @@
 # 산출물에 영향이 없는 정리(rm)·검사용 마운트 분리·SHA-256 계산이 실패하면 "경고:" 만 보이고 계속한다.
 # 외부 출력은 codesign -dvv 의 영어 줄·security find-identity 줄·-showBuildSettings JSON·notarytool JSON 만 해석한다
 # (CI 모드는 security list-keychains 줄과 사전 확인 P5 의 spctl --status 문구도 본다. CI 러너 로케일은 영어).
-# hdiutil(출력이 현지화됨)·spctl·stapler 는 종료 코드로만 판정하고 출력은 그대로 보여 준다.
+# diskutil(출력이 현지화됨)·spctl·stapler 는 종료 코드로만 판정하고 출력은 그대로 보여 준다.
+# dmg 는 diskutil image create·attach 와 diskutil eject 로 다룬다(macOS 27 에서 hdiutil create·attach·detach 가 deprecated).
 # shellcheck disable=SC2015 # "A && B || fail …" 은 A·B 중 하나라도 실패하면 fail 하라는 뜻으로 쓴다
 set -euo pipefail
 
@@ -86,7 +87,7 @@ fail() {
 
 on_exit() {
   if [[ $MOUNTED == 1 ]]; then
-    hdiutil detach "$MOUNT_POINT" >/dev/null 2>&1 || true
+    diskutil eject "$MOUNT_POINT" >/dev/null 2>&1 || true
   fi
 }
 
@@ -106,10 +107,10 @@ trap on_interrupt INT TERM
 step 0 "이전 산출물 정리"
 # 이전 실행이 SIGKILL·크래시로 마운트를 남겼을 수 있다. 스크립트가 쓰는 경로만 분리를 시도한다.
 if [[ -d $MOUNT_POINT ]]; then
-  hdiutil detach "$MOUNT_POINT" >/dev/null 2>&1 || true
+  diskutil eject "$MOUNT_POINT" >/dev/null 2>&1 || true
 fi
 rm -rf "$OUT" 2>/dev/null || fail 1 "build/release 를 지우지 못했습니다." \
-  "마운트된 디스크 이미지를 분리(hdiutil detach $MOUNT_POINT)한 뒤 다시 실행하세요."
+  "마운트된 디스크 이미지를 분리(diskutil eject $MOUNT_POINT)한 뒤 다시 실행하세요."
 mkdir -p "$OUT" "$NOTARY_DIR" || fail 1 "build/release 를 만들지 못했습니다 (위 mkdir 출력)." \
   "디스크 공간과 레포 폴더의 쓰기 권한을 확인한 뒤 다시 실행하세요."
 
@@ -497,8 +498,10 @@ rm -f "$APP_ZIP" \
 step 8 "dmg 만들기"
 { mkdir -p "$DMG_ROOT" && ditto "$APP" "$DMG_ROOT/$APP_NAME.app" && ln -s /Applications "$DMG_ROOT/Applications"; } \
   || fail 1 "dmg 에 담을 폴더를 준비하지 못했습니다: $DMG_ROOT (위 출력)." "디스크 공간을 확인한 뒤 다시 실행하세요."
-hdiutil create -volname "$APP_NAME" -srcfolder "$DMG_ROOT" -format UDZO -fs APFS "$WORK_DMG" \
-  || fail 1 "디스크 이미지를 만들지 못했습니다 (위 hdiutil 출력)."
+# 폴더를 원본으로 주면 APFS 볼륨으로 만든다(hdiutil 의 -fs APFS 와 같다). 만든 이미지는 붙어 있지 않다
+diskutil image create from --format UDZO --volumeName "$APP_NAME" "$DMG_ROOT" "$WORK_DMG" \
+  || fail 1 "디스크 이미지를 만들지 못했습니다 (위 diskutil 출력)." \
+    "출력에 'dissented by' 가 있으면 그 앱(예: Xcode)이 임시 볼륨 분리를 막은 것입니다. 그 앱을 닫고 다시 실행하세요."
 rm -rf "$DMG_ROOT" \
   || echo "경고: dmg 를 만든 임시 폴더를 지우지 못했습니다: $DMG_ROOT (배포에는 영향이 없고, 다음 실행이 0단계에서 지웁니다)." >&2
 
@@ -541,8 +544,8 @@ check "dmg 공증 티켓" xcrun stapler validate "$WORK_DMG"
 mkdir -p "$MOUNT_POINT" \
   || fail 1 "검사용 마운트 폴더를 만들지 못했습니다: $MOUNT_POINT" \
     "배포 이름($DMG)으로 옮기지 않았습니다. 검사하지 못한 dmg 는 $WORK_DMG 에 남습니다(배포하지 마세요)."
-hdiutil attach -nobrowse -readonly -noautoopen -mountpoint "$MOUNT_POINT" "$WORK_DMG" \
-  || fail 1 "검사하려고 dmg 를 마운트하지 못했습니다 (위 hdiutil 출력)." \
+diskutil image attach --nobrowse --readOnly --mountPoint "$MOUNT_POINT" "$WORK_DMG" \
+  || fail 1 "검사하려고 dmg 를 마운트하지 못했습니다 (위 diskutil 출력)." \
     "배포 이름($DMG)으로 옮기지 않았습니다. 검사하지 못한 dmg 는 $WORK_DMG 에 남습니다(배포하지 마세요)."
 MOUNTED=1
 check "앱 서명" codesign --verify --strict --deep "$MOUNT_POINT/$APP_NAME.app"
@@ -552,10 +555,10 @@ applications_link=$(readlink "$MOUNT_POINT/Applications" || true)
 echo "--- Applications 바로가기: $applications_link"
 [[ $applications_link == /Applications ]] || FAILED_CHECKS+=("Applications 바로가기")
 # 분리 실패는 검사 결과·dmg 에 영향이 없어 경고만 한다 (MOUNTED=1 로 두어 끝날 때 on_exit 이 한 번 더 시도한다)
-if hdiutil detach "$MOUNT_POINT"; then
+if diskutil eject "$MOUNT_POINT"; then
   MOUNTED=0
 else
-  echo "경고: 검사용 마운트를 분리하지 못했습니다: $MOUNT_POINT (위 hdiutil 출력). 스크립트가 끝날 때 한 번 더 시도합니다. 끝난 뒤에도 남아 있으면 hdiutil detach $MOUNT_POINT 로 분리하세요." >&2
+  echo "경고: 검사용 마운트를 분리하지 못했습니다: $MOUNT_POINT (위 diskutil 출력. 'dissented by' 가 있으면 그 앱이 분리를 막은 것입니다). 스크립트가 끝날 때 한 번 더 시도합니다. 끝난 뒤에도 남아 있으면 그 앱을 닫고 diskutil eject $MOUNT_POINT 로 분리하세요." >&2
 fi
 if ((${#FAILED_CHECKS[@]} > 0)); then
   fail 1 "최종 검사가 실패했습니다: ${FAILED_CHECKS[*]}" \
