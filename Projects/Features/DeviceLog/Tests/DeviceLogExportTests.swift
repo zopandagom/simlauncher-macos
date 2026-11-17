@@ -24,12 +24,23 @@ struct DeviceLogExportTests {
   }
 
   /// 세션 하나에 줄을 넣고 창을 열어 모두 보일 때까지 기다린다.
-  func opened(_ lines: [String] = ["tick 1", "tick 2"], sessions extra: [AppLogSessionSummary] = []) async -> Opened {
+  /// `textGate` 를 주면 복사·저장할 글을 만들기 전에 그 문에서 멈춘다 (`fire` 로 놓아준다).
+  func opened(
+    _ lines: [String] = ["tick 1", "tick 2"],
+    sessions extra: [AppLogSessionSummary] = [],
+    textGate: ManualSleeper? = nil
+  ) async -> Opened {
     let session = Support.summary(at: 10)
     let workspace = WorkspaceClientFake()
     let sleeper = ManualSleeper()
     let (model, fake) = Support.fixture(
-      extra + [session], workspace: workspace, sleep: { try await sleeper.sleep($0) }
+      extra + [session],
+      workspace: workspace,
+      sleep: { try await sleeper.sleep($0) },
+      makeExportText: { snapshot, timeZone in
+        try? await textGate?.sleep(.zero)
+        return await LogExportText.make(snapshot, timeZone: timeZone)
+      }
     )
     if !lines.isEmpty {
       fake.append(lines, to: session.id)
@@ -123,11 +134,14 @@ struct DeviceLogExportTests {
 
   @Test("복사할 글을 만드는 동안 창을 닫으면 클립보드에 쓰지 않는다")
   func closeWhileCopyingSkipsClipboard() async {
-    let opened = await self.opened()
+    let gate = ManualSleeper()
+    let opened = await self.opened(textGate: gate)
     let copy = Task { await opened.model.copyTapped(in: Support.target) }
-    // `.copying` 이 보이면 복사는 글 만들기(메인 밖)를 기다리는 중이고, 메인을 놓지 않은 채 창을 닫는다.
-    await Support.waitUntil { self.export(opened) == .copying }
+    // 글 만들기가 문에서 멈춘 동안 창을 닫고 놓아준다 (`.copying` 만 보고 닫으면 글 만들기가 먼저 끝날 수 있다).
+    await Support.waitUntil { gate.count == 1 }
+    #expect(self.export(opened) == .copying)
     opened.model.windowDisappeared(Support.target)
+    gate.fire(0)
     await copy.value
 
     #expect(!opened.workspace.calls.contains {
