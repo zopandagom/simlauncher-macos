@@ -244,8 +244,8 @@ struct AppInstallFlow {
       _ = try await self.appLog.launchIOSApp(
         info.bundleID,
         appName: info.displayName,
-        on: device.id,
-        deviceName: device.name
+        appVersion: AppLogAppVersion(version: info.version, build: info.build),
+        on: device
       )
     } catch {
       host.enqueue(.launchFailed(label, SimulatorError(error)))
@@ -441,8 +441,8 @@ extension AppInstallFlow {
       _ = try await self.appLog.launchIOSApp(
         app.bundleID,
         appName: app.displayName,
-        on: device.id,
-        deviceName: device.name
+        appVersion: AppLogAppVersion(version: app.version, build: app.build),
+        on: device
       )
     } catch {
       host.enqueue(.installedAppLaunchFailed(label, .simulator(SimulatorError(error))))

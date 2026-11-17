@@ -172,7 +172,8 @@ struct AndroidAppInstallFlow {
         info.packageName,
         appName: info.packageName.rawValue,
         on: id,
-        deviceName: label.name
+        deviceName: label.name,
+        apiLabel: label.apiLabel
       )
     } catch {
       host.enqueue(.installedButNotLaunched(label, AndroidEmulatorError(error)))
@@ -195,7 +196,9 @@ struct AndroidAppInstallFlow {
     host: Host
   ) async {
     do throws(AppLogLaunchError) {
-      _ = try await self.appLog.launchAndroidApp(package, appName: package.rawValue, on: id, deviceName: label.name)
+      _ = try await self.appLog.launchAndroidApp(
+        package, appName: package.rawValue, on: id, deviceName: label.name, apiLabel: label.apiLabel
+      )
     } catch {
       host.enqueue(.launchFailed(label, .emulator(AndroidEmulatorError(error))))
     }
