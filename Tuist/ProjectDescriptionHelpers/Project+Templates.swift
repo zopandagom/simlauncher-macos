@@ -19,9 +19,9 @@ public enum Env {
   /// 개발 실행은 `CODE_SIGN_IDENTITY = "-"`(Tuist 기본)라 ad-hoc 으로 돌고, `make build`·`make test`·CI 는 서명하지 않는다.
   static let developmentTeam = "XHV4ZL5K8T"
   /// 배포 버전. 버전 태그와 같아야 하고(릴리스 워크플로가 검사), dmg 이름(`SimLauncher-<버전>.dmg`)에 쓰인다. 올릴 때 여기만 고친다 (docs/RELEASING.md).
-  static let marketingVersion = "1.2.0"
-  /// 빌드 번호. 배포할 때마다 1씩 올린다 (버전이 바뀌어도 되돌리지 않는다. 1.0.0 은 1, 1.1.0 은 2, 1.2.0 은 3).
-  static let buildNumber = "3"
+  static let marketingVersion = "1.3.0"
+  /// 빌드 번호. 배포할 때마다 1씩 올린다 (버전이 바뀌어도 되돌리지 않는다. 1.0.0 은 1, 1.1.0 은 2, 1.2.0 은 3, 1.3.0 은 4).
+  static let buildNumber = "4"
   /// 업데이트 알림이 확인하는 GitHub 저장소 "<소유자>/<이름>" (앱 Info.plist 키 `SimLauncherReleaseRepository`).
   /// 앱은 이 값으로만 버전 파일 주소(`releases/latest/download/SimLauncher-version.json`, 릴리스마다 올린다: docs/RELEASING.md)와
   /// 다운로드 페이지 주소를 만든다 (Core `ReleaseRepository`).
