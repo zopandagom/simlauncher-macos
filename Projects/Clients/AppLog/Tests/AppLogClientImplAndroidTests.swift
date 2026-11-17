@@ -211,4 +211,32 @@ struct AppLogClientImplAndroidTests {
     await #expect(throws: AppLogLaunchError.sessionNotFound) { try await fixture.client.relaunch(first) }
     #expect(fixture.logcat.count == 2)
   }
+
+  // MARK: - 기기 OS
+
+  @Test("Android 요약은 앱 버전 없이 API 를 기기 OS 로 싣고, API 를 모르면 nil, 다시 실행도 그대로")
+  func androidSummaryHasOSWithoutVersion() async throws {
+    let fixture = AppLogFixture()
+
+    let (id, run) = try await fixture.launchedAndroid(run: 0)
+    let (unknown, _) = try await fixture.launchedAndroid(AppLogFixture.otherPackage, apiLabel: nil, run: 1)
+
+    var summaries = await fixture.summaries()
+    let summary = try #require(summaries.first { $0.id == id })
+    #expect(summary.appVersion == nil)
+    #expect(summary.deviceOS == .android(apiLabel: "37.0"))
+    let unknownSummary = try #require(summaries.first { $0.id == unknown })
+    #expect(unknownSummary.appVersion == nil)
+    #expect(unknownSummary.deviceOS == nil)
+
+    run.finish(.success(.appExited))
+    _ = try await fixture.waitForEnd(of: id)
+    let task = Task { try await fixture.client.relaunch(id) }
+    try await fixture.logcat.run(2).emit(.launched)
+    let relaunched = try await task.value
+    summaries = await fixture.summaries()
+    let relaunchedSummary = try #require(summaries.first { $0.id == relaunched })
+    #expect(relaunchedSummary.appVersion == nil)
+    #expect(relaunchedSummary.deviceOS == .android(apiLabel: "37.0"))
+  }
 }

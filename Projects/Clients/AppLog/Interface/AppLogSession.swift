@@ -28,14 +28,37 @@ public enum AppLogSessionState: Hashable, Sendable {
   case ended(AppLogEndReason)
 }
 
+/// iOS 앱 버전 (CFBundleShortVersionString·CFBundleVersion). 앱이 정한 글자라 그대로 보인다. 둘 다 nil 일 수 있다.
+public struct AppLogAppVersion: Hashable, Sendable {
+  public let version: String?
+  public let build: String?
+
+  public init(version: String?, build: String?) {
+    self.version = version
+    self.build = build
+  }
+}
+
+/// 세션 기기의 OS. 실행을 부른 쪽이 이미 아는 값이다 (새 명령으로 읽지 않는다).
+public enum AppLogDeviceOS: Hashable, Sendable {
+  /// iOS 런타임 이름 그대로 (`DeviceRuntime.name`, 예 "iOS 27.0").
+  case iOS(runtimeName: String)
+  /// Android 시스템 이미지의 API (`AndroidSystemImageRef.apiLabel`, 예 "37.0").
+  case android(apiLabel: String)
+}
+
 /// 세션 하나의 요약 (줄은 담지 않는다). 실행 신호를 받은 세션만 보인다 (실행에 실패한 세션은 없다).
 public struct AppLogSessionSummary: Identifiable, Hashable, Sendable {
   public let id: AppLogSessionID
   public let target: AppLogTarget
   public let deviceName: String
+  /// 기기 OS. 모르면 nil (Android 이미지 정보 없음).
+  public let deviceOS: AppLogDeviceOS?
   /// iOS 는 번들 ID, Android 는 패키지 이름.
   public let appID: String
   public let appName: String
+  /// iOS 앱 버전 (실행할 때 SimLauncher 가 안 값). Android 는 nil.
+  public let appVersion: AppLogAppVersion?
   /// 실행을 요청한 시각.
   public let startedAt: Date
   public let state: AppLogSessionState
@@ -44,16 +67,20 @@ public struct AppLogSessionSummary: Identifiable, Hashable, Sendable {
     id: AppLogSessionID,
     target: AppLogTarget,
     deviceName: String,
+    deviceOS: AppLogDeviceOS?,
     appID: String,
     appName: String,
+    appVersion: AppLogAppVersion?,
     startedAt: Date,
     state: AppLogSessionState
   ) {
     self.id = id
     self.target = target
     self.deviceName = deviceName
+    self.deviceOS = deviceOS
     self.appID = appID
     self.appName = appName
+    self.appVersion = appVersion
     self.startedAt = startedAt
     self.state = state
   }
@@ -64,15 +91,17 @@ public struct AppLogSessionSummary: Identifiable, Hashable, Sendable {
       id: self.id,
       target: self.target,
       deviceName: self.deviceName,
+      deviceOS: self.deviceOS,
       appID: self.appID,
       appName: self.appName,
+      appVersion: self.appVersion,
       startedAt: self.startedAt,
       state: state
     )
   }
 }
 
-/// 로그 한 줄. 앱 출력은 신뢰하지 않는 텍스트로 화면에만 보인다.
+/// 로그 한 줄. 앱 출력은 신뢰하지 않는 텍스트다: 해석하지 않고 화면에 보이며, 사용자가 내보낼 때만 그대로(제어 문자 포함) 클립보드·파일로 나간다.
 public struct AppLogLine: Identifiable, Hashable, Sendable {
   /// 세션 안에서 0 부터 늘어나는 번호 (버린 줄도 번호를 쓴다).
   public let index: Int

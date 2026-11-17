@@ -1,33 +1,40 @@
 import Core
 
 /// 앱을 로그 받기와 함께 실행하고, 기기·실행별 세션 버퍼와 끝남 이유를 갖는 Client (iOS·Android 공용).
-/// 앱 출력은 화면에만 보인다: 파일·`Logger` 로 남기지 않고, SimLauncher 가 끝나면 사라진다.
+/// SimLauncher 는 앱 출력을 스스로 파일·`Logger` 로 남기지 않고, SimLauncher 가 끝나면 사라진다
+/// (사용자가 로그 창의 "복사"·"저장…" 을 누를 때만 보이는 줄이 클립보드·고른 파일로 나간다, DeviceLog).
 public protocol AppLogClient: Sendable {
   /// iOS: 켜진 기기에서 설치된 앱을 로그 받기와 함께 실행하고(`SimulatorClient.launchWithConsole`), 실행 신호를 받거나 실패할 때까지
   /// 기다린다. 받기는 Client 가 소유한 작업에서 앱이 끝날 때까지 이어진다 (호출한 Task 의 취소는 받지 않는다).
   /// 같은 기기·같은 앱의 앞 세션은 이 실행이 대체한다 (끝나면 `.replaced`).
   /// 실행 신호 없이 simctl 이 0 으로 끝나도 성공으로 보고 그 세션은 곧바로 끝난 상태로 보인다.
   /// 신호도 끝남도 없이 오래(기본 60초) 지나면 실행된 것으로 보고 성공을 돌려준다 (그 뒤의 실패는 끝남으로만 보인다).
+  /// 세션 요약에는 `device` 의 이름과 런타임 이름(`device.runtime.name`, 예 "iOS 27.0" → `deviceOS`), `appVersion`(설치·목록에서
+  /// SimLauncher 가 읽은 값)을 그대로 싣는다. 새 명령으로 읽지 않는다. 실행은 `device.id` 로 한다 (상태는 보지 않는다).
   func launchIOSApp(
     _ bundleID: AppBundleID,
     appName: String,
-    on device: VirtualDevice.ID,
-    deviceName: String
+    appVersion: AppLogAppVersion?,
+    on device: VirtualDevice
   ) async throws(AppLogLaunchError) -> AppLogSessionID
 
   /// Android: 켜진 기기에서 설치된 앱을 끄고 새로 실행하며 그 앱 메인 프로세스의 logcat 을 받는다
   /// (`AndroidEmulatorClient.launchWithLogcat`). pid 를 얻거나(또는 pid 전에 끝나 한 번 읽거나) 실패할 때까지 기다린다.
   /// 그 밖은 `launchIOSApp` 과 같다 (대체·신호 대기 상한·호출 Task 취소 무시).
+  /// `apiLabel`(`AndroidSystemImageRef.apiLabel`, 예 "37.0". 이미지 정보가 없으면 nil)은 요약의 `deviceOS` 로 싣는다. 앱 버전은 없다.
   func launchAndroidApp(
     _ package: AndroidPackageName,
     appName: String,
     on device: AndroidVirtualDevice.ID,
-    deviceName: String
+    deviceName: String,
+    apiLabel: String?
   ) async throws(AppLogLaunchError) -> AppLogSessionID
 
   /// 세션과 같은 기기·앱을 다시 실행한다 (iOS 는 그 기기가 켜져 있으면 Simulator 앱을 연 뒤(실패는 무시) `launchIOSApp` 과 같다.
   /// Android 는 기기를 확인하지 않고 `launchAndroidApp` 과 같다 (꺼져 있으면 `.deviceNotBooted`)).
   /// 기기를 켜지 않는다 (꺼져 있으면 `.deviceNotBooted`). 세션이 없으면 `.sessionNotFound`.
+  /// 새 세션 요약의 기기 OS 는 그 세션 그대로이고, 앱 버전은 같은 기기·앱으로 가장 늦게 실행을 요청한 값이다
+  /// (그 사이 SimLauncher 가 다시 설치했으면 새 버전. SimLauncher 밖에서 다시 설치한 것은 모른다).
   func relaunch(_ session: AppLogSessionID) async throws(AppLogLaunchError) -> AppLogSessionID
 
   /// SimLauncher 가 곧 이 기기의 이 앱을 다시 설치한다 (설치가 실행 중인 앱을 끝낸다, 측정): 받는 중인 그 앱의 세션이 끝나면 `.replaced`.

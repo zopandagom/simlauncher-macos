@@ -75,6 +75,55 @@ struct AndroidDevicesAppLogTests: AndroidDevicesTesting {
     #expect(session?.state == .receiving)
   }
 
+  // MARK: - 머리말에 쓰는 기기 OS
+
+  @Test("설치 후 실행과 \"앱 실행…\" 은 기기 이미지의 API 를 기기 OS 로 넘기고 앱 버전은 넘기지 않는다")
+  func installAndLaunchPassApiLabelWithoutVersion() async throws {
+    let setup = await Self.loadedFixture()
+    let apiLabel = try #require(Self.label.apiLabel)
+    await setup.model.appFileSelected(Self.apk, for: Self.tablet.id)
+    let installed = try #require(setup.appLog.sessions.first)
+    #expect(installed.deviceOS == .android(apiLabel: apiLabel))
+    #expect(installed.appVersion == nil)
+
+    // 이미지 정보가 없는 라벨이면 기기 OS 도 없다.
+    let package = try #require(AndroidPackageName("com.example.a"))
+    await setup.model.launchAppRequested(AndroidLaunchAppRequest(
+      deviceID: Self.tablet.id,
+      device: AndroidDeviceLabel(name: Self.label.name, apiLabel: nil),
+      package: package
+    ))
+    let launched = try #require(setup.appLog.sessions.first { $0.appID == package.rawValue })
+    #expect(launched.deviceOS == nil)
+    #expect(launched.appVersion == nil)
+  }
+
+  @Test("여러 기기 설치는 기기마다 그 기기 이미지의 API 를 넘긴다")
+  func batchInstallPassesApiLabel() async throws {
+    let older = AndroidVirtualDevice(
+      id: AndroidVirtualDevice.ID("Older_Phone"),
+      displayName: "Older Phone",
+      systemImage: .olderSample,
+      formFactor: .phone,
+      state: .booted,
+      availability: .available
+    )
+    let inventory = AndroidDeviceInventory(devices: [Self.tablet, older], creationOptions: .sample)
+    let setup = await Self.loadedFixture(inventory)
+    setup.model.selectionChanged([Self.tablet.id, older.id])
+
+    await setup.model.selectedAppFileChosen(Self.apk)
+
+    #expect(setup.appLog.sessions.count == 2)
+    for device in [Self.tablet, older] {
+      let session = try #require(setup.appLog.sessions.first { $0.target == .android(device.id) })
+      let apiLabel = try #require(device.systemImage?.apiLabel)
+      #expect(session.deviceOS == .android(apiLabel: apiLabel))
+      #expect(session.appVersion == nil)
+    }
+    #expect(AndroidSystemImageRef.sample.apiLabel != AndroidSystemImageRef.olderSample.apiLabel)
+  }
+
   // MARK: - 행 "로그 보기"
 
   @Test("onAppear 전에는 구독하지 않고, 뒤에는 Android 대상 세션이 있는 기기만 logDevices 다 (iOS 세션은 무시)")
@@ -139,8 +188,10 @@ struct AndroidDevicesAppLogTests: AndroidDevicesTesting {
       id: AppLogSessionID(UUID()),
       target: target,
       deviceName: "기기",
+      deviceOS: nil,
       appID: "com.example.app",
       appName: "com.example.app",
+      appVersion: nil,
       startedAt: Date(timeIntervalSince1970: 0),
       state: state
     )
@@ -164,19 +215,22 @@ final class CountingAppLog: AppLogClient {
   func launchIOSApp(
     _ bundleID: AppBundleID,
     appName: String,
-    on device: VirtualDevice.ID,
-    deviceName: String
+    appVersion: AppLogAppVersion?,
+    on device: VirtualDevice
   ) async throws(AppLogLaunchError) -> AppLogSessionID {
-    try await self.base.launchIOSApp(bundleID, appName: appName, on: device, deviceName: deviceName)
+    try await self.base.launchIOSApp(bundleID, appName: appName, appVersion: appVersion, on: device)
   }
 
   func launchAndroidApp(
     _ package: AndroidPackageName,
     appName: String,
     on device: AndroidVirtualDevice.ID,
-    deviceName: String
+    deviceName: String,
+    apiLabel: String?
   ) async throws(AppLogLaunchError) -> AppLogSessionID {
-    try await self.base.launchAndroidApp(package, appName: appName, on: device, deviceName: deviceName)
+    try await self.base.launchAndroidApp(
+      package, appName: appName, on: device, deviceName: deviceName, apiLabel: apiLabel
+    )
   }
 
   func relaunch(_ session: AppLogSessionID) async throws(AppLogLaunchError) -> AppLogSessionID {

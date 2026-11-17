@@ -2,12 +2,15 @@ import AppLogInterface
 import AppLogTesting
 import Core
 import Foundation
+import SimulatorTesting
 import Testing
 
 struct AppLogClientFakeTests {
   private static let app = AppBundleID("com.example.app")!
   private static let failingApp = AppBundleID("com.example.fail")!
-  private static let device = VirtualDevice.ID("00000000-0000-0000-0000-000000000002")
+  private static let device = SampleID.iPhoneOn
+  /// 샘플 목록의 켜진 iPhone 17 Pro (iOS 27.0).
+  private static let virtualDevice = DeviceInventory.sample.devices.first { $0.id == SampleID.iPhoneOn }!
 
   @Test("launchIOSApp 은 기록하고 받는 중 요약을 더한다, 처리기가 던지면 세션이 없다")
   func launch() async throws {
@@ -17,13 +20,18 @@ struct AppLogClientFakeTests {
       }
     }
 
-    let id = try await fake.launchIOSApp(Self.app, appName: "App", on: Self.device, deviceName: "iPhone")
+    let id = try await fake.launchIOSApp(
+      Self.app,
+      appName: "App",
+      appVersion: nil,
+      on: Self.virtualDevice
+    )
     await #expect(throws: AppLogLaunchError.appNotInstalled) {
       try await fake.launchIOSApp(
         #require(AppBundleID("com.example.fail")),
         appName: "F",
-        on: Self.device,
-        deviceName: "iPhone"
+        appVersion: nil,
+        on: Self.virtualDevice
       )
     }
 
@@ -48,9 +56,15 @@ struct AppLogClientFakeTests {
     })
 
     await fake.replacementWillStart(package, on: avd)
-    let id = try await fake.launchAndroidApp(package, appName: "com.example.app", on: avd, deviceName: "Pixel 9")
+    let id = try await fake.launchAndroidApp(
+      package,
+      appName: "com.example.app",
+      on: avd,
+      deviceName: "Pixel 9",
+      apiLabel: "37.0"
+    )
     await #expect(throws: AppLogLaunchError.noLauncherActivity) {
-      try await fake.launchAndroidApp(failing, appName: "F", on: avd, deviceName: "Pixel 9")
+      try await fake.launchAndroidApp(failing, appName: "F", on: avd, deviceName: "Pixel 9", apiLabel: nil)
     }
     await fake.replacementCancelled(package, on: avd)
 
@@ -140,6 +154,47 @@ struct AppLogClientFakeTests {
     #expect(fake.calls.count == 4)
   }
 
+  @Test("요약은 받은 앱 버전·기기 OS 를 싣고(Android 는 버전 nil, API 를 모르면 OS nil), 기본 relaunch 는 원래 값을 복사한다")
+  func fakeSummaryCarriesVersionAndOS() async throws {
+    let fake = AppLogClientFake()
+    let version = AppLogAppVersion(version: "1.2", build: nil)
+    let package = try #require(AndroidPackageName("com.example.app"))
+
+    let ios = try await fake.launchIOSApp(
+      Self.app,
+      appName: "App",
+      appVersion: version,
+      on: Self.virtualDevice
+    )
+    let android = try await fake.launchAndroidApp(
+      package,
+      appName: "com.example.app",
+      on: AndroidVirtualDevice.ID("Pixel_9"),
+      deviceName: "Pixel 9",
+      apiLabel: "37.0"
+    )
+    let unknownOS = try await fake.launchAndroidApp(
+      package,
+      appName: "com.example.app",
+      on: AndroidVirtualDevice.ID("Old"),
+      deviceName: "Old",
+      apiLabel: nil
+    )
+    let relaunched = try await fake.relaunch(ios)
+
+    let summaries = fake.sessions
+    let iosSummary = try #require(summaries.first { $0.id == ios })
+    #expect(iosSummary.appVersion == version)
+    #expect(iosSummary.deviceOS == .iOS(runtimeName: "iOS 27.0"))
+    let androidSummary = try #require(summaries.first { $0.id == android })
+    #expect(androidSummary.appVersion == nil)
+    #expect(androidSummary.deviceOS == .android(apiLabel: "37.0"))
+    #expect(summaries.first { $0.id == unknownOS }?.deviceOS == nil)
+    let relaunchedSummary = try #require(summaries.first { $0.id == relaunched })
+    #expect(relaunchedSummary.appVersion == version)
+    #expect(relaunchedSummary.deviceOS == .iOS(runtimeName: "iOS 27.0"))
+  }
+
   @Test("stopAll·대체 알림을 기록한다")
   func records() async {
     let fake = AppLogClientFake()
@@ -157,8 +212,10 @@ struct AppLogClientFakeTests {
       id: id,
       target: .iOS(self.device),
       deviceName: "iPhone",
+      deviceOS: .iOS(runtimeName: "iOS 27.0"),
       appID: self.app.rawValue,
       appName: "App",
+      appVersion: AppLogAppVersion(version: "1.0", build: "1"),
       startedAt: Date(timeIntervalSince1970: 0),
       state: state
     )

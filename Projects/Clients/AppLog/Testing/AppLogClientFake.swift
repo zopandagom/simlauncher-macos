@@ -6,7 +6,10 @@ import Synchronization
 /// 테스트·Example 용 `AppLogClient`. 호출을 기록하고, 세션·줄을 테스트가 직접 넣는다.
 /// `launchIOSApp`·`launchAndroidApp` 은 처리기가 성공하면(없으면 성공) 받는 중 요약(대상 `.iOS`·`.android`)을 만들어 목록에 더하고
 /// 그 ID 를 돌려준다.
-/// `relaunch` 는 `setRelaunchResult` 로 정한 결과를 쓰고, 없으면 원래 세션과 같은 기기·앱의 받는 중 요약을 더한다(없는 세션이면 `.sessionNotFound`).
+/// 요약에는 받은 앱 버전(Android 는 nil)과 기기 이름·OS(iOS 는 `device.name`·`device.runtime.name` → `.iOS`, Android 는
+/// `apiLabel` → `.android`, nil 이면 nil)를 싣는다 (`Call` 은 앱·기기 ID 만 기록한다: 전달 값은 `sessions` 의 요약으로 확인한다).
+/// `relaunch` 는 `setRelaunchResult` 로 정한 결과를 쓰고, 없으면 원래 세션과 같은 기기·앱·앱 버전·기기 OS 의 받는 중 요약을 더한다
+/// (없는 세션이면 `.sessionNotFound`). Impl 의 "같은 기기·앱의 가장 늦은 앱 버전" 규칙은 흉내 내지 않는다.
 public final class AppLogClientFake: AppLogClient {
   public enum Call: Hashable, Sendable {
     case launchIOSApp(AppBundleID, VirtualDevice.ID)
@@ -163,17 +166,19 @@ public final class AppLogClientFake: AppLogClient {
   public func launchIOSApp(
     _ bundleID: AppBundleID,
     appName: String,
-    on device: VirtualDevice.ID,
-    deviceName: String
+    appVersion: AppLogAppVersion?,
+    on device: VirtualDevice
   ) async throws(AppLogLaunchError) -> AppLogSessionID {
-    self.state.withLock { $0.calls.append(.launchIOSApp(bundleID, device)) }
-    try await self.launchHandler?(bundleID, device)
+    self.state.withLock { $0.calls.append(.launchIOSApp(bundleID, device.id)) }
+    try await self.launchHandler?(bundleID, device.id)
     let summary = AppLogSessionSummary(
       id: AppLogSessionID(UUID()),
-      target: .iOS(device),
-      deviceName: deviceName,
+      target: .iOS(device.id),
+      deviceName: device.name,
+      deviceOS: .iOS(runtimeName: device.runtime.name),
       appID: bundleID.rawValue,
       appName: appName,
+      appVersion: appVersion,
       startedAt: Date(),
       state: .receiving
     )
@@ -185,7 +190,8 @@ public final class AppLogClientFake: AppLogClient {
     _ package: AndroidPackageName,
     appName: String,
     on device: AndroidVirtualDevice.ID,
-    deviceName: String
+    deviceName: String,
+    apiLabel: String?
   ) async throws(AppLogLaunchError) -> AppLogSessionID {
     self.state.withLock { $0.calls.append(.launchAndroidApp(package, device)) }
     try await self.androidLaunchHandler?(package, device)
@@ -193,8 +199,10 @@ public final class AppLogClientFake: AppLogClient {
       id: AppLogSessionID(UUID()),
       target: .android(device),
       deviceName: deviceName,
+      deviceOS: apiLabel.map { .android(apiLabel: $0) },
       appID: package.rawValue,
       appName: appName,
+      appVersion: nil,
       startedAt: Date(),
       state: .receiving
     )
@@ -226,8 +234,10 @@ public final class AppLogClientFake: AppLogClient {
           id: AppLogSessionID(UUID()),
           target: original.target,
           deviceName: original.deviceName,
+          deviceOS: original.deviceOS,
           appID: original.appID,
           appName: original.appName,
+          appVersion: original.appVersion,
           startedAt: Date(),
           state: .receiving
         )
@@ -236,22 +246,6 @@ public final class AppLogClientFake: AppLogClient {
     let summary = try result.get()
     self.publish(summary)
     return summary.id
-  }
-
-  public func replacementWillStart(_ bundleID: AppBundleID, on device: VirtualDevice.ID) async {
-    self.state.withLock { $0.calls.append(.replacementWillStart(bundleID, device)) }
-  }
-
-  public func replacementCancelled(_ bundleID: AppBundleID, on device: VirtualDevice.ID) async {
-    self.state.withLock { $0.calls.append(.replacementCancelled(bundleID, device)) }
-  }
-
-  public func replacementWillStart(_ package: AndroidPackageName, on device: AndroidVirtualDevice.ID) async {
-    self.state.withLock { $0.calls.append(.androidReplacementWillStart(package, device)) }
-  }
-
-  public func replacementCancelled(_ package: AndroidPackageName, on device: AndroidVirtualDevice.ID) async {
-    self.state.withLock { $0.calls.append(.androidReplacementCancelled(package, device)) }
   }
 
   /// 첫 알림은 지금 목록, 그 뒤는 `publish`·`remove`·실행 성공마다.
@@ -300,5 +294,25 @@ public final class AppLogClientFake: AppLogClient {
     for subscriber in state.sessionSubscribers.values {
       subscriber.yield(state.sessions)
     }
+  }
+}
+
+// MARK: - 대체 알림 (기록만)
+
+public extension AppLogClientFake {
+  func replacementWillStart(_ bundleID: AppBundleID, on device: VirtualDevice.ID) async {
+    self.state.withLock { $0.calls.append(.replacementWillStart(bundleID, device)) }
+  }
+
+  func replacementCancelled(_ bundleID: AppBundleID, on device: VirtualDevice.ID) async {
+    self.state.withLock { $0.calls.append(.replacementCancelled(bundleID, device)) }
+  }
+
+  func replacementWillStart(_ package: AndroidPackageName, on device: AndroidVirtualDevice.ID) async {
+    self.state.withLock { $0.calls.append(.androidReplacementWillStart(package, device)) }
+  }
+
+  func replacementCancelled(_ package: AndroidPackageName, on device: AndroidVirtualDevice.ID) async {
+    self.state.withLock { $0.calls.append(.androidReplacementCancelled(package, device)) }
   }
 }

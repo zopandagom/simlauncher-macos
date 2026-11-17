@@ -46,6 +46,8 @@ import WorkspaceImpl
 /// `androidSDKLocationChanged` 로 Android 도구 화면이 다시 확인하고 Android 기기 목록이 (보이면) 다시 읽는다 (같은 앱의 다른 창이라
 /// 앱 활성화 알림이 오지 않는다). iOS·Android 기기 행 "로그 보기" 는 로그 창(`WindowGroup(id: AppLogTarget.windowID, for: AppLogTarget.self)`,
 /// 기기당 창 하나, 복원 끔)을 연다. 모든 로그 창이 App 이 소유한 `DeviceLogModel` 하나를 함께 쓰고, 창을 닫아도 받기와 앱은 계속된다.
+/// 로그 창의 "복사"·"저장…" 은 Workspace Client(클립보드·고른 파일 쓰기·Finder 보이기)를 쓰고, 머리말의 SimLauncher 버전은
+/// Info.plist 에서 읽는다 (`simLauncherVersionLabel()`).
 /// 앱 로그 받기는 종료 요청 때 묻지 않고, 종료가 정해지면 `AppDelegate` 가 `stopAll()` 로 기다리지 않고 멈춘다 (iOS 앱은 꺼지고
 /// Android 앱은 남는다).
 /// iOS·Android 기기 행 "레이아웃 보기" 는 레이아웃 창(`WindowGroup(id: LayoutTarget.windowID, for: LayoutTarget.self)`, 기기당 창 하나,
@@ -138,7 +140,7 @@ struct SimLauncherApp: App {
     self._androidInstalledAppsModel = State(initialValue: android.installedApps)
     let setup = SetupModel(devEnvironment: devEnvironment, simulator: simulator)
     self._setupModel = State(initialValue: setup)
-    self._deviceLogModel = State(initialValue: DeviceLogModel(appLog: appLog, preferences: preferences))
+    self._deviceLogModel = State(initialValue: Self.makeDeviceLog(appLog: appLog, preferences: preferences))
     let launcherAssembly = Self.makeLauncher(
       shared: shared,
       simulator: simulator,
@@ -218,6 +220,27 @@ struct SimLauncherApp: App {
       currentVersion: currentVersion,
       now: { Date() }
     )
+  }
+
+  /// 모든 로그 창이 함께 쓰는 Model. 내보내기("복사"·"저장…")는 Workspace Client 로 쓰고, 머리말에 SimLauncher 버전을 넣는다.
+  private static func makeDeviceLog(appLog: AppLogClientImpl, preferences: PreferencesClientImpl) -> DeviceLogModel {
+    DeviceLogModel(
+      appLog: appLog,
+      preferences: preferences,
+      workspace: WorkspaceClientImpl(),
+      simLauncherVersion: self.simLauncherVersionLabel()
+    )
+  }
+
+  /// 내보낸 로그 머리말의 SimLauncher 버전: `CFBundleShortVersionString (CFBundleVersion)` (예 "1.3.0 (45)").
+  /// 빌드 번호가 없으면 버전만, 버전이 없으면 nil (머리말에 "알 수 없음").
+  private static func simLauncherVersionLabel() -> String? {
+    let info = Bundle.main.infoDictionary ?? [:]
+    guard let version = (info["CFBundleShortVersionString"] as? String).flatMap({ $0.isEmpty ? nil : $0 }) else {
+      return nil
+    }
+    guard let build = (info["CFBundleVersion"] as? String).flatMap({ $0.isEmpty ? nil : $0 }) else { return version }
+    return "\(version) (\(build))"
   }
 
   /// iOS 레이아웃 러너의 빌드 캐시·세션 폴더 뿌리: `~/Library/Caches/<번들 ID>/LayoutRunner` (다시 만들 수 있는 산출물).

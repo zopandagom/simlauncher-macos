@@ -8,7 +8,12 @@ import WorkspaceInterface
 /// Finder 는 열지 않는다(기록 클로저).
 struct WorkspaceClientImplTests {
   static func client(_ tmp: TemporaryDirectory, recorder: RevealRecorder = RevealRecorder()) -> WorkspaceClientImpl {
-    WorkspaceClientImpl(picturesDirectory: tmp.url, moviesDirectory: tmp.movies, reveal: { recorder.record($0) })
+    WorkspaceClientImpl(
+      picturesDirectory: tmp.url,
+      moviesDirectory: tmp.movies,
+      reveal: { recorder.record($0) },
+      copy: { _ in true }
+    )
   }
 
   static func size(_ url: URL) throws -> Int {
@@ -107,7 +112,12 @@ struct WorkspaceClientImplTests {
 
   @Test("사진 폴더를 찾지 못하면 folderUnavailable")
   func noPicturesDirectory() async {
-    let client = WorkspaceClientImpl(picturesDirectory: nil, moviesDirectory: nil, reveal: { _ in })
+    let client = WorkspaceClientImpl(
+      picturesDirectory: nil,
+      moviesDirectory: nil,
+      reveal: { _ in },
+      copy: { _ in true }
+    )
 
     await #expect(throws: WorkspaceError.folderUnavailable) {
       try await client.reserveScreenshotFile(Screenshot.name())

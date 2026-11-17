@@ -133,6 +133,59 @@ struct LauncherLogTests: LauncherModelTesting {
     #expect(model.logDevices.isEmpty)
   }
 
+  // MARK: - 머리말에 쓰는 앱 버전·기기 OS
+
+  @Test("설치 후 실행은 검사한 앱의 버전·빌드와 그 기기의 iOS 런타임 이름을 세션 요약까지 넘긴다")
+  func installPassesBundleVersionAndRuntime() async throws {
+    let appLog = AppLogClientFake()
+    let (model, _) = await Self.loadedModel(appLog: appLog)
+    let device = try #require(Self.device(SampleID.iPhoneOn, in: model))
+
+    await model.appFileSelected(Self.picked, for: SampleID.iPhoneOn)
+
+    let session = try #require(appLog.sessions.first)
+    #expect(session.appVersion == AppLogAppVersion(version: Self.sample.version, build: Self.sample.build))
+    #expect(session.deviceOS == .iOS(runtimeName: device.runtime.name))
+    #expect(session.deviceName == device.name)
+  }
+
+  @Test("여러 기기 설치는 기기마다 그 기기의 런타임 이름과 같은 앱 버전을 넘긴다")
+  func batchInstallPassesEachDeviceRuntime() async throws {
+    let appLog = AppLogClientFake()
+    let (model, _) = await Self.loadedModel(appLog: appLog)
+    let ids = [SampleID.iPhoneIOS26, SampleID.iPhoneOn]
+    let devices = try ids.map { try #require(Self.device($0, in: model)) }
+    #expect(devices[0].runtime.name != devices[1].runtime.name)
+    model.selectionChanged(Set(ids))
+
+    await model.selectedAppFileChosen(Self.picked)
+
+    #expect(appLog.sessions.count == 2)
+    for device in devices {
+      let session = try #require(appLog.sessions.first { $0.target == .iOS(device.id) })
+      #expect(session.deviceOS == .iOS(runtimeName: device.runtime.name))
+      #expect(session.appVersion == AppLogAppVersion(version: Self.sample.version, build: Self.sample.build))
+    }
+  }
+
+  @Test("\"앱 실행…\" 은 설치된 앱 목록의 버전·빌드와 기기 런타임 이름을 넘긴다")
+  func launchInstalledAppPassesInstalledVersion() async throws {
+    let appLog = AppLogClientFake()
+    let id = SampleID.iPhoneOn
+    let app = InstalledApp(
+      bundleID: InstalledAppSamples.alpha.bundleID, displayName: "Alpha", version: "2.3", build: "45"
+    )
+    let loaded = await Self.loadedModels(appLog: appLog) { $0.setInstalledApps([app], on: id) }
+    let device = try #require(Self.device(id, in: loaded.model))
+    await loaded.sheets.launchAppTapped(id)
+
+    await loaded.sheets.launchAppConfirmTapped()
+
+    let session = try #require(appLog.sessions.first)
+    #expect(session.appVersion == AppLogAppVersion(version: "2.3", build: "45"))
+    #expect(session.deviceOS == .iOS(runtimeName: device.runtime.name))
+  }
+
   // MARK: - 도움
 
   static func summary(on target: AppLogTarget, state: AppLogSessionState) -> AppLogSessionSummary {
@@ -140,8 +193,10 @@ struct LauncherLogTests: LauncherModelTesting {
       id: AppLogSessionID(UUID()),
       target: target,
       deviceName: "iPhone",
+      deviceOS: nil,
       appID: "com.example.app",
       appName: "Example",
+      appVersion: nil,
       startedAt: Date(timeIntervalSince1970: 0),
       state: state
     )
@@ -201,11 +256,11 @@ final class OrderRecordingAppLog: AppLogClient {
   func launchIOSApp(
     _ bundleID: AppBundleID,
     appName: String,
-    on device: VirtualDevice.ID,
-    deviceName: String
+    appVersion: AppLogAppVersion?,
+    on device: VirtualDevice
   ) async throws(AppLogLaunchError) -> AppLogSessionID {
-    self.record(.launchIOSApp(bundleID, device))
-    return try await self.base.launchIOSApp(bundleID, appName: appName, on: device, deviceName: deviceName)
+    self.record(.launchIOSApp(bundleID, device.id))
+    return try await self.base.launchIOSApp(bundleID, appName: appName, appVersion: appVersion, on: device)
   }
 
   func relaunch(_ session: AppLogSessionID) async throws(AppLogLaunchError) -> AppLogSessionID {
@@ -226,10 +281,13 @@ final class OrderRecordingAppLog: AppLogClient {
     _ package: AndroidPackageName,
     appName: String,
     on device: AndroidVirtualDevice.ID,
-    deviceName: String
+    deviceName: String,
+    apiLabel: String?
   ) async throws(AppLogLaunchError) -> AppLogSessionID {
     self.record(.launchAndroidApp(package, device))
-    return try await self.base.launchAndroidApp(package, appName: appName, on: device, deviceName: deviceName)
+    return try await self.base.launchAndroidApp(
+      package, appName: appName, on: device, deviceName: deviceName, apiLabel: apiLabel
+    )
   }
 
   func replacementWillStart(_ package: AndroidPackageName, on device: AndroidVirtualDevice.ID) async {

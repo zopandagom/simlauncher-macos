@@ -33,7 +33,7 @@ SimLauncher is a Mac app that lets anyone test in-development iOS and Android ap
 | 화면 스크린샷·녹화 | ✓ | ✓ |
 | 화면 레이아웃 보기 (뷰 테두리·위치·크기) | ✓ | ✓ |
 | 테스트 조건 바꾸기 (외관·위치·앱 권한 …) | ✓ (라이트·다크, 글씨 크기·고대비, 위치 한 점·경로·시나리오, 앱 권한·푸시 알림) | ✓ (라이트·다크, 위치 한 점, 앱 권한) |
-| 실행한 앱의 로그 보기 (필터) | ✓ (print·NSLog·Logger) | ✓ (logcat) |
+| 실행한 앱의 로그 보기 (필터·복사·저장) | ✓ (print·NSLog·Logger) | ✓ (logcat) |
 | 여러 기기에 한 번에 설치 | ✓ | ✓ |
 | 준비 안내 | Xcode 설치·라이선스·시뮬레이터 설치 | Android 도구를 앱이 직접 설치 (Android Studio·Java 필요 없음) |
 
@@ -51,7 +51,6 @@ SimLauncher is a Mac app that lets anyone test in-development iOS and Android ap
 - **개발 흐름**: main 직접 커밋을 막는 git 훅, PR 마다 lint·테스트 CI 와 자동 코드 리뷰, 문서([아키텍처](docs/ARCHITECTURE.md)·[규칙](docs/CONVENTIONS.md)·[로드맵](docs/DEVELOPMENT_PLAN.md))를 코드와 같은 PR 에서 고치는 방식으로 개발했어요. [Claude Code](https://claude.com/claude-code) 와 함께 개발하며, 작업 규칙과 리뷰 흐름을 레포에 정의해 두었어요([CLAUDE.md](CLAUDE.md), `.claude/skills`).
 
 ### 앞으로 개선할 점
-- **앱 로그 보기 넓히기**: 지금은 iOS·Android 모두 설치 후 실행하거나 **앱 실행…** 으로 실행한 앱의 로그를 창에서 보고 거를 수 있어요([앱 로그 보기](#앱-로그-보기)). 자주 쓰는 필터도 저장해 둘 수 있어요. 로그를 개발자에게 전달하기 쉽게 하는 방법을 정하려고 해요.
 - **업데이트 자동 교체**: 지금은 새 버전을 알리고 다운로드 페이지를 열어 주는 데까지예요([새 버전 알림 받고 업데이트하기](#새-버전-알림-받고-업데이트하기)). 받은 앱의 서명·팀 ID 를 검증한 뒤 앱 안에서 바로 교체하는 것이 후보예요.
 - **로그인이 필요한 빌드 저장소**: 지금은 로그인 없이 받을 수 있는 `https://` 주소만 써요. 비공개 저장소 인증이 후보예요.
 - 그 밖의 후보: [로드맵의 "이후"](docs/DEVELOPMENT_PLAN.md#로드맵)
@@ -193,7 +192,9 @@ SimLauncher 로 앱을 설치하고 실행하거나(여러 기기에 한 번에 
 - **필터**: **포함**(그 글자가 든 줄)·**시작**(그 글자로 시작하는 줄. `Logger`·`NSLog` 줄은 앞의 날짜·앱 이름 다음부터, Android 줄은 앞의 날짜·번호·레벨 다음의 태그부터 봐요)·**정규식** 중에서 골라 조건을 넣어요. 조건을 여러 개 넣으면 하나라도 맞는 줄이 보이고, **제외** 를 켠 조건이 맞는 줄은 숨겨요. 맞은 부분은 강조되고, 아래에 보이는 줄 수와 전체 줄 수가 나와요. 여러 줄로 찍은 `print` 는 줄마다 따로 걸러져요.
 - **저장된 필터**: 필터 줄 **조건 더하기** 옆 **저장된 필터** 메뉴에서 **지금 필터 저장…** 을 누르고 이름(40자까지)을 넣으면 지금 필터를 저장해요. 같은 이름(대소문자 무시)이 있으면 바꿀지 물어요. 메뉴에서 이름을 고르면 그 창의 필터가 저장한 필터로 통째로 바뀌고, **삭제** 에서 지울 수 있어요. 저장한 필터는 iOS·Android 모든 기기의 로그 창이 함께 써요. 50개까지 저장할 수 있고, 50개가 되면 같은 이름으로 바꾸기만 할 수 있어요. 새 로그 창은 빈 필터로 시작해요. 불러온 필터의 정규식을 읽을 수 없으면 그 조건 아래 알리고 바로 앞 결과를 보여요. 관리자가 필터를 미리 넣거나 잠그는 방법은 [docs/CATALOG.md 9절](docs/CATALOG.md#관리자가-미리-넣기)에 있어요.
 - **일시정지** 하면 목록이 멈추고(그동안 온 줄 수만 보여요), **따라가기** 를 켜 두면 새 줄을 따라 맨 아래로 내려가요. **지우기** 는 지금까지 받은 줄을 창에서 지워요.
-- 로그는 기기마다 최근 실행 5개, 실행마다 최근 5만 줄(또는 32 MiB)까지 보관하고, 파일로 저장하지 않아요. SimLauncher 를 종료하면 로그가 사라지고(묻지 않아요), iOS 는 로그를 받던 앱도 함께 꺼져요. Android 앱은 꺼지지 않고 그대로 남아요. 기기의 홈 화면에서 직접 켠 앱의 로그는 받지 않아요. 다시 보려면 **앱 실행…** 으로 실행하세요.
+- **복사**·**저장…**: 창 아래 줄의 버튼으로 지금 화면에 보이는 줄(필터·지우기·일시정지가 반영된 그대로)을 머리말(SimLauncher 버전·내보낸 시각·앱 이름과 번들 ID·iOS 앱 버전·기기와 OS·상태·필터·줄 수)과 함께 클립보드에 복사하거나 텍스트 파일로 저장해, 앱 개발자에게 보낼 수 있어요. **저장…** 은 파일 이름(`SimLauncher-<앱>-<기기>-<날짜-시각>.txt`)을 미리 넣은 저장 창을 띄우고, 저장한 뒤 **Finder 에서 보기** 로 파일을 찾아 줘요. 보이는 줄이 없으면 누를 수 없어요. 앱이 찍은 개인정보·토큰이 들어 있을 수 있으니 보내기 전에 확인하세요.
+- 머리말의 앱 버전은 SimLauncher 가 설치·실행할 때 읽은 값이에요(Android 앱은 버전을 적지 않아요). SimLauncher 밖(Xcode 등)에서 다시 설치한 뒤 **다시 실행** 하면 SimLauncher 로 마지막에 실행할 때의 버전이 적힐 수 있어요.
+- 로그는 기기마다 최근 실행 5개, 실행마다 최근 5만 줄(또는 32 MiB)까지 보관하고, SimLauncher 가 스스로 파일로 저장하지는 않아요(**저장…** 을 누를 때만). SimLauncher 를 종료하면 로그가 사라지고(묻지 않아요), iOS 는 로그를 받던 앱도 함께 꺼져요. Android 앱은 꺼지지 않고 그대로 남아요. 기기의 홈 화면에서 직접 켠 앱의 로그는 받지 않아요. 다시 보려면 **앱 실행…** 으로 실행하세요.
 - 로그를 받으며 실행할 때는 이미 떠 있는 앱을 끄고 새로 띄워요(iOS·Android 모두).
 - Android 는 앱의 메인 프로세스 로그만 보여요. 앱이 따로 띄운 프로세스(`android:process`)의 로그는 빠져요. 기기가 꺼지거나 연결이 끊기면 "기기가 꺼졌거나 연결이 끊겼습니다" 로 끝나요.
 
@@ -447,7 +448,7 @@ SimLauncher 는 공개 레포라서, 어느 회사든 자기 빌드 저장소에
 - Foundation `Process` 로 `xcrun simctl`·Android `emulator`·`adb` 등 실행 (Command Client Impl)
 - Foundation `URLSession` 으로 카탈로그·빌드 다운로드와 Android SDK 저장소 목록·패키지 받기, 업데이트 확인(GitHub 릴리스의 버전 파일) (Download Client Impl. Android SDK 설치는 AndroidSDK Client Impl 이, 업데이트 확인은 UpdateCheck Client Impl 이 Download Client 를 거쳐 받는다)
 - Foundation `UserDefaults` 로 사용자 설정(카탈로그 주소, Android SDK 위치, Android SDK 라이선스 동의 기록, 저장한 로그 필터, 새 버전 자동 확인, 건너뛴 버전·마지막 확인 시각·배너 숨김·받은 최신 버전) 저장 (Preferences Client Impl)
-- AppKit `NSWorkspace` 로 Finder 에서 보이기, Foundation `FileManager` 로 사진·동영상 폴더에 스크린샷·녹화 저장 폴더 준비·파일 이름 예약 (Workspace Client Impl)
+- AppKit `NSWorkspace` 로 Finder 에서 보이기, Foundation `FileManager` 로 사진·동영상 폴더에 스크린샷·녹화 저장 폴더 준비·파일 이름 예약, AppKit `NSPasteboard` 로 로그 복사, 사용자가 고른 위치에 로그 저장 (Workspace Client Impl)
 
 ### 시작하기
 ```bash

@@ -127,6 +127,21 @@ enum DeviceLogTextCatalog {
       DeviceLogText.cancelButton, DeviceLogText.replaceMessage, DeviceLogText.replaceButton,
     ]
     texts += [LogFilterSaveBlock.locked, .emptyFilter, .invalidRegex].map(DeviceLogText.saveBlocked)
+    // 내보내기 ("복사"·"저장…") 버튼·도움말·실패와 내보낼 글 머리말의 고정 문구.
+    texts += [
+      DeviceLogText.copyButton, DeviceLogText.saveExportButton, DeviceLogText.copied, DeviceLogText.copyHelp,
+      DeviceLogText.saveExportHelp, DeviceLogText.revealInFinder,
+    ]
+    texts += [
+      LogExportFailure.copy(.clipboardUnavailable), .save(.noPermission), .save(.diskFull), .save(.readOnlyVolume),
+      .save(.folderNotFound), .save(.writeFailed), .revealedFileMissing,
+    ].map(DeviceLogText.exportFailed)
+    texts += [
+      LogExportText.title(bundle: .module), LogExportText.unknown(bundle: .module),
+      LogExportText.noFilter(bundle: .module), LogExportText.filterHeader(isCaseSensitive: true, bundle: .module),
+      LogExportText.filterHeader(isCaseSensitive: false, bundle: .module),
+      LogExportText.clearedNotice(bundle: .module), LogExportText.pausedNotice(newLines: 0, bundle: .module),
+    ]
     return texts
   }
 
@@ -173,6 +188,49 @@ enum DeviceLogTextCatalog {
       FormatSample(
         key: "‘%@’ 필터가 이미 있습니다", arguments: ["Errors"], text: DeviceLogText.replaceTitle(existingName: "Errors")
       ),
+      FormatSample(key: "저장했습니다: %@", arguments: ["log.txt"], text: DeviceLogText.saved(fileName: "log.txt")),
+      FormatSample(
+        key: "일시정지 중: 멈춘 지점까지의 줄입니다. 멈춘 뒤 받은 %lld줄은 빠졌습니다", arguments: [7],
+        text: LogExportText.pausedNotice(newLines: 7, bundle: .module)
+      ),
+    ] + self.exportHeaderSamples
+  }
+
+  /// 내보낼 글 머리말의 보간 문구: 머리말 줄을 만들어 그 줄과 같은 인자로 표의 서식을 채운 값을 비교한다.
+  static var exportHeaderSamples: [FormatSample] {
+    var filter = LogFilter()
+    filter.setText("network", of: 0)
+    filter.addCondition()
+    filter.setText("noise", of: 1)
+    filter.setExcluded(true, of: 1)
+    let session = AppLogSessionSummary(
+      id: AppLogSessionID(UUID()), target: .iOS(VirtualDevice.ID("5C0F3A2E-0000-4000-8000-000000000001")),
+      deviceName: "iPhone 17 Pro", deviceOS: .iOS(runtimeName: "iOS 27.0"), appID: "dev.example.probe",
+      appName: "probe", appVersion: AppLogAppVersion(version: "1.2", build: "34"),
+      startedAt: Date(timeIntervalSince1970: 1_800_000_000), state: .ended(.appExited)
+    )
+    let snapshot = LogExportSnapshot(
+      session: session, lines: [], totalCount: 3, filter: filter,
+      exportedAt: DeviceLogTestSupport.exportDate, simLauncherVersion: "1.3.0 (45)"
+    )
+    let header = LogExportText.header(snapshot, bundle: .module, timeZone: DeviceLogTestSupport.seoul)
+    let exported = LogExportText.timestamp(DeviceLogTestSupport.exportDate, timeZone: DeviceLogTestSupport.seoul)
+    let started = LogExportText.timestamp(session.startedAt, timeZone: DeviceLogTestSupport.seoul)
+    let state = DeviceLogText.state(session.state, platform: .iOS)
+    let counts = DeviceLogText.lineCounts(visible: 0, total: 3)
+    let samples: [(String, [any CVarArg])] = [
+      ("SimLauncher 버전: %@", ["1.3.0 (45)"]),
+      ("내보낸 시각: %@", [exported]),
+      ("앱: %@ (%@)", ["probe", "dev.example.probe"]),
+      ("앱 버전: %@", ["1.2 (34)"]),
+      ("기기: %@", ["iPhone 17 Pro · iOS 27.0"]),
+      ("실행 시각: %@", [started]),
+      ("상태: %@", [state]),
+      ("- 제외 · %@: %@", [DeviceLogText.kind(.contains), "noise"]),
+      ("줄: %@", [counts]),
     ]
+    // 머리말 순서: 제목 다음부터 (필터 머리 줄은 고정 문구, 포함 조건 줄은 번역 키가 없어 건너뛴다).
+    let lines = Array(header[1 ... 7]) + Array(header[10 ... 11])
+    return zip(samples, lines).map { FormatSample(key: $0.0.0, arguments: $0.0.1, text: $0.1) }
   }
 }

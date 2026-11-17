@@ -4,7 +4,7 @@ import Foundation
 import WorkspaceInterface
 
 /// 사진 폴더의 `SimLauncher` 폴더에 스크린샷 파일을, 동영상 폴더의 `SimLauncher` 폴더에 녹화 파일을 예약하고,
-/// Finder 에서 파일을 선택해 보인다.
+/// Finder 에서 파일을 선택해 보인다. 로그 내보내기의 클립보드 쓰기와 사용자가 고른 파일 쓰기(`WorkspaceClientImpl+Export.swift`)도 한다.
 /// 사진 폴더는 TCC 보호 폴더가 아니라 권한 팝업이 없다 (측정). 동영상 폴더도 권한 팝업이 없다 (배포 서명·공증 빌드에서 확인, ARCHITECTURE §4).
 /// 저장 폴더는 누를 때 만들고, 생성자는 파일을 건드리지 않는다.
 /// 이름 경쟁은 독점 생성(`Data.write(options: .withoutOverwriting)`)으로 푼다: 목록을 보고 고른 뒤 쓰는 사이의 틈이 없다.
@@ -15,21 +15,34 @@ public struct WorkspaceClientImpl: WorkspaceClient {
   private let picturesDirectory: URL?
   private let moviesDirectory: URL?
   private let reveal: @MainActor @Sendable ([URL]) -> Void
+  /// 클립보드에 글을 쓰고 성공 여부를 돌려준다 (메인에서 부른다).
+  let copy: @MainActor @Sendable (String) -> Bool
 
   public init() {
     let fileManager = FileManager.default
     self.init(
       picturesDirectory: fileManager.urls(for: .picturesDirectory, in: .userDomainMask).first,
       moviesDirectory: fileManager.urls(for: .moviesDirectory, in: .userDomainMask).first,
-      reveal: { NSWorkspace.shared.activateFileViewerSelecting($0) }
+      reveal: { NSWorkspace.shared.activateFileViewerSelecting($0) },
+      copy: { text in
+        let board = NSPasteboard.general
+        board.clearContents()
+        return board.setString(text, forType: .string)
+      }
     )
   }
 
-  /// 테스트용: 사진·동영상 폴더(임시 폴더)와 Finder 열기를 바꾼다.
-  init(picturesDirectory: URL?, moviesDirectory: URL?, reveal: @escaping @MainActor @Sendable ([URL]) -> Void) {
+  /// 테스트용: 사진·동영상 폴더(임시 폴더)와 Finder 열기·클립보드 쓰기를 바꾼다.
+  init(
+    picturesDirectory: URL?,
+    moviesDirectory: URL?,
+    reveal: @escaping @MainActor @Sendable ([URL]) -> Void,
+    copy: @escaping @MainActor @Sendable (String) -> Bool
+  ) {
     self.picturesDirectory = picturesDirectory
     self.moviesDirectory = moviesDirectory
     self.reveal = reveal
+    self.copy = copy
   }
 
   public func reserveScreenshotFile(_ name: ScreenshotFileName) async throws(WorkspaceError) -> URL {
