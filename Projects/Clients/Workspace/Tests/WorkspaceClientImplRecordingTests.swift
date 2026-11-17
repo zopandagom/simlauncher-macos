@@ -41,7 +41,12 @@ struct WorkspaceClientImplRecordingTests {
   func noMoviesDirectory() async throws {
     let tmp = try TemporaryDirectory()
     defer { tmp.remove() }
-    let client = WorkspaceClientImpl(picturesDirectory: tmp.url, moviesDirectory: nil, reveal: { _ in })
+    let client = WorkspaceClientImpl(
+      picturesDirectory: tmp.url,
+      moviesDirectory: nil,
+      reveal: { _ in },
+      copy: { _ in true }
+    )
 
     await #expect(throws: WorkspaceError.folderUnavailable) {
       try await client.reserveRecordingFile(Recording.name())
