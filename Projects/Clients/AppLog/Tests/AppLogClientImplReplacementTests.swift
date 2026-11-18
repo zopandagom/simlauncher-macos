@@ -74,6 +74,37 @@ struct AppLogClientImplReplacementTests {
     #expect(try await fixture.waitForEnd(of: first) == .appExited)
   }
 
+  @Test("다시 설치 뒤 새 실행이 신호 전에 실패해도 앞 세션은 끝날 때 replaced (다시 설치가 앞 앱을 끝낸다)")
+  func reinstallThenFailedLaunchKeepsReplaced() async throws {
+    let fixture = AppLogFixture()
+    let (first, firstRun) = try await fixture.launched(run: 0)
+    await fixture.client.replacementWillStart(AppLogFixture.app, on: SampleID.iPhoneOn)
+    let task = fixture.launch()
+    let secondRun = try await fixture.console.run(1)
+
+    secondRun.finish(.failure(.appLaunchFailed))
+    await #expect(throws: AppLogLaunchError.appLaunchFailed) { try await task.value }
+    firstRun.finish(.success(.exited))
+
+    #expect(try await fixture.waitForEnd(of: first) == .replaced)
+  }
+
+  @Test("새 실행이 시작된 뒤 다시 설치가 되돌려지고 그 실행이 신호 전에 실패하면 앞 세션은 끝날 때 appExited")
+  func reinstallCancelledDuringLaunchThenFailedLaunchIsAppExited() async throws {
+    let fixture = AppLogFixture()
+    let (first, firstRun) = try await fixture.launched(run: 0)
+    await fixture.client.replacementWillStart(AppLogFixture.app, on: SampleID.iPhoneOn)
+    let task = fixture.launch()
+    let secondRun = try await fixture.console.run(1)
+
+    await fixture.client.replacementCancelled(AppLogFixture.app, on: SampleID.iPhoneOn)
+    secondRun.finish(.failure(.appLaunchFailed))
+    await #expect(throws: AppLogLaunchError.appLaunchFailed) { try await task.value }
+    firstRun.finish(.success(.exited))
+
+    #expect(try await fixture.waitForEnd(of: first) == .appExited)
+  }
+
   @Test("다른 앱의 새 실행은 앞 세션을 대체하지 않는다")
   func otherAppDoesNotReplace() async throws {
     let fixture = AppLogFixture()

@@ -82,6 +82,9 @@ struct AppLogSessionRecord {
   var marks: Set<AppLogReplacementMark> = []
   /// 이 실행이 시작할 때 대체 표시를 단 세션 (신호 전에 실패하면 되돌린다).
   var markedOnStart: [AppLogSessionID] = []
+  /// 이 실행이 시작할 때 다시 설치 표시(`.install`)를 이 실행 표시로 바꾼 세션. 신호 전에 실패·멈추면 그 표시를 되돌린다
+  /// (설치는 이미 끝나 앞 앱을 끝냈거나 곧 끝낸다, 측정). 그 사이 설치가 되돌려지면(`unmarkInstall`) 비운다.
+  var installMarksTaken: [AppLogSessionID] = []
   var buffer: AppLogBuffer
 
   var key: AppLogSessionKey {
@@ -121,14 +124,18 @@ struct AppLogSessionTable {
   }
 
   /// 새 실행을 시작 중(비공개)으로 넣는다. 같은 키의 받는 중·시작 중 세션에 이 실행의 대체 표시를 단다
-  /// (다시 설치 표시는 이 실행 표시로 바꾼다: 설치가 끝나 실행이 시작됐으니 남은 실패는 이 실행이 되돌린다).
+  /// (다시 설치 표시는 이 실행 표시로 바꾸고 바꾼 세션을 남긴다: 이 실행이 신호 전에 실패·멈추면 `discard` 가 그 세션에 다시 설치
+  /// 표시를 되돌린다. 설치는 이미 앞 앱을 끝냈거나 곧 끝낸다, 측정).
   mutating func begin(_ summary: AppLogSessionSummary, spec: AppLogLaunchSpec) {
     let key = AppLogSessionKey(target: summary.target, appID: summary.appID)
     self.latestVersions[key] = spec.appVersion
     var marked: [AppLogSessionID] = []
+    var installTaken: [AppLogSessionID] = []
     for id in self.order {
       guard var record = self.records[id], record.key == key, record.isReceiving else { continue }
-      record.marks.remove(.install)
+      if record.marks.remove(.install) != nil {
+        installTaken.append(id)
+      }
       record.marks.insert(.launch(summary.id))
       self.records[id] = record
       marked.append(id)
@@ -137,17 +144,22 @@ struct AppLogSessionTable {
       summary: summary,
       spec: spec,
       markedOnStart: marked,
+      installMarksTaken: installTaken,
       buffer: AppLogBuffer(maxLines: self.limits.maxLines, maxBytes: self.limits.maxBytes)
     )
     self.order.append(summary.id)
   }
 
-  /// 신호 전에 실패·멈춘 실행을 버리고, 그 실행이 단 대체 표시를 되돌린다 (이미 끝난 세션은 그대로).
+  /// 신호 전에 실패·멈춘 실행을 버리고, 그 실행이 단 대체 표시를 되돌리고, 그 실행이 가져간 다시 설치 표시는 아직 받는 중인
+  /// 세션에 되살린다 (이미 끝난 세션은 그대로).
   mutating func discard(_ id: AppLogSessionID) {
     guard let record = self.records.removeValue(forKey: id) else { return }
     self.order.removeAll { $0 == id }
     for markedID in record.markedOnStart {
       self.records[markedID]?.marks.remove(.launch(id))
+    }
+    for takenID in record.installMarksTaken where self.records[takenID]?.isReceiving == true {
+      self.records[takenID]?.marks.insert(.install)
     }
   }
 
@@ -180,10 +192,11 @@ struct AppLogSessionTable {
     }
   }
 
-  /// 다시 설치 실패: `markInstall` 을 되돌린다.
+  /// 다시 설치 실패: `markInstall` 을 되돌리고, 시작 중인 실행이 가져간 다시 설치 표시도 되살리지 않게 비운다.
   mutating func unmarkInstall(_ key: AppLogSessionKey) {
     for id in self.order where self.records[id]?.key == key {
       self.records[id]?.marks.remove(.install)
+      self.records[id]?.installMarksTaken = []
     }
   }
 

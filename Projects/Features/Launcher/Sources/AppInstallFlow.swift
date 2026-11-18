@@ -7,7 +7,7 @@ import SimulatorInterface
 
 /// 앱 설치 흐름: (zip 이면) 풀기 → 검사 → 지금 목록으로 판정 → 켜기·Simulator 앱 열기 → 설치 → 실행 → 다시 읽기.
 /// 실행은 앱 로그 받기와 함께 한다(`AppLogClient.launchIOSApp`: 실행 신호나 실패까지만 기다리고, 받기는 AppLog Client 의 작업에서
-/// 앱이 끝날 때까지 이어진다). 설치가 실행 중인 같은 앱을 끝내므로(측정) 설치 전에 `replacementWillStart` 로 알리고, 설치가
+/// 앱이 끝날 때까지 이어진다). 설치가 실행 중인 같은 앱을 끝내므로(같은 빌드도, 측정) 설치 전에 `replacementWillStart` 로 알리고, 설치가
 /// 실패하면 `replacementCancelled` 로 되돌린다 (앞 세션의 끝난 이유를 "다시 설치·실행됨" 으로 가른다).
 /// 첫 단계인 켜기·Simulator 앱 열기(`bootIfNeededAndShowSimulator`)는 켜기 버튼·링크 열기·설치된 앱 실행도 함께 쓴다.
 /// 링크 열기, 설치된 앱 실행("앱 실행…": 시트의 준비 판정·알림 없는 켜기, 실행)과 받기 결과 해석도 같은 창구를 쓰므로 여기에 둔다.
