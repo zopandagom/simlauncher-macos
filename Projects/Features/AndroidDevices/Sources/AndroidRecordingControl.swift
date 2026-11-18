@@ -40,5 +40,7 @@ struct AndroidRecordingControl: View {
   private var stopButton: some View {
     Button(AndroidDevicesText.stopRecordingButton, action: self.stopTapped)
       .fixedSize()
+      .accessibilityLabel(AndroidDevicesText.stopRecordingAccessibilityLabel)
+      .help(AndroidDevicesText.stopRecordingHelp)
   }
 }

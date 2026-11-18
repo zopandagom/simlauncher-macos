@@ -83,14 +83,14 @@ struct LauncherTextSyncTests {
     }
   }
 
-  @Test("스크린샷·녹화·레이아웃 보기 공유 문구 29개가 Launcher 원본과 이 모듈 원본에 같은 키·값으로 있고, 문구 함수의 결과가 Launcher 값과 같다")
+  @Test("스크린샷·녹화·레이아웃 보기 공유 문구 31개가 Launcher 원본과 이 모듈 원본에 같은 키·값으로 있고, 문구 함수의 결과가 Launcher 값과 같다")
   func sharedCaptureTextsMatchLauncher() throws {
     let launcher = try Self.koreanTable(at: NameProblemSyncTests.launcherCatalog)
     let android = try Self.koreanTable(at: Self.androidCatalog)
     let english = try Self.englishTables()
     let checks = CaptureTextCatalog.sharedChecks(launcher)
 
-    #expect(Set(checks.map(\.key)).count == 29)
+    #expect(Set(checks.map(\.key)).count == 31)
     for check in checks {
       #expect(launcher[check.key] == check.key, "Launcher 에 없거나 다른 값: \(check.key)")
       #expect(android[check.key] == launcher[check.key], "이 모듈에 없거나 다른 값: \(check.key)")

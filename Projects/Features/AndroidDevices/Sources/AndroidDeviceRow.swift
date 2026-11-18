@@ -16,7 +16,7 @@ import SwiftUI
 /// 앱 설치·실행·링크 열기는 켜진 기기만 된다 (꺼진·켜는 중·쓸 수 없는 행은 비활성이고 도움말에 이유를 보이며, 드롭을 거절한다).
 /// 앱이 켜는 중인 행은 끄기를 포함한 모든 동작을 막는다. 앱 밖에서 켜는 중인 행은 끌 수 있다.
 /// 쓸 수 없는 기기는 흐리게 그리고 이유를 보인다. 실행 중이면 상태도 함께 보이고 끌 수 있다.
-/// URL·카탈로그에서 받는 중이면 진행(전체 크기를 알면 막대, 모르면 원형)과 받기 취소 버튼을(여러 기기에 함께 받는 중이면 취소가
+/// URL·카탈로그에서 받는 중이면 진행(전체 크기를 알면 막대, 녹화 중인 행은 값이 있는 작은 원형, 모르면 원형)과 받기 취소 버튼을(여러 기기에 함께 받는 중이면 취소가
 /// 모두를 멈춘다는 툴팁), 취소 중이면 원형 진행만 보인다. 받기가 끝나면 설치 중 표시로 돌아간다.
 /// 글자 버튼은 줄어들지 않고(`fixedSize`), 폭이 모자라면 이름 열이 최소 폭까지 줄어든다.
 struct AndroidDeviceRow: View {
@@ -175,14 +175,23 @@ struct AndroidDeviceRow: View {
     }
   }
 
-  /// 받는 중이면 진행(전체 크기를 알면 막대, 모르면 원형)과 받기 취소 버튼. 취소 중이면 원형 진행만.
+  /// 받는 중이면 진행(전체 크기를 알면 막대, 녹화 중인 행은 값이 있는 작은 원형, 모르면 원형)과 받기 취소 버튼.
+  /// 취소 중이면 원형 진행만.
   @ViewBuilder
   private func downloadProgress(_ stage: AndroidDownloadStage) -> some View {
     switch stage {
     case let .receiving(progress):
       if let progress, let expected = progress.expectedBytes, expected > 0 {
-        ProgressView(value: Double(min(progress.receivedBytes, expected)), total: Double(expected))
-          .frame(width: 80)
+        let bar = ProgressView(value: Double(min(progress.receivedBytes, expected)), total: Double(expected))
+        if self.isRecording {
+          // 녹화 중 행은 경과 시간·"중지" 가 더해져 80pt 막대면 영어에서 detail 최소 폭을 넘는다 (`MainWindow.detailMinWidth`).
+          bar
+            .progressViewStyle(.circular)
+            .controlSize(.small)
+        } else {
+          bar
+            .frame(width: 80)
+        }
       } else {
         ProgressView()
           .controlSize(.small)
