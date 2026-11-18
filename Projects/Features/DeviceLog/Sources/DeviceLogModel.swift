@@ -255,6 +255,9 @@ public final class DeviceLogModel {
         guard let self, self.lineTokens[target] == token else { return }
         self.lineUpdateReceived(update, in: target)
       }
+      // 스트림이 스스로 끝났다 (Client 가 세션을 정리했거나 없는 세션). 우리가 멈춘 것(토큰 바뀜·취소)은 그대로 둔다.
+      guard let self, self.lineTokens[target] == token, !Task.isCancelled else { return }
+      self.linesEnded(session, in: target)
     }
   }
 
@@ -407,6 +410,17 @@ public extension DeviceLogModel {
     } catch {
       self.windows[target]?.setRelaunch(.failed(error))
     }
+  }
+
+  /// 고른 세션의 줄 구독이 스스로 끝났다. 그 세션이 세션 목록에 있으면 정리 알림이 곧 오고 알림 규칙
+  /// (`DeviceLogSessionChoice.selection` 2번)이 옮기므로 두고, 목록에 없으면(다시 실행 결과가 어떤 알림에도 나오기 전에 정리됨)
+  /// 알림이 옮겨 주지 않으므로 여기서 대상의 가장 늦은 세션(없으면 nil)으로 옮긴다. 고르는 세션은 늘 목록 안이라 이 옮김은 한 번으로 끝난다.
+  private func linesEnded(_ session: AppLogSessionID, in target: AppLogTarget) {
+    guard let window = self.windows[target], window.isOpen, window.selectedSessionID == session,
+          !self.sessions.contains(where: { $0.id == session })
+    else { return }
+    self.clearRelaunchFailure(in: target)
+    self.select(DeviceLogSessionChoice.latest(of: target, in: self.sessions), in: target)
   }
 }
 
