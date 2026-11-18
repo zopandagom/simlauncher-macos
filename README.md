@@ -45,7 +45,7 @@ SimLauncher is a Mac app that lets anyone test in-development iOS and Android ap
 
 ### 기술적으로 신경 쓴 점
 - **모듈 구조**: Tuist 로 Feature 8개 · Client 13개(Interface / Impl / Testing) · Shared 로 나누고, 규칙 기반 단방향 MV 를 썼어요. 모듈 경계는 빌드와 lint 로 지켜요: Feature 끼리 의존하지 못하게 Tuist 템플릿이 막고, 부수효과(`Process`·네트워크·UserDefaults 등)는 Client Impl 에서만, Impl 은 App 에서만 import 하도록 SwiftLint 사용자 규칙으로 만들어 커밋 훅과 CI 에서 검사해요.
-- **안전한 동시성과 테스트**: Swift 6 strict concurrency. Feature 는 Fake Client 로, Client Impl·도메인 규칙(Core)은 단위 테스트로 검증해 테스트가 약 3,000개예요.
+- **안전한 동시성과 테스트**: Swift 6 strict concurrency. Feature 는 Fake Client 로, Client Impl·도메인 규칙(Core)은 단위 테스트로 검증해 테스트가 약 3,100개예요.
 - **외부 도구 다루기**: `simctl`·Android `emulator`·`adb` 를 `Process` 로 실행하고, 켜는 중·끄는 중·실패·취소 같은 상태를 화면에 그대로 보여요. Android SDK 는 Google 저장소에서 필요한 패키지만 받아 Android Studio 와 같은 형식으로 설치해, Studio 와 함께 써도 다시 받지 않아요.
 - **배포**: 버전 태그를 push 하면 GitHub Actions 가 Developer ID 서명 → Apple 공증 → staple → 검사까지 마친 dmg 와 업데이트 알림용 버전 파일을 만들고, 이전 버전 이후 머지된 PR 목록과 Claude 가 요약한 바뀐 점으로 노트를 써서 GitHub Releases 에 게시해요. 같은 절차를 로컬에서 `make release` 로도 돌릴 수 있어요 ([RELEASING.md](docs/RELEASING.md)).
 - **개발 흐름**: main 직접 커밋을 막는 git 훅, PR 마다 lint·테스트 CI 와 자동 코드 리뷰, 문서([아키텍처](docs/ARCHITECTURE.md)·[규칙](docs/CONVENTIONS.md)·[로드맵](docs/DEVELOPMENT_PLAN.md))를 코드와 같은 PR 에서 고치는 방식으로 개발했어요. [Claude Code](https://claude.com/claude-code) 와 함께 개발하며, 작업 규칙과 리뷰 흐름을 레포에 정의해 두었어요([CLAUDE.md](CLAUDE.md), `.claude/skills`).
@@ -70,7 +70,7 @@ SimLauncher is a Mac app that lets anyone test in-development iOS and Android ap
 - **Android 앱을 확인하려면**: 저장 공간이 넉넉해야 해요. Android 도구는 약 2.5 GB 를 내려받고 설치하면 약 7 GB 가 되며(설치하는 동안에는 잠시 최대 약 9 GB), Android 기기는 한 대를 쓰기 시작하면 약 5 GB 를 차지해요. Android 만 쓴다면 Xcode 는 없어도 돼요.
 
 ## 설치하기
-1. [GitHub Releases 최신 페이지](https://github.com/zopandagom/simlauncher-macos/releases/latest)에서 `SimLauncher-<버전>.dmg`(예: `SimLauncher-1.3.0.dmg`)를 내려받으세요.
+1. [GitHub Releases 최신 페이지](https://github.com/zopandagom/simlauncher-macos/releases/latest)에서 `SimLauncher-<버전>.dmg`(예: `SimLauncher-1.4.0.dmg`)를 내려받으세요.
 2. 받은 dmg 를 열고 **SimLauncher** 아이콘을 **Applications**(응용 프로그램) 폴더로 끌어다 놓으세요.
 
    ![dmg 창](docs/media/install-dmg.png)
@@ -81,7 +81,7 @@ SimLauncher is a Mac app that lets anyone test in-development iOS and Android ap
 SimLauncher 는 새 버전이 나왔는지 스스로 확인해서 알려 드려요. 앱을 새 버전으로 바꾸는 일은 직접 해요(자동으로 바꾸지 않아요).
 
 - **자동 확인**: SimLauncher 를 켤 때와 다른 앱에서 SimLauncher 로 돌아올 때, 마지막 확인에서 하루가 지났으면 GitHub 에서 최신 버전 정보를 받아요. GitHub 에 닿지 못했으면(인터넷 연결이 끊겼을 때 등) 한 시간 뒤 다시 해 봐요.
-- **배너**: 새 버전이 있으면 메인 창 위쪽에 "새 버전이 나왔습니다: SimLauncher 1.4.0 (지금 1.3.0)" 처럼 배너가 보여요. 앱을 껐다 켜도(인터넷이 없어도) 배너는 남아 있고, 새 버전으로 업데이트하면 사라져요. 자동 확인을 끈 동안은 다시 켤 때 배너가 보이지 않아요.
+- **배너**: 새 버전이 있으면 메인 창 위쪽에 "새 버전이 나왔습니다: SimLauncher 1.5.0 (지금 1.4.0)" 처럼 배너가 보여요. 앱을 껐다 켜도(인터넷이 없어도) 배너는 남아 있고, 새 버전으로 업데이트하면 사라져요. 자동 확인을 끈 동안은 다시 켤 때 배너가 보이지 않아요.
   - **다운로드 페이지 열기**: 브라우저로 GitHub Releases 의 최신 버전 페이지를 열어요.
   - **이 버전 건너뛰기**: 그 버전은 배너로 더 알리지 않아요. 더 새 버전이 나오면 다시 알려요.
   - **×**(하루 동안 숨기기): 그 버전의 배너를 하루 동안 숨겨요. 그사이 더 새 버전이 나오면 바로 보여요.
