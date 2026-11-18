@@ -156,7 +156,8 @@ jobs:
           retention-days: 7
 
   # main 룰셋의 필수 체크는 이 잡 하나다. 잡 이름이 바뀌거나 잡이 늘어도 룰셋을 고치지 않게 결과를 여기로 모은다.
-  # 앞 잡이 하나라도 실패·취소되면 실패하고, 건너뛴 것(문서·하네스만 바뀐 변경)은 통과로 본다.
+  # 앞 잡 결과가 모두 success 또는 skipped(문서·하네스만 바뀐 변경)일 때만 통과한다. 그 밖의 값(failure·cancelled,
+  # 러너를 받지 못하고 끝난 잡의 abandoned, 빈 값 등)은 모두 실패로 본다. 결과를 JSON 배열로 받아 빈 값도 한 원소로 남긴다.
   # always() 를 쓰는 이유: 취소된 run 에서 이 잡이 건너뛰어지면 필수 체크가 통과로 처리된다.
   ci-result:
     needs: [changes, lint, test]
@@ -166,7 +167,7 @@ jobs:
     permissions: {}
     steps:
       - env:
-          RESULTS: ${{ join(needs.*.result, ' ') }}
+          RESULTS: ${{ toJSON(needs.*.result) }}
         run: |
-          echo "changes·lint·test: $RESULTS"
-          [[ " $RESULTS " != *" failure "* && " $RESULTS " != *" cancelled "* ]]
+          echo "changes·lint·test: $(jq -c . <<< "$RESULTS")"
+          jq -e 'type == "array" and length > 0 and all(.[]; . == "success" or . == "skipped")' <<< "$RESULTS" > /dev/null
