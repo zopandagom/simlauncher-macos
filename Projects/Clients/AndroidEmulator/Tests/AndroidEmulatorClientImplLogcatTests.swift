@@ -41,6 +41,7 @@ struct AndroidEmulatorClientImplLogcatTests {
     "-s", "emulator-5554", "shell", "cmd", "package", "resolve-activity", "--brief",
     "-a", "android.intent.action.MAIN", "-c", "android.intent.category.LAUNCHER", "org.videolan.vlc",
   ]
+  static let packagePathCall = ["-s", "emulator-5554", "shell", "pm", "path", "org.videolan.vlc"]
   static let forceStopCall = ["-s", "emulator-5554", "shell", "am", "force-stop", "org.videolan.vlc"]
   static let dateCall = ["-s", "emulator-5554", "shell", "date", "+%s.%N"]
   static let startCall = ["-s", "emulator-5554", "shell", "am", "start", "-n", "'org.videolan.vlc/.StartActivity'"]
@@ -76,10 +77,10 @@ struct AndroidEmulatorClientImplLogcatTests {
       0,
       stdout: "6502\n"
     ))
-    var uid = AndroidEmulatorClientImplLogcatTests.result(
+    var uid: Result<CommandResult, CommandError> = .success(AndroidEmulatorClientImplLogcatTests.result(
       0,
       stdout: "package:org.videolan.vlc.rro uid:10079\npackage:org.videolan.vlc uid:10231\n"
-    )
+    ))
     var uidLog = AndroidEmulatorClientImplLogcatTests.result(1)
 
     func respond(_ arguments: [String]) throws(CommandError) -> CommandResult {
@@ -106,7 +107,7 @@ struct AndroidEmulatorClientImplLogcatTests {
         return try self.pid.get()
       }
       if command.starts(with: ["pm", "list", "packages", "-U"]) {
-        return self.uid
+        return try self.uid.get()
       }
       if command.starts(with: ["logcat", "-d"]) {
         return self.uidLog
@@ -243,15 +244,18 @@ struct AndroidEmulatorClientImplLogcatTests {
     #expect(!harness.command.invocations.contains { $0.isStream })
   }
 
-  @Test("pid 못 찾음 + uid 없음, 또는 한 번 읽기 실패: .launched 뒤 줄 없이 connectionLost")
+  @Test("pid 못 찾음 + uid 목록을 믿을 수 없음(종료 ≠ 0·맞는 줄에 uid 없음), 또는 한 번 읽기 실패: .launched 뒤 줄 없이 connectionLost")
   func exitedBeforePIDUnreadable() async throws {
-    var noUID = Replies()
-    noUID.pid = .success(Self.result(1))
-    noUID.uid = Self.result(0)
+    var listFails = Replies()
+    listFails.pid = .success(Self.result(1))
+    listFails.uid = .success(Self.result(1))
+    var noUIDField = Replies()
+    noUIDField.pid = .success(Self.result(1))
+    noUIDField.uid = .success(Self.result(0, stdout: "package:org.videolan.vlc\n"))
     var unreadable = Replies()
     unreadable.pid = .success(Self.result(1))
     unreadable.uidLog = Self.result(1, stderr: "logcat: -T 'x' not in time format.\n")
-    for replies in [noUID, unreadable] {
+    for replies in [listFails, noUIDField, unreadable] {
       let (harness, _) = try Self.booted(replies)
       defer { harness.cleanUp() }
       let events = FakeLogcatEvents()

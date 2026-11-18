@@ -67,13 +67,15 @@ public protocol AndroidEmulatorClient: Sendable {
   /// 패키지의 launcher 화면을 찾고(`installedPackages` 와 같은 사전 확인 뒤 `cmd package resolve-activity` → 기기가 하나로 고르지 못하면
   /// (launcher 가 둘 이상) `cmd package query-activities` 의 첫 화면, 없으면 `pm path` 로 `.launchFailed(.notInstalled)`·
   /// `.launchFailed(.noLauncherActivity)`), 앱을 끄고(`am force-stop`, 떠 있지 않아도 성공) 기기 시각을 읽은 뒤(`date +%s.%N`)
-  /// `am start -n` 으로 새로 실행하고, 메인 프로세스 pid(`pidof <패키지>`, 기기 안에서 0.1초 간격 60번, 명령 하나 30초 제한이며
+  /// `am start -n` 으로 새로 실행하고(실패하면 `pm path` 로 설치 여부를 가려 없으면 — 실행 사이에 지워짐 — `.launchFailed(.notInstalled)`),
+  /// 메인 프로세스 pid(`pidof <패키지>`, 기기 안에서 0.1초 간격 60번, 명령 하나 30초 제한이며
   /// 넘으면 `.adbUnavailable`)를 얻으면 `.launched` 를 한 번 부르고 `logcat --pid=<pid> -v threadtime -T <시각>` 의 줄을 넘긴다
   /// (실행 직후 줄부터).
   /// **돌아오는 때**: 앱 프로세스가 끝나면 약 1초 뒤 `.appExited`, 그 전에 adb 가 끝나면(기기 꺼짐·adb 끊김) `.connectionLost`,
   /// 호출한 Task 가 취소되면 SIGINT 로 멈춘 뒤 `.stopped` (앱은 끄지 않는다. `.launched` 전 취소면 부르지 않았다). 취소는 던지지 않는다.
   /// pid 를 얻기 전에 앱이 끝났으면 그 앱 uid 의 실행 뒤 줄을 한 번 읽어(`logcat -d --uid`) `.launched`·줄을 넘기고 `.appExited`
-  /// (uid·줄을 읽지 못하면 `.launched` 뒤 줄 없이 `.connectionLost`). 던지는 것은 `.launched` 전 실패뿐이다.
+  /// (uid 목록에 그 패키지가 없으면(실행 사이에 지워짐) `.launched` 없이 `.launchFailed(.notInstalled)`, uid·줄을 읽지 못하면
+  /// `.launched` 뒤 줄 없이 `.connectionLost`). 던지는 것은 `.launched` 전 실패뿐이다.
   /// 다른 프로세스(`android:process`)의 줄은 받지 않는다. 버퍼 머리 줄(`--------- …`)은 넘기지 않는다. stdout 은 쌓지 않는다.
   func launchWithLogcat(
     _ package: AndroidPackageName,

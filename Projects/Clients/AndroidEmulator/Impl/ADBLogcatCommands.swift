@@ -32,7 +32,7 @@ enum ADBLogcatCommands {
     ]
   }
 
-  /// `package:<패키지> uid:<uid>` (부분 일치로 거르므로 정확한 줄은 `parseUID` 가 고른다).
+  /// `package:<패키지> uid:<uid>` (부분 일치로 거르므로 정확한 줄은 `parseUIDListing` 이 고른다).
   static func uidArguments(serial: String, package: AndroidPackageName) -> [String] {
     ["-s", serial, "shell", "pm", "list", "packages", "-U", package.rawValue]
   }
@@ -112,23 +112,41 @@ enum ADBLogcatCommands {
     }
   }
 
-  /// 종료 0 인 출력에서 `package:<패키지>` 가 정확히 맞는 줄의 `uid:` 뒤 첫 숫자들 (`uid:10231,1010231` → 10231).
-  /// 없거나 종료 코드 ≠ 0 이면 nil.
-  static func parseUID(_ result: CommandResult, package: AndroidPackageName) -> Int? {
+  /// `pm list packages -U <패키지>` 출력을 읽은 결과.
+  enum UIDListing: Equatable {
+    /// 그 패키지 줄의 uid.
+    case uid(Int)
+    /// 목록에 그 패키지가 없다 (지워진 패키지: 빈 출력·종료 0, 실측 API 37).
+    case notListed
+    /// 목록을 믿을 수 없다 (종료 코드 ≠ 0, 오류 글, UTF-8 이 아닌 출력, 줄은 있는데 uid 없음).
+    case unreadable
+  }
+
+  /// 종료 0 인 출력에서 `package:<패키지>` 가 정확히 맞는 줄의 `uid:` 뒤 첫 숫자들이면 `.uid` (`uid:10231,1010231` → 10231).
+  /// 맞는 줄이 없으면 종료 0·stderr 공백뿐·비어 있지 않은 stdout 줄이 모두 `package:` 로 시작(빈 출력·다른 패키지 줄만)일 때만
+  /// `.notListed` 다. 그 밖(종료 코드 ≠ 0, `package:` 가 아닌 줄 — 종료 코드를 전달하지 않는 adb shell v1 의 `Error: Unknown option: -U`
+  /// 등 —, stderr 의 글, UTF-8 이 아닌 stdout, 맞는 줄인데 uid 없음)은 `.unreadable` 이다: 설치된 앱을 "앱 없음" 으로 알리지 않게 한다.
+  static func parseUIDListing(_ result: CommandResult, package: AndroidPackageName) -> UIDListing {
     guard result.exitCode == 0 else {
-      return nil
+      return .unreadable
     }
-    for line in ADBAppCommands.lines(result.stdout) {
+    let lines = ADBAppCommands.lines(result.stdout)
+    for line in lines {
       let fields = line.split(whereSeparator: \.isWhitespace)
       guard fields.first == Substring("package:" + package.rawValue) else { continue }
       for field in fields.dropFirst() where field.hasPrefix("uid:") {
         let digits = field.dropFirst("uid:".count).prefix(while: \.isASCIIDigit)
         if let uid = Int(digits) {
-          return uid
+          return .uid(uid)
         }
       }
+      return .unreadable
     }
-    return nil
+    let stderr = String(bytes: result.stderr, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    // `lines` 는 앞뒤 공백을 뺀 비지 않은 줄이다. UTF-8 이 아닌 출력은 빈 줄 목록이 되므로 따로 막는다.
+    let readable = result.stdout.isEmpty || String(bytes: result.stdout, encoding: .utf8) != nil
+    let onlyPackageLines = lines.allSatisfy { $0.hasPrefix("package:") }
+    return readable && stderr.isEmpty && onlyPackageLines ? .notListed : .unreadable
   }
 
   /// logcat 버퍼 머리 줄 (`--------- beginning of main`·`--------- switch to main` 등). threadtime 줄은 날짜로 시작한다.
