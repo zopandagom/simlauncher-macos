@@ -10,6 +10,7 @@ import Synchronization
 /// `apiLabel` → `.android`, nil 이면 nil)를 싣는다 (`Call` 은 앱·기기 ID 만 기록한다: 전달 값은 `sessions` 의 요약으로 확인한다).
 /// `relaunch` 는 `setRelaunchResult` 로 정한 결과를 쓰고, 없으면 원래 세션과 같은 기기·앱·앱 버전·기기 OS 의 받는 중 요약을 더한다
 /// (없는 세션이면 `.sessionNotFound`). Impl 의 "같은 기기·앱의 가장 늦은 앱 버전" 규칙은 흉내 내지 않는다.
+/// `setRelaunchSkipsPublish(true)` 면 성공한 `relaunch` 가 목록에 넣지 않고 ID 만 돌려준다 (공개 직후 정리된 세션 흉내).
 public final class AppLogClientFake: AppLogClient {
   public enum Call: Hashable, Sendable {
     case launchIOSApp(AppBundleID, VirtualDevice.ID)
@@ -44,6 +45,7 @@ public final class AppLogClientFake: AppLogClient {
     var sessionSubscribers: [UUID: AsyncStream<[AppLogSessionSummary]>.Continuation] = [:]
     var relaunchResult: Result<AppLogSessionSummary, AppLogLaunchError>?
     var relaunchesSuspended = false
+    var relaunchSkipsPublish = false
     var relaunchWaiters: [CheckedContinuation<Void, Never>] = []
   }
 
@@ -141,6 +143,12 @@ public final class AppLogClientFake: AppLogClient {
   /// 이후 `relaunch` 의 결과. 성공이면 그 요약을 목록에 넣고 그 ID 를 돌려준다. nil 이면 기본 동작.
   public func setRelaunchResult(_ result: Result<AppLogSessionSummary, AppLogLaunchError>?) {
     self.state.withLock { $0.relaunchResult = result }
+  }
+
+  /// 이후 `relaunch` 가 성공하면 목록에 넣지 않고(알림 없이) 새 ID 만 돌려준다 (Impl 에서 공개 직후 기기당 상한 정리로 빠져
+  /// 어떤 알림에도 나오지 않은 세션 흉내). 그 ID 의 줄 구독은 목록에 없으므로 곧바로 끝난다.
+  public func setRelaunchSkipsPublish(_ skips: Bool) {
+    self.state.withLock { $0.relaunchSkipsPublish = skips }
   }
 
   /// 이후 `relaunch` 가 기록만 하고 `resumeRelaunches()` 까지 기다린다.
@@ -244,7 +252,9 @@ public final class AppLogClientFake: AppLogClient {
       )
     }
     let summary = try result.get()
-    self.publish(summary)
+    if !self.state.withLock({ $0.relaunchSkipsPublish }) {
+      self.publish(summary)
+    }
     return summary.id
   }
 

@@ -37,7 +37,8 @@ public protocol AppLogClient: Sendable {
   /// (그 사이 SimLauncher 가 다시 설치했으면 새 버전. SimLauncher 밖에서 다시 설치한 것은 모른다).
   func relaunch(_ session: AppLogSessionID) async throws(AppLogLaunchError) -> AppLogSessionID
 
-  /// SimLauncher 가 곧 이 기기의 이 앱을 다시 설치한다 (설치가 실행 중인 앱을 끝낸다, 측정): 받는 중인 그 앱의 세션이 끝나면 `.replaced`.
+  /// SimLauncher 가 곧 이 기기의 이 앱을 다시 설치한다 (설치가 실행 중인 앱을 끝낸다. 같은 빌드·바뀐 빌드 모두,
+  /// iOS 26.5·27.0 측정): 받는 중인 그 앱의 세션이 끝나면 `.replaced` (다시 설치 뒤 새 실행이 신호 전에 실패해도 같다).
   func replacementWillStart(_ bundleID: AppBundleID, on device: VirtualDevice.ID) async
   /// 설치가 실패해 다시 실행하지 않는다: `replacementWillStart` 를 되돌린다.
   func replacementCancelled(_ bundleID: AppBundleID, on device: VirtualDevice.ID) async

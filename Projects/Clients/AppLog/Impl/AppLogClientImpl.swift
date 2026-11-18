@@ -8,8 +8,10 @@ import SimulatorInterface
 /// Android 는 `AndroidEmulatorClient.launchWithLogcat`(adb logcat).
 /// 받기 작업은 세션마다 이 actor 가 만든 Task 이고 SimLauncher 가 켜져 있는 동안 이어진다 (`stopAll()` 로만 멈춘다).
 /// 대체할 때 앞 세션의 받기는 **취소하지 않는다**: 앞 simctl 에 SIGINT 를 보내면 그 simctl 이 다루는 앱을 끄므로 새로 뜬 앱과 겹칠 위험이 있다.
-/// 앞 simctl 은 새 실행·다시 설치가 앞 앱을 끝내면 스스로 끝나고(측정), 그때 대체 표시가 있으면 `.replaced` 다.
+/// 앞 simctl 은 새 실행·다시 설치(같은 빌드도)가 앞 앱을 끝내면 스스로 끝나고(측정, 다시 설치는 install 이 돌아온 뒤 0.1~0.8초),
+/// 그때 대체 표시가 있으면 `.replaced` 다.
 /// 판정은 "끝남이 오는 시점에 표시가 있느냐" 하나라 새 실행의 신호와 앞 simctl 의 끝 중 어느 쪽이 먼저여도 같다.
+/// 다시 설치 뒤 새 실행이 신호 전에 실패해도 다시 설치 표시는 남는다 (`AppLogSessionTable.discard`).
 /// Android 도 같은 판정 하나를 쓰려고 앞 받기를 취소하지 않는다 (앞 adb 는 새 실행의 force-stop·다시 설치가 앱을 끝내면 143 으로 끝난다, 실측).
 /// Android 의 끝남 원인은 받기 adb 의 끝으로 가른다 (목록을 다시 읽지 않는다).
 public actor AppLogClientImpl: AppLogClient {

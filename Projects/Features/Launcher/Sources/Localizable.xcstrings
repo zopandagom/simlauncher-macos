@@ -2859,6 +2859,22 @@
         }
       }
     },
+    "녹화 중지" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop Recording"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "녹화 중지"
+          }
+        }
+      }
+    },
     "녹화된 화면이 없어 파일을 저장하지 못했습니다. 기기가 켜져 있는지 확인하고, 계속 실패하면 기기를 껐다 켠 뒤 다시 시도하세요." : {
       "localizations" : {
         "en" : {
@@ -2903,6 +2919,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "녹화를 멈추고 저장한 뒤 종료할까요?"
+          }
+        }
+      }
+    },
+    "녹화를 멈추고 저장합니다" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stops recording and saves the video"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "녹화를 멈추고 저장합니다"
           }
         }
       }

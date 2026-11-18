@@ -121,25 +121,35 @@ struct ADBLogcatCommandsTests {
 
   // MARK: - uid
 
-  @Test("uid: 접두가 같은 다른 패키지 줄을 건너뛰고 정확한 줄의 첫 숫자들, 없거나 실패면 nil")
+  @Test("uid 목록: 정확한 줄의 첫 숫자들은 uid, 빈 출력·다른 패키지 줄만(종료 0)은 notListed, 그 밖은 unreadable")
   func uid() {
     let listed = Self.result(
       0,
       stdout: "package:com.example.sample.rro uid:10079\npackage:com.example.sample uid:10231\n"
     )
-    #expect(ADBLogcatCommands.parseUID(listed, package: Self.package) == 10231)
+    #expect(ADBLogcatCommands.parseUIDListing(listed, package: Self.package) == .uid(10231))
     let multiUser = Self.result(0, stdout: "package:com.example.sample uid:10231,1010231\n")
-    #expect(ADBLogcatCommands.parseUID(multiUser, package: Self.package) == 10231)
+    #expect(ADBLogcatCommands.parseUIDListing(multiUser, package: Self.package) == .uid(10231))
+    // 지워진 패키지: 빈 출력·종료 0 (실측 API 37). 접두가 같은 다른 패키지 줄만 있어도 같다.
+    #expect(ADBLogcatCommands.parseUIDListing(Self.result(0), package: Self.package) == .notListed)
+    #expect(ADBLogcatCommands.parseUIDListing(Self.result(0, stdout: "\r\n"), package: Self.package) == .notListed)
     let other = Self.result(0, stdout: "package:com.example.sample.rro uid:10079\n")
-    #expect(ADBLogcatCommands.parseUID(other, package: Self.package) == nil)
-    #expect(ADBLogcatCommands.parseUID(Self.result(0), package: Self.package) == nil)
-    #expect(
-      ADBLogcatCommands.parseUID(
-        Self.result(1, stdout: "package:com.example.sample uid:10231\n"),
-        package: Self.package
-      )
-        == nil
-    )
+    #expect(ADBLogcatCommands.parseUIDListing(other, package: Self.package) == .notListed)
+    // 종료 코드 ≠ 0, 맞는 줄인데 uid 없음, `package:` 가 아닌 줄(종료 코드를 전달하지 않는 셸의 오류), stderr 글 → unreadable.
+    let unreadable = [
+      Self.result(1, stdout: "package:com.example.sample uid:10231\n"),
+      Self.result(1),
+      Self.result(20, stderr: "cmd: Can't find service: package\n"),
+      Self.result(0, stdout: "package:com.example.sample\n"),
+      Self.result(0, stdout: "package:com.example.sample uid:abc\n"),
+      Self.result(0, stdout: "Error: Unknown option: -U\n"),
+      Self.result(0, stdout: "package:com.example.sample.rro uid:10079\nError: Unknown option: -U\n"),
+      Self.result(0, stderr: "Error: Unknown option: -U\n"),
+      CommandResult(exitCode: 0, stdout: Data([0xFF, 0xFE]), stderr: Data()),
+    ]
+    for result in unreadable {
+      #expect(ADBLogcatCommands.parseUIDListing(result, package: Self.package) == .unreadable, "\(result)")
+    }
   }
 
   // MARK: - 줄·끝

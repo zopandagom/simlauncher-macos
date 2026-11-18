@@ -19,6 +19,15 @@ extension LauncherText {
     String(localized: "중지", bundle: .module)
   }
 
+  /// "중지" 버튼의 접근성 이름 (보이는 글자는 "중지").
+  static var stopRecordingAccessibilityLabel: String {
+    String(localized: "녹화 중지", bundle: .module)
+  }
+
+  static var stopRecordingHelp: String {
+    String(localized: "녹화를 멈추고 저장합니다", bundle: .module)
+  }
+
   static var startingRecordingLabel: String {
     String(localized: "녹화를 시작하는 중…", bundle: .module)
   }

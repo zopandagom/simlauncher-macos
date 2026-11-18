@@ -139,6 +139,22 @@ struct AppLogClientImplAndroidTests {
     #expect(await fixture.summaries().last?.state == .receiving)
   }
 
+  @Test("다시 설치 뒤 새 실행이 .launched 전에 실패(앱 없음)해도 앞 세션이 appExited 로 끝나면 replaced")
+  func reinstallThenFailedLaunchKeepsReplaced() async throws {
+    let fixture = AppLogFixture()
+    let (first, firstRun) = try await fixture.launchedAndroid(run: 0)
+    await fixture.client.replacementWillStart(AppLogFixture.package, on: AppLogFixture.avd)
+    let task = fixture.launchAndroid()
+    let secondRun = try await fixture.logcat.run(1)
+
+    secondRun.finish(.failure(.launchFailed(.notInstalled)))
+    await #expect(throws: AppLogLaunchError.appNotInstalled) { try await task.value }
+    // 다시 설치가 앞 앱을 끝내 앞 adb 가 143 으로 끝난다.
+    firstRun.finish(.success(.appExited))
+
+    #expect(try await fixture.waitForEnd(of: first) == .replaced)
+  }
+
   @Test("replacementWillStart 뒤 끝나면 replaced, replacementCancelled 로 되돌리면 appExited")
   func installMarks() async throws {
     let fixture = AppLogFixture()

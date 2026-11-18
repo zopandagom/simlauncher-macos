@@ -26,6 +26,8 @@ enum CaptureTextCatalog {
       ("녹화", AndroidDevicesText.recordButton),
       ("기기 화면을 동영상 폴더의 SimLauncher 폴더에 녹화합니다. 중지하면 저장하고 Finder 에서 보여 줍니다", AndroidDevicesText.recordHelp),
       ("중지", AndroidDevicesText.stopRecordingButton),
+      ("녹화 중지", AndroidDevicesText.stopRecordingAccessibilityLabel),
+      ("녹화를 멈추고 저장합니다", AndroidDevicesText.stopRecordingHelp),
       ("녹화를 시작하는 중…", AndroidDevicesText.startingRecordingLabel),
       ("녹화 중", AndroidDevicesText.recordingLabel),
       ("녹화를 저장하는 중…", AndroidDevicesText.stoppingRecordingLabel),

@@ -8,7 +8,7 @@ import SwiftUI
 ///   로그 보기 버튼(늘 보이고, 이 기기에 앱 로그 세션이 있으면 기기 상태·작업과 관계없이 누를 수 있다. 없으면 비활성으로 두고
 ///   이유("앱 실행…" 안내)를 툴팁으로).
 /// - 진행 표시: 스크린샷을 찍는 중이면 작은 진행, 녹화 중이면 경과 시간과 "중지"(시작·저장 중이면 작은 진행).
-/// - 켜기·끄기 버튼(받는 중이면 진행 막대와 받기 취소 버튼, 녹화 중이면 끄기 비활성).
+/// - 켜기·끄기 버튼(받는 중이면 진행 막대와 받기 취소 버튼. 녹화 중인 행은 진행을 작은 원형으로, 녹화 중이면 끄기 비활성).
 /// - 기기 작업 메뉴(⋯ 버튼과 컨텍스트 메뉴가 같은 항목, `LauncherText.deviceMenu(_:)`): 설치된 앱…(켜진 기기이고 진행 작업이
 ///   없을 때)·링크 열기… / 스크린샷·녹화·레이아웃 보기(러너의 최소 iOS 보다 낮은 기기는 막는다)·테스트 조건…(켜진 기기,
 ///   찍는 중·녹화 중·앱 작업 중에도 된다) / 초기화…·삭제…(진행 작업·녹화 중이면 막는다). 메뉴는 늘 열리고, 묶음마다 막힌 이유를
@@ -220,14 +220,23 @@ struct DeviceRow: View {
     }
   }
 
-  /// 받는 중이면 진행(전체 크기를 알면 막대, 모르면 원형)과 받기 취소 버튼. 취소 중이면 원형 진행만.
+  /// 받는 중이면 진행(전체 크기를 알면 막대, 녹화 중인 행은 값이 있는 작은 원형, 모르면 원형)과 받기 취소 버튼.
+  /// 취소 중이면 원형 진행만.
   @ViewBuilder
   private func downloadProgress(_ stage: DownloadStage) -> some View {
     switch stage {
     case let .receiving(progress):
       if let progress, let expected = progress.expectedBytes, expected > 0 {
-        ProgressView(value: Double(min(progress.receivedBytes, expected)), total: Double(expected))
-          .frame(width: 80)
+        let bar = ProgressView(value: Double(min(progress.receivedBytes, expected)), total: Double(expected))
+        if self.isRecording {
+          // 녹화 중 행은 경과 시간·"중지" 가 더해져 80pt 막대면 영어에서 detail 최소 폭을 넘는다 (`MainWindow.detailMinWidth`).
+          bar
+            .progressViewStyle(.circular)
+            .controlSize(.small)
+        } else {
+          bar
+            .frame(width: 80)
+        }
       } else {
         ProgressView()
           .controlSize(.small)
@@ -389,5 +398,7 @@ private struct RecordingControl: View {
   private var stopButton: some View {
     Button(LauncherText.stopRecordingButton, action: self.stopTapped)
       .fixedSize()
+      .accessibilityLabel(LauncherText.stopRecordingAccessibilityLabel)
+      .help(LauncherText.stopRecordingHelp)
   }
 }

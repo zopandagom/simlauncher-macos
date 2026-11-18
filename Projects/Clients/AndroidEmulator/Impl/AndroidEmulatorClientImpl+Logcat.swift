@@ -8,7 +8,9 @@ import Synchronization
 
 public extension AndroidEmulatorClientImpl {
   /// 사전 확인 → 화면 찾기 → `am force-stop` → `date` → `am start -n` → pid 기다림 → (pid 있음) `.launched` 뒤 logcat 받기,
-  /// (pid 없음) uid 줄 한 번 읽기. 시각은 force-stop **뒤에** 읽어 한 번 읽기에 앞 실행의 줄이 섞이지 않게 한다
+  /// (pid 없음) uid 줄 한 번 읽기(uid 목록에 그 패키지가 없으면 — 실행 사이에 지워짐 — `.launched` 없이 `.launchFailed(.notInstalled)`).
+  /// `am start -n` 이 실패하면 `pm path` 로 설치 여부를 가려 없으면 `.launchFailed(.notInstalled)`. 시각은 force-stop **뒤에** 읽어 한 번 읽기에 앞
+  /// 실행의 줄이 섞이지 않게 한다
   /// (`am start -S` 도 동기로 끄지만 끈 뒤 시각을 읽을 틈이 없어 쓰지 않는다).
   /// `.launched` 전의 취소는 던지지 않고 `.stopped` 다 (호출한 Task 가 취소된 뒤 나온 실패도 같다).
   @concurrent
@@ -30,7 +32,7 @@ public extension AndroidEmulatorClientImpl {
       await onEvent(.launched)
       return await self.streamLogcat(launch, pid: pid, onEvent: onEvent)
     }
-    return await self.readExitedLaunch(launch, package: package, onEvent: onEvent)
+    return try await self.readExitedLaunch(launch, package: package, onEvent: onEvent)
   }
 }
 
@@ -65,7 +67,19 @@ extension AndroidEmulatorClientImpl {
       ADBAppCommands.startArguments(serial: serial, component: component),
       tools: tools
     )
-    try ADBAppCommands.parseStart(started).get()
+    do throws(AndroidEmulatorError) {
+      try ADBAppCommands.parseStart(started).get()
+    } catch {
+      guard error == .appCommandFailed else { throw error }
+      // 실행 사이에 지워졌으면 `Error type 3 … does not exist` (실측). `launcherComponent` 와 같은 `pm path` 판정이고,
+      // 그 실패(취소·켜는 중·끊김·adb 실행 실패)는 그대로 던진다. 링크 열기(`openURL`)는 `parseStart` 만 써서 그대로다.
+      let path = try await self.runApp(
+        ADBAppCommands.packagePathArguments(serial: serial, package: package),
+        tools: tools
+      )
+      let installed = try ADBAppCommands.parsePackagePath(path).get()
+      throw installed ? .appCommandFailed : .launchFailed(.notInstalled)
+    }
     // 시간 한도를 넘으면 기본값 `.adbUnavailable` (기기 안 루프는 스스로 끝나므로 넘으면 adb 서버가 멈춘 것이다).
     let waited = try await self.runApp(
       ADBLogcatCommands.pidWaitArguments(serial: serial, package: package),
@@ -113,16 +127,20 @@ extension AndroidEmulatorClientImpl {
 
   /// pid 전에 끝난 실행: 그 앱 uid 의 실행 뒤 줄을 한 번 읽어 `.launched`·줄 뒤 `.appExited`.
   /// uid·줄을 읽지 못하면 `.launched` 뒤 `.connectionLost`. 이 단계의 취소는 `.launched` 없이 `.stopped`.
+  /// uid 목록에 그 패키지가 없으면(실행 사이에 지워짐) `.launched` 없이 `.launchFailed(.notInstalled)` 를 던진다.
   private func readExitedLaunch(
     _ launch: LogcatLaunch,
     package: AndroidPackageName,
     onEvent: @escaping @Sendable (AndroidLogcatEvent) async -> Void
-  ) async -> AndroidLogcatEnd {
+  ) async throws(AndroidEmulatorError) -> AndroidLogcatEnd {
     let texts: [String]?
     do throws(AndroidEmulatorError) {
       texts = try await self.readUIDLog(launch, package: package)
     } catch {
-      return .stopped
+      if error == .cancelled || Task.isCancelled {
+        return .stopped
+      }
+      throw error
     }
     await onEvent(.launched)
     guard let texts else {
@@ -134,7 +152,7 @@ extension AndroidEmulatorClientImpl {
     return .appExited
   }
 
-  /// 읽은 줄(머리 줄 뺌), 읽지 못하면 nil. 던지는 것은 취소(`.cancelled`)뿐이다.
+  /// 읽은 줄(머리 줄 뺌), 읽지 못하면 nil. 던지는 것은 취소(`.cancelled`)와 목록에 없음(`.launchFailed(.notInstalled)`)뿐이다.
   private func readUIDLog(
     _ launch: LogcatLaunch,
     package: AndroidPackageName
@@ -151,8 +169,11 @@ extension AndroidEmulatorClientImpl {
       }
       return nil
     }
-    guard let uid = ADBLogcatCommands.parseUID(listed, package: package) else {
-      return nil
+    let uid: Int
+    switch ADBLogcatCommands.parseUIDListing(listed, package: package) {
+    case let .uid(value): uid = value
+    case .notListed: throw .launchFailed(.notInstalled)
+    case .unreadable: return nil
     }
     let read: CommandResult
     do throws(AndroidEmulatorError) {

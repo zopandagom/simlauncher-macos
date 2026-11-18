@@ -93,6 +93,7 @@ struct RecordingTextTests {
       LauncherText.recordButton, LauncherText.recordHelp, LauncherText.stopRecordingButton,
       LauncherText.startingRecordingLabel, LauncherText.recordingLabel, LauncherText.stoppingRecordingLabel,
       LauncherText.stopRecordingFirstHelp, LauncherText.recordingBlocksDeviceActions,
+      LauncherText.stopRecordingAccessibilityLabel, LauncherText.stopRecordingHelp,
       LauncherText.recordingTerminationTitle, LauncherText.recordingTerminationMessage, LauncherText.saveAndQuitButton,
     ]
     texts += LauncherTextCatalog.screenshotBlockReasons.map { LauncherText.recordBlockReason($0) }
